@@ -32,6 +32,24 @@
 }
 
 @layer base {
+	/* A softer graphite editor palette. HeroUI's default dark background is nearly
+	 * black; keeping the surfaces a few steps apart makes the editor easier to
+	 * scan while preserving contrast for media previews. */
+	:root.dark,
+	:root[data-theme="dark"] {
+		--background: #181a1f;
+		--surface: #1e2127;
+		--surface-secondary: #252930;
+		--surface-tertiary: #2b3038;
+		--overlay: #22262d;
+		--default: #292d35;
+		--field-background: #20242a;
+		--border: #333842;
+		--separator: #2b3038;
+		--background-secondary: #1b1e23;
+		--background-tertiary: #20242a;
+	}
+
 	:root {
 		--app-font-sans:
 			ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

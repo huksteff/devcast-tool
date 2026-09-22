@@ -1,6 +1,7 @@
 import { Assets, BlurFilter, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import minimalCursorUrl from "@/assets/cursors/custom/minimal-cursor.svg";
+import win11ConceptCursorUrl from "@/assets/cursors/custom/win11-concept.svg";
 import { getRenderableAssetUrl } from "@/lib/assetPath";
 import {
 	type CursorClickEffectStyle,
@@ -30,7 +31,7 @@ import { computeDirectionalMotionBlur } from "./zoomTransform";
 
 type CursorAssetKey = NonNullable<CursorTelemetryPoint["cursorType"]>;
 type StatefulCursorStyle = Extract<CursorStyle, "macos" | "tahoe" | "tahoe-inverted" | "windows11">;
-type SingleCursorStyle = Extract<CursorStyle, "dot" | "figma">;
+type SingleCursorStyle = "dot" | "figma" | "win11-concept";
 type CursorPackStyle = Exclude<CursorStyle, StatefulCursorStyle | SingleCursorStyle>;
 type CursorPackVariant = "default" | "pointer";
 
@@ -201,7 +202,7 @@ function isStatefulCursorStyle(style: CursorStyle): style is StatefulCursorStyle
 }
 
 function isSingleCursorStyle(style: CursorStyle): style is SingleCursorStyle {
-	return style === "dot" || style === "figma";
+	return style === "dot" || style === "figma" || style === "win11-concept";
 }
 
 function resolveCursorPackVariant(cursorType: CursorAssetKey): CursorPackVariant {
@@ -209,14 +210,18 @@ function resolveCursorPackVariant(cursorType: CursorAssetKey): CursorPackVariant
 }
 
 async function createCursorStyleAsset(style: SingleCursorStyle): Promise<LoadedCursorAsset> {
-	if (style === "figma") {
-		const image = await loadImage(minimalCursorUrl);
+	if (style === "figma" || style === "win11-concept") {
+		const source =
+			style === "figma"
+				? { url: minimalCursorUrl, hotspot: { x: 40, y: 22 } }
+				: { url: win11ConceptCursorUrl, hotspot: { x: 4, y: 18 } };
+		const image = await loadImage(source.url);
 		const sourceCanvas = document.createElement("canvas");
 		sourceCanvas.width = image.naturalWidth;
 		sourceCanvas.height = image.naturalHeight;
 		const sourceCtx = sourceCanvas.getContext("2d")!;
 		sourceCtx.drawImage(image, 0, 0);
-		const trimmed = trimCanvasToAlpha(sourceCanvas, { x: 40, y: 22 });
+		const trimmed = trimCanvasToAlpha(sourceCanvas, source.hotspot);
 		await Assets.load(trimmed.dataUrl);
 		const trimmedImage = await loadImage(trimmed.dataUrl);
 		const texture = configureCursorTexture(Texture.from(trimmed.dataUrl));
@@ -613,7 +618,7 @@ export async function preloadCursorAssets() {
 			loadedCursorAssets = tahoeAssets;
 
 			const customStyleEntries = await Promise.all(
-				(["dot", "figma"] as const).map(
+				(["dot", "figma", "win11-concept"] as const).map(
 					async (style) => [style, await createCursorStyleAsset(style)] as const,
 				),
 			);

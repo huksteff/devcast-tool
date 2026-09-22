@@ -1,6 +1,7 @@
 import { Card } from "@heroui/react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useI18n } from "./contexts/I18nContext";
+import { ShortcutsProvider } from "./contexts/ShortcutsContext";
 
 const HudWindow = lazy(() => import("./components/launch/HudWindow"));
 const SourceSelector = lazy(() =>
@@ -19,6 +20,7 @@ const UpdateToastWindow = lazy(() =>
 	})),
 );
 const EditorWindow = lazy(() => import("./components/video-editor/EditorWindow"));
+const TimelineWindow = lazy(() => import("./components/video-editor/timeline/TimelineWindow"));
 
 export default function App() {
 	const [windowType] = useState(
@@ -76,6 +78,9 @@ export default function App() {
 			break;
 		case "editor":
 			content = <EditorWindow />;
+			break;
+		case "timeline-window":
+			content = <ShortcutsProvider><TimelineWindow /></ShortcutsProvider>;
 			break;
 		default:
 			content = (

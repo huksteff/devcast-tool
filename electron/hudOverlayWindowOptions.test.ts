@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { getHudOverlayTaskbarOptions } from "./hudOverlayWindowOptions";
 
 describe("getHudOverlayTaskbarOptions", () => {
-	it("keeps a focusable HUD in the Windows taskbar", () => {
+	it("does not activate the Windows HUD when its controls are clicked", () => {
 		expect(getHudOverlayTaskbarOptions("win32")).toEqual({
-			skipTaskbar: false,
-			focusable: true,
+			skipTaskbar: true,
+			focusable: false,
 		});
 	});
 

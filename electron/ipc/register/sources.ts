@@ -392,7 +392,7 @@ export function registerSourceHandlers({
 		if (sourceSelectorWin) {
 			sourceSelectorWin.close();
 		}
-		app.focus({ steal: true });
+		if (process.platform !== "win32") app.focus({ steal: true });
 		return selectedSource;
 	});
 
@@ -577,7 +577,22 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
 		}
 	});
 
-	ipcMain.handle("get-selected-source", () => {
+	ipcMain.handle("get-selected-source", async () => {
+		if (!selectedSource) {
+			const primary = getScreen().getPrimaryDisplay();
+			const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 0, height: 0 } });
+			// Match the OS primary display, not the enumeration order.
+			const match = sources.find((source) => source.display_id === String(primary.id));
+			if (!selectedSource) {
+				setSelectedSource({
+					id: getScreenSourceIdForDisplay({ displayId: String(primary.id), matchedSourceId: match?.id, platform: process.platform }),
+					name: match?.name || "Primary screen",
+					display_id: String(primary.id),
+					sourceType: "screen",
+				});
+				broadcastSelectedSourceChange();
+			}
+		}
 		return selectedSource;
 	});
 

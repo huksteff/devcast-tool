@@ -38,6 +38,9 @@ let hudOverlayRecordingActive = false;
 let hudOverlayWebcamPreviewVisible = false;
 let countdownWindow: BrowserWindow | null = null;
 let updateToastWindow: BrowserWindow | null = null;
+let timelineWindow: BrowserWindow | null = null;
+let timelineOwner: BrowserWindow | null = null;
+let latestTimelineSnapshot: unknown = null;
 let hudWasVisibleBeforeUpdateToast = false;
 
 const HUD_OVERLAY_SETTINGS_FILE = path.join(USER_DATA_PATH, "hud-overlay-settings.json");
@@ -472,8 +475,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 		backgroundColor: "#00000000",
 		resizable: false,
 		alwaysOnTop: true,
-		// The HUD is Recordly's persistent top-level window, so it owns the
-		// Windows taskbar entry while auxiliary overlays stay hidden there.
+		// Mouse controls must not deactivate the application being recorded.
 		...getHudOverlayTaskbarOptions(process.platform),
 		hasShadow: false,
 		show: false,
@@ -512,8 +514,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 		// flags. Reassert capture protection on both sides of the transition.
 		applyHudOverlayCaptureProtectionToWindow(win, hudOverlayHiddenFromCapture);
 		if (process.platform === "win32") {
-			// A focusable window is required for a Windows taskbar entry, but the
-			// always-on-top HUD must not steal focus when Recordly starts.
+			// Show the non-activating recording controls above the current app.
 			win.showInactive();
 		} else {
 			win.show();
@@ -653,6 +654,112 @@ export function createHudOverlayWindow(): BrowserWindow {
 export function getHudOverlayWindow(): BrowserWindow | null {
 	return hudOverlayWindow && !hudOverlayWindow.isDestroyed() ? hudOverlayWindow : null;
 }
+
+export function createTimelineWindow(): BrowserWindow {
+	if (timelineWindow && !timelineWindow.isDestroyed()) {
+		timelineWindow.show();
+		timelineWindow.focus();
+		return timelineWindow;
+	}
+
+	const win = new BrowserWindow({
+		width: 1280,
+		height: 460,
+		minWidth: 720,
+		minHeight: 260,
+		...(process.platform !== "darwin" && { icon: WINDOW_ICON_PATH }),
+		autoHideMenuBar: true,
+		resizable: true,
+		show: false,
+		title: "Recordly Timeline",
+		backgroundColor: "#181a1f",
+		webPreferences: {
+			preload: path.join(electronWindowsDir, "preload.mjs"),
+			nodeIntegration: false,
+			contextIsolation: true,
+			webSecurity: false,
+			backgroundThrottling: false,
+		},
+	});
+
+	timelineWindow = win;
+	win.once("ready-to-show", () => win.show());
+	win.once("closed", () => {
+		if (timelineWindow === win) {
+			timelineWindow = null;
+			for (const editor of getTimelineEditorWindows()) {
+				if (!editor.isDestroyed()) editor.webContents.send("timeline-window:message", { type: "window-closed" });
+			}
+		}
+	});
+	if (VITE_DEV_SERVER_URL) {
+		void win.loadURL(`${VITE_DEV_SERVER_URL}?windowType=timeline-window`);
+	} else {
+		void win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+			query: { windowType: "timeline-window" },
+		});
+	}
+	return win;
+}
+
+function getTimelineEditorWindows(): BrowserWindow[] {
+	return timelineOwner && !timelineOwner.isDestroyed() ? [timelineOwner] : [];
+}
+
+ipcMain.handle("timeline-window:open", (event) => {
+	const owner = BrowserWindow.fromWebContents(event.sender);
+	if (!owner || !editorWindows.has(owner)) return { success: false };
+	if (timelineOwner !== owner) {
+		if (timelineWindow && !timelineWindow.isDestroyed()) timelineWindow.close();
+		timelineOwner = owner;
+		latestTimelineSnapshot = null;
+		owner.once("closed", () => {
+			if (timelineOwner !== owner) return;
+			if (timelineWindow && !timelineWindow.isDestroyed()) timelineWindow.close();
+			timelineOwner = null;
+			latestTimelineSnapshot = null;
+		});
+	}
+	createTimelineWindow();
+	return { success: true };
+});
+
+ipcMain.handle("timeline-window:close", () => {
+	if (timelineWindow && !timelineWindow.isDestroyed()) timelineWindow.close();
+	return { success: true };
+});
+
+ipcMain.on("timeline-window:message", (event, message: unknown) => {
+	const sender = BrowserWindow.fromWebContents(event.sender);
+	if (sender && sender === timelineWindow) {
+		const childWindow = timelineWindow;
+		if (
+			message &&
+			typeof message === "object" &&
+			"type" in message &&
+			message.type === "snapshot-request" &&
+			latestTimelineSnapshot
+		) {
+			childWindow?.webContents.send("timeline-window:message", latestTimelineSnapshot);
+		}
+		for (const editor of getTimelineEditorWindows()) {
+			if (!editor.isDestroyed()) editor.webContents.send("timeline-window:message", message);
+		}
+		return;
+	}
+	if (!sender || sender !== timelineOwner) return;
+	if (
+		message &&
+		typeof message === "object" &&
+		"type" in message &&
+		message.type === "snapshot"
+	) {
+		latestTimelineSnapshot = message;
+	}
+	if (timelineWindow && !timelineWindow.isDestroyed()) {
+		timelineWindow.webContents.send("timeline-window:message", message);
+	}
+});
 
 /**
  * Re-initialise the HUD overlay's mouse passthrough state.

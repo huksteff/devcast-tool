@@ -596,6 +596,13 @@ export function registerRecordingHandlers(
 					}
 					setWindowsNativeCaptureActive(true);
 					setNativeScreenRecordingActive(true);
+					// Clicking the always-on-top HUD gives it foreground focus after the
+					// initial source selection. WGC can return blank frames for an
+					// occluded Chromium window, so restore the selected window once the
+					// native capture session is live.
+					if (source.id?.startsWith("window:")) {
+						setTimeout(() => void bringSelectedWindowForward(source), 120);
+					}
 					recordNativeCaptureDiagnostics({
 						backend: "windows-wgc",
 						phase: "start",

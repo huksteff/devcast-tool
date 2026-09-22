@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+
 import type { RecordingSessionData } from "./ipc/types";
 
 type NativeVideoExportWriteResult = { success: boolean; error?: string };
@@ -184,6 +185,15 @@ function settleNativeVideoExportPendingRequests(
 }
 
 contextBridge.exposeInMainWorld("electronAPI", {
+	openTimelineWindow: () => ipcRenderer.invoke("timeline-window:open"),
+	closeTimelineWindow: () => ipcRenderer.invoke("timeline-window:close"),
+	sendTimelineWindowMessage: (message: unknown) =>
+		ipcRenderer.send("timeline-window:message", message),
+	onTimelineWindowMessage: (callback: (message: unknown) => void) => {
+		const listener = (_event: Electron.IpcRendererEvent, message: unknown) => callback(message);
+		ipcRenderer.on("timeline-window:message", listener);
+		return () => ipcRenderer.removeListener("timeline-window:message", listener);
+	},
 	hudOverlaySetIgnoreMouse: (ignore: boolean) => {
 		ipcRenderer.send("hud-overlay-set-ignore-mouse", ignore);
 	},

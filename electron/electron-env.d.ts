@@ -218,6 +218,10 @@ interface RendererExportHardwareInfo {
 
 interface Window {
 	electronAPI: {
+		openTimelineWindow: () => Promise<{ success: boolean }>;
+		closeTimelineWindow: () => Promise<{ success: boolean }>;
+		sendTimelineWindowMessage: (message: unknown) => void;
+		onTimelineWindowMessage: (callback: (message: unknown) => void) => () => void;
 		hudOverlaySetIgnoreMouse: (ignore: boolean) => void;
 		hudOverlaySetSourceSelectionActive: (active: boolean) => void;
 		hudOverlayDrag: (phase: "start" | "move" | "end", screenX: number, screenY: number) => void;

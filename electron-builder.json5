@@ -113,8 +113,10 @@
     "category": "AudioVideo"
   },
   "win": {
+	"signAndEditExecutable": false,
     "target": [
-      "nsis"
+      "nsis",
+      "zip"
     ],
     "icon": "icons/icons/win/icon.ico",
     "executableName": "Recordly",

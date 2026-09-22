@@ -295,7 +295,7 @@ function showHudOverlayFromTray() {
 		hud.restore();
 	}
 
-	if (process.platform === "win32" && isHudOverlayMousePassthroughSupported()) {
+	if (process.platform === "win32") {
 		hud.showInactive();
 		hud.moveTop();
 		reassertHudOverlayMouseState();
@@ -567,9 +567,8 @@ function createTray() {
 }
 
 function shouldUseTray() {
-	// macOS and Windows expose Recordly through their Dock/taskbar. Keep the
-	// tray entry only on Linux, where it remains the primary app entry point.
-	return process.platform === "linux";
+	// The non-activating Windows HUD has no taskbar entry.
+	return process.platform === "linux" || process.platform === "win32";
 }
 
 function getPublicAssetPath(filename: string) {

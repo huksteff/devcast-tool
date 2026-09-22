@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import minimalCursorUrl from "@/assets/cursors/custom/minimal-cursor.svg";
+import win11ConceptCursorUrl from "@/assets/cursors/custom/win11-concept.svg";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -588,6 +589,7 @@ const BUILTIN_CURSOR_STYLE_OPTIONS: CursorStyleOption[] = [
 	{ value: "windows11", label: "Windows 11" },
 	{ value: "dot", label: "Dot" },
 	{ value: "figma", label: "Minimal" },
+	{ value: "win11-concept", label: "Win11 Concept" },
 ];
 
 const CAPTION_LANGUAGE_OPTIONS = [
@@ -771,9 +773,11 @@ function CursorStylePreview({
 				? (previewUrls.tahoe ?? tahoeCursorUrl)
 				: style === "windows11"
 					? (previewUrls.windows11 ?? tahoeCursorUrl)
-					: style === "figma"
-						? (previewUrls.figma ?? minimalCursorUrl)
-						: style === "tahoe-inverted"
+				: style === "figma"
+					? (previewUrls.figma ?? minimalCursorUrl)
+					: style === "win11-concept"
+						? (previewUrls["win11-concept"] ?? win11ConceptCursorUrl)
+					: style === "tahoe-inverted"
 							? (previewUrls["tahoe-inverted"] ?? tahoeCursorUrl)
 							: previewUrls[style];
 
@@ -1151,9 +1155,10 @@ export function SettingsPanel({
 			try {
 				const macosPreview = cursorSetAssets.macos.arrow.url;
 				const tahoePreview = cursorSetAssets.tahoe.arrow.url;
-				const [windows11Preview, minimalPreview] = await Promise.all([
+				const [windows11Preview, minimalPreview, win11ConceptPreview] = await Promise.all([
 					createTrimmedSvgPreview(cursorSetAssets.windows11.arrow.url, 512),
 					createTrimmedSvgPreview(minimalCursorUrl, 512),
+					createTrimmedSvgPreview(win11ConceptCursorUrl, 512),
 				]);
 				const invertedPreview = await createInvertedPreview(tahoePreview);
 
@@ -1163,6 +1168,7 @@ export function SettingsPanel({
 						tahoe: tahoePreview,
 						windows11: windows11Preview,
 						figma: minimalPreview,
+						"win11-concept": win11ConceptPreview,
 						"tahoe-inverted": invertedPreview,
 					});
 				}
@@ -1173,6 +1179,7 @@ export function SettingsPanel({
 						tahoe: tahoeCursorUrl,
 						windows11: tahoeCursorUrl,
 						figma: minimalCursorUrl,
+						"win11-concept": win11ConceptCursorUrl,
 						"tahoe-inverted": tahoeCursorUrl,
 					});
 				}

@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
 import { retimeCaptionFragment } from "../captionTimeline";
 import type { useAnnotationRegionCommands } from "../hooks/useAnnotationRegionCommands";
@@ -10,6 +10,11 @@ import type { useTimelineProjection } from "../hooks/useTimelineProjection";
 import type { useZoomRegionCommands } from "../hooks/useZoomRegionCommands";
 import type { useTimelineState } from "../state/useTimelineState";
 import TimelineEditor, { type TimelineEditorHandle } from "../timeline/TimelineEditor";
+import {
+	type TimelineWindowAction,
+	type TimelineWindowMessage,
+	type TimelineWindowSnapshot,
+} from "../timeline/timelineWindowProtocol";
 
 type Props = {
 	panelRef?: RefObject<HTMLDivElement | null>;
@@ -35,6 +40,7 @@ type Props = {
 };
 
 export function EditorTimelinePanel(props: Props) {
+	const [timelineWindowOpen, setTimelineWindowOpen] = useState(false);
 	const {
 		timelineRef,
 		timeline,
@@ -57,15 +63,105 @@ export function EditorTimelinePanel(props: Props) {
 		handleSelectAnnotation,
 	} = props;
 
-	return (
-		<div
-			ref={props.panelRef}
-			tabIndex={-1}
-			data-timeline-panel
-			className="outline-none flex flex-shrink-0 flex-col bg-transparent px-4 pb-4 pt-2"
-			style={{ height: "22%", minHeight: 180, maxHeight: 280 }}
-		>
-			<TimelineEditor
+	const selectedCaptionId =
+		projection.effectiveCaptionRegions.find(
+			(cue) =>
+				cue.sourceCueId === timeline.selectedCaptionId &&
+				currentTime * 1000 >= cue.startMs &&
+				currentTime * 1000 < cue.endMs,
+		)?.id ??
+		projection.effectiveCaptionRegions.find(
+			(cue) => cue.sourceCueId === timeline.selectedCaptionId,
+		)?.id ??
+		null;
+
+	const snapshot: TimelineWindowSnapshot = {
+		videoDuration: projection.timelineDuration,
+		currentTime,
+		playheadTime: projection.timelinePlayheadTime,
+		videoPath,
+		videoSourcePath,
+		cursorTelemetrySourcePath,
+		cursorTelemetry: normalizedCursorTelemetry,
+		autoSuggestZoomsTrigger,
+		disableSuggestedZooms,
+		zoomRegions: timeline.zoomRegions,
+		selectedZoomId: timeline.selectedZoomId,
+		trimRegions: timeline.trimRegions,
+		clipRegions: timeline.clipRegions,
+		selectedClipId: timeline.selectedClipId,
+		audioRegions: timeline.audioRegions,
+		selectedAudioId: timeline.selectedAudioId,
+		captionRegions: projection.effectiveCaptionRegions,
+		selectedCaptionId,
+		captionsEnabled: timeline.autoCaptionSettings.enabled,
+		captionQuickAddEnabled: timeline.autoCaptionSettings.timelineQuickAdd,
+		annotationRegions: timeline.annotationRegions,
+		selectedAnnotationId: timeline.selectedAnnotationId,
+		showSourceAudioTrack: timeline.clipRegions.some((clip) => clip.showSourceAudio),
+		sourceAudioResourceVersion: timeline.sourceAudioFallbackRefreshKey,
+		sourceAudioTrackSettings: audio.activeSourceAudioTrackSettings,
+	};
+
+	useEffect(() => {
+		const sendSnapshot = () => {
+			window.electronAPI.sendTimelineWindowMessage({ type: "snapshot", snapshot });
+		};
+		const handleAction = (action: TimelineWindowAction) => {
+			switch (action.type) {
+				case "seek": playback.handleTimelineSeek(action.time); break;
+				case "auto-suggest-consumed": handleAutoSuggestZoomsConsumed(); break;
+				case "zoom-added": zoomCommands.handleZoomAdded(action.span); break;
+				case "zoom-suggested": zoomCommands.handleZoomSuggested(action.span, action.focus); break;
+				case "zoom-span-change": zoomCommands.handleZoomSpanChange(action.id, action.span); break;
+				case "zoom-delete": zoomCommands.handleZoomDelete(action.id); break;
+				case "select-zoom": zoomCommands.handleSelectZoom(action.id); break;
+				case "clip-split": clipCommands.handleClipSplit(action.splitMs); break;
+				case "clip-span-change": clipCommands.handleClipSpanChange(action.id, action.span); break;
+				case "clip-delete": clipCommands.handleClipDelete(action.id); break;
+				case "select-clip": clipCommands.handleSelectClip(action.id); break;
+				case "audio-added": audioCommands.handleAudioAdded(action.span, action.audioPath, action.trackIndex); break;
+				case "audio-span-change": audioCommands.handleAudioSpanChange(action.id, action.span, action.trackIndex); break;
+				case "audio-delete": audioCommands.handleAudioDelete(action.id); break;
+				case "select-audio": audioCommands.handleSelectAudio(action.id); break;
+				case "caption-span-change": {
+					const fragment = projection.effectiveCaptionRegions.find((cue) => cue.id === action.id);
+					if (fragment) captionCommands.handleCaptionRetime(fragment.sourceCueId, retimeCaptionFragment(fragment, action.span));
+					break;
+				}
+				case "caption-delete": {
+					const fragment = projection.effectiveCaptionRegions.find((cue) => cue.id === action.id);
+					if (fragment) captionCommands.handleCaptionDelete(fragment.sourceCueId);
+					break;
+				}
+				case "caption-added": captionCommands.handleCaptionAdded(action.span); break;
+				case "select-caption": {
+					const fragment = projection.effectiveCaptionRegions.find((cue) => cue.id === action.id);
+					captionCommands.handleSelectCaption(fragment?.sourceCueId ?? null);
+					if (fragment) playback.handleTimelineSeek(fragment.startMs / 1000);
+					break;
+				}
+				case "annotation-added": annotationCommands.handleAnnotationAdded(action.span, action.trackIndex); break;
+				case "annotation-span-change": annotationCommands.handleAnnotationSpanChange(action.id, action.span, action.trackIndex); break;
+				case "annotation-delete": annotationCommands.handleAnnotationDelete(action.id); break;
+				case "select-annotation": handleSelectAnnotation(action.id); break;
+			}
+		};
+		const unsubscribe = window.electronAPI.onTimelineWindowMessage((message) => {
+			const event = message as TimelineWindowMessage;
+			if (event.type === "snapshot-request") sendSnapshot();
+			if (event.type === "action") handleAction(event.action);
+			if (event.type === "window-closed") setTimelineWindowOpen(false);
+			if (event.type === "window-ready") setTimelineWindowOpen(true);
+		});
+		sendSnapshot();
+		return () => {
+			unsubscribe();
+		};
+	}, [snapshot]);
+
+	const timelineEditor = (
+		<TimelineEditor
 				ref={timelineRef}
 				videoDuration={projection.timelineDuration}
 				currentTime={currentTime}
@@ -109,18 +205,7 @@ export function EditorTimelinePanel(props: Props) {
 						retimeCaptionFragment(fragment, span),
 					);
 				}}
-				selectedCaptionId={
-					projection.effectiveCaptionRegions.find(
-						(cue) =>
-							cue.sourceCueId === timeline.selectedCaptionId &&
-							currentTime * 1000 >= cue.startMs &&
-							currentTime * 1000 < cue.endMs,
-					)?.id ??
-					projection.effectiveCaptionRegions.find(
-						(cue) => cue.sourceCueId === timeline.selectedCaptionId,
-					)?.id ??
-					null
-				}
+				selectedCaptionId={selectedCaptionId}
 				onSelectCaption={(id) => {
 					const fragment = projection.effectiveCaptionRegions.find(
 						(cue) => cue.id === id,
@@ -150,6 +235,30 @@ export function EditorTimelinePanel(props: Props) {
 				onSourceAudioAvailabilityChange={timeline.setHasClipSourceAudio}
 				onSourceAudioTracksMetaChange={audio.onSourceAudioTracksMetaChange}
 			/>
-		</div>
+	);
+
+	return (
+		<div
+				ref={props.panelRef}
+				tabIndex={-1}
+				data-timeline-panel
+				className="outline-none flex flex-shrink-0 flex-col bg-transparent px-4 pb-4 pt-2"
+				style={{ height: "22%", minHeight: 180, maxHeight: 280, display: timelineWindowOpen ? "none" : undefined }}
+			>
+				<div className="flex flex-shrink-0 items-center justify-end pb-2">
+					<button
+						type="button"
+						className="flex items-center gap-1.5 rounded-md border border-primary/50 bg-primary/15 px-2.5 py-1.5 text-xs font-medium text-primary shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground"
+						onClick={() => {
+							void window.electronAPI.openTimelineWindow();
+						}}
+						title="Open the timeline in a separate desktop window"
+					>
+						<span aria-hidden="true">↗</span>
+						Open Timeline Window
+					</button>
+				</div>
+				{timelineEditor}
+			</div>
 	);
 }
