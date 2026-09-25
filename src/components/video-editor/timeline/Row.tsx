@@ -60,13 +60,13 @@ export default function Row({
 					embedded || caption
 						? 20
 						: filmstrip || !compact
-							? TIMELINE_CLIP_ROW_HEIGHT_PX
-							: TIMELINE_ROW_MIN_HEIGHT_PX,
+							? `calc(${TIMELINE_CLIP_ROW_HEIGHT_PX}px * var(--timeline-row-scale, 1))`
+							: `calc(${TIMELINE_ROW_MIN_HEIGHT_PX}px * var(--timeline-row-scale, 1))`,
 				flexBasis: caption
 					? 20
 					: filmstrip || !compact
-						? TIMELINE_CLIP_ROW_HEIGHT_PX
-						: TIMELINE_ROW_MIN_HEIGHT_PX,
+						? `calc(${TIMELINE_CLIP_ROW_HEIGHT_PX}px * var(--timeline-row-scale, 1))`
+						: `calc(${TIMELINE_ROW_MIN_HEIGHT_PX}px * var(--timeline-row-scale, 1))`,
 			}}
 		>
 			{label && (

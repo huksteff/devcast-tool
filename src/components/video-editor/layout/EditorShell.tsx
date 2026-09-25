@@ -348,6 +348,7 @@ export function EditorShell(props: Props) {
 					/>
 				</div>
 				<EditorTimelinePanel
+					isPlaying={ui.isPlaying}
 					panelRef={timelinePanelRef}
 					timelineRef={ui.timelineRef}
 					timeline={timeline}

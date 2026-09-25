@@ -1,6 +1,6 @@
 import { Plus } from "@phosphor-icons/react";
 import type { Span } from "dnd-timeline";
-import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type {
 	SourceAudioTrackMeta,
 	SourceAudioTrackSettings,
@@ -33,6 +33,8 @@ import {
 } from "./sourceAudioTracks";
 
 export interface TimelineEditorProps {
+	rowScale?: number;
+	onRowScaleChange?: (value: number) => void;
 	videoDuration: number;
 	currentTime: number;
 	playheadTime?: number;
@@ -116,6 +118,8 @@ export interface TimelineEditorHandle {
 const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 	function TimelineEditor(
 		{
+			rowScale = 1,
+			onRowScaleChange,
 			videoDuration,
 			currentTime,
 			playheadTime,
@@ -192,6 +196,14 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		);
 
 		const timelineContainerRef = useRef<HTMLDivElement>(null);
+		useEffect(() => {
+			const node = timelineContainerRef.current;
+			const preventShiftScroll = (event: WheelEvent) => {
+				if (event.shiftKey && !event.ctrlKey && !event.metaKey) event.preventDefault();
+			};
+			node?.addEventListener("wheel", preventShiftScroll, { passive: false });
+			return () => node?.removeEventListener("wheel", preventShiftScroll);
+		}, [videoDuration]);
 		const isTimelineFocusedRef = useRef(false);
 		const { setRange, clampedRange, handleTimelineWheel } = useTimelineRange({
 			totalMs,
@@ -420,7 +432,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		}
 
 		return (
-			<div className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden">
+			<div style={{ "--timeline-row-scale": rowScale } as CSSProperties} className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden">
 				<div
 					ref={timelineContainerRef}
 					data-testid="timeline-scroll"
@@ -441,7 +453,15 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 						setSelectedKeyframeId(null);
 						setSelectAllBlocksActive(false);
 					}}
-					onWheel={handleTimelineWheel}
+					onWheel={(event) => {
+						if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
+							event.stopPropagation();
+							const delta = event.deltaY || event.deltaX;
+							if (delta) onRowScaleChange?.(Math.max(0.5, Math.min(3, rowScale - Math.sign(delta) * 0.1)));
+							return;
+						}
+						handleTimelineWheel(event);
+					}}
 				>
 					<TimelineWrapper
 						range={clampedRange}

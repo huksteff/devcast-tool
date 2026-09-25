@@ -1142,7 +1142,7 @@ export default function TimelineCanvas({
 			style={{
 				...style,
 				height: "100%",
-				minHeight: timelineContentMinHeightPx,
+				minHeight: `calc(${TIMELINE_AXIS_HEIGHT_PX}px + ${timelineContentMinHeightPx - TIMELINE_AXIS_HEIGHT_PX}px * var(--timeline-row-scale, 1))`,
 				overflow: "visible",
 			}}
 			className="select-none bg-editor-bg relative cursor-pointer group flex flex-col"
@@ -1179,7 +1179,7 @@ export default function TimelineCanvas({
 
 			<div
 				className="relative z-10 flex flex-1 min-h-0 flex-col"
-				style={{ minHeight: timelineRowsMinHeightPx }}
+				style={{ minHeight: `calc(${timelineRowsMinHeightPx}px * var(--timeline-row-scale, 1))` }}
 			>
 				<TimelineCanvasRows
 					videoPath={videoPath}

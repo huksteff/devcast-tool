@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
 import { retimeCaptionFragment } from "../captionTimeline";
 import type { useAnnotationRegionCommands } from "../hooks/useAnnotationRegionCommands";
@@ -36,11 +36,15 @@ type Props = {
 	handleAutoSuggestZoomsConsumed: () => void;
 	disableSuggestedZooms: boolean;
 	currentTime: number;
+	isPlaying: boolean;
 	handleSelectAnnotation: (id: string | null) => void;
 };
 
 export function EditorTimelinePanel(props: Props) {
 	const [timelineWindowOpen, setTimelineWindowOpen] = useState(false);
+	const [panelHeight, setPanelHeight] = useState<number | null>(null);
+	const [rowScale, setRowScale] = useState(1);
+	const resizeStart = useRef<{ y: number; height: number; max: number } | null>(null);
 	const {
 		timelineRef,
 		timeline,
@@ -76,6 +80,8 @@ export function EditorTimelinePanel(props: Props) {
 		null;
 
 	const snapshot: TimelineWindowSnapshot = {
+		isPlaying: props.isPlaying,
+		rowScale,
 		videoDuration: projection.timelineDuration,
 		currentTime,
 		playheadTime: projection.timelinePlayheadTime,
@@ -109,6 +115,10 @@ export function EditorTimelinePanel(props: Props) {
 		};
 		const handleAction = (action: TimelineWindowAction) => {
 			switch (action.type) {
+				case "toggle-play": playback.togglePlayPause(); break;
+				case "skip-back": playback.handlePreviewSkipBack(); break;
+				case "skip-forward": playback.handlePreviewSkipForward(); break;
+				case "row-scale": setRowScale(Math.max(0.5, Math.min(3, action.value))); break;
 				case "seek": playback.handleTimelineSeek(action.time); break;
 				case "auto-suggest-consumed": handleAutoSuggestZoomsConsumed(); break;
 				case "zoom-added": zoomCommands.handleZoomAdded(action.span); break;
@@ -162,6 +172,8 @@ export function EditorTimelinePanel(props: Props) {
 
 	const timelineEditor = (
 		<TimelineEditor
+				rowScale={rowScale}
+				onRowScaleChange={setRowScale}
 				ref={timelineRef}
 				videoDuration={projection.timelineDuration}
 				currentTime={currentTime}
@@ -242,9 +254,33 @@ export function EditorTimelinePanel(props: Props) {
 				ref={props.panelRef}
 				tabIndex={-1}
 				data-timeline-panel
-				className="outline-none flex flex-shrink-0 flex-col bg-transparent px-4 pb-4 pt-2"
-				style={{ height: "22%", minHeight: 180, maxHeight: 280, display: timelineWindowOpen ? "none" : undefined }}
+				className="outline-none relative flex flex-shrink-0 flex-col bg-transparent px-4 pb-4 pt-2"
+				style={{ height: panelHeight ?? "22%", minHeight: 140, maxHeight: "75%", display: timelineWindowOpen ? "none" : undefined }}
 			>
+				<div
+					role="separator" aria-label="Resize timeline" aria-orientation="horizontal"
+					tabIndex={0} title="Drag to resize timeline"
+					className="absolute inset-x-0 top-0 z-30 h-2 cursor-row-resize touch-none border-t border-separator hover:bg-primary/25 focus:bg-primary/25"
+					onPointerDown={(event) => {
+						if (event.button !== 0) return;
+						const panel = event.currentTarget.parentElement!;
+						resizeStart.current = { y: event.clientY, height: panel.getBoundingClientRect().height, max: (panel.parentElement?.clientHeight ?? window.innerHeight) * 0.75 };
+						event.currentTarget.setPointerCapture(event.pointerId);
+						event.preventDefault();
+					}}
+					onPointerMove={(event) => {
+						const start = resizeStart.current;
+						if (start) setPanelHeight(Math.max(140, Math.min(start.max, start.height + start.y - event.clientY)));
+					}}
+					onPointerUp={() => { resizeStart.current = null; }}
+					onLostPointerCapture={() => { resizeStart.current = null; }}
+					onKeyDown={(event) => {
+						if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+						event.preventDefault();
+						const panel = event.currentTarget.parentElement!;
+						setPanelHeight(Math.max(140, Math.min((panel.parentElement?.clientHeight ?? window.innerHeight) * 0.75, panel.clientHeight + (event.key === "ArrowUp" ? 24 : -24))));
+					}}
+				/>
 				<div className="flex flex-shrink-0 items-center justify-end pb-2">
 					<button
 						type="button"

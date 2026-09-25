@@ -15,6 +15,8 @@ import type { ClipSequenceSpan } from "./core/timelineTypes";
 export const TIMELINE_WINDOW_CHANNEL = "recordly-timeline-window";
 
 export type TimelineWindowSnapshot = {
+	isPlaying: boolean;
+	rowScale: number;
 	videoDuration: number;
 	currentTime: number;
 	playheadTime: number;
@@ -43,6 +45,10 @@ export type TimelineWindowSnapshot = {
 };
 
 export type TimelineWindowAction =
+	| { type: "toggle-play" }
+	| { type: "skip-back" }
+	| { type: "skip-forward" }
+	| { type: "row-scale"; value: number }
 	| { type: "seek"; time: number }
 	| { type: "auto-suggest-consumed" }
 	| { type: "zoom-added"; span: Span }

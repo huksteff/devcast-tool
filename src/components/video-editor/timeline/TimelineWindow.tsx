@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import TimelineEditor from "./TimelineEditor";
+import { Play, Pause, SkipBack, SkipForward } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/button";
 import {
 	type TimelineWindowAction,
 	type TimelineWindowMessage,
@@ -39,6 +41,13 @@ export default function TimelineWindow() {
 		<div className="flex h-screen min-h-0 flex-col bg-editor-bg p-3 text-foreground">
 			<div className="mb-2 flex flex-shrink-0 items-center justify-between border-b border-separator pb-2">
 				<span className="text-sm font-medium">Timeline</span>
+				<div className="flex items-center gap-1.5">
+					<span className="text-xs tabular-nums text-muted-foreground">{Math.floor(snapshot.playheadTime / 60)}:{String(Math.floor(snapshot.playheadTime % 60)).padStart(2, "0")}</span>
+					<Button variant="ghost" size="icon" title="Skip back" aria-label="Skip back" onClick={() => send({ type: "skip-back" })}><SkipBack weight="fill" /></Button>
+					<Button variant="ghost" size="icon" className="rounded-full bg-foreground text-background" title={snapshot.isPlaying ? "Pause" : "Play"} aria-label={snapshot.isPlaying ? "Pause" : "Play"} onClick={() => send({ type: "toggle-play" })}>{snapshot.isPlaying ? <Pause weight="fill" /> : <Play weight="fill" />}</Button>
+					<Button variant="ghost" size="icon" title="Skip forward" aria-label="Skip forward" onClick={() => send({ type: "skip-forward" })}><SkipForward weight="fill" /></Button>
+					<span className="text-xs tabular-nums text-muted-foreground">{Math.floor(snapshot.videoDuration / 60)}:{String(Math.floor(snapshot.videoDuration % 60)).padStart(2, "0")}</span>
+				</div>
 				<button
 					type="button"
 					className="rounded-md border border-separator px-2.5 py-1 text-xs text-muted-foreground hover:bg-default hover:text-foreground"
@@ -49,6 +58,8 @@ export default function TimelineWindow() {
 			</div>
 			<div className="flex min-h-0 flex-1 flex-col">
 				<TimelineEditor
+					rowScale={snapshot.rowScale}
+					onRowScaleChange={(value) => send({ type: "row-scale", value })}
 					videoDuration={snapshot.videoDuration}
 					currentTime={snapshot.currentTime}
 					playheadTime={snapshot.playheadTime}
