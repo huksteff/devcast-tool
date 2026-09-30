@@ -191,6 +191,7 @@
 		"boxRadius": "Скругление",
 		"backgroundOpacity": "Прозрачность фона",
 		"textColor": "Цвет текста",
+		"textShadow": "Тень текста",
 		"editor": {
 			"text": "Text",
 			"start": "Start",

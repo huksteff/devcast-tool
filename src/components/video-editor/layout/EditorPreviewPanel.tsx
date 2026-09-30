@@ -15,6 +15,7 @@ import {
 	SpeakerHigh,
 	SpeakerLow,
 	SpeakerX,
+	TextT,
 } from "@phosphor-icons/react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,9 @@ type Props = {
 	setCurrentTime: Dispatch<SetStateAction<number>>;
 	setIsPlaying: Dispatch<SetStateAction<boolean>>;
 	setError: (message: string | null) => void;
+	onGenerateAutoCaptions: () => void;
+	canGenerateAutoCaptions: boolean;
+	isGeneratingCaptions: boolean;
 };
 
 function formatTime(seconds: number) {
@@ -115,6 +119,9 @@ export function EditorPreviewPanel(props: Props) {
 		setCurrentTime,
 		setIsPlaying,
 		setError,
+		onGenerateAutoCaptions,
+		canGenerateAutoCaptions,
+		isGeneratingCaptions,
 	} = props;
 
 	return (
@@ -299,6 +306,20 @@ export function EditorPreviewPanel(props: Props) {
 						title={t("editor.toolbar.splitClip")}
 					>
 						<Scissors className="h-4 w-4" />
+					</Button>
+					<Button
+						onClick={onGenerateAutoCaptions}
+						disabled={!canGenerateAutoCaptions || isGeneratingCaptions}
+						variant="ghost"
+						size="icon"
+						className="h-9 w-9"
+						title={
+							isGeneratingCaptions
+								? t("settings.captions.generating", "Generating...")
+								: t("settings.captions.generateFull", "Generate Captions")
+						}
+					>
+						<TextT className="h-4 w-4" />
 					</Button>
 				</div>
 

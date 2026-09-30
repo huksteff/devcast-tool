@@ -197,6 +197,7 @@
 		"boxRadius": "Box Radius",
 		"backgroundOpacity": "Background Opacity",
 		"textColor": "Text Color",
+		"textShadow": "Text shadow",
 		"editor": {
 			"text": "Text",
 			"start": "Start",

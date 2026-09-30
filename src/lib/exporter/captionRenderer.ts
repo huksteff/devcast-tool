@@ -78,6 +78,9 @@ export function renderCaptions(
 
 	ctx.textAlign = "left";
 	ctx.textBaseline = "middle";
+	ctx.shadowColor = settings.textShadow ? "rgba(0, 0, 0, 0.72)" : "transparent";
+	ctx.shadowBlur = settings.textShadow ? Math.max(2, fontSize * 0.16) : 0;
+	ctx.shadowOffsetY = settings.textShadow ? Math.max(1, fontSize * 0.06) : 0;
 
 	activeCaptionLayout.visibleLines.forEach((line, lineIndex) => {
 		let cursorX = -line.width / 2;

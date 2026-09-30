@@ -2553,6 +2553,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											lineHeight: CAPTION_LINE_HEIGHT,
 											textAlign: "center",
 											fontWeight: CAPTION_FONT_WEIGHT,
+											textShadow: autoCaptionSettings.textShadow
+												? "0 2px 7px rgba(0, 0, 0, 0.72)"
+												: "none",
 											padding: `${
 												getCaptionPadding(
 													getCaptionScaledFontSize(

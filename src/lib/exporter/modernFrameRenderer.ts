@@ -1708,6 +1708,9 @@ export class FrameRenderer {
 		const padding = getCaptionPadding(state.fontSize);
 		ctx.textAlign = "left";
 		ctx.textBaseline = "middle";
+		ctx.shadowColor = settings.textShadow ? "rgba(0, 0, 0, 0.72)" : "transparent";
+		ctx.shadowBlur = settings.textShadow ? Math.max(2, state.fontSize * 0.16) : 0;
+		ctx.shadowOffsetY = settings.textShadow ? Math.max(1, state.fontSize * 0.06) : 0;
 
 		state.layout.visibleLines.forEach((line, lineIndex) => {
 			let cursorX = (state.boxWidth - line.width) / 2;

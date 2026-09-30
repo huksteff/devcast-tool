@@ -344,6 +344,9 @@ export function EditorShell(props: Props) {
 						setCurrentTime={ui.setCurrentTime}
 						setIsPlaying={ui.setIsPlaying}
 						setError={handlePreviewError}
+						onGenerateAutoCaptions={autoCaption.handleGenerateAutoCaptions}
+						canGenerateAutoCaptions={Boolean(settingsPanelProps.whisperModelPath)}
+						isGeneratingCaptions={Boolean(settingsPanelProps.isGeneratingCaptions)}
 					/>
 				</div>
 				<EditorTimelinePanel

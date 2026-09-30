@@ -2237,6 +2237,28 @@ export function SettingsPanel({
 				<div className="mb-1 text-sm font-medium text-foreground">
 					{tSettings("captions.fontSettings", "Font Settings")}
 				</div>
+				<div className="flex items-center justify-between gap-3">
+					<span className="text-sm font-medium text-foreground">
+						{tSettings("captions.fontFamily", "Font")}
+					</span>
+					<Select
+						value={autoCaptionSettings.fontFamily}
+						onValueChange={(fontFamily) => updateAutoCaptionSettings({ fontFamily })}
+					>
+						<SelectTrigger className="h-9 w-[180px] text-sm">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{["Inter, sans-serif", "Arial, sans-serif", "Georgia, serif", "monospace"].map(
+								(fontFamily) => (
+									<SelectItem key={fontFamily} value={fontFamily}>
+										{fontFamily.split(",")[0]}
+									</SelectItem>
+								),
+							)}
+						</SelectContent>
+					</Select>
+				</div>
 				<SliderControl
 					label={tSettings("captions.fontSize", "Font size")}
 					value={autoCaptionSettings.fontSize}
@@ -2255,6 +2277,16 @@ export function SettingsPanel({
 						label={tSettings("captions.textColor", "Text color")}
 						value={autoCaptionSettings.textColor}
 						onChange={(color) => updateAutoCaptionSettings({ textColor: color })}
+					/>
+				</div>
+				<div className="flex items-center justify-between py-2">
+					<span className="text-sm font-medium text-foreground">
+						{tSettings("captions.textShadow", "Text shadow")}
+					</span>
+					<Switch
+						checked={autoCaptionSettings.textShadow}
+						onCheckedChange={(textShadow) => updateAutoCaptionSettings({ textShadow })}
+						aria-label={tSettings("captions.textShadow", "Text shadow")}
 					/>
 				</div>
 				{advanced && (

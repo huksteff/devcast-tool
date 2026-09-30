@@ -796,7 +796,11 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			rawAutoCaptionSettings.language.trim()
 				? rawAutoCaptionSettings.language.trim()
 				: DEFAULT_AUTO_CAPTION_SETTINGS.language,
-		fontFamily: getDefaultCaptionFontFamily(),
+		fontFamily:
+			typeof rawAutoCaptionSettings.fontFamily === "string" &&
+			rawAutoCaptionSettings.fontFamily.trim()
+				? rawAutoCaptionSettings.fontFamily
+				: getDefaultCaptionFontFamily(),
 		fontSize: isFiniteNumber(rawAutoCaptionSettings.fontSize)
 			? clamp(rawAutoCaptionSettings.fontSize, 16, 72)
 			: DEFAULT_AUTO_CAPTION_SETTINGS.fontSize,
@@ -829,6 +833,10 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		backgroundOpacity: isFiniteNumber(rawAutoCaptionSettings.backgroundOpacity)
 			? clamp(rawAutoCaptionSettings.backgroundOpacity, 0, 1)
 			: DEFAULT_AUTO_CAPTION_SETTINGS.backgroundOpacity,
+		textShadow:
+			typeof rawAutoCaptionSettings.textShadow === "boolean"
+				? rawAutoCaptionSettings.textShadow
+				: DEFAULT_AUTO_CAPTION_SETTINGS.textShadow,
 	};
 
 	const rawCropX = isFiniteNumber(editor.cropRegion?.x)
