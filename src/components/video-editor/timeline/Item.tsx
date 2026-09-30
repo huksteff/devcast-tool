@@ -3,6 +3,11 @@ import {
 	MagnifyingGlassPlus as ZoomIn,
 	ChatCircle as MessageSquare,
 	MusicNotes as Music,
+	TextT,
+	ImageSquare,
+	ArrowRight,
+	BoundingBox,
+	PencilSimple,
 	Scissors,
 	SpeakerX,
 } from "@phosphor-icons/react";
@@ -21,6 +26,7 @@ import { getTimeAtClipSeam, type ClipPresentation } from "./core/clipPresentatio
 import { formatPlayheadTime } from "./core/time";
 import AudioWaveform from "./components/waveform/AudioWaveform";
 import type { AudioPeaksData } from "./core/timelineTypes";
+import type { AnnotationStages, AnnotationType } from "../types";
 import glassStyles from "./ItemGlass.module.css";
 
 interface ItemProps {
@@ -51,6 +57,8 @@ interface ItemProps {
 	variant?: "zoom" | "trim" | "clip" | "annotation" | "speed" | "audio" | "caption";
 	isLoading?: boolean;
 	loadingLabel?: string;
+	annotationStages?: AnnotationStages;
+	annotationType?: AnnotationType;
 }
 
 // Map zoom depth to multiplier labels
@@ -90,6 +98,8 @@ export default function Item({
 	variant = "zoom",
 	isLoading = false,
 	loadingLabel,
+	annotationStages,
+	annotationType,
 	children,
 }: ItemProps) {
 	const timeline = useTimelineContext();
@@ -232,8 +242,27 @@ export default function Item({
 	const isSpeed = variant === "speed";
 	const isAudio = variant === "audio";
 	const isCaption = variant === "caption";
+	const annotationDuration = Math.max(1, span.end - span.start);
+	const inBoundaryPercent = annotationStages?.inEnabled
+		? Math.min(100, (annotationStages.inDurationMs / annotationDuration) * 100)
+		: 0;
+	const outBoundaryPercent = annotationStages?.outEnabled
+		? Math.max(0, 100 - (annotationStages.outDurationMs / annotationDuration) * 100)
+		: 100;
 	const showAudioWaveform = isAudio && Boolean(waveformPeaks);
 	const clipSpeedLabel = isClip ? formatClipSpeedLabel(speedValue ?? 1) : null;
+	const AnnotationIcon =
+		annotationType === "text"
+			? TextT
+			: annotationType === "image"
+				? ImageSquare
+				: annotationType === "figure"
+					? ArrowRight
+					: annotationType === "blur"
+						? BoundingBox
+						: annotationType === "drawing"
+							? PencilSimple
+							: MessageSquare;
 
 	const glassClass = isZoom
 		? glassStyles.glassBlue
@@ -357,6 +386,12 @@ export default function Item({
 							className="absolute inset-0 w-full h-full pointer-events-none opacity-45"
 						/>
 					)}
+					{variant === "annotation" && (annotationStages?.inEnabled || annotationStages?.outEnabled) && (
+						<div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20" aria-label="Annotation stages">
+							{annotationStages.inEnabled && <div className="absolute inset-y-0 border-r border-white/80 border-dashed" style={{ left: `${inBoundaryPercent}%` }} title={`In: ${Math.round(annotationStages.inDurationMs)} ms`} />}
+							{annotationStages.outEnabled && <div className="absolute inset-y-0 border-l border-white/80 border-dashed" style={{ left: `${outBoundaryPercent}%` }} title={`Out: ${Math.round(annotationStages.outDurationMs)} ms`} />}
+						</div>
+					)}
 					{/* Muted overlay for source audio track items */}
 					{isAudio && muted && (
 						<div className="absolute inset-0 z-20 flex items-center justify-center gap-1 bg-red-900/40 pointer-events-none">
@@ -392,6 +427,11 @@ export default function Item({
 								</>
 							) : embedded ? (
 								<span className="truncate">{children}</span>
+							) : variant === "annotation" ? (
+								<>
+									<AnnotationIcon className="size-3 shrink-0" />
+									<span className="truncate">{children}</span>
+								</>
 							) : (
 								<>
 									{isTrim ? (

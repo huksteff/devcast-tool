@@ -1,6 +1,7 @@
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
 import { useClipAudioReset } from "../audio/useClipAudioReset";
+import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
 import type { useAutoCaptionController } from "../captions/useAutoCaptionController";
 import type { useAnnotationRegionCommands } from "../hooks/useAnnotationRegionCommands";
 import type { useAudioRegionCommands } from "../hooks/useAudioRegionCommands";
@@ -21,6 +22,7 @@ type Input = {
 	audioCommands: ReturnType<typeof useAudioRegionCommands>;
 	captionCommands: ReturnType<typeof useCaptionCommands>;
 	annotationCommands: ReturnType<typeof useAnnotationRegionCommands>;
+	audio: ReturnType<typeof useVideoEditorAudio>;
 	autoCaptionController: ReturnType<typeof useAutoCaptionController>;
 	effectiveShowCursor: boolean;
 	handleShowCursorChange: (show: boolean) => void;
@@ -49,6 +51,7 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		audioCommands,
 		captionCommands,
 		annotationCommands,
+		audio,
 		autoCaptionController,
 		effectiveShowCursor,
 		handleShowCursorChange,
@@ -95,8 +98,15 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		selectedClipId: timeline.selectedClipId,
 		selectedClipSpeed: selectedClip?.speed ?? (timeline.selectedClipId ? 1 : null),
 		selectedClipMuted: selectedClip?.muted ?? (timeline.selectedClipId ? false : null),
+		selectedClipShowSourceAudio:
+			selectedClip?.showSourceAudio ?? (timeline.selectedClipId ? false : null),
+		sourceAudioTrackMeta: audio.sourceAudioTrackMeta,
+		selectedClipSourceAudioTrackSettings: audio.selectedClipSourceAudioTrackSettings,
+		onSourceAudioTrackVolumeChange: audio.onSelectedClipSourceAudioTrackVolumeChange,
+		onSourceAudioTrackNormalizeChange: audio.onSelectedClipSourceAudioTrackNormalizeChange,
 		onClipSpeedChange: clipCommands.handleClipSpeedChange,
 		onClipMutedChange: clipCommands.handleClipMutedChange,
+		onClipShowSourceAudioChange: clipCommands.handleClipShowSourceAudioChange,
 		onClipDelete: clipCommands.handleClipDelete,
 		selectedAudioId: timeline.selectedAudioId,
 		selectedAudioVolume: selectedAudio?.volume ?? null,
@@ -215,8 +225,10 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onAnnotationTypeChange: annotationCommands.handleAnnotationTypeChange,
 		onAnnotationStyleChange: annotationCommands.handleAnnotationStyleChange,
 		onAnnotationFigureDataChange: annotationCommands.handleAnnotationFigureDataChange,
+		onAnnotationDrawingDataChange: annotationCommands.handleAnnotationDrawingDataChange,
 		onAnnotationBlurIntensityChange: annotationCommands.handleAnnotationBlurIntensityChange,
 		onAnnotationBlurColorChange: annotationCommands.handleAnnotationBlurColorChange,
+		onAnnotationStagesChange: annotationCommands.handleAnnotationStagesChange,
 		onAnnotationDelete: annotationCommands.handleAnnotationDelete,
 	};
 }

@@ -368,6 +368,7 @@ export default function VideoEditor() {
 		audioCommands,
 		captionCommands,
 		annotationCommands,
+		audio,
 		autoCaptionController,
 		effectiveShowCursor,
 		handleShowCursorChange,

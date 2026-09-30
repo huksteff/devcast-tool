@@ -5,8 +5,12 @@ import {
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
+	DEFAULT_DRAWING_DATA,
 	DEFAULT_FIGURE_DATA,
 	type FigureData,
+	type DrawingData,
+	type AnnotationStages,
+	DEFAULT_ANNOTATION_STAGES,
 } from "../types";
 
 interface UseAnnotationRegionCommandsParams {
@@ -42,6 +46,7 @@ export function useAnnotationRegionCommands({
 				style: { ...DEFAULT_ANNOTATION_STYLE },
 				zIndex: nextAnnotationZIndexRef.current++,
 				trackIndex,
+				stages: { ...DEFAULT_ANNOTATION_STAGES },
 			};
 			setAnnotationRegions((current) => [...current, newRegion]);
 			onSelectAnnotation(id);
@@ -117,6 +122,11 @@ export function useAnnotationRegionCommands({
 					} else if (type === "blur") {
 						updated.content = "";
 						if (region.blurIntensity === undefined) updated.blurIntensity = 20;
+					} else if (type === "drawing") {
+						updated.content = "";
+						if (!region.drawingData) {
+							updated.drawingData = { ...DEFAULT_DRAWING_DATA, points: [] };
+						}
 					}
 					return updated;
 				}),
@@ -148,6 +158,23 @@ export function useAnnotationRegionCommands({
 		(id: string, figureData: FigureData) => updateRegion(id, { figureData }),
 		[updateRegion],
 	);
+	const handleAnnotationDrawingDataChange = useCallback(
+		(id: string, drawingData: DrawingData) => updateRegion(id, { drawingData }),
+		[updateRegion],
+	);
+	const handleAnnotationStagesChange = useCallback(
+		(id: string, stages: Partial<AnnotationStages>) => {
+			setAnnotationRegions((current) => current.map((region) => {
+				if (region.id !== id) return region;
+				const duration = Math.max(1, region.endMs - region.startMs);
+				const next = { ...DEFAULT_ANNOTATION_STAGES, ...region.stages, ...stages };
+				next.inDurationMs = Math.max(0, Math.min(duration, Math.round(next.inDurationMs)));
+				next.outDurationMs = Math.max(0, Math.min(duration - next.inDurationMs, Math.round(next.outDurationMs)));
+				return { ...region, stages: next };
+			}));
+		},
+		[setAnnotationRegions],
+	);
 	const handleAnnotationBlurIntensityChange = useCallback(
 		(id: string, blurIntensity: number) => updateRegion(id, { blurIntensity }),
 		[updateRegion],
@@ -173,6 +200,8 @@ export function useAnnotationRegionCommands({
 		handleAnnotationTypeChange,
 		handleAnnotationStyleChange,
 		handleAnnotationFigureDataChange,
+		handleAnnotationDrawingDataChange,
+		handleAnnotationStagesChange,
 		handleAnnotationBlurIntensityChange,
 		handleAnnotationBlurColorChange,
 		handleAnnotationPositionChange,

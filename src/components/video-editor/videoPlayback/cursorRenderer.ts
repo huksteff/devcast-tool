@@ -177,9 +177,26 @@ const SUPPORTED_CURSOR_KEYS: CursorAssetKey[] = [
 
 const CURSOR_PACK_POINTER_TYPES = new Set<CursorAssetKey>(["pointer", "open-hand", "closed-hand"]);
 const BUILTIN_CURSOR_PACK_SOURCES: Record<string, CursorPackSource> = {};
+const UPLOADED_CURSOR_STORAGE_KEY = "recordly:uploaded-cursor";
 
 function getCursorPackSources(): Record<string, CursorPackSource> {
-	return { ...BUILTIN_CURSOR_PACK_SOURCES };
+	const sources = { ...BUILTIN_CURSOR_PACK_SOURCES };
+	// A user supplied cursor is deliberately a one-image pack: it remains usable
+	// for every OS cursor state and is persisted with the editor preferences.
+	try {
+		const url = typeof localStorage === "undefined" ? null : localStorage.getItem(UPLOADED_CURSOR_STORAGE_KEY);
+		if (url?.startsWith("data:image/")) {
+			sources["custom-upload"] = {
+				defaultUrl: url,
+				pointerUrl: url,
+				defaultAnchor: { x: 0, y: 0 },
+				pointerAnchor: { x: 0, y: 0 },
+			};
+		}
+	} catch {
+		// Storage can be disabled; built-in cursor styles still work.
+	}
+	return sources;
 }
 
 function buildCursorPackSourcesSignature(sources: Record<string, CursorPackSource>): string {

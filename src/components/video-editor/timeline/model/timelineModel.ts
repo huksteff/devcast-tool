@@ -20,13 +20,20 @@ import type { TimelineRegionSpan, TimelineRenderItem } from "../core/timelineTyp
 
 export function getAnnotationLabel(region: AnnotationRegion): string {
 	if (region.type === "text") {
-		const preview = region.content.trim() || "Empty text";
+		const preview = region.content.trim() || "Text";
 		return preview.length > 20 ? `${preview.substring(0, 20)}...` : preview;
 	}
-	if (region.type === "image") {
-		return "Image";
+	if (region.type === "figure") {
+		const figureLabels = {
+			arrow: "Arrow",
+			rectangle: "Rectangle",
+			ellipse: "Ellipse",
+			line: "Line",
+			highlight: "Highlight",
+		} as const;
+		return figureLabels[region.figureData?.kind ?? "arrow"];
 	}
-	return "Annotation";
+	return region.type === "drawing" ? "Drawing" : region.type === "blur" ? "Blur" : "Image";
 }
 
 export function getAudioLabel(region: AudioRegion): string {
@@ -84,6 +91,8 @@ export function buildTimelineItems(params: {
 		rowId: getAnnotationTrackRowId(region.trackIndex ?? 0),
 		span: { start: region.startMs, end: region.endMs },
 		label: getAnnotationLabel(region),
+		annotationStages: region.stages,
+		annotationType: region.type,
 		variant: "annotation",
 	}));
 

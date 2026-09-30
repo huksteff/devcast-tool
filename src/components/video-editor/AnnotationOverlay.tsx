@@ -2,7 +2,14 @@ import { useRef } from "react";
 import { Rnd } from "react-rnd";
 import { cn } from "@/lib/utils";
 import { getArrowComponent } from "./ArrowSvgs";
-import { type AnnotationRegion, BASE_PREVIEW_WIDTH, BLUR_ANNOTATION_STRENGTH } from "./types";
+import {
+	type AnnotationRegion,
+	type DrawingData,
+	BASE_PREVIEW_WIDTH,
+	BLUR_ANNOTATION_STRENGTH,
+	getAnnotationStageState,
+	getVisibleDrawingStrokes,
+} from "./types";
 
 type Rect = {
 	x: number;
@@ -27,9 +34,11 @@ interface AnnotationOverlayProps {
 	interactionScale?: number;
 	onPositionChange: (id: string, position: { x: number; y: number }) => void;
 	onSizeChange: (id: string, size: { width: number; height: number }) => void;
+	onDrawingChange?: (id: string, drawing: DrawingData) => void;
 	onClick: (id: string) => void;
 	zIndex: number;
 	isSelectedBoost: boolean; // Boost z-index when selected for easy editing
+	currentTimeMs?: number;
 }
 
 function positivePercent(value: number) {
@@ -51,9 +60,11 @@ export function AnnotationOverlay({
 	interactionScale = 1,
 	onPositionChange,
 	onSizeChange,
+	onDrawingChange,
 	onClick,
 	zIndex,
 	isSelectedBoost,
+	currentTimeMs = annotation.startMs,
 }: AnnotationOverlayProps) {
 	const safeRecordingRect =
 		recordingRect.width > 0 && recordingRect.height > 0
@@ -69,8 +80,11 @@ export function AnnotationOverlay({
 	const height = sceneHeight * sceneTransform.scale;
 	const sizeScale = safeRecordingRect.width / BASE_PREVIEW_WIDTH;
 	const blurScaleFactor = sizeScale * sceneTransform.scale;
+	const stage = getAnnotationStageState(annotation, currentTimeMs);
 
 	const isDraggingRef = useRef(false);
+	const drawingRef = useRef<DrawingData | null>(null);
+	const activePointerRef = useRef<number | null>(null);
 
 	const screenRectToRecordingPercent = (rect: Rect) => {
 		const nextSceneX = (rect.x - sceneTransform.x) / sceneTransform.scale;
@@ -143,7 +157,7 @@ export function AnnotationOverlay({
 								lineHeight: "1.4",
 							}}
 						>
-							{annotation.content}
+							{annotation.content.slice(0, Math.ceil(annotation.content.length * stage.textProgress))}
 						</span>
 					</div>
 				);
@@ -173,6 +187,22 @@ export function AnnotationOverlay({
 						</div>
 					);
 				}
+				if ((annotation.figureData.kind ?? "arrow") !== "arrow") {
+					const kind = annotation.figureData.kind ?? "rectangle";
+					const common = {
+						stroke: annotation.figureData.color,
+						strokeWidth: annotation.figureData.strokeWidth,
+						fill: "none",
+					};
+					return (
+						<svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+							{kind === "ellipse" && <ellipse cx="50" cy="50" rx="47" ry="47" {...common} />}
+							{kind === "line" && <line x1="3" y1="97" x2="97" y2="3" {...common} strokeLinecap="round" />}
+							{kind === "highlight" && <rect width="100" height="100" fill={annotation.figureData.color} opacity="0.28" />}
+							{kind === "rectangle" && <rect x="3" y="3" width="94" height="94" {...common} />}
+						</svg>
+					);
+				}
 
 				return (
 					<div
@@ -198,6 +228,94 @@ export function AnnotationOverlay({
 							borderRadius: `${(annotation.style.borderRadius ?? 0) * blurScaleFactor}px`,
 						}}
 					/>
+				);
+			}
+
+			case "drawing": {
+				const drawing = annotation.drawingData;
+				const strokes = drawing?.strokes?.length ? drawing.strokes : drawing?.points?.length ? [drawing.points] : [];
+				// Keep input responsive while editing the current path. At playback the
+				// stage transition determines exactly how much of the drawing is shown.
+				const visibleStrokes = isSelected && activePointerRef.current !== null
+					? strokes
+					: getVisibleDrawingStrokes(drawing, stage.drawingProgress);
+				const getPoint = (event: React.PointerEvent<SVGSVGElement>) => {
+					const rect = event.currentTarget.getBoundingClientRect();
+					return {
+						x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / Math.max(1, rect.width)) * 100)),
+						y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / Math.max(1, rect.height)) * 100)),
+					};
+				};
+				const updateStroke = (event: React.PointerEvent<SVGSVGElement>, start: boolean) => {
+					if (!isSelected || !onDrawingChange) return;
+					event.stopPropagation();
+					const point = getPoint(event);
+					const previousStrokes = drawingRef.current?.strokes ?? strokes;
+					const nextStrokes = start
+						? [...previousStrokes, [point]]
+						: previousStrokes.length
+							? [
+									...previousStrokes.slice(0, -1),
+									[...previousStrokes[previousStrokes.length - 1], point],
+								]
+							: [[point]];
+					const next: DrawingData = {
+						color: drawing?.color ?? "#2563EB",
+						strokeWidth: drawing?.strokeWidth ?? 4,
+						// Keep points for backwards-compatible consumers; new rendering uses strokes.
+						points: nextStrokes.flat(),
+						strokes: nextStrokes,
+					};
+					drawingRef.current = next;
+					onDrawingChange(annotation.id, next);
+				};
+				return (
+					<svg
+						className={isSelected ? "h-full w-full touch-none cursor-crosshair" : "h-full w-full"}
+						viewBox="0 0 100 100"
+						preserveAspectRatio="none"
+						onPointerDown={(event) => {
+							if (!isSelected || !onDrawingChange) return;
+							event.stopPropagation();
+							if (event.button === 2) {
+								// The secondary button is an intentional clear gesture, not a browser menu.
+								onDrawingChange(annotation.id, {
+									color: drawing?.color ?? "#2563EB",
+									strokeWidth: drawing?.strokeWidth ?? 4,
+									points: [],
+									strokes: [],
+								});
+								drawingRef.current = null;
+								return;
+							}
+							if (event.button !== 0) return;
+							activePointerRef.current = event.pointerId;
+							event.currentTarget.setPointerCapture(event.pointerId);
+							updateStroke(event, true);
+						}}
+						onPointerMove={(event) => {
+							if (activePointerRef.current === event.pointerId && event.currentTarget.hasPointerCapture(event.pointerId)) updateStroke(event, false);
+						}}
+						onPointerUp={(event) => {
+							if (activePointerRef.current !== event.pointerId) return;
+							drawingRef.current = null;
+							activePointerRef.current = null;
+							event.currentTarget.releasePointerCapture(event.pointerId);
+						}}
+						onPointerCancel={() => { drawingRef.current = null; activePointerRef.current = null; }}
+						onContextMenu={(event) => {
+							event.preventDefault();
+						}}
+					>
+						{visibleStrokes.map((stroke, index) => {
+							const points = stroke.map((point) => `${point.x},${point.y}`).join(" ");
+							return stroke.length === 1 ? (
+								<circle key={index} cx={stroke[0].x} cy={stroke[0].y} r={(drawing?.strokeWidth ?? 4) / 2} fill={drawing?.color ?? "#2563EB"} vectorEffect="non-scaling-stroke" />
+							) : (
+								<polyline key={index} points={points} fill="none" stroke={drawing?.color ?? "#2563EB"} strokeWidth={drawing?.strokeWidth ?? 4} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+							);
+						})}
+					</svg>
 				);
 			}
 
@@ -249,9 +367,12 @@ export function AnnotationOverlay({
 				border: isSelected ? "2px solid rgba(37, 99, 235, 0.8)" : "none",
 				backgroundColor: isSelected ? "rgba(37, 99, 235, 0.1)" : "transparent",
 				boxShadow: isSelected ? "0 0 0 1px rgba(37, 99, 235, 0.35)" : "none",
+				opacity: stage.alpha,
+				transform: `translateY(${stage.translateY}px) scale(${stage.scale}) rotate(${stage.rotate}deg)`,
+				transformOrigin: "center",
 			}}
 			enableResizing={isSelected}
-			disableDragging={!isSelected}
+			disableDragging={!isSelected || annotation.type === "drawing"}
 			resizeHandleStyles={{
 				topLeft: {
 					width: "12px",
@@ -301,6 +422,7 @@ export function AnnotationOverlay({
 					annotation.type === "text" && "bg-transparent",
 					annotation.type === "image" && "bg-transparent",
 					annotation.type === "figure" && "bg-transparent",
+					annotation.type === "drawing" && "bg-transparent",
 					isSelected && "shadow-lg",
 				)}
 			>

@@ -195,6 +195,36 @@ bool WgcSession::initialize(HWND hwnd, int fps) {
     return initializeWithItem(fps) && initializeWindowCrop(hwnd);
 }
 
+bool WgcSession::initializeRegionCrop(double left, double top, double width, double height) {
+    if (left < 0 || top < 0 || width <= 0 || height <= 0 || left + width > 1.0001 || top + height > 1.0001 ||
+        framePoolWidth_ < 2 || framePoolHeight_ < 2) return false;
+
+    const LONG rawLeft = static_cast<LONG>(std::llround(left * framePoolWidth_));
+    const LONG rawTop = static_cast<LONG>(std::llround(top * framePoolHeight_));
+    const LONG rawRight = static_cast<LONG>(std::llround((left + width) * framePoolWidth_));
+    const LONG rawBottom = static_cast<LONG>(std::llround((top + height) * framePoolHeight_));
+    const LONG cropWidth = (rawRight - rawLeft) & ~1L;
+    const LONG cropHeight = (rawBottom - rawTop) & ~1L;
+    if (cropWidth < 2 || cropHeight < 2) return false;
+
+    captureWidth_ = static_cast<int>(cropWidth);
+    captureHeight_ = static_cast<int>(cropHeight);
+    cropRect_ = { rawLeft, rawTop, rawLeft + cropWidth, rawTop + cropHeight };
+    D3D11_TEXTURE2D_DESC desc{};
+    desc.Width = static_cast<UINT>(captureWidth_);
+    desc.Height = static_cast<UINT>(captureHeight_);
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+    if (FAILED(d3dDevice_->CreateTexture2D(&desc, nullptr, &cropTexture_)) ||
+        FAILED(d3dDevice_->CreateRenderTargetView(cropTexture_.Get(), nullptr, &cropRenderTargetView_))) return false;
+    regionCropEnabled_ = true;
+    return true;
+}
+
 bool WgcSession::initializeWindowCrop(HWND hwnd) {
     windowHandle_ = hwnd;
     MONITORINFO monitorInfo{};
@@ -356,7 +386,12 @@ void WgcSession::onFrameArrived(
     HRESULT hr = access->GetInterface(IID_PPV_ARGS(&texture));
 
     if (SUCCEEDED(hr) && texture && frameCallback_) {
-        if (windowHandle_ && cropTexture_ && updateWindowCropRect()) {
+        if (regionCropEnabled_ && cropTexture_) {
+			D3D11_BOX sourceBox{ static_cast<UINT>(cropRect_.left), static_cast<UINT>(cropRect_.top), 0,
+				static_cast<UINT>(cropRect_.right), static_cast<UINT>(cropRect_.bottom), 1 };
+			d3dContext_->CopySubresourceRegion(cropTexture_.Get(), 0, 0, 0, 0, texture.Get(), 0, &sourceBox);
+			frameCallback_(cropTexture_.Get(), frameTimeHns);
+        } else if (windowHandle_ && cropTexture_ && updateWindowCropRect()) {
             constexpr float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
             d3dContext_->ClearRenderTargetView(cropRenderTargetView_.Get(), clearColor);
             D3D11_BOX sourceBox{

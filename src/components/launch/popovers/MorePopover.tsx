@@ -13,8 +13,8 @@ import type { ReactElement } from "react";
 import { useI18n } from "@/contexts/I18nContext";
 import { useScopedT } from "@/contexts/I18nContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import type { AppLocale } from "@/i18n/config";
-import { SUPPORTED_LOCALES } from "@/i18n/config";
+import type { AppLocale } from "@/config/i18n";
+import { SUPPORTED_LOCALES } from "@/config/i18n";
 import styles from "../LaunchWindow.module.css";
 import { useLaunchPopoverCoordinator } from "./LaunchPopoverCoordinator";
 import { DropdownItem, HudPopover } from "./PopoverScaffold";
@@ -23,14 +23,7 @@ const POPOVER_ID = "more";
 
 const LOCALE_LABELS: Record<string, string> = {
 	en: "English",
-	es: "Español",
-	fr: "Français",
-	it: "Italiano",
-	nl: "Nederlands",
-	ko: "한국어",
-	"pt-BR": "Português",
-	"zh-CN": "簡體中文",
-	"zh-TW": "繁體中文",
+	ru: "Русский",
 };
 
 export function MorePopover({

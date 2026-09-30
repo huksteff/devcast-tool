@@ -70,7 +70,7 @@ import {
 	destroyPixiApplication,
 	initializePixiApplicationWithTimeout,
 } from "@/lib/pixiApplicationLifecycle";
-import { isVideoWallpaperSource } from "@/lib/wallpapers";
+import { isBlurredRecordingWallpaper, isVideoWallpaperSource } from "@/lib/wallpapers";
 import { renderAnnotations } from "./annotationRenderer";
 import { renderCaptions } from "./captionRenderer";
 import { ForwardFrameSource } from "./forwardFrameSource";
@@ -244,6 +244,7 @@ export class FrameRenderer {
 	private backgroundSeekPromise: Promise<void> | null = null;
 	private lastSyncedBackgroundLoopTimeSec: number | null = null;
 	private cleanupBackgroundSource: (() => void) | null = null;
+	private usesRecordingAsBackground = false;
 	private config: FrameRenderConfig;
 	private animationState: AnimationState;
 	private motionBlurState: MotionBlurState;
@@ -484,7 +485,10 @@ export class FrameRenderer {
 	}
 
 	private async setupBackground(): Promise<void> {
-		const wallpaper = await this.resolveWallpaperForExport(this.config.wallpaper);
+		this.usesRecordingAsBackground = isBlurredRecordingWallpaper(this.config.wallpaper);
+		const wallpaper = this.usesRecordingAsBackground
+			? this.config.wallpaper
+			: await this.resolveWallpaperForExport(this.config.wallpaper);
 
 		// Create background canvas for separate rendering (not affected by zoom)
 		const bgCanvas = document.createElement("canvas");
@@ -515,6 +519,10 @@ export class FrameRenderer {
 		this.backgroundSeekPromise = null;
 
 		try {
+			if (this.usesRecordingAsBackground) {
+				this.backgroundSprite = bgCanvas;
+				return;
+			}
 			// Check for video wallpaper first
 			if (isVideoWallpaperSource(wallpaper)) {
 				let videoSrc = wallpaper;
@@ -1415,6 +1423,14 @@ export class FrameRenderer {
 				.source as unknown as VideoTextureSource;
 			this.videoTextureSource.resource = videoFrame;
 			this.videoTextureSource.update();
+		}
+
+		if (this.usesRecordingAsBackground) {
+			this.drawBackgroundSourceToCanvas(
+				videoFrame,
+				videoFrame.displayWidth,
+				videoFrame.displayHeight,
+			);
 		}
 
 		// Apply layout

@@ -244,6 +244,13 @@ interface Window {
 		switchToEditor: () => Promise<void>;
 		openSourceSelector: () => Promise<void>;
 		selectSource: (source: ProcessedDesktopSource) => Promise<ProcessedDesktopSource>;
+		openCaptureRegionSelector: () => Promise<ProcessedDesktopSource | null>;
+		getCaptureRegionSelectorLayout: () => Promise<{
+			bounds: { x: number; y: number; width: number; height: number };
+			displays: Array<{ id: string; bounds: { x: number; y: number; width: number; height: number } }>;
+		}>;
+		completeCaptureRegionSelection: (region: { x: number; y: number; width: number; height: number }) => Promise<ProcessedDesktopSource | null>;
+		cancelCaptureRegionSelection: () => Promise<void>;
 		showSourceHighlight: (source: ProcessedDesktopSource) => Promise<{ success: boolean }>;
 		getSelectedSource: () => Promise<ProcessedDesktopSource | null>;
 		onSelectedSourceChanged: (
@@ -626,6 +633,7 @@ interface Window {
 		onCursorStateChanged: (
 			callback: (state: { cursorType: CursorTelemetryPoint["cursorType"] }) => void,
 		) => () => void;
+		copyTextToClipboard: (text: string) => Promise<{ success: boolean; error?: string }>;
 		openExternalUrl: (url: string) => Promise<{ success: boolean; error?: string }>;
 		getAccessibilityPermissionStatus: () => Promise<{
 			success: boolean;
@@ -1006,6 +1014,7 @@ interface ProcessedDesktopSource {
 	sourceType?: "screen" | "window";
 	appName?: string;
 	windowTitle?: string;
+	captureRegion?: { x: number; y: number; width: number; height: number };
 }
 
 interface CursorTelemetryPoint {

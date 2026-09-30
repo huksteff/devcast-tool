@@ -67,6 +67,8 @@ interface TimelineCanvasProps {
 	onSelectAudio?: (id: string | null) => void;
 	onSelectCaption?: (id: string | null) => void;
 	onAddZoomAtMs?: (startMs: number) => void;
+	onAddAnnotationAtMs?: (startMs: number, trackIndex: number, durationMs?: number) => void;
+	annotationQuickAddDurationMs?: number;
 	onAddCaptionAtMs?: (startMs: number) => void;
 	canPlaceCaptionAtMs?: (startMs: number) => boolean;
 	resolveCaptionSpanAtMs?: (startMs: number) => { start: number; end: number } | null;
@@ -153,6 +155,11 @@ function useTimelineLaneHover({
 
 	const onMouseEnter = useCallback(
 		(event: MouseEvent<HTMLDivElement>) => {
+			if ((event.target as HTMLElement).closest("[data-timeline-item]")) {
+				setIsHovered(false);
+				setHoverMs(null);
+				return;
+			}
 			setIsHovered(true);
 			updateHoverTime(event.clientX, event.currentTarget.getBoundingClientRect());
 		},
@@ -161,6 +168,11 @@ function useTimelineLaneHover({
 
 	const onMouseMove = useCallback(
 		(event: MouseEvent<HTMLDivElement>) => {
+			if ((event.target as HTMLElement).closest("[data-timeline-item]")) {
+				setIsHovered(false);
+				setHoverMs(null);
+				return;
+			}
 			setIsHovered(true);
 			updateHoverTime(event.clientX, event.currentTarget.getBoundingClientRect());
 		},
@@ -416,11 +428,14 @@ interface TimelineCanvasRowsProps {
 	onSelectAnnotation?: (id: string | null) => void;
 	onSelectAudio?: (id: string | null) => void;
 	onSelectCaption?: (id: string | null) => void;
+	onAddAnnotationAtMs?: (startMs: number, trackIndex: number, durationMs?: number) => void;
+	annotationQuickAddDurationMs?: number;
 	sourceAudioTracks?: SourceAudioTrackWithPeaks[];
 	getSourceAudioTrackSettingsForClip?: (clipId: string | null) => SourceAudioTrackSettings;
 	showSourceAudioTrack?: boolean;
 	liveSpanPreviewById?: Record<string, { start: number; end: number }>;
 	liveHiddenItemIds?: string[];
+	isDragging: boolean;
 	direction: string;
 	canShowGhostZoom: boolean;
 	ghostStartMs: number | null;
@@ -479,9 +494,127 @@ function AudioItemWithWaveform({
 	);
 }
 
+interface AnnotationTimelineRowProps {
+	rowId: string;
+	items: TimelineRenderItem[];
+	index: number;
+	videoDurationMs: number;
+	direction: string;
+	rangeStart: number;
+	visibleDurationMs: number;
+	valueToPixels: (value: number) => number;
+	clipPresentation: ClipPresentation[];
+	isDragging: boolean;
+	selectedAnnotationId?: string | null;
+	onSelectAnnotation?: (id: string | null) => void;
+	onAddAnnotationAtMs?: (startMs: number, trackIndex: number, durationMs?: number) => void;
+	annotationQuickAddDurationMs?: number;
+}
+
+/** A dedicated annotation lane with the same hover-to-add affordance as zoom. */
+function AnnotationTimelineRow({
+	rowId,
+	items,
+	index,
+	videoDurationMs,
+	direction,
+	rangeStart,
+	visibleDurationMs,
+	valueToPixels,
+	clipPresentation,
+	isDragging,
+	selectedAnnotationId,
+	onSelectAnnotation,
+	onAddAnnotationAtMs,
+	annotationQuickAddDurationMs = 0,
+}: AnnotationTimelineRowProps) {
+	const trackIndex = getAnnotationTrackIndex(rowId);
+	const resolveQuickAddSpan = useCallback(
+		(startMs: number) => {
+			const defaultDuration = Math.min(annotationQuickAddDurationMs, videoDurationMs);
+			if (defaultDuration <= 0) return null;
+			const start = Math.max(0, Math.min(startMs, videoDurationMs - defaultDuration));
+			const nextStart = items.reduce<number | null>((nearest, item) => {
+				return item.span.start > start && (nearest === null || item.span.start < nearest)
+					? item.span.start
+					: nearest;
+			}, null);
+			const end = Math.min(start + defaultDuration, nextStart ?? videoDurationMs);
+			return end > start ? { start, end } : null;
+		},
+		[annotationQuickAddDurationMs, items, videoDurationMs],
+	);
+	const hover = useTimelineLaneHover({
+		clipPresentation,
+		direction,
+		rangeStart,
+		visibleDurationMs,
+		videoDurationMs,
+		valueToPixels,
+		ghostDurationMs: annotationQuickAddDurationMs,
+		enabled: Boolean(onAddAnnotationAtMs),
+		isDragging,
+		onAddAtMs: (startMs) => {
+			const span = resolveQuickAddSpan(startMs);
+			if (span) onAddAnnotationAtMs?.(span.start, trackIndex, span.end - span.start);
+		},
+		resolveGhostSpanMs: resolveQuickAddSpan,
+	});
+	const ghostOffsetPx =
+		hover.ghostStartMs === null
+			? 0
+			: valueToPixels(Math.max(0, hover.ghostStartMs - rangeStart));
+
+	return (
+		<Row
+			id={rowId}
+			isEmpty={items.length === 0}
+			hint={index === 0 ? HINT_ANNOTATION : undefined}
+			onMouseEnter={hover.onMouseEnter}
+			onMouseMove={hover.onMouseMove}
+			onMouseLeave={hover.onMouseLeave}
+			onMouseDown={hover.onMouseDown}
+			onClick={hover.onClick}
+		>
+			{hover.canShowGhost && hover.ghostStartMs !== null && (
+				<div className="absolute inset-0 z-[3] pointer-events-none">
+					<div
+						className="absolute top-1/2 -translate-y-1/2 h-[85%] min-h-[22px]"
+						style={
+							direction === "rtl"
+								? { right: `${ghostOffsetPx}px`, width: `${hover.ghostWidthPx}px` }
+								: { left: `${ghostOffsetPx}px`, width: `${hover.ghostWidthPx}px` }
+						}
+					>
+						<div className="h-full w-full rounded-md border border-dashed border-amber-200/70 bg-amber-300/15 flex items-center justify-center text-amber-50/90">
+							<Plus className="h-3 w-3" />
+						</div>
+					</div>
+				</div>
+			)}
+			{items.map((item) => (
+				<Item
+					id={item.id}
+					key={item.id}
+					rowId={item.rowId}
+					span={item.span}
+					isSelected={item.id === selectedAnnotationId}
+					onSelectId={onSelectAnnotation}
+					annotationStages={item.annotationStages}
+					annotationType={item.annotationType}
+					variant="annotation"
+				>
+					{item.label}
+				</Item>
+			))}
+		</Row>
+	);
+}
+
 const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	videoPath,
 	items,
+	videoDurationMs,
 	selectAllBlocksActive,
 	selectedZoomId,
 	selectedClipId,
@@ -493,11 +626,14 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	onSelectAnnotation,
 	onSelectAudio,
 	onSelectCaption,
+	onAddAnnotationAtMs,
+	annotationQuickAddDurationMs,
 	sourceAudioTracks = [],
 	getSourceAudioTrackSettingsForClip,
 	showSourceAudioTrack = false,
 	liveSpanPreviewById,
 	liveHiddenItemIds,
+	isDragging,
 	direction,
 	canShowGhostZoom,
 	ghostStartMs,
@@ -520,7 +656,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	const {
 		pixelsToValue,
 		valueToPixels,
-		range: { start: rangeStart },
+		range: { start: rangeStart, end: rangeEnd },
 	} = useTimelineContext();
 	const hiddenIds = useMemo(() => new Set(liveHiddenItemIds ?? []), [liveHiddenItemIds]);
 	const { clipItems, zoomItems, captionItems, annotationRows, audioRows } = useMemo(() => {
@@ -564,6 +700,16 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 				rowId: getAnnotationTrackRowId(trackIndex),
 				items: rowItems,
 			}));
+
+		// Always retain a first empty annotation lane. Besides being the drop target for
+		// a new track, it exposes hover-to-add even before the project has annotations.
+		const nextAnnotationTrackIndex = annotationRowsSorted.length
+			? Math.max(...Array.from(annotationBuckets.keys())) + 1
+			: 0;
+		annotationRowsSorted.push({
+			rowId: getAnnotationTrackRowId(nextAnnotationTrackIndex),
+			items: [],
+		});
 		const audioRowsSorted = Array.from(audioBuckets.entries())
 			.sort(([left], [right]) => left - right)
 			.map(([trackIndex, rowItems]) => ({
@@ -850,26 +996,23 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 			</Row>
 
 			{annotationRows.map(({ rowId, items: rowItems }, index) => (
-				<Row
+				<AnnotationTimelineRow
 					key={rowId}
-					id={rowId}
-					isEmpty={rowItems.length === 0}
-					hint={index === 0 ? HINT_ANNOTATION : undefined}
-				>
-					{rowItems.map((item) => (
-						<Item
-							id={item.id}
-							key={item.id}
-							rowId={item.rowId}
-							span={item.span}
-							isSelected={item.id === selectedAnnotationId}
-							onSelectId={onSelectAnnotation}
-							variant="annotation"
-						>
-							{item.label}
-						</Item>
-					))}
-				</Row>
+					rowId={rowId}
+					items={rowItems}
+					index={index}
+					videoDurationMs={videoDurationMs}
+					direction={direction}
+					rangeStart={rangeStart}
+					visibleDurationMs={Math.max(1, rangeEnd - rangeStart)}
+					valueToPixels={valueToPixels}
+					clipPresentation={clipPresentation}
+					isDragging={isDragging}
+					selectedAnnotationId={selectedAnnotationId}
+					onSelectAnnotation={onSelectAnnotation}
+					onAddAnnotationAtMs={onAddAnnotationAtMs}
+					annotationQuickAddDurationMs={annotationQuickAddDurationMs}
+				/>
 			))}
 
 			{audioRows.map(({ rowId, items: rowItems }, index) => (
@@ -902,6 +1045,8 @@ export default function TimelineCanvas({
 	currentTimeMs,
 	onSeek,
 	onAddZoomAtMs,
+	onAddAnnotationAtMs,
+	annotationQuickAddDurationMs,
 	canPlaceZoomAtMs,
 	onAddCaptionAtMs,
 	canPlaceCaptionAtMs,
@@ -1091,7 +1236,14 @@ export default function TimelineCanvas({
 			if (isAudioTrackRowId(item.rowId)) audioRowIds.add(item.rowId);
 		}
 		const sourceAudioRows = showSourceAudioTrack ? sourceAudioTracks.length : 0;
-		return 2 + sourceAudioRows + annotationRowIds.size + audioRowIds.size;
+		// The annotation renderer always keeps one spare drop/add lane.
+		return (
+			2 +
+			sourceAudioRows +
+			annotationRowIds.size +
+			1 +
+			audioRowIds.size
+		);
 	}, [items, showSourceAudioTrack, sourceAudioTracks.length]);
 	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
 	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
@@ -1201,6 +1353,9 @@ export default function TimelineCanvas({
 					showSourceAudioTrack={showSourceAudioTrack}
 					liveSpanPreviewById={liveSpanPreviewById}
 					liveHiddenItemIds={liveHiddenItemIds}
+					isDragging={isDragging}
+					onAddAnnotationAtMs={onAddAnnotationAtMs}
+					annotationQuickAddDurationMs={annotationQuickAddDurationMs}
 					direction={direction}
 					canShowGhostZoom={canShowGhostZoom}
 					ghostStartMs={ghostStartMs}

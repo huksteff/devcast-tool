@@ -25,6 +25,7 @@ public:
 
     bool initialize(HMONITOR monitor, int fps);
     bool initialize(HWND hwnd, int fps);
+	bool initializeRegionCrop(double left, double top, double width, double height);
     void setFrameCallback(FrameCallback callback);
     bool startCapture();
     void stopCapture();
@@ -59,6 +60,7 @@ private:
     HWND windowHandle_ = nullptr;
     RECT monitorBounds_{};
     RECT cropRect_{};
+	bool regionCropEnabled_ = false;
 
     bool createD3DDevice();
     winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice createWinRTDevice();

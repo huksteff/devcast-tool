@@ -423,7 +423,8 @@ export function trimsToClips(trims: TrimRegion[], totalDurationMs: number): Clip
 	return clips;
 }
 
-export type AnnotationType = "text" | "image" | "figure" | "blur";
+/** Visual layers placed over the recording. `drawing` stores a freehand stroke. */
+export type AnnotationType = "text" | "image" | "figure" | "blur" | "drawing";
 export const BLUR_ANNOTATION_STRENGTH = 20;
 export const BASE_PREVIEW_WIDTH = 1920;
 export const BASE_PREVIEW_HEIGHT = 1080;
@@ -439,9 +440,152 @@ export type ArrowDirection =
 	| "down-left";
 
 export interface FigureData {
+	kind?: "arrow" | "rectangle" | "ellipse" | "line" | "highlight";
 	arrowDirection: ArrowDirection;
 	color: string;
 	strokeWidth: number;
+}
+
+export interface DrawingPoint {
+	x: number;
+	y: number;
+}
+
+export interface DrawingData {
+	/**
+	 * Legacy flattened stroke. Kept so projects made before multi-stroke drawing
+	 * continue to load without a migration.
+	 */
+	points: DrawingPoint[];
+	/** Each pointer gesture is a separate path, so separate marks never join. */
+	strokes?: DrawingPoint[][];
+	color: string;
+	strokeWidth: number;
+}
+
+/**
+ * `draw-in` and `draw-out` are intentionally drawing-only transitions. They
+ * reveal the actual path rather than fading its finished result, which makes
+ * a hand-drawn annotation feel like it is being made (or erased) on screen.
+ */
+export type AnnotationTransition =
+	| "none"
+	| "fade"
+	| "pop"
+	| "slide-up"
+	| "slide-down"
+	| "bounce"
+	| "zoom"
+	| "swing"
+	| "typewriter"
+	| "draw-in"
+	| "draw-out";
+export interface AnnotationStages {
+	inEnabled: boolean;
+	inDurationMs: number;
+	inTransition: AnnotationTransition;
+	outEnabled: boolean;
+	outDurationMs: number;
+	outTransition: AnnotationTransition;
+}
+export const DEFAULT_ANNOTATION_STAGES: AnnotationStages = {
+	inEnabled: false,
+	inDurationMs: 300,
+	inTransition: "fade",
+	outEnabled: false,
+	outDurationMs: 300,
+	outTransition: "fade",
+};
+
+/** Presentation transform for an annotation at a timeline timestamp.
+ * Kept in the shared editor model so preview and export follow the same rules. */
+export function getAnnotationStageState(
+	annotation: Pick<AnnotationRegion, "startMs" | "endMs" | "stages">,
+	timeMs: number,
+) {
+	const stages = annotation.stages;
+	if (!stages) return { alpha: 1, translateY: 0, scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
+	let progress: number | null = null;
+	let transition = stages.inTransition;
+	let entering = true;
+	if (stages.inEnabled && timeMs < annotation.startMs + stages.inDurationMs) {
+		progress = Math.max(0, Math.min(1, (timeMs - annotation.startMs) / Math.max(1, stages.inDurationMs)));
+	} else if (stages.outEnabled && timeMs > annotation.endMs - stages.outDurationMs) {
+		progress = Math.max(0, Math.min(1, (annotation.endMs - timeMs) / Math.max(1, stages.outDurationMs)));
+		transition = stages.outTransition;
+		entering = false;
+	}
+	if (progress === null || transition === "none") {
+		return { alpha: 1, translateY: 0, scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
+	}
+	if (transition === "draw-in" || transition === "draw-out") {
+		// During an Out stage progress runs from 1 to 0, naturally erasing the
+		// path from its finishing end. During In it runs 0 to 1 and draws it.
+		return { alpha: 1, translateY: 0, scale: 1, rotate: 0, drawingProgress: progress, textProgress: 1 };
+	}
+	if (transition === "typewriter") return { alpha: 1, translateY: 0, scale: 1, rotate: 0, drawingProgress: 1, textProgress: progress };
+	if (transition === "bounce") {
+		const bounce = Math.sin(progress * Math.PI * 2.5) * (1 - progress) * 0.24;
+		return { alpha: progress, translateY: 0, scale: 0.68 + progress * 0.32 + bounce, rotate: 0, drawingProgress: 1, textProgress: 1 };
+	}
+	if (transition === "zoom") return { alpha: progress, translateY: 0, scale: 0.45 + progress * 0.55, rotate: 0, drawingProgress: 1, textProgress: 1 };
+	if (transition === "swing") return { alpha: progress, translateY: 0, scale: 1, rotate: Math.sin(progress * Math.PI * 3) * (1 - progress) * (entering ? -24 : 24), drawingProgress: 1, textProgress: 1 };
+	if (transition === "pop") return { alpha: progress, translateY: 0, scale: 0.82 + progress * 0.18, rotate: 0, drawingProgress: 1, textProgress: 1 };
+	if (transition === "slide-up") return { alpha: progress, translateY: (1 - progress) * (entering ? 24 : -24), scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
+	if (transition === "slide-down") return { alpha: progress, translateY: (1 - progress) * (entering ? -24 : 24), scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
+	return { alpha: progress, translateY: 0, scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
+}
+
+/** Return the portion of a multi-stroke drawing visible at `progress`.
+ * The progress is distributed by actual path length, rather than point count,
+ * so long segments draw at a consistent speed. Shared by preview and export. */
+export function getVisibleDrawingStrokes(
+	drawing: DrawingData | undefined,
+	progress: number,
+): DrawingPoint[][] {
+	if (!drawing) return [];
+	const strokes = drawing.strokes?.length ? drawing.strokes : drawing.points?.length ? [drawing.points] : [];
+	const boundedProgress = Math.max(0, Math.min(1, progress));
+	if (boundedProgress >= 1) return strokes.map((stroke) => [...stroke]);
+	if (boundedProgress <= 0) return [];
+
+	const lengths = strokes.map((stroke) => {
+		if (stroke.length <= 1) return stroke.length ? 1 : 0;
+		let length = 0;
+		for (let index = 1; index < stroke.length; index++) {
+			length += Math.hypot(stroke[index].x - stroke[index - 1].x, stroke[index].y - stroke[index - 1].y);
+		}
+		return Math.max(1, length);
+	});
+	let remaining = lengths.reduce((total, length) => total + length, 0) * boundedProgress;
+	return strokes.map((stroke, strokeIndex) => {
+		const strokeLength = lengths[strokeIndex];
+		if (!stroke.length || remaining <= 0) return [];
+		if (remaining >= strokeLength) {
+			remaining -= strokeLength;
+			return [...stroke];
+		}
+		if (stroke.length === 1) {
+			remaining = 0;
+			return [stroke[0]];
+		}
+		const visible = [stroke[0]];
+		for (let index = 1; index < stroke.length && remaining > 0; index++) {
+			const from = stroke[index - 1];
+			const to = stroke[index];
+			const segmentLength = Math.hypot(to.x - from.x, to.y - from.y);
+			if (segmentLength === 0) continue;
+			if (remaining >= segmentLength) {
+				visible.push(to);
+				remaining -= segmentLength;
+			} else {
+				const ratio = remaining / segmentLength;
+				visible.push({ x: from.x + (to.x - from.x) * ratio, y: from.y + (to.y - from.y) * ratio });
+				remaining = 0;
+			}
+		}
+		return visible;
+	});
 }
 
 export interface AnnotationPosition {
@@ -488,6 +632,8 @@ export interface AnnotationRegion {
 	zIndex: number;
 	trackIndex?: number;
 	figureData?: FigureData;
+	drawingData?: DrawingData;
+	stages?: AnnotationStages;
 	blurIntensity?: number;
 	blurColor?: string;
 }
@@ -515,7 +661,14 @@ export const DEFAULT_ANNOTATION_STYLE: AnnotationTextStyle = {
 };
 
 export const DEFAULT_FIGURE_DATA: FigureData = {
+	kind: "arrow",
 	arrowDirection: "right",
+	color: "#2563EB",
+	strokeWidth: 4,
+};
+
+export const DEFAULT_DRAWING_DATA: DrawingData = {
+	points: [],
 	color: "#2563EB",
 	strokeWidth: 4,
 };

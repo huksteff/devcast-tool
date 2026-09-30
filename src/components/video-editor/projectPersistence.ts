@@ -30,6 +30,8 @@ import {
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
+	DEFAULT_DRAWING_DATA,
+	DEFAULT_ANNOTATION_STAGES,
 	DEFAULT_AUTO_CAPTION_SETTINGS,
 	DEFAULT_CONNECTED_ZOOM_DURATION_MS,
 	DEFAULT_CONNECTED_ZOOM_EASING,
@@ -588,10 +590,11 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						id: region.id,
 						startMs,
 						endMs,
-						type:
-							region.type === "image" ||
-							region.type === "figure" ||
-							region.type === "blur"
+							type:
+								region.type === "image" ||
+								region.type === "figure" ||
+								region.type === "blur" ||
+								region.type === "drawing"
 								? region.type
 								: "text",
 						content: typeof region.content === "string" ? region.content : "",
@@ -638,6 +641,44 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 									...region.figureData,
 								}
 							: undefined,
+						drawingData:
+							region.drawingData && Array.isArray(region.drawingData.points)
+								? {
+									...DEFAULT_DRAWING_DATA,
+									...region.drawingData,
+									points: region.drawingData.points
+										.filter(
+											(point) =>
+												isFiniteNumber(point?.x) && isFiniteNumber(point?.y),
+										)
+										.map((point) => ({
+											x: clamp(point.x, 0, 100),
+											y: clamp(point.y, 0, 100),
+										})),
+									strokes: Array.isArray(region.drawingData.strokes)
+										? region.drawingData.strokes
+											.filter((stroke) => Array.isArray(stroke))
+											.map((stroke) => stroke
+												.filter((point) => isFiniteNumber(point?.x) && isFiniteNumber(point?.y))
+												.map((point) => ({ x: clamp(point.x, 0, 100), y: clamp(point.y, 0, 100) })))
+										: undefined,
+								}
+								: undefined,
+						stages: (() => {
+							if (!region.stages || typeof region.stages !== "object") return undefined;
+							const duration = endMs - startMs;
+							const inDurationMs = clamp(region.stages.inDurationMs ?? 300, 0, duration);
+							return {
+								...DEFAULT_ANNOTATION_STAGES,
+								...region.stages,
+								inEnabled: Boolean(region.stages.inEnabled),
+								outEnabled: Boolean(region.stages.outEnabled),
+								inTransition: ["none", "fade", "pop", "slide-up", "slide-down"].includes(region.stages.inTransition) ? region.stages.inTransition : "fade",
+								outTransition: ["none", "fade", "pop", "slide-up", "slide-down"].includes(region.stages.outTransition) ? region.stages.outTransition : "fade",
+								inDurationMs,
+								outDurationMs: clamp(region.stages.outDurationMs ?? 300, 0, duration - inDurationMs),
+							};
+						})(),
 						blurIntensity: isFiniteNumber(region.blurIntensity)
 							? clamp(region.blurIntensity, 1, 100)
 							: 20,

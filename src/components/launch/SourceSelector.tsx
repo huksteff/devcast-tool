@@ -60,23 +60,23 @@ export const SourceSelectorContent = ({
 				isSelected={isSelected}
 				key={`${source.id}-${index}`}
 				className={cn(
-					"source-selector-item group min-h-[46px] w-full px-3 py-2.5 text-left flex items-center justify-start gap-3",
+					"source-selector-item group min-h-[112px] w-full p-2.5 text-left flex flex-col items-stretch justify-start gap-2",
 					isSelected && "source-selector-item-selected",
 				)}
 				onClick={() => onSourceSelect(source)}
 			>
-				<div className="relative flex-shrink-0">
+				<div className="relative flex-shrink-0 w-full">
 					{source.thumbnail ? (
 						<img
 							src={source.thumbnail}
 							alt=""
-							className="w-12 h-8 rounded-[8px] object-cover bg-black/50"
+							className="h-14 w-full rounded-[8px] object-cover bg-black/50"
 							onError={(e) => {
 								(e.target as HTMLImageElement).style.display = "none";
 							}}
 						/>
 					) : (
-						<div className="source-selector-thumb-fallback w-12 h-8 rounded-[8px] flex items-center justify-center">
+						<div className="source-selector-thumb-fallback h-14 w-full rounded-[8px] flex items-center justify-center">
 							{source.sourceType === "window" ? (
 								<AppWindowIcon className="w-5 h-5 source-selector-muted" />
 							) : (
@@ -86,7 +86,7 @@ export const SourceSelectorContent = ({
 					)}
 				</div>
 
-				<div className="flex-1 min-w-0 flex flex-col items-start text-left">
+				<div className="min-w-0 flex flex-col items-start text-left">
 					<div className="text-sm font-medium source-selector-text w-full">
 						<MarqueeText text={source.windowTitle || source.name} />
 					</div>
@@ -111,7 +111,7 @@ export const SourceSelectorContent = ({
 	}
 
 	return (
-		<div className="max-h-[320px] overflow-y-auto overflow-x-hidden p-2 source-selector-scroll">
+		<div className="max-h-[min(620px,calc(100vh-150px))] overflow-y-auto overflow-x-hidden p-3 source-selector-scroll">
 			{hasAnySources ? (
 				<>
 					{screenSources.length > 0 ? (
@@ -127,7 +127,7 @@ export const SourceSelectorContent = ({
 									{t("common.loading", "Refreshing...")}
 								</span>
 							</div>
-							<div className="space-y-0.5">
+							<div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
 								{screenSources.map((source, index) =>
 									renderSourceItem(source, index),
 								)}
@@ -139,7 +139,7 @@ export const SourceSelectorContent = ({
 							<div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] source-selector-label">
 								{t("recording.windows")}
 							</div>
-							<div className="space-y-0.5">
+							<div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
 								{windowSources.map((source, index) =>
 									renderSourceItem(source, index),
 								)}
@@ -323,7 +323,7 @@ export const SourceSelector = React.memo(function SourceSelector({
 		<Popover open={open} onOpenChange={onOpenChange} modal={true}>
 			<PopoverTrigger asChild>{trigger}</PopoverTrigger>
 			<PopoverContent
-				className="launch-theme w-80 p-0 source-selector-popover"
+				className="launch-theme w-[min(720px,calc(100vw-24px))] p-0 source-selector-popover"
 				unstyled
 				align="start"
 				sideOffset={8}

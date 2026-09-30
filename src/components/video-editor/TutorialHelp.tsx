@@ -1,12 +1,11 @@
 import {
 	ArrowRight,
-	ArrowSquareOut as ExternalLink,
 	Question as HelpCircle,
+	GitlabLogo,
+	Sparkle,
 	Keyboard,
-	ChatDots as MessageSquareMore,
 	Scissors,
 	GearSix as Settings2,
-	XLogo as Twitter,
 } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,16 +17,75 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { useScopedT } from "@/contexts/I18nContext";
+import { useI18n, useScopedT } from "@/contexts/I18nContext";
 import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { formatBinding, SHORTCUT_ACTIONS, SHORTCUT_LABELS } from "@/lib/shortcuts";
 import { formatShortcut } from "@/utils/platformUtils";
 import { toast } from "@/components/ui/toast";
+import contactsYaml from "@/config/contacts.yaml?raw";
+import changelogMarkdown from "@/config/Changelog.md?raw";
 
-export const RECORDLY_ISSUES_URL = "https://github.com/webadderallorg/Recordly/issues";
-const RECORDLY_DISCORD_URL = "https://discord.gg/sdv2FBVNgE";
-const RECORDLY_X_URL = "https://x.com/webadderall";
-const CONTACT_EMAIL = "youngchen3442@gmail.com";
+type Contact = { name: string; tag: string };
+type LocalizedContacts = { repository: string; contacts: Contact[] };
+type ChangelogEntry = { version: string; sections: { title: string; items: string[] }[] };
+
+function parseContactsYaml(source: string): Record<"Eng" | "Ru", LocalizedContacts> {
+	const repository = source.match(/^Repository:\s*(.+)$/m)?.[1]?.trim() ?? "";
+	const result: Record<"Eng" | "Ru", LocalizedContacts> = {
+		Eng: { repository, contacts: [] },
+		Ru: { repository, contacts: [] },
+	};
+	let locale: "Eng" | "Ru" | null = null;
+	let pendingName: string | null = null;
+
+	for (const line of source.split(/\r?\n/)) {
+		const localeMatch = line.match(/^(Eng|Ru):\s*$/);
+		if (localeMatch) {
+			locale = localeMatch[1] as "Eng" | "Ru";
+			continue;
+		}
+		if (!locale) continue;
+		const nameMatch = line.match(/^\s*-\s*Имя:\s*(.+)$/);
+		if (nameMatch) {
+			pendingName = nameMatch[1].trim();
+			continue;
+		}
+		const tagMatch = line.match(/^\s*Tag:\s*["']?(.+?)["']?\s*$/);
+		if (tagMatch && pendingName) {
+			result[locale].contacts.push({ name: pendingName, tag: tagMatch[1].trim() });
+			pendingName = null;
+		}
+	}
+
+	return result;
+}
+
+function parseChangelog(source: string): ChangelogEntry[] {
+	const entries: ChangelogEntry[] = [];
+	let entry: ChangelogEntry | null = null;
+	let section: ChangelogEntry["sections"][number] | null = null;
+	for (const line of source.split(/\r?\n/)) {
+		const version = line.match(/^##\s+(.+)$/);
+		if (version) {
+			entry = { version: version[1].trim(), sections: [] };
+			entries.push(entry);
+			section = null;
+			continue;
+		}
+		const heading = line.match(/^###\s+(.+)$/);
+		if (heading && entry) {
+			section = { title: heading[1].trim(), items: [] };
+			entry.sections.push(section);
+			continue;
+		}
+		const item = line.match(/^-\s+(.+)$/);
+		if (item && section) section.items.push(item[1].trim());
+	}
+	return entries;
+}
+
+const CONTACTS_BY_LOCALE = parseContactsYaml(contactsYaml);
+const CHANGELOG_ENTRIES = parseChangelog(changelogMarkdown);
 export const APP_HEADER_ACTION_BUTTON_CLASS =
 	"h-7 px-2 text-xs text-muted-foreground hover:bg-foreground/10 hover:text-foreground transition-all gap-1.5";
 export const APP_HEADER_ICON_BUTTON_CLASS =
@@ -36,14 +94,6 @@ export const APP_HEADER_ICON_BUTTON_CLASS =
 interface KeyboardShortcutsDialogProps {
 	triggerLabel?: string;
 	triggerClassName?: string;
-}
-
-function DiscordIcon(props: React.SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
-			<path d="M20.317 4.369A19.791 19.791 0 0 0 15.418 3a13.255 13.255 0 0 0-.615 1.263 18.27 18.27 0 0 0-5.606 0A13.25 13.25 0 0 0 8.582 3a19.736 19.736 0 0 0-4.9 1.369C.533 9.091-.32 13.697.099 18.237a19.917 19.917 0 0 0 5.993 3.024 14.32 14.32 0 0 0 1.284-2.108 12.804 12.804 0 0 1-2.021-.972c.17-.126.335-.258.495-.395a14.135 14.135 0 0 0 12.3 0c.16.137.325.269.495.395a12.736 12.736 0 0 1-2.026.974 14.103 14.103 0 0 0 1.284 2.106 19.883 19.883 0 0 0 5.996-3.024c.489-5.258-.836-9.822-3.682-13.868ZM8.02 15.331c-1.182 0-2.154-1.085-2.154-2.419 0-1.334.953-2.419 2.154-2.419 1.211 0 2.173 1.095 2.154 2.419 0 1.334-.953 2.419-2.154 2.419Zm7.96 0c-1.182 0-2.154-1.085-2.154-2.419 0-1.334.953-2.419 2.154-2.419 1.211 0 2.173 1.095 2.154 2.419 0 1.334-.943 2.419-2.154 2.419Z" />
-		</svg>
-	);
 }
 
 export async function openExternalLink(url: string, errorMessage: string) {
@@ -57,31 +107,24 @@ export async function openExternalLink(url: string, errorMessage: string) {
 	}
 }
 
-export function DiscordLinkButton() {
-	const t = useScopedT("editor");
-
-	return (
-		<Button
-			type="button"
-			variant="ghost"
-			size="sm"
-			onClick={() =>
-				void openExternalLink(
-					RECORDLY_DISCORD_URL,
-					t("feedback.openFailed", "Failed to open link."),
-				)
-			}
-			className={APP_HEADER_ICON_BUTTON_CLASS}
-			title={t("common.app.discord", "Join Discord")}
-			aria-label={t("common.app.discord", "Join Discord")}
-		>
-			<DiscordIcon className="h-3.5 w-3.5" />
-		</Button>
-	);
-}
-
 export function FeedbackDialog() {
 	const t = useScopedT("editor");
+	const { locale } = useI18n();
+	const contacts = CONTACTS_BY_LOCALE[locale === "ru" ? "Ru" : "Eng"];
+	const copyTag = async (tag: string) => {
+		try {
+			const nativeClipboard = window.electronAPI?.copyTextToClipboard;
+			const result = nativeClipboard
+				? await nativeClipboard(tag)
+				: (await navigator.clipboard.writeText(tag), { success: true });
+			if (!result.success) {
+				throw new Error(result.error || "Could not copy tag");
+			}
+			toast.success(t("feedback.tagCopied", "Tag copied"));
+		} catch {
+			toast.error(t("feedback.tagCopyFailed", "Couldn't copy tag"));
+		}
+	};
 
 	return (
 		<Dialog>
@@ -90,89 +133,91 @@ export function FeedbackDialog() {
 					variant="ghost"
 					size="sm"
 					className={APP_HEADER_ICON_BUTTON_CLASS}
-					title={t("feedback.trigger", "Feedback")}
-					aria-label={t("feedback.trigger", "Feedback")}
+					title={t("feedback.contactsTitle", "Contacts")}
+					aria-label={t("feedback.contactsTitle", "Contacts")}
 				>
-					<MessageSquareMore className="h-3.5 w-3.5" />
+					<HelpCircle className="h-3.5 w-3.5" />
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="max-w-lg">
 				<DialogHeader>
 					<DialogTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
-						<MessageSquareMore className="h-5 w-5 text-[#2563EB]" />{" "}
-						{t("feedback.title", "Feedback & contact")}
+						<HelpCircle className="h-5 w-5 text-[#2563EB]" />{" "}
+						{t("feedback.contactsTitle", "Contacts")}
 					</DialogTitle>
-					<DialogDescription className="text-muted-foreground">
-						{t(
-							"feedback.description",
-							"Reach out directly or open an issue if something is broken or missing.",
-						)}
-					</DialogDescription>
 				</DialogHeader>
-				<div className="mt-4 space-y-4">
+				<div className="mt-2 space-y-4">
 					<div className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4 space-y-3">
-						<div className="flex items-center justify-between gap-3 rounded-lg border border-foreground/5 bg-foreground/5 px-3 py-3">
-							<div>
-								<p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/70">
-									{t("feedback.emailLabel", "Email")}
-								</p>
-								<p className="mt-1 text-sm font-medium text-foreground">
-									{CONTACT_EMAIL}
-								</p>
+						<p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/70">
+							{t("feedback.contactsLabel", "Contacts")}
+						</p>
+						{contacts.contacts.map((contact) => (
+							<div key={`${contact.name}-${contact.tag}`} className="rounded-lg border border-foreground/5 bg-foreground/5 px-3 py-3">
+								<p className="text-sm font-medium text-foreground">{contact.name}</p>
+								<button
+									type="button"
+									className="mt-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+									onClick={() => void copyTag(contact.tag)}
+								>
+									{contact.tag}
+								</button>
 							</div>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() =>
-									void openExternalLink(
-										`mailto:${CONTACT_EMAIL}`,
-										t("feedback.openFailed", "Failed to open link."),
-									)
-								}
-							>
-								<ExternalLink className="h-3.5 w-3.5" />
-							</Button>
-						</div>
-						<div className="flex items-center justify-between gap-3 rounded-lg border border-foreground/5 bg-foreground/5 px-3 py-3">
-							<div>
-								<p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground/70">
-									{t("feedback.xLabel", "X")}
-								</p>
-								<p className="mt-1 text-sm font-medium text-foreground">
-									@webadderall
-								</p>
-							</div>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() =>
-									void openExternalLink(
-										RECORDLY_X_URL,
-										t("feedback.openFailed", "Failed to open link."),
-									)
-								}
-							>
-								<Twitter className="h-3.5 w-3.5" />
-							</Button>
-						</div>
+						))}
 					</div>
-					<Button
-						type="button"
-						variant="outline"
-						onClick={() =>
-							void openExternalLink(
-								RECORDLY_ISSUES_URL,
-								t("feedback.openFailed", "Failed to open link."),
-							)
-						}
-						className="h-10 w-full justify-between px-4"
-					>
-						<span className="flex items-center gap-2 text-sm font-medium">
-							<MessageSquareMore className="h-4 w-4" />
-							{t("feedback.reportIssue", "Report issue / send feedback")}
-						</span>
-						<ExternalLink className="h-3.5 w-3.5 text-muted-foreground/70" />
-					</Button>
+				</div>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+export function RepositoryLinkButton() {
+	const t = useScopedT("editor");
+	const { locale } = useI18n();
+	const repository = CONTACTS_BY_LOCALE[locale === "ru" ? "Ru" : "Eng"].repository;
+	return (
+		<Button
+			type="button"
+			variant="ghost"
+			size="sm"
+			className={APP_HEADER_ICON_BUTTON_CLASS}
+			title={t("feedback.repositoryLabel", "Repository")}
+			aria-label={t("feedback.repositoryLabel", "Repository")}
+			onClick={() => void openExternalLink(repository, t("feedback.openFailed", "Failed to open link."))}
+		>
+			<GitlabLogo className="h-3.5 w-3.5" />
+		</Button>
+	);
+}
+
+export function WhatsNewDialog() {
+	const t = useScopedT("editor");
+	return (
+		<Dialog>
+			<DialogTrigger asChild>
+				<Button variant="ghost" size="sm" className={APP_HEADER_ICON_BUTTON_CLASS} title={t("feedback.whatsNew", "What's new")} aria-label={t("feedback.whatsNew", "What's new")}>
+					<Sparkle className="h-3.5 w-3.5" />
+				</Button>
+			</DialogTrigger>
+			<DialogContent className="max-w-lg">
+				<DialogHeader>
+					<DialogTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
+						<Sparkle className="h-5 w-5 text-[#2563EB]" /> {t("feedback.whatsNew", "What's new")}
+					</DialogTitle>
+				</DialogHeader>
+				<div className="mt-2 max-h-[60vh] space-y-6 overflow-y-auto pr-2">
+					{CHANGELOG_ENTRIES.map((entry) => (
+						<section key={entry.version} className="border-t border-foreground/10 pt-4 first:border-t-0 first:pt-0">
+							<h3 className="text-lg font-semibold">{entry.version}</h3>
+							{entry.sections.map((section) => (
+								<div key={section.title} className="mt-4">
+									<h4 className="font-medium">{section.title}</h4>
+									<ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+										{section.items.map((item) => <li key={item}>{item}</li>)}
+									</ul>
+								</div>
+							))}
+						</section>
+					))}
 				</div>
 			</DialogContent>
 		</Dialog>

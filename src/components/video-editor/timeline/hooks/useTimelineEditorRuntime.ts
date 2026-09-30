@@ -241,23 +241,32 @@ export function useTimelineEditorRuntime({
 		onAudioAdded,
 	});
 
-	const handleAddAnnotation = useCallback(
-		(trackIndex = 0) => {
+	const handleAddAnnotationAtMs = useCallback(
+		(startMs: number, trackIndex = 0, requestedDurationMs?: number) => {
 			if (!videoDuration || videoDuration === 0 || totalMs === 0 || !onAnnotationAdded) {
 				return;
 			}
 
-			const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
+			const defaultDuration = Math.min(
+				defaultRegionDurationMs,
+				totalMs,
+				requestedDurationMs ?? Number.POSITIVE_INFINITY,
+			);
 			if (defaultDuration <= 0) {
 				return;
 			}
 
 			const latestStartPos = Math.max(0, totalMs - defaultDuration);
-			const startPos = Math.max(0, Math.min(currentTimeMs, latestStartPos));
+			const startPos = Math.max(0, Math.min(startMs, latestStartPos));
 			const endPos = Math.min(startPos + defaultDuration, totalMs);
 			onAnnotationAdded({ start: startPos, end: endPos }, trackIndex);
 		},
-		[videoDuration, totalMs, currentTimeMs, defaultRegionDurationMs, onAnnotationAdded],
+		[videoDuration, totalMs, defaultRegionDurationMs, onAnnotationAdded],
+	);
+
+	const handleAddAnnotation = useCallback(
+		(trackIndex = 0) => handleAddAnnotationAtMs(currentTimeMs, trackIndex),
+		[currentTimeMs, handleAddAnnotationAtMs],
 	);
 
 	useTimelineKeyboardShortcuts({
@@ -335,5 +344,7 @@ export function useTimelineEditorRuntime({
 		handleSplitClip,
 		handleAddAudio,
 		handleAddAnnotation,
+		handleAddAnnotationAtMs,
+		annotationQuickAddDurationMs: Math.min(defaultRegionDurationMs, totalMs),
 	};
 }

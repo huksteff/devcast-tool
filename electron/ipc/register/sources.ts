@@ -1,4 +1,6 @@
 import { execFile } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { app, BrowserWindow, desktopCapturer, ipcMain, systemPreferences } from "electron";
 import { reassertHudOverlayMousePassthrough } from "../../windows";
@@ -18,11 +20,26 @@ import { getScreenSourceIdForDisplay } from "./sourceMapping";
 
 const execFileAsync = promisify(execFile);
 const SOURCE_LIST_CACHE_TTL_MS = 1200;
+const sourcesRegisterDir = path.dirname(fileURLToPath(import.meta.url));
 let sourceListCache: {
 	key: string;
 	expiresAt: number;
 	value: Array<Record<string, unknown>>;
 } | null = null;
+
+type CaptureRegion = { x: number; y: number; width: number; height: number };
+let captureRegionSelector:
+	| { window: BrowserWindow; resolve: (source: SelectedSource | null) => void; settled: boolean }
+	| null = null;
+
+function settleCaptureRegionSelector(source: SelectedSource | null) {
+	const pending = captureRegionSelector;
+	if (!pending || pending.settled) return;
+	pending.settled = true;
+	captureRegionSelector = null;
+	pending.resolve(source);
+	if (!pending.window.isDestroyed()) pending.window.close();
+}
 
 function normalizeDesktopSourceName(value: string) {
 	return value.trim().replace(/\s+/g, " ").toLowerCase();
@@ -604,6 +621,102 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
 		}
 		createSourceSelectorWindow();
 	});
+	ipcMain.handle("get-capture-region-selector-layout", () => {
+		const displays = getScreen().getAllDisplays();
+		const left = Math.min(...displays.map((display) => display.bounds.x));
+		const top = Math.min(...displays.map((display) => display.bounds.y));
+		const right = Math.max(...displays.map((display) => display.bounds.x + display.bounds.width));
+		const bottom = Math.max(...displays.map((display) => display.bounds.y + display.bounds.height));
+		return {
+			bounds: { x: left, y: top, width: right - left, height: bottom - top },
+			displays: displays.map((display) => ({
+				id: String(display.id),
+				bounds: display.bounds,
+			})),
+		};
+	});
+	ipcMain.handle("open-capture-region-selector", async () => {
+		if (process.platform !== "win32") {
+			throw new Error("Capture-region recording is currently available on Windows only.");
+		}
+		if (captureRegionSelector && !captureRegionSelector.window.isDestroyed()) {
+			captureRegionSelector.window.focus();
+			return new Promise<SelectedSource | null>((resolve) => {
+				const existing = captureRegionSelector;
+				if (!existing) return resolve(null);
+				const previousResolve = existing.resolve;
+				existing.resolve = (source) => { previousResolve(source); resolve(source); };
+			});
+		}
+		const displays = getScreen().getAllDisplays();
+		const left = Math.min(...displays.map((display) => display.bounds.x));
+		const top = Math.min(...displays.map((display) => display.bounds.y));
+		const right = Math.max(...displays.map((display) => display.bounds.x + display.bounds.width));
+		const bottom = Math.max(...displays.map((display) => display.bounds.y + display.bounds.height));
+		const selector = new BrowserWindow({
+			x: left, y: top, width: Math.max(1, right - left), height: Math.max(1, bottom - top),
+			frame: false, transparent: true, alwaysOnTop: true, skipTaskbar: true,
+			resizable: false, hasShadow: false, show: false,
+			webPreferences: { preload: path.join(sourcesRegisterDir, "../../preload.mjs"), nodeIntegration: false, contextIsolation: true },
+		});
+		// This window is the only overlay that should receive input. Explicitly
+		// disable click-through so a prior HUD passthrough state cannot leak here.
+		selector.setIgnoreMouseEvents(false);
+		selector.setAlwaysOnTop(true, "screen-saver");
+		selector.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+		const result = new Promise<SelectedSource | null>((resolve) => {
+			captureRegionSelector = { window: selector, resolve, settled: false };
+		});
+		selector.on("closed", () => settleCaptureRegionSelector(null));
+		const query = { windowType: "capture-region-selector" };
+		if (process.env.VITE_DEV_SERVER_URL) {
+			void selector.loadURL(`${process.env.VITE_DEV_SERVER_URL}?${new URLSearchParams(query).toString()}`);
+		} else {
+			void selector.loadFile(path.join(sourcesRegisterDir, "../../../dist/index.html"), { query });
+		}
+		selector.webContents.once("did-finish-load", () => selector.show());
+		return result;
+	});
+	ipcMain.handle("complete-capture-region-selection", async (_, region: CaptureRegion) => {
+		const values = [region?.x, region?.y, region?.width, region?.height];
+		if (!values.every((value) => typeof value === "number" && Number.isFinite(value))) {
+			settleCaptureRegionSelector(null);
+			return null;
+		}
+		const rounded = { x: Math.round(region.x), y: Math.round(region.y), width: Math.round(region.width), height: Math.round(region.height) };
+		if (rounded.width < 24 || rounded.height < 24) {
+			settleCaptureRegionSelector(null);
+			return null;
+		}
+		const display = getScreen().getAllDisplays().find(({ bounds }) =>
+			rounded.x >= bounds.x && rounded.y >= bounds.y &&
+			rounded.x + rounded.width <= bounds.x + bounds.width && rounded.y + rounded.height <= bounds.y + bounds.height,
+		);
+		if (!display) {
+			settleCaptureRegionSelector(null);
+			return null;
+		}
+		const nativeSource = await desktopCapturer
+			.getSources({ types: ["screen"], thumbnailSize: { width: 0, height: 0 } })
+			.then((sources) => sources.find((candidate) => String(candidate.display_id) === String(display.id)))
+			.catch(() => undefined);
+		const source: SelectedSource = {
+			id: getScreenSourceIdForDisplay({
+				displayId: String(display.id),
+				matchedSourceId: nativeSource?.id,
+				platform: process.platform,
+			}),
+			name: "Selected area",
+			display_id: String(display.id),
+			sourceType: "screen",
+			captureRegion: rounded,
+		};
+		setSelectedSource(source);
+		broadcastSelectedSourceChange();
+		settleCaptureRegionSelector(source);
+		return source;
+	});
+	ipcMain.handle("cancel-capture-region-selection", () => settleCaptureRegionSelector(null));
 	ipcMain.handle("switch-to-editor", () => {
 		console.log("[switch-to-editor] Opening editor window");
 		const sourceSelectorWin = getSourceSelectorWindow();

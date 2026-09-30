@@ -2,13 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const localesDir = path.join(root, "src", "i18n", "locales");
+const localesDir = path.join(root, "src", "config", "locales");
 
+// Keep validation aligned with the languages shipped by the application. Other
+// locale directories may remain in the repository as untranslated source material.
+const supportedLocales = new Set(["en", "ru"]);
 const locales = fs
 	.readdirSync(localesDir)
 	.filter((entry) => {
 		const fullPath = path.join(localesDir, entry);
-		return fs.statSync(fullPath).isDirectory();
+		return supportedLocales.has(entry) && fs.statSync(fullPath).isDirectory();
 	})
 	.sort((left, right) => left.localeCompare(right));
 

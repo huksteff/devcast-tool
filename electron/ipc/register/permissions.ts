@@ -1,7 +1,21 @@
-import { ipcMain, shell, systemPreferences } from "electron";
+import { clipboard, ipcMain, shell, systemPreferences } from "electron";
 import { getMacPrivacySettingsUrl } from "../utils";
 
 export function registerPermissionHandlers() {
+	ipcMain.handle("clipboard:write-text", (_, text: unknown) => {
+		if (typeof text !== "string") {
+			return { success: false, error: "Clipboard text must be a string" };
+		}
+
+		try {
+			clipboard.writeText(text);
+			return { success: true };
+		} catch (error) {
+			console.error("Failed to write to clipboard:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
 	ipcMain.handle("open-external-url", async (_, url: string) => {
 		try {
 			// Security: only allow http/https URLs to prevent file:// or custom protocol abuse

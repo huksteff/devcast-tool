@@ -50,6 +50,11 @@ struct CaptureConfig {
     bool hasDisplayBounds = false;
     bool captureSystemAudio = false;
     bool captureMic = false;
+	bool hasRegionCrop = false;
+	double cropLeftFraction = 0;
+	double cropTopFraction = 0;
+	double cropWidthFraction = 0;
+	double cropHeightFraction = 0;
 };
 
 static bool parseSimpleJson(const std::string& json, CaptureConfig& config) {
@@ -142,6 +147,23 @@ static bool parseSimpleJson(const std::string& json, CaptureConfig& config) {
 
     config.captureSystemAudio = findBool("captureSystemAudio");
     config.captureMic = findBool("captureMic");
+
+	const auto findDouble = [&](const std::string& key) -> double {
+		auto pos = json.find("\"" + key + "\"");
+		if (pos == std::string::npos) return -1;
+		pos = json.find(':', pos);
+		if (pos == std::string::npos) return -1;
+		try { return std::stod(json.substr(pos + 1)); } catch (...) { return -1; }
+	};
+	const double cropLeft = findDouble("cropLeftFraction");
+	const double cropTop = findDouble("cropTopFraction");
+	const double cropWidth = findDouble("cropWidthFraction");
+	const double cropHeight = findDouble("cropHeightFraction");
+	if (cropLeft >= 0 && cropTop >= 0 && cropWidth > 0 && cropHeight > 0 && cropLeft + cropWidth <= 1.0001 && cropTop + cropHeight <= 1.0001) {
+		config.cropLeftFraction = cropLeft; config.cropTopFraction = cropTop;
+		config.cropWidthFraction = cropWidth; config.cropHeightFraction = cropHeight;
+		config.hasRegionCrop = true;
+	}
 
     int dx = findInt("displayX");
     int dy = findInt("displayY");
@@ -330,6 +352,10 @@ int main(int argc, char* argv[]) {
             std::cerr << "ERROR: Failed to initialize WGC capture session" << std::endl;
             return 1;
         }
+		if (config.hasRegionCrop && !session.initializeRegionCrop(config.cropLeftFraction, config.cropTopFraction, config.cropWidthFraction, config.cropHeightFraction)) {
+			std::cerr << "ERROR: Failed to initialize selected region crop" << std::endl;
+			return 1;
+		}
     }
 
     int captureWidth = config.width > 0 ? config.width : session.captureWidth();

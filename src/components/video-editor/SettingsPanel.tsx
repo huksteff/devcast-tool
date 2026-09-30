@@ -1,7 +1,15 @@
-import { Card, RadioGroup, Radio, Label, Description } from "@heroui/react";
+import { Card, RadioGroup, Radio, Label, Description, Tooltip } from "@heroui/react";
 import { ProgressBar } from "@heroui/react";
 import { ColorControl, ColorPalette } from "@/components/ui/color-picker";
-import { Palette, Trash as Trash2, UploadSimple as Upload } from "@phosphor-icons/react";
+import {
+	Palette,
+	Trash as Trash2,
+	UploadSimple as Upload,
+	ImageSquare,
+	VideoCamera,
+	Drop,
+	ArrowCounterClockwise,
+} from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
@@ -23,13 +31,15 @@ import { cn } from "@/lib/utils";
 import type { BuiltInWallpaper } from "@/lib/wallpapers";
 import {
 	BUILT_IN_WALLPAPERS,
+	BLURRED_RECORDING_WALLPAPER,
 	getAvailableWallpapers,
+	isBlurredRecordingWallpaper,
 	isVideoWallpaperSource,
 } from "@/lib/wallpapers";
 import { type AspectRatio } from "@/utils/aspectRatioUtils";
 import { useI18n, useScopedT } from "../../contexts/I18nContext";
-import type { AppLocale } from "../../i18n/config";
-import { SUPPORTED_LOCALES } from "../../i18n/config";
+import type { AppLocale } from "@/config/i18n";
+import { SUPPORTED_LOCALES } from "@/config/i18n";
 import { AnnotationSettingsPanel } from "./AnnotationSettingsPanel";
 import CaptionListPanel from "./CaptionListPanel";
 import type { CaptionRetimeSpan } from "./captionOps";
@@ -43,6 +53,7 @@ import { getDefaultBorderRadiusPercent } from "./projectPersistence";
 import { SliderControl } from "./SliderControl";
 import { WallpaperGrid } from "./WallpaperGrid";
 import { KeyboardShortcutsDialog } from "./TutorialHelp";
+import type { SourceAudioTrackMeta, SourceAudioTrackSettings } from "./audio/audioTypes";
 import type {
 	AnnotationRegion,
 	AnnotationType,
@@ -54,6 +65,7 @@ import type {
 	CursorStyle,
 	EditorEffectSection,
 	FigureData,
+	DrawingData,
 	Padding,
 	WebcamOverlaySettings,
 	WebcamPositionPreset,
@@ -149,7 +161,7 @@ const CLICK_EFFECT_COLOR_OPTIONS = [
 	"#F97316",
 ] as const;
 
-type BackgroundTab = "image" | "video" | "color" | "gradient";
+type BackgroundTab = "image" | "video" | "color" | "gradient" | "blur";
 function isHexWallpaper(value: string): boolean {
 	return /^#(?:[0-9a-f]{3}){1,2}$/i.test(value);
 }
@@ -168,6 +180,7 @@ function hexToRgba(hex: string, alpha: number) {
 }
 
 function getBackgroundTabForWallpaper(value: string): BackgroundTab {
+	if (isBlurredRecordingWallpaper(value)) return "blur";
 	if (GRADIENTS.includes(value)) {
 		return "gradient";
 	}
@@ -424,10 +437,16 @@ interface SettingsPanelProps {
 	selectedClipId?: string | null;
 	selectedClipSpeed?: number | null;
 	selectedClipMuted?: boolean | null;
+	selectedClipShowSourceAudio?: boolean | null;
+	sourceAudioTrackMeta?: SourceAudioTrackMeta;
+	selectedClipSourceAudioTrackSettings?: SourceAudioTrackSettings;
+	onSourceAudioTrackVolumeChange?: (id: string, volume: number) => void;
+	onSourceAudioTrackNormalizeChange?: (id: string, normalize: boolean) => void;
 	hasClipAudioOverrides?: boolean;
 	onResetClipAudio?: () => void;
 	onClipSpeedChange?: (speed: number) => void;
 	onClipMutedChange?: (muted: boolean) => void;
+	onClipShowSourceAudioChange?: (showSourceAudio: boolean) => void;
 	onClipDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
 	selectedAudioVolume?: number | null;
@@ -520,8 +539,10 @@ interface SettingsPanelProps {
 	onAnnotationTypeChange?: (id: string, type: AnnotationType) => void;
 	onAnnotationStyleChange?: (id: string, style: Partial<AnnotationRegion["style"]>) => void;
 	onAnnotationFigureDataChange?: (id: string, figureData: FigureData) => void;
+	onAnnotationDrawingDataChange?: (id: string, drawingData: DrawingData) => void;
 	onAnnotationBlurIntensityChange?: (id: string, intensity: number) => void;
 	onAnnotationBlurColorChange?: (id: string, color: string) => void;
+	onAnnotationStagesChange?: (id: string, stages: Partial<import("./types").AnnotationStages>) => void;
 	onAnnotationDelete?: (id: string) => void;
 	autoCaptions?: CaptionCue[];
 	autoCaptionSettings?: AutoCaptionSettings;
@@ -590,6 +611,7 @@ const BUILTIN_CURSOR_STYLE_OPTIONS: CursorStyleOption[] = [
 	{ value: "dot", label: "Dot" },
 	{ value: "figma", label: "Minimal" },
 	{ value: "win11-concept", label: "Win11 Concept" },
+	{ value: "custom-upload", label: "Uploaded" },
 ];
 
 const CAPTION_LANGUAGE_OPTIONS = [
@@ -607,15 +629,7 @@ const CAPTION_LANGUAGE_OPTIONS = [
 
 const APP_LANGUAGE_LABELS: Record<AppLocale, string> = {
 	en: "English",
-	es: "Español",
-	fr: "Français",
-	de: "Deutsch",
-	it: "Italiano",
-	nl: "Nederlands",
-	ko: "한국어",
-	"pt-BR": "Português",
-	"zh-CN": "簡體中文",
-	"zh-TW": "繁體中文",
+	ru: "Русский",
 };
 
 function loadPreviewImage(url: string) {
@@ -883,10 +897,16 @@ export function SettingsPanel({
 	selectedClipId,
 	selectedClipSpeed,
 	selectedClipMuted,
+	selectedClipShowSourceAudio,
+	sourceAudioTrackMeta = [],
+	selectedClipSourceAudioTrackSettings = {},
+	onSourceAudioTrackVolumeChange,
+	onSourceAudioTrackNormalizeChange,
 	hasClipAudioOverrides = false,
 	onResetClipAudio,
 	onClipSpeedChange,
 	onClipMutedChange,
+	onClipShowSourceAudioChange,
 	onClipDelete,
 	selectedAudioId,
 	selectedAudioVolume,
@@ -967,8 +987,10 @@ export function SettingsPanel({
 	onAnnotationTypeChange,
 	onAnnotationStyleChange,
 	onAnnotationFigureDataChange,
+	onAnnotationDrawingDataChange,
 	onAnnotationBlurIntensityChange,
 	onAnnotationBlurColorChange,
+	onAnnotationStagesChange,
 	onAnnotationDelete,
 	autoCaptions = [],
 	autoCaptionSettings = DEFAULT_AUTO_CAPTION_SETTINGS,
@@ -1007,6 +1029,14 @@ export function SettingsPanel({
 	);
 	const [experimentalUpdatesEnabled, setExperimentalUpdatesEnabled] = useState(false);
 	const [savingExperimentalUpdates, setSavingExperimentalUpdates] = useState(false);
+	const [uploadedCursorUrl, setUploadedCursorUrl] = useState<string | null>(() => {
+		try {
+			return localStorage.getItem("recordly:uploaded-cursor");
+		} catch {
+			return null;
+		}
+	});
+	const uploadedCursorInputRef = useRef<HTMLInputElement>(null);
 	const [internalActiveEffectSection] = useState<EditorEffectSection>("scene");
 	const activeEffectSection = activeEffectSectionProp ?? internalActiveEffectSection;
 	const removeBackgroundStateRef = useRef<{
@@ -1144,7 +1174,30 @@ export function SettingsPanel({
 		Partial<Record<string, string>>
 	>({});
 
-	const cursorPreviewUrls = builtInCursorPreviewUrls;
+	const cursorPreviewUrls = { ...builtInCursorPreviewUrls, "custom-upload": uploadedCursorUrl ?? undefined };
+	const handleUploadedCursor = (event: React.ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0];
+		if (!file) return;
+		if (!file.type.startsWith("image/") || file.size > 1024 * 1024) {
+			toast.error("Choose a PNG, SVG, WebP or GIF cursor smaller than 1 MB.");
+			event.target.value = "";
+			return;
+		}
+		const reader = new FileReader();
+		reader.onload = () => {
+			const url = typeof reader.result === "string" ? reader.result : null;
+			if (!url) return;
+			try {
+				localStorage.setItem("recordly:uploaded-cursor", url);
+				setUploadedCursorUrl(url);
+				onCursorStyleChange?.("custom-upload");
+			} catch {
+				toast.error("The cursor image is too large to save locally.");
+			}
+		};
+		reader.readAsDataURL(file);
+		event.target.value = "";
+	};
 	const showDevMotionControls = import.meta.env.DEV;
 	const cursorStyleOptions = BUILTIN_CURSOR_STYLE_OPTIONS;
 
@@ -1597,15 +1650,20 @@ export function SettingsPanel({
 			<section className="flex flex-col gap-4">
 				<div className="flex items-center justify-between gap-3">
 					<SectionLabel>{tSettings("background.title")}</SectionLabel>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="text-xs text-muted"
-						type="button"
-						onClick={resetBackgroundSection}
-					>
-						{t("common.actions.reset", "Reset")}
-					</Button>
+					<Tooltip>
+						<Button
+							variant="ghost"
+							size="sm"
+							isIconOnly
+							aria-label={t("common.actions.reset", "Reset")}
+							className="text-muted"
+							type="button"
+							onClick={resetBackgroundSection}
+						>
+							<ArrowCounterClockwise className="size-4" />
+						</Button>
+						<Tooltip.Content>{t("common.actions.reset", "Reset")}</Tooltip.Content>
+					</Tooltip>
 				</div>
 				<SliderControl
 					label={tSettings("effects.backgroundBlur")}
@@ -1628,23 +1686,27 @@ export function SettingsPanel({
 						}
 					}}
 					aria-label={tSettings("background.title", "Background type")}
-					className="grid w-full grid-cols-4 gap-2"
+					className="grid w-full grid-cols-5 gap-2"
 				>
 					{(
 						[
-							{ value: "image", label: tSettings("background.image") },
-							{ value: "video", label: tSettings("background.video", "Video") },
-							{ value: "color", label: tSettings("background.color") },
-							{ value: "gradient", label: tSettings("background.gradient") },
+							{ value: "image", label: tSettings("background.image"), icon: ImageSquare },
+							{ value: "video", label: tSettings("background.video", "Video"), icon: VideoCamera },
+							{ value: "color", label: tSettings("background.color"), icon: Palette },
+							{ value: "gradient", label: tSettings("background.gradient"), icon: Drop },
+							{ value: "blur", label: tSettings("background.blurVideo", "Blurred recording"), icon: Drop },
 						] as const
 					).map((option) => (
-						<ChoiceItem
-							key={option.value}
-							value={option.value}
-							className="flex-1 min-w-0 px-2"
-						>
-							{option.label}
-						</ChoiceItem>
+						<Tooltip key={option.value}>
+							<ChoiceItem
+								value={option.value}
+								aria-label={option.label}
+								className="aspect-square min-w-0 justify-center p-0"
+							>
+								<option.icon className="size-4" />
+							</ChoiceItem>
+							<Tooltip.Content>{option.label}</Tooltip.Content>
+						</Tooltip>
 					))}
 				</ChoiceGroup>
 
@@ -1703,6 +1765,18 @@ export function SettingsPanel({
 									]}
 								/>
 							</>
+						) : backgroundTab === "blur" ? (
+							<Button
+								variant="secondary"
+								className="mt-0 h-24 w-full gap-2"
+								onClick={() => {
+									onWallpaperChange(BLURRED_RECORDING_WALLPAPER);
+									onBackgroundBlurChange?.(Math.max(8, backgroundBlur));
+								}}
+							>
+								<Drop className="size-5" />
+								{tSettings("background.useBlurredRecording", "Use blurred recording")}
+							</Button>
 						) : backgroundTab === "color" ? (
 							<div className="mt-0 space-y-4">
 								<div className="flex flex-col gap-3">
@@ -1775,6 +1849,12 @@ export function SettingsPanel({
 								onAnnotationFigureDataChange(selectedAnnotation.id, figureData)
 						: undefined
 				}
+				onDrawingDataChange={
+					onAnnotationDrawingDataChange
+						? (drawingData) =>
+								onAnnotationDrawingDataChange(selectedAnnotation.id, drawingData)
+						: undefined
+				}
 				onBlurIntensityChange={
 					onAnnotationBlurIntensityChange
 						? (intensity) =>
@@ -1786,6 +1866,7 @@ export function SettingsPanel({
 						? (color) => onAnnotationBlurColorChange(selectedAnnotation.id, color)
 						: undefined
 				}
+				onStagesChange={onAnnotationStagesChange ? (stages) => onAnnotationStagesChange(selectedAnnotation.id, stages) : undefined}
 				onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
 			/>
 		);
@@ -2709,6 +2790,56 @@ export function SettingsPanel({
 						aria-label={tSettings("clip.mute", "Mute clip")}
 					/>
 				</label>
+				<label className="flex items-center justify-between py-2">
+					<span className="text-xs text-muted-foreground">
+						{tSettings("audio.showSourceTracks", "Show source tracks")}
+					</span>
+					<Switch
+						checked={selectedClipShowSourceAudio ?? false}
+						onCheckedChange={(showSourceAudio) =>
+							onClipShowSourceAudioChange?.(showSourceAudio)
+						}
+						aria-label={tSettings("audio.showSourceTracks", "Show source tracks")}
+					/>
+				</label>
+				{sourceAudioTrackMeta.length > 0 && (
+					<div className="flex flex-col gap-3 border-t border-separator pt-3">
+						<SectionLabel>
+							{tSettings("audio.sourceTracksTitle", "Clip Source Audio")}
+						</SectionLabel>
+						{sourceAudioTrackMeta.map((track) => {
+							const settings = selectedClipSourceAudioTrackSettings[track.id] ?? {
+								volume: 1,
+								normalize: false,
+							};
+							return (
+								<div key={track.id} className="flex flex-col gap-1.5">
+									<SliderControl
+										label={track.label}
+										value={settings.volume}
+										min={0}
+										max={2}
+										step={0.01}
+										onChange={(volume) =>
+											onSourceAudioTrackVolumeChange?.(track.id, volume)
+										}
+										formatValue={(volume) => `${Math.round(volume * 100)}%`}
+									/>
+									<label className="flex items-center justify-between py-1 text-xs text-muted-foreground">
+										<span>{tSettings("audio.normalize", "Normalize")}</span>
+										<Switch
+											aria-label={`${track.label}: ${tSettings("audio.normalize", "Normalize")}`}
+											checked={settings.normalize}
+											onCheckedChange={(normalize) =>
+												onSourceAudioTrackNormalizeChange?.(track.id, normalize)
+											}
+										/>
+									</label>
+								</div>
+							);
+						})}
+					</div>
+				)}
 				{hasClipAudioOverrides && onResetClipAudio && (
 					<Button type="button" variant="ghost" onClick={onResetClipAudio}>
 						{tSettings("clip.resetAudioSettings", "Reset audio settings")}
@@ -2836,6 +2967,22 @@ export function SettingsPanel({
 										</ChoiceItem>
 									))}
 								</ChoiceGroup>
+								<input
+									ref={uploadedCursorInputRef}
+									type="file"
+									accept="image/png,image/svg+xml,image/webp,image/gif"
+									className="hidden"
+									onChange={handleUploadedCursor}
+								/>
+								<Button
+									variant="outline"
+									size="sm"
+					className="w-full gap-2"
+					title="PNG, SVG, WebP или GIF; размер файла — до 1 МБ"
+									onClick={() => uploadedCursorInputRef.current?.click()}
+								>
+									<Upload className="h-4 w-4" /> Upload cursor
+								</Button>
 							</div>
 							<SliderControl
 								label={tSettings("effects.cursorSize")}

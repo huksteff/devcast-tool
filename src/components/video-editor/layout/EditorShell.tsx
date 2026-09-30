@@ -295,7 +295,6 @@ export function EditorShell(props: Props) {
 			>
 				<div className="relative z-10 flex min-h-0 flex-1 pt-3">
 					<EditorSidebar
-						onAccountClick={() => requestSignIn("account")}
 						panelContent={
 							library.open ? <RecordingLibraryPanel library={library} /> : undefined
 						}

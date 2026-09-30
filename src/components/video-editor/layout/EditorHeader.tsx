@@ -14,7 +14,12 @@ import type { useExportSettings } from "../export/useExportSettings";
 import type { useExportStatusViewModel } from "../export/useExportStatusViewModel";
 import type { useVideoEditorPresets } from "../presets/useVideoEditorPresets";
 import type { useProjectState } from "../state/useProjectState";
-import { APP_HEADER_ICON_BUTTON_CLASS, DiscordLinkButton, FeedbackDialog } from "../TutorialHelp";
+import {
+	APP_HEADER_ICON_BUTTON_CLASS,
+	FeedbackDialog,
+	RepositoryLinkButton,
+	WhatsNewDialog,
+} from "../TutorialHelp";
 import { EditorExportMenu } from "./EditorExportMenu";
 import { EditorPresetMenu } from "./EditorPresetMenu";
 
@@ -131,10 +136,6 @@ export function EditorHeader(props: Props) {
 				>
 					<FolderOpen className="h-4 w-4" />
 				</Button>
-				<div className="editor-header-community flex items-center gap-1">
-					<DiscordLinkButton />
-					<FeedbackDialog />
-				</div>
 				<div className="mx-2 h-4 w-px shrink-0 bg-separator" />
 				<Button
 					type="button"
@@ -158,6 +159,12 @@ export function EditorHeader(props: Props) {
 				>
 					<Redo2 className="h-4 w-4" />
 				</Button>
+				<div className="mx-2 h-4 w-px shrink-0 bg-separator" />
+				<div className="editor-header-community flex items-center gap-1">
+					<RepositoryLinkButton />
+					<WhatsNewDialog />
+					<FeedbackDialog />
+				</div>
 			</div>
 
 			<div

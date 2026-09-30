@@ -10,6 +10,7 @@ import {
 	Info,
 	TextItalic as Italic,
 	BoundingBox as SquareDashed,
+	PencilSimple as Pencil,
 	Trash as Trash2,
 	TextT as Type,
 	TextUnderline as Underline,
@@ -35,7 +36,16 @@ import { cn } from "@/lib/utils";
 import { useScopedT } from "../../contexts/I18nContext";
 import { AddCustomFontDialog } from "./AddCustomFontDialog";
 import { getArrowComponent } from "./ArrowSvgs";
-import type { AnnotationRegion, AnnotationType, ArrowDirection, FigureData } from "./types";
+import {
+	type AnnotationRegion,
+	type AnnotationType,
+	type AnnotationStages,
+	type AnnotationTransition,
+	ArrowDirection,
+	DrawingData,
+	FigureData,
+	DEFAULT_ANNOTATION_STAGES,
+} from "./types";
 
 interface AnnotationSettingsPanelProps {
 	annotation: AnnotationRegion;
@@ -43,8 +53,10 @@ interface AnnotationSettingsPanelProps {
 	onTypeChange: (type: AnnotationType) => void;
 	onStyleChange: (style: Partial<AnnotationRegion["style"]>) => void;
 	onFigureDataChange?: (figureData: FigureData) => void;
+	onDrawingDataChange?: (drawingData: DrawingData) => void;
 	onBlurIntensityChange?: (intensity: number) => void;
 	onBlurColorChange?: (color: string) => void;
+	onStagesChange?: (stages: Partial<AnnotationStages>) => void;
 	onDelete: () => void;
 }
 
@@ -67,13 +79,17 @@ export function AnnotationSettingsPanel({
 	onTypeChange,
 	onStyleChange,
 	onFigureDataChange,
+	onDrawingDataChange,
 	onBlurIntensityChange,
 	onBlurColorChange,
+	onStagesChange,
 	onDelete,
 }: AnnotationSettingsPanelProps) {
 	const t = useScopedT("editor");
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [customFonts, setCustomFonts] = useState<CustomFont[]>([]);
+	const stages = { ...DEFAULT_ANNOTATION_STAGES, ...annotation.stages };
+	const stageDurationLimit = Math.max(0, annotation.endMs - annotation.startMs);
 
 	const fontFamilies = useMemo(
 		() => FONT_FAMILY_VALUES.map((f) => ({ value: f.value, label: t(f.labelKey) })),
@@ -150,28 +166,29 @@ export function AnnotationSettingsPanel({
 							aria-label="Annotation type"
 							value={annotation.type}
 							onValueChange={(value) => onTypeChange(value as AnnotationType)}
-							className="grid grid-cols-4 gap-2"
+							className="grid grid-cols-5 gap-2"
 						>
 							<ChoiceItem
 								value="text"
 								aria-label={t("annotations.text")}
-								className="min-w-0 gap-1 px-1 text-xs"
+								title={t("annotations.text")}
+								className="aspect-square min-w-0 justify-center p-0"
 							>
 								<Type className="w-4 h-4" />
-								{t("annotations.text")}
 							</ChoiceItem>
 							<ChoiceItem
 								value="image"
 								aria-label={t("annotations.image")}
-								className="min-w-0 gap-1 px-1 text-xs"
+								title={t("annotations.image")}
+								className="aspect-square min-w-0 justify-center p-0"
 							>
 								<ImageIcon className="w-4 h-4" />
-								{t("annotations.image")}
 							</ChoiceItem>
 							<ChoiceItem
 								value="figure"
 								aria-label={t("annotations.arrow")}
-								className="min-w-0 gap-1 px-1 text-xs"
+								title={t("annotations.arrow")}
+								className="aspect-square min-w-0 justify-center p-0"
 							>
 								<svg
 									className="w-4 h-4"
@@ -186,17 +203,78 @@ export function AnnotationSettingsPanel({
 										strokeLinejoin="round"
 									/>
 								</svg>
-								{t("annotations.arrow")}
 							</ChoiceItem>
 							<ChoiceItem
 								value="blur"
 								aria-label={t("annotations.blur")}
-								className="min-w-0 gap-1 px-1 text-xs"
+								title={t("annotations.blur")}
+								className="aspect-square min-w-0 justify-center p-0"
 							>
 								<SquareDashed className="w-4 h-4" />
-								{t("annotations.blur")}
+							</ChoiceItem>
+							<ChoiceItem
+								value="drawing"
+								aria-label={t("annotations.draw", "Draw")}
+								title={t("annotations.draw", "Draw")}
+								className="aspect-square min-w-0 justify-center p-0"
+							>
+								<Pencil className="w-4 h-4" />
 							</ChoiceItem>
 						</ChoiceGroup>
+
+						{/* A timeline annotation has three visual phases. Durations move its two
+						 * internal boundaries; disabled phases are rendered as Wait. */}
+						<div className="rounded-lg border border-foreground/10 bg-foreground/[0.025] p-3 space-y-3">
+							<div className="flex items-center justify-between">
+								<div>
+									<div className="text-sm font-medium">{t("annotations.animationStages", "Animation stages")}</div>
+									<div className="text-xs text-muted-foreground">{t("annotations.stageFlow", "In → Wait → Out")}</div>
+								</div>
+								<div className="text-xs text-muted-foreground">{Math.round(stageDurationLimit)} ms</div>
+							</div>
+							{(["in", "out"] as const).map((phase) => {
+								const enabledKey = phase === "in" ? "inEnabled" : "outEnabled";
+								const durationKey = phase === "in" ? "inDurationMs" : "outDurationMs";
+								const transitionKey = phase === "in" ? "inTransition" : "outTransition";
+								const otherDuration = phase === "in" ? stages.outDurationMs : stages.inDurationMs;
+								const enabled = stages[enabledKey];
+								return <div key={phase} className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-center">
+									<ToggleButton isSelected={enabled} onClick={() => onStagesChange?.({ [enabledKey]: !enabled })} className="h-8 px-2 text-xs">
+										{phase === "in" ? t("annotations.stageIn", "In") : t("annotations.stageOut", "Out")}
+									</ToggleButton>
+									<Select value={stages[transitionKey]} onValueChange={(value) => onStagesChange?.({ [transitionKey]: value as AnnotationTransition })}>
+										<SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+									<SelectContent>
+										{([
+											"none",
+											"fade",
+											"pop",
+											"slide-up",
+											"slide-down",
+											...(annotation.type === "text" ? ["bounce", "zoom", "swing", "typewriter"] : []),
+											...(annotation.type === "drawing"
+												? [phase === "in" ? "draw-in" : "draw-out"]
+												: []),
+										] as AnnotationTransition[]).map((effect) => (
+											<SelectItem key={effect} value={effect}>
+												{effect === "draw-in"
+													? t("annotations.animationDrawIn", "Draw In")
+													: effect === "draw-out"
+														? t("annotations.animationDrawOut", "Draw Out")
+														: effect === "typewriter"
+															? t("annotations.animationTypewriter", "Typewriter")
+														: effect}
+											</SelectItem>
+										))}
+									</SelectContent>
+									</Select>
+									<div className="col-span-2 flex items-center gap-3">
+										<Slider aria-label={`${phase} duration`} value={[stages[durationKey]]} onValueChange={([value]) => onStagesChange?.({ [durationKey]: Math.min(value, Math.max(0, stageDurationLimit - otherDuration)) })} min={0} max={Math.max(0, stageDurationLimit - otherDuration)} step={10} className="flex-1" />
+										<span className="w-14 text-right text-xs tabular-nums text-muted-foreground">{Math.round(stages[durationKey])} ms</span>
+									</div>
+								</div>;
+							})}
+						</div>
 
 						{/* Text Content */}
 						{annotation.type === "text" && (
@@ -501,6 +579,26 @@ export function AnnotationSettingsPanel({
 						{annotation.type === "figure" && (
 							<div className="space-y-4">
 								<div>
+											<label className="text-sm font-medium text-foreground mb-3 block">
+										{t("annotations.shape", "Shape")}
+									</label>
+									<ChoiceGroup
+										value={annotation.figureData?.kind ?? "arrow"}
+										onValueChange={(kind) => onFigureDataChange?.({
+											...annotation.figureData!,
+											kind: kind as NonNullable<FigureData["kind"]>,
+										})}
+										className="grid grid-cols-5 gap-2"
+										aria-label={t("annotations.shape", "Shape")}
+									>
+										{["arrow", "rectangle", "ellipse", "line", "highlight"].map((kind) => (
+											<ChoiceItem key={kind} value={kind} className="min-w-0 px-1 text-[10px] capitalize">
+												{kind === "rectangle" ? "Rect" : kind}
+											</ChoiceItem>
+										))}
+									</ChoiceGroup>
+								</div>
+								<div>
 									<label className="text-sm font-medium text-foreground mb-3 block">
 										{t("annotations.arrowDirection")}
 									</label>
@@ -660,6 +758,36 @@ export function AnnotationSettingsPanel({
 										</div>
 									</div>
 								</div>
+							</div>
+						)}
+
+						{annotation.type === "drawing" && (
+							<div className="space-y-4">
+								<p className="rounded-md bg-foreground/5 p-3 text-xs text-muted-foreground">
+									{t("annotations.drawHint", "Drag with the left mouse button to add strokes. Right-click clears the drawing.")}
+								</p>
+								<div>
+									<label className="text-sm font-medium text-foreground mb-2 block">{t("annotations.brushWidth", "Brush width")}</label>
+									<Slider value={[annotation.drawingData?.strokeWidth ?? 4]} min={1} max={24} step={1}
+										onValueChange={([strokeWidth]) => onDrawingDataChange?.({
+											points: annotation.drawingData?.points ?? [],
+											strokes: annotation.drawingData?.strokes,
+											color: annotation.drawingData?.color ?? "#2563EB",
+											strokeWidth,
+										})} />
+								</div>
+								<ColorControl
+									label={t("annotations.brushColor", "Brush color")}
+									value={annotation.drawingData?.color ?? "#2563EB"}
+									colors={colorPalette}
+									compact
+										onChange={(color) => onDrawingDataChange?.({
+										points: annotation.drawingData?.points ?? [],
+										strokes: annotation.drawingData?.strokes,
+										strokeWidth: annotation.drawingData?.strokeWidth ?? 4,
+										color,
+									})}
+								/>
 							</div>
 						)}
 					</div>

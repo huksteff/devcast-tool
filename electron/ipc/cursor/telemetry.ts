@@ -194,6 +194,7 @@ export function getNormalizedCursorPoint() {
 		};
 	}
 
+
 	const sourceDisplayId = Number(selectedSource?.display_id);
 	const sourceDisplay = Number.isFinite(sourceDisplayId)
 		? (getScreen()

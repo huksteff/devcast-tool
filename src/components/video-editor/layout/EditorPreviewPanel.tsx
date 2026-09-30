@@ -216,8 +216,10 @@ export function EditorPreviewPanel(props: Props) {
 										onSelectAnnotation: handleSelectAnnotation,
 										onAnnotationPositionChange:
 											annotationCommands.handleAnnotationPositionChange,
-										onAnnotationSizeChange:
+									onAnnotationSizeChange:
 											annotationCommands.handleAnnotationSizeChange,
+									onAnnotationDrawingChange:
+											annotationCommands.handleAnnotationDrawingDataChange,
 									}}
 								/>
 							</div>

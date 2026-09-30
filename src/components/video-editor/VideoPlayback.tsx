@@ -27,6 +27,7 @@ import {
 import {
 	DEFAULT_WALLPAPER_PATH,
 	DEFAULT_WALLPAPER_RELATIVE_PATH,
+	isBlurredRecordingWallpaper,
 	isVideoWallpaperSource,
 } from "@/lib/wallpapers";
 import { type AspectRatio, formatAspectRatioForCSS } from "@/utils/aspectRatioUtils";
@@ -257,6 +258,7 @@ interface VideoPlaybackProps {
 	onSelectAnnotation?: (id: string | null) => void;
 	onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
 	onAnnotationSizeChange?: (id: string, size: { width: number; height: number }) => void;
+	onAnnotationDrawingChange?: (id: string, drawing: import("./types").DrawingData) => void;
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
 	cursorStyle?: CursorStyle;
@@ -342,6 +344,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			onSelectAnnotation,
 			onAnnotationPositionChange,
 			onAnnotationSizeChange,
+			onAnnotationDrawingChange,
 			cursorTelemetry = [],
 			showCursor = false,
 			cursorStyle = DEFAULT_CURSOR_STYLE,
@@ -2262,6 +2265,15 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 						return;
 					}
 
+					if (isBlurredRecordingWallpaper(wallpaper)) {
+						const videoSrc = await getRenderableAssetUrl(videoPath);
+						if (mounted) {
+							setResolvedWallpaper(videoSrc);
+							setResolvedWallpaperKind("video");
+						}
+						return;
+					}
+
 					if (isVideoWallpaperSource(wallpaper)) {
 						const videoSrc = await getRenderableVideoUrl(wallpaper);
 						if (mounted) {
@@ -2312,7 +2324,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				mounted = false;
 				revokeResolvedWallpaper();
 			};
-		}, [wallpaper]);
+		}, [videoPath, wallpaper]);
 
 		const isImageUrl =
 			resolvedWallpaperKind === "image" &&
@@ -2781,12 +2793,16 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											onPositionChange={(id, position) =>
 												onAnnotationPositionChange?.(id, position)
 											}
-											onSizeChange={(id, size) =>
-												onAnnotationSizeChange?.(id, size)
-											}
+									onSizeChange={(id, size) =>
+											onAnnotationSizeChange?.(id, size)
+										}
+										onDrawingChange={(id, drawing) =>
+											onAnnotationDrawingChange?.(id, drawing)
+										}
 											onClick={handleAnnotationClick}
 											zIndex={annotation.zIndex}
 											isSelectedBoost={annotation.id === selectedAnnotationId}
+											currentTimeMs={timeMs}
 										/>
 									));
 								})()}

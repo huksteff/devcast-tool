@@ -1,5 +1,4 @@
 import {
-	UserCircle,
 	Camera,
 	ClosedCaptioning,
 	Cursor,
@@ -9,7 +8,6 @@ import {
 import {
 	ToggleButtonGroup,
 	ToggleButton,
-	Button,
 	Tooltip,
 	Card,
 	Switch,
@@ -24,7 +22,6 @@ import type { EditorEffectSection } from "../types";
 
 type Props = {
 	panelContent?: ReactNode;
-	onAccountClick?: () => void;
 	t: ReturnType<typeof useI18n>["t"];
 	activeSection: EditorEffectSection;
 	setActiveSection: (section: EditorEffectSection) => void;
@@ -37,7 +34,6 @@ export function EditorSidebar({
 	setActiveSection,
 	settingsPanelProps,
 	panelContent,
-	onAccountClick,
 }: Props) {
 	const [advancedSections, setAdvancedSections] = useState<Record<string, boolean>>({});
 	const advanced = advancedSections[activeSection] ?? false;
@@ -100,18 +96,6 @@ export function EditorSidebar({
 						</Tooltip>
 					))}
 				</ToggleButtonGroup>
-				<Tooltip>
-					<Button
-						variant="ghost"
-						isIconOnly
-						className="mt-auto"
-						aria-label="Recordly account"
-						onPress={onAccountClick}
-					>
-						<UserCircle className="size-5" />
-					</Button>
-					<Tooltip.Content placement="right">Account</Tooltip.Content>
-				</Tooltip>
 			</nav>
 			<aside
 				aria-label={panelContent ? "Videos" : undefined}

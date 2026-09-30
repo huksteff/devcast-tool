@@ -41,7 +41,7 @@ export default function Row({
 	return (
 		<div
 			data-timeline-row={id}
-			className="bg-transparent relative"
+			className="bg-foreground/[0.018] border-t border-foreground/[0.10] relative"
 			style={{
 				...rowWrapperStyle,
 				...(embedded || caption

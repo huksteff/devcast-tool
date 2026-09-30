@@ -365,6 +365,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			canPlaceCaptionAtMs,
 			addCaptionAtMs,
 			resolveCaptionSpanAtMs,
+			handleAddAnnotationAtMs,
+			annotationQuickAddDurationMs,
 		} = useTimelineEditorRuntime({
 			ref,
 			videoDuration,
@@ -511,6 +513,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							onAddZoomAtMs={addZoomAtMs}
 							canPlaceZoomAtMs={canPlaceZoomAtMs}
 							onAddCaptionAtMs={addCaptionAtMs}
+							onAddAnnotationAtMs={handleAddAnnotationAtMs}
+							annotationQuickAddDurationMs={annotationQuickAddDurationMs}
 							canPlaceCaptionAtMs={canPlaceCaptionAtMs}
 							resolveCaptionSpanAtMs={resolveCaptionSpanAtMs}
 							captionsEnabled={captionsEnabled}

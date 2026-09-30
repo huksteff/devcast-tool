@@ -121,7 +121,7 @@ export function useSourceAudioTrackSettings({
 			setSourceAudioTrackSettingsByClip((prev) => {
 				const prevClip = prev[selectedClipId] ?? defaultSourceAudioTrackSettings;
 				const nextVolume = Number.isFinite(volume)
-					? Math.max(0, Math.min(1, volume))
+					? Math.max(0, Math.min(2, volume))
 					: (prevClip[id]?.volume ?? 1);
 				const prevNormalize = prevClip[id]?.normalize ?? false;
 				if (

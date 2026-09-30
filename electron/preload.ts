@@ -531,6 +531,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	selectSource: (source: ProcessedDesktopSource) => {
 		return ipcRenderer.invoke("select-source", source);
 	},
+	openCaptureRegionSelector: () => ipcRenderer.invoke("open-capture-region-selector"),
+	getCaptureRegionSelectorLayout: () => ipcRenderer.invoke("get-capture-region-selector-layout"),
+	completeCaptureRegionSelection: (region: {
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+	}) => ipcRenderer.invoke("complete-capture-region-selection", region),
+	cancelCaptureRegionSelection: () => ipcRenderer.invoke("cancel-capture-region-selection"),
 	showSourceHighlight: (source: ProcessedDesktopSource) => {
 		return ipcRenderer.invoke("show-source-highlight", source);
 	},
@@ -665,6 +674,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		) => callback(payload);
 		ipcRenderer.on("cursor-state-changed", listener);
 		return () => ipcRenderer.removeListener("cursor-state-changed", listener);
+	},
+	copyTextToClipboard: (text: string) => {
+		return ipcRenderer.invoke("clipboard:write-text", text);
 	},
 	openExternalUrl: (url: string) => {
 		return ipcRenderer.invoke("open-external-url", url);

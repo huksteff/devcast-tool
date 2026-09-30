@@ -1,5 +1,9 @@
 # Builds the Windows installer and keeps this window open to show the result.
+param(
+	[switch]$NoPause
+)
 $ErrorActionPreference = "Stop"
+$buildFailed = $false
 
 try {
 	Set-Location $PSScriptRoot
@@ -32,8 +36,15 @@ try {
 		ForEach-Object { Write-Host " - $($_.Name)" -ForegroundColor Green }
 	Write-Host "Portable folder: $releaseDirectory\win-unpacked" -ForegroundColor Green
 } catch {
+	$buildFailed = $true
 	Write-Host "`nBuild failed: $($_.Exception.Message)" -ForegroundColor Red
 } finally {
-	Write-Host "`nPress any key to close..." -ForegroundColor Yellow
-	$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+	if (-not $NoPause) {
+		Write-Host "`nPress any key to close..." -ForegroundColor Yellow
+		$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+	}
+}
+
+if ($buildFailed) {
+	exit 1
 }
