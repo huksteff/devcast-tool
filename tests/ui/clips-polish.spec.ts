@@ -56,7 +56,7 @@ test("cloud sharing is reachable from Export and the account control", async ({ 
 	page.on("pageerror", (error) => errors.push(error.message));
 	await page.getByRole("button", { name: "Export", exact: true }).click();
 	await page.getByRole("button", { name: "Create share link", exact: true }).click();
-	await expect(page.getByRole("heading", { name: "Sign into Recordly" })).toBeVisible();
+	await expect(page.getByRole("heading", { name: "Sign into DevCast" })).toBeVisible();
 	await expect(
 		page.getByText("Sign in to publish this video and manage its shared link."),
 	).toBeVisible();
@@ -65,7 +65,7 @@ test("cloud sharing is reachable from Export and the account control", async ({ 
 	await expect(dialog.locator(".modal__body")).toBeVisible();
 	expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
 	await page.getByRole("button", { name: "Close", exact: true }).click();
-	await page.getByRole("button", { name: "Recordly account", exact: true }).click();
-	await expect(page.getByRole("heading", { name: "Sign into Recordly" })).toBeVisible();
+	await page.getByRole("button", { name: "DevCast account", exact: true }).click();
+	await expect(page.getByRole("heading", { name: "Sign into DevCast" })).toBeVisible();
 	expect(errors).toEqual([]);
 });

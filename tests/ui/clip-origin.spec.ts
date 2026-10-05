@@ -41,7 +41,7 @@ test("selecting an untouched clip does not introduce a leading gap", async ({ pa
 	await page.evaluate(() => {
 		window.electronAPI.loadCurrentProjectFile = async () => ({
 			success: true,
-			path: "/test.recordly",
+			path: "/test.devcast",
 		});
 		window.dispatchEvent(new Event("test-save-project"));
 	});

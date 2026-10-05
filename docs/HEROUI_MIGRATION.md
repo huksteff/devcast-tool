@@ -1,8 +1,8 @@
 # HeroUI UI branch
 
 This migration is isolated on `codex/heroui-ui`, based on `9693ad7` from
-`codex/clip-controls`. It lives in the sibling `recordly-heroui` Git worktree.
-The original `recordly` checkout and its uncommitted files were left intact.
+`codex/clip-controls`. It lives in the sibling `devcast-heroui` Git worktree.
+The original `devcast` checkout and its uncommitted files were left intact.
 Nothing has been merged or pushed.
 
 ## Try it
@@ -10,15 +10,15 @@ Nothing has been merged or pushed.
 From the original checkout:
 
 ```sh
-cd ../recordly-heroui
+cd ../devcast-heroui
 npm run dev
 ```
 
-A fresh checkout needs `npm install` first, including Recordly's normal native
+A fresh checkout needs `npm install` first, including DevCast's normal native
 helper installation. The dependency lockfile belongs to this branch.
 
 To go back, close the development app and run `npm run dev` from the original
-`recordly` directory. No reset, stash, or file restoration is needed. You can
+`devcast` directory. No reset, stash, or file restoration is needed. You can
 keep both checkouts while comparing them. To undo just the UI refinement pass,
 use `git revert <refinement-commit>`. To undo the entire migration after merging,
 revert the branch commits newest-first, including the original `93be193` migration.
@@ -38,7 +38,7 @@ live behind a per-section switch; changing views preserves project values.
 Background types and other exclusive choices use TagGroup. The header follows
 native fullscreen state and keeps project titles centered at narrow widths. Floating layers keep one
 surface instead of nesting cards and shadows. Timeline blocks retain the original
-Recordly palette in both themes. Inspector controls use compact 12–13px text and
+DevCast palette in both themes. Inspector controls use compact 12–13px text and
 32–36px controls, with 14px section titles. Image and video wallpaper grids share
 a plus tile for importing and a small remove control on custom tiles, revealed
 on hover or keyboard focus. The background gallery slides left/right with tab order.
@@ -57,7 +57,7 @@ selection ignores pointer jitter up to 4px, including clicks on trim handles,
 so selecting a clip cannot introduce a leading gap. Project and preset names truncate inside their rows.
 The recorder keeps its compact desktop layout.
 
-The adapters in `src/components/ui` translate existing Recordly state/callback
+The adapters in `src/components/ui` translate existing DevCast state/callback
 props to HeroUI APIs. The timeline geometry, crop handles, video canvas, caption
 canvas editor, waveform, and native file inputs remain application-specific;
 HeroUI does not replace those editing engines. Recording/export/project logic

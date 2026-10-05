@@ -3,6 +3,30 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import path from "node:path";
 
 const MANIFEST_FILE_NAME = "helpers-manifest.json";
+const MANIFEST_WRITE_ATTEMPTS = 12;
+const MANIFEST_WRITE_RETRY_DELAY_MS = 250;
+
+function waitForManifestWriteRetry() {
+	// Windows Defender, Explorer previews and indexers can briefly hold this small
+	// generated file open immediately after a helper has been staged.
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, MANIFEST_WRITE_RETRY_DELAY_MS);
+}
+
+function writeManifestWithRetry(manifestPath, content) {
+	let lastError;
+	for (let attempt = 1; attempt <= MANIFEST_WRITE_ATTEMPTS; attempt += 1) {
+		try {
+			writeFileSync(manifestPath, content);
+			return;
+		} catch (error) {
+			lastError = error;
+			const retryable = error && typeof error === "object" && ["UNKNOWN", "EBUSY", "EPERM"].includes(error.code);
+			if (!retryable || attempt === MANIFEST_WRITE_ATTEMPTS) throw error;
+			waitForManifestWriteRetry();
+		}
+	}
+	throw lastError;
+}
 
 function getPlatformArchDir(platform, arch) {
 	if (platform !== "win32") {
@@ -116,7 +140,7 @@ export function updateNativeHelperManifest({
 		updatedAt: new Date().toISOString(),
 	};
 
-	writeFileSync(`${manifestPath}`, `${JSON.stringify(manifest, null, 2)}\n`);
+	writeManifestWithRetry(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 	return manifestPath;
 }
 

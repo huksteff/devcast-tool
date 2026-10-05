@@ -175,6 +175,18 @@ export function useZoomRegionCommands({
 		},
 		[selectedZoomId, setSelectedZoomId, setZoomRegions],
 	);
+	const handleZoomDuplicate = useCallback(
+		(region: ZoomRegion) => {
+			const duration = Math.max(1, region.endMs - region.startMs);
+			const id = `zoom-${nextZoomIdRef.current++}`;
+			setZoomRegions((current) => {
+				const startMs = current.reduce((latest, candidate) => Math.max(latest, candidate.endMs), region.endMs) + 100;
+				return [...current, { ...structuredClone(region), id, startMs, endMs: startMs + duration }];
+			});
+			setSelectedZoomId(id);
+		},
+		[nextZoomIdRef, setSelectedZoomId, setZoomRegions],
+	);
 
 	return {
 		handleSelectZoom,
@@ -185,5 +197,6 @@ export function useZoomRegionCommands({
 		handleZoomDepthChange,
 		handleZoomModeChange,
 		handleZoomDelete,
+		handleZoomDuplicate,
 	};
 }

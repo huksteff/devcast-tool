@@ -3,6 +3,8 @@ import type { useShortcuts } from "@/contexts/ShortcutsContext";
 import { matchesShortcut } from "@/lib/shortcuts";
 import type { useTimelineState } from "../state/useTimelineState";
 import type { VideoPlaybackRef } from "../VideoPlayback";
+import type { useAnnotationRegionCommands } from "./useAnnotationRegionCommands";
+import type { useZoomRegionCommands } from "./useZoomRegionCommands";
 
 type Input = {
 	timeline: ReturnType<typeof useTimelineState>;
@@ -12,6 +14,8 @@ type Input = {
 	handleUndo: () => void;
 	handleRedo: () => void;
 	startPlayback: () => void;
+	annotationCommands: ReturnType<typeof useAnnotationRegionCommands>;
+	zoomCommands: ReturnType<typeof useZoomRegionCommands>;
 };
 
 export function useEditorGlobalInteractions({
@@ -22,8 +26,15 @@ export function useEditorGlobalInteractions({
 	handleUndo,
 	handleRedo,
 	startPlayback,
+	annotationCommands,
+	zoomCommands,
 }: Input) {
 	const heldPlaybackKey = useRef<string | null>(null);
+	const timelineClipboard = useRef<
+		| { kind: "annotation"; region: (typeof timeline.annotationRegions)[number] }
+		| { kind: "zoom"; region: (typeof timeline.zoomRegions)[number] }
+		| null
+	>(null);
 
 	useEffect(() => {
 		const consumePlaybackKey = (event: KeyboardEvent) => {
@@ -56,6 +67,31 @@ export function useEditorGlobalInteractions({
 				target?.isContentEditable;
 			const primaryModifier = isMac ? event.metaKey : event.ctrlKey;
 			const key = event.key.toLowerCase();
+			if (primaryModifier && !event.altKey && (key === "c" || key === "x" || key === "v") && !editable) {
+				if (key === "v") {
+					if (!timelineClipboard.current) return;
+					event.preventDefault();
+					if (timelineClipboard.current.kind === "annotation") annotationCommands.handleAnnotationDuplicate(timelineClipboard.current.region);
+					else zoomCommands.handleZoomDuplicate(timelineClipboard.current.region);
+					return;
+				}
+				const annotation = timeline.selectedAnnotationId
+					? timeline.annotationRegions.find((region) => region.id === timeline.selectedAnnotationId)
+					: undefined;
+				const zoom = timeline.selectedZoomId
+					? timeline.zoomRegions.find((region) => region.id === timeline.selectedZoomId)
+					: undefined;
+				if (!annotation && !zoom) return;
+				event.preventDefault();
+				if (annotation) {
+					timelineClipboard.current = { kind: "annotation", region: structuredClone(annotation) };
+					if (key === "x") annotationCommands.handleAnnotationDelete(annotation.id);
+				} else if (zoom) {
+					timelineClipboard.current = { kind: "zoom", region: structuredClone(zoom) };
+					if (key === "x") zoomCommands.handleZoomDelete(zoom.id);
+				}
+				return;
+			}
 
 			if (primaryModifier && !event.altKey && key === "z") {
 				if (!editable) {
@@ -89,7 +125,7 @@ export function useEditorGlobalInteractions({
 			window.removeEventListener("keyup", handleKeyUp, { capture: true });
 			window.removeEventListener("blur", releasePlaybackKey);
 		};
-	}, [shortcuts, isMac, handleUndo, handleRedo, startPlayback, videoPlaybackRef]);
+	}, [annotationCommands, shortcuts, isMac, handleUndo, handleRedo, startPlayback, timeline, videoPlaybackRef, zoomCommands]);
 
 	useEffect(() => {
 		if (

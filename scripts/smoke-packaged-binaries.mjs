@@ -5,8 +5,8 @@ import path from "node:path";
 const projectRoot = process.cwd();
 const releaseRoot = path.join(projectRoot, "release");
 const packageJson = JSON.parse(readFileSync(path.join(projectRoot, "package.json"), "utf8"));
-const productName = packageJson.productName ?? packageJson.name ?? "Recordly";
-const packageName = packageJson.name ?? "recordly";
+const productName = packageJson.productName ?? packageJson.name ?? "DevCast";
+const packageName = packageJson.name ?? "devcast";
 
 function relativePath(filePath) {
 	return path.relative(projectRoot, filePath).replaceAll("\\", "/");
@@ -111,7 +111,7 @@ function assertPackagedAppExecutable(unpackedRoot) {
 			? [
 					path.join(appDir, `${productName}.exe`),
 					path.join(appDir, `${packageName}.exe`),
-					path.join(appDir, "Recordly.exe"),
+					path.join(appDir, "DevCast.exe"),
 				]
 			: [
 					path.join(appDir, packageName),
@@ -167,7 +167,7 @@ function getExpectedNativeHelperFiles(archTag) {
 				executable: true,
 			},
 			{
-				name: "recordly-gpu-export.exe",
+				name: "devcast-gpu-export.exe",
 				label: "Windows GPU export helper",
 				executable: true,
 			},
@@ -177,7 +177,7 @@ function getExpectedNativeHelperFiles(archTag) {
 		];
 		if (archTag === "win32-x64") {
 			helpers.push({
-				name: "recordly-nvidia-cuda-compositor.exe",
+				name: "devcast-nvidia-cuda-compositor.exe",
 				label: "NVIDIA CUDA compositor helper",
 				executable: true,
 			});
@@ -188,14 +188,14 @@ function getExpectedNativeHelperFiles(archTag) {
 	if (archTag.startsWith("darwin-")) {
 		return [
 			{
-				name: "recordly-screencapturekit-helper",
+				name: "devcast-screencapturekit-helper",
 				label: "ScreenCaptureKit helper",
 				executable: true,
 			},
-			{ name: "recordly-window-list", label: "Window list helper", executable: true },
-			{ name: "recordly-system-cursors", label: "System cursor helper", executable: true },
+			{ name: "devcast-window-list", label: "Window list helper", executable: true },
+			{ name: "devcast-system-cursors", label: "System cursor helper", executable: true },
 			{
-				name: "recordly-native-cursor-monitor",
+				name: "devcast-native-cursor-monitor",
 				label: "Native cursor monitor helper",
 				executable: true,
 			},

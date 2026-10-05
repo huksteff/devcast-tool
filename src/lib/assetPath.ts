@@ -183,7 +183,7 @@ async function resolveLocalMediaUrl(filePath: string): Promise<string> {
 }
 
 function isBundledAssetPath(asset: string): boolean {
-	return asset.startsWith("/wallpapers/") || asset.startsWith("/app-icons/");
+	return asset.startsWith("/wallpapers/") || asset.startsWith("/content/icons/");
 }
 
 export async function getRenderableVideoUrl(asset: string): Promise<string> {

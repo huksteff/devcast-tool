@@ -1,4 +1,4 @@
-// Friendly reminder: Recordly is licensed under AGPL-3.0, author @webadderall, repo-> https://github.com/webadderall/Recordly
+// Friendly reminder: DevCast is licensed under AGPL-3.0, author @webadderall, repo-> https://github.com/webadderall/DevCast
 // Please use this code with the right attribution.
 
 export interface SpringState {

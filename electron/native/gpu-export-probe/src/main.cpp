@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-#ifdef RECORDLY_GPU_EXPORT_ENABLE_NVENC_SDK
+#ifdef DEVCAST_GPU_EXPORT_ENABLE_NVENC_SDK
 #include "NvEncoder/NvEncoderD3D11.h"
 #endif
 
@@ -686,7 +686,7 @@ public:
             std::fclose(nvencOutputFile_);
             nvencOutputFile_ = nullptr;
         }
-#ifdef RECORDLY_GPU_EXPORT_ENABLE_NVENC_SDK
+#ifdef DEVCAST_GPU_EXPORT_ENABLE_NVENC_SDK
         nvencEncoder_.reset();
 #endif
         sinkWriter_.Reset();
@@ -1864,7 +1864,7 @@ float4 main(PSIn input) : SV_Target {
     }
 
     bool createNvencSdkEncoder() {
-#ifdef RECORDLY_GPU_EXPORT_ENABLE_NVENC_SDK
+#ifdef DEVCAST_GPU_EXPORT_ENABLE_NVENC_SDK
         try {
             nvencEncoder_ = std::make_unique<NvEncoderD3D11>(
                 device_.Get(),
@@ -2906,7 +2906,7 @@ float4 main(PSIn input) : SV_Target {
     }
 
     bool writeNvencSdkFrame(UINT frameIndex) {
-#ifdef RECORDLY_GPU_EXPORT_ENABLE_NVENC_SDK
+#ifdef DEVCAST_GPU_EXPORT_ENABLE_NVENC_SDK
         if (!nvencEncoder_) {
             std::cerr << "[gpu-export] NVENC SDK encoder is not initialized" << std::endl;
             return false;
@@ -2932,7 +2932,7 @@ float4 main(PSIn input) : SV_Target {
     }
 
     bool finalizeNvencSdk() {
-#ifdef RECORDLY_GPU_EXPORT_ENABLE_NVENC_SDK
+#ifdef DEVCAST_GPU_EXPORT_ENABLE_NVENC_SDK
         if (!nvencEncoder_) {
             return true;
         }
@@ -3365,7 +3365,7 @@ float4 main(PSIn input) : SV_Target {
     std::vector<ComPtr<ID3D11VideoProcessorOutputView>> nv12OutputViews_;
     std::vector<ComPtr<ID3D11VideoProcessorOutputView>> bgraNv12OutputViews_;
     ComPtr<IMFSinkWriter> sinkWriter_;
-#ifdef RECORDLY_GPU_EXPORT_ENABLE_NVENC_SDK
+#ifdef DEVCAST_GPU_EXPORT_ENABLE_NVENC_SDK
     std::unique_ptr<NvEncoderD3D11> nvencEncoder_;
 #endif
     FILE* nvencOutputFile_ = nullptr;

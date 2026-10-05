@@ -27,8 +27,8 @@ import {
 
 const projectRoot = process.cwd();
 const packageJson = JSON.parse(readFileSync(path.join(projectRoot, "package.json"), "utf8"));
-const productName = packageJson.productName ?? packageJson.name ?? "Recordly";
-const expectedBundleId = "dev.recordly.app";
+const productName = packageJson.productName ?? packageJson.name ?? "DevCast";
+const expectedBundleId = "dev.devcast.app";
 const commandTimeoutMs = 5 * 60 * 1000;
 const maxReportDetailLength = 4_000;
 
@@ -391,7 +391,7 @@ export function verifyMacOSDistribution(argv = process.argv.slice(2)) {
 		startedAt: new Date().toISOString(),
 	};
 	const check = createRecorder(report);
-	const tempRoot = mkdtempSync(path.join(os.tmpdir(), "recordly-macos-distribution-"));
+	const tempRoot = mkdtempSync(path.join(os.tmpdir(), "devcast-macos-distribution-"));
 	let mountedDmgPath = null;
 
 	try {

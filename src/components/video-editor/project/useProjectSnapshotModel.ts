@@ -46,7 +46,7 @@ export function useProjectSnapshotModel({
 			currentSourcePath?.split(/[\\/]/).pop() ??
 			"";
 		return (
-			fileName.replace(/\.recordly$/i, "").replace(/\.[^.]+$/, "") ||
+			fileName.replace(/\.devcast$/i, "").replace(/\.[^.]+$/, "") ||
 			t("editor.project.untitled", "Untitled")
 		);
 	}, [project.currentProjectPath, currentSourcePath, t]);

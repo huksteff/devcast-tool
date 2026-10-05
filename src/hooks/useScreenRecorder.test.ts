@@ -182,16 +182,16 @@ describe("stopAndDiscardNativeCapture", () => {
 			stopAndDiscardNativeCapture({
 				stopNativeScreenRecording: vi.fn().mockResolvedValue({
 					success: true,
-					path: "C:\\Recordly\\warm-start.mp4",
+					path: "C:\\DevCast\\warm-start.mp4",
 				}),
 				deleteRecordingFile,
 			}),
 		).resolves.toEqual({
 			stopSucceeded: true,
 			deleteSucceeded: true,
-			path: "C:\\Recordly\\warm-start.mp4",
+			path: "C:\\DevCast\\warm-start.mp4",
 		});
-		expect(deleteRecordingFile).toHaveBeenCalledWith("C:\\Recordly\\warm-start.mp4");
+		expect(deleteRecordingFile).toHaveBeenCalledWith("C:\\DevCast\\warm-start.mp4");
 	});
 
 	it("reports an unsuccessful stop without deleting or confirming cleanup", async () => {
@@ -220,14 +220,14 @@ describe("stopAndDiscardNativeCapture", () => {
 			stopAndDiscardNativeCapture({
 				stopNativeScreenRecording: vi.fn().mockResolvedValue({
 					success: true,
-					path: "C:\\Recordly\\warm-start.mp4",
+					path: "C:\\DevCast\\warm-start.mp4",
 				}),
 				deleteRecordingFile: vi.fn().mockRejectedValue(deleteError),
 			}),
 		).resolves.toEqual({
 			stopSucceeded: true,
 			deleteSucceeded: false,
-			path: "C:\\Recordly\\warm-start.mp4",
+			path: "C:\\DevCast\\warm-start.mp4",
 			error: deleteError,
 		});
 	});

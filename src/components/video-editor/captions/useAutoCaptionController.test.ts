@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({ refs: [] as { current: unknown }[], index: 0 }
 vi.mock("react", () => ({
 	useCallback: (callback: unknown) => callback,
 	useEffect: () => {},
+	useState: (initial: unknown) => [initial, vi.fn()],
 	useRef: (current: unknown) => {
 		const index = state.index++;
 		state.refs[index] ??= { current };

@@ -544,6 +544,7 @@ interface SettingsPanelProps {
 	onAnnotationBlurColorChange?: (id: string, color: string) => void;
 	onAnnotationStagesChange?: (id: string, stages: Partial<import("./types").AnnotationStages>) => void;
 	onAnnotationDelete?: (id: string) => void;
+	onAnnotationDuplicate?: (annotation: AnnotationRegion) => void;
 	autoCaptions?: CaptionCue[];
 	autoCaptionSettings?: AutoCaptionSettings;
 	whisperExecutablePath?: string | null;
@@ -992,6 +993,7 @@ export function SettingsPanel({
 	onAnnotationBlurColorChange,
 	onAnnotationStagesChange,
 	onAnnotationDelete,
+	onAnnotationDuplicate,
 	autoCaptions = [],
 	autoCaptionSettings = DEFAULT_AUTO_CAPTION_SETTINGS,
 	whisperModelPath,
@@ -1031,7 +1033,7 @@ export function SettingsPanel({
 	const [savingExperimentalUpdates, setSavingExperimentalUpdates] = useState(false);
 	const [uploadedCursorUrl, setUploadedCursorUrl] = useState<string | null>(() => {
 		try {
-			return localStorage.getItem("recordly:uploaded-cursor");
+			return localStorage.getItem("devcast:uploaded-cursor");
 		} catch {
 			return null;
 		}
@@ -1188,7 +1190,7 @@ export function SettingsPanel({
 			const url = typeof reader.result === "string" ? reader.result : null;
 			if (!url) return;
 			try {
-				localStorage.setItem("recordly:uploaded-cursor", url);
+				localStorage.setItem("devcast:uploaded-cursor", url);
 				setUploadedCursorUrl(url);
 				onCursorStyleChange?.("custom-upload");
 			} catch {
@@ -1868,6 +1870,8 @@ export function SettingsPanel({
 				}
 				onStagesChange={onAnnotationStagesChange ? (stages) => onAnnotationStagesChange(selectedAnnotation.id, stages) : undefined}
 				onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
+				onDuplicate={onAnnotationDuplicate ? () => onAnnotationDuplicate(selectedAnnotation) : undefined}
+				onCut={() => onAnnotationDelete(selectedAnnotation.id)}
 			/>
 		);
 	}

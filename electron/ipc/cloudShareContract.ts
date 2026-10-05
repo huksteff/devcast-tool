@@ -8,7 +8,7 @@ export type CloudShareTicket = {
 };
 
 const TRUSTED_SHARE_ORIGINS = new Set([
-	"https://videos.recordly.dev",
+	"https://videos.devcast.dev",
 	"http://localhost:8787",
 	"http://127.0.0.1:8787",
 ]);
@@ -26,7 +26,7 @@ export function normalizeCloudEndpoint(value: unknown): string {
 	}
 	const url = parseUrl(value.trim(), "Cloud share endpoint");
 	if (!TRUSTED_SHARE_ORIGINS.has(url.origin)) {
-		throw new Error("Cloud sharing is only allowed through the Recordly service.");
+		throw new Error("Cloud sharing is only allowed through the DevCast service.");
 	}
 	if (url.pathname !== "/api/upload" || url.search) {
 		throw new Error("The cloud share endpoint is invalid.");

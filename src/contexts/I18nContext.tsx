@@ -29,7 +29,7 @@ import ruSettings from "@/config/locales/ru/settings.json";
 import ruShortcuts from "@/config/locales/ru/shortcuts.json";
 import ruTimeline from "@/config/locales/ru/timeline.json";
 
-const LOCALE_STORAGE_KEY = "recordly.locale";
+const LOCALE_STORAGE_KEY = "devcast.locale";
 
 type LocaleBundle = Record<I18nNamespace, Record<string, unknown>>;
 

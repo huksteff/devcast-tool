@@ -90,7 +90,7 @@ export function getBundledWhisperExecutableCandidates(): string[] {
 }
 
 export function getNativeCaptureHelperBinaryPath(): string {
-	return path.join(app.getPath("userData"), "native-tools", "recordly-screencapturekit-helper");
+	return path.join(app.getPath("userData"), "native-tools", "devcast-screencapturekit-helper");
 }
 
 export function getSystemCursorHelperSourcePath(): string {
@@ -98,7 +98,7 @@ export function getSystemCursorHelperSourcePath(): string {
 }
 
 export function getSystemCursorHelperBinaryPath(): string {
-	return path.join(app.getPath("userData"), "native-tools", "recordly-system-cursors");
+	return path.join(app.getPath("userData"), "native-tools", "devcast-system-cursors");
 }
 
 export function getNativeCursorMonitorSourcePath(): string {
@@ -106,7 +106,7 @@ export function getNativeCursorMonitorSourcePath(): string {
 }
 
 export function getNativeCursorMonitorBinaryPath(): string {
-	return path.join(app.getPath("userData"), "native-tools", "recordly-native-cursor-monitor");
+	return path.join(app.getPath("userData"), "native-tools", "devcast-native-cursor-monitor");
 }
 
 export function getNativeWindowListSourcePath(): string {
@@ -114,7 +114,7 @@ export function getNativeWindowListSourcePath(): string {
 }
 
 export function getNativeWindowListBinaryPath(): string {
-	return path.join(app.getPath("userData"), "native-tools", "recordly-window-list");
+	return path.join(app.getPath("userData"), "native-tools", "devcast-window-list");
 }
 
 export function getWindowsCaptureExePath(): string {
@@ -248,7 +248,7 @@ export async function ensureNativeCaptureHelperBinary(): Promise<string> {
 		getNativeCaptureHelperSourcePath(),
 		getNativeCaptureHelperBinaryPath(),
 		"native ScreenCaptureKit helper",
-		"recordly-screencapturekit-helper",
+		"devcast-screencapturekit-helper",
 	);
 }
 
@@ -258,7 +258,7 @@ export async function ensureNativeWindowListBinary(): Promise<string> {
 		getNativeWindowListSourcePath(),
 		getNativeWindowListBinaryPath(),
 		"native ScreenCaptureKit window list helper",
-		"recordly-window-list",
+		"devcast-window-list",
 	);
 }
 
@@ -268,6 +268,6 @@ export async function ensureNativeCursorMonitorBinary(): Promise<string> {
 		getNativeCursorMonitorSourcePath(),
 		getNativeCursorMonitorBinaryPath(),
 		"native cursor monitor helper",
-		"recordly-native-cursor-monitor",
+		"devcast-native-cursor-monitor",
 	);
 }

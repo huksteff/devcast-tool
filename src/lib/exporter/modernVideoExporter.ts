@@ -1045,7 +1045,7 @@ export class ModernVideoExporter {
 
 		if (isVideoDecodeFailure) {
 			guidance.add(
-				"The input video decoder failed before Recordly could finish rendering the source frames.",
+				"The input video decoder failed before DevCast could finish rendering the source frames.",
 			);
 			guidance.add(
 				"If only this recording fails, remux or convert it to a standard H.264 MP4; the source may contain a damaged or unsupported frame.",
@@ -1120,7 +1120,7 @@ export class ModernVideoExporter {
 		];
 
 		if (this.runtimeDiagnostics.appVersion) {
-			lines.push(`Recordly version: ${this.runtimeDiagnostics.appVersion}`);
+			lines.push(`DevCast version: ${this.runtimeDiagnostics.appVersion}`);
 		}
 		if (this.runtimeDiagnostics.userAgent) {
 			lines.push(`Runtime: ${this.runtimeDiagnostics.userAgent}`);
@@ -1832,7 +1832,7 @@ export class ModernVideoExporter {
 			return null;
 		}
 
-		if (wallpaper.startsWith("/wallpapers/") || wallpaper.startsWith("/app-icons/")) {
+		if (wallpaper.startsWith("/wallpapers/") || wallpaper.startsWith("/content/icons/")) {
 			const assetPath = await this.resolveNativeBundledAssetPath(wallpaper);
 			if (assetPath) {
 				return { backgroundColor: "#101010", backgroundImagePath: assetPath };
@@ -2523,7 +2523,7 @@ export class ModernVideoExporter {
 			return null;
 		}
 		const startedAt = this.getNowMs();
-		const sessionId = `recordly-static-layout-${Date.now()}-${Math.random()
+		const sessionId = `devcast-static-layout-${Date.now()}-${Math.random()
 			.toString(36)
 			.slice(2, 8)}`;
 		const previousEncodeBackend = this.encodeBackend;

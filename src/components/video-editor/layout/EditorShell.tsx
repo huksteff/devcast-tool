@@ -1,5 +1,5 @@
-import { RecordlySignInDialog, type SignInReason } from "@/components/auth/RecordlySignInDialog";
-import { useRecordlyAuth } from "@/components/auth/useRecordlyAuth";
+import { DevCastSignInDialog, type SignInReason } from "@/components/auth/DevCastSignInDialog";
+import { useDevCastAuth } from "@/components/auth/useDevCastAuth";
 import { useVideoSourceRecovery } from "../hooks/useVideoSourceRecovery";
 import { useRecordingLibrary } from "../library/useRecordingLibrary";
 import { RecordingLibraryPanel } from "../library/RecordingLibraryPanel";
@@ -56,7 +56,7 @@ export function EditorShell(props: Props) {
 	const [signInOpen, setSignInOpen] = useState(false);
 	const [signInReason, setSignInReason] = useState<SignInReason>("account");
 	const [shareRequestNonce, setShareRequestNonce] = useState(0);
-	const auth = useRecordlyAuth();
+	const auth = useDevCastAuth();
 	const requestSignIn = (reason: SignInReason) => {
 		if (reason === "share" && auth.user) {
 			setShareRequestNonce((value) => value + 1);
@@ -162,7 +162,7 @@ export function EditorShell(props: Props) {
 		return (
 			<>
 				<EditorLoadingSkeleton />
-				<RecordlySignInDialog
+				<DevCastSignInDialog
 					open={signInOpen}
 					onOpenChange={setSignInOpen}
 					reason={signInReason}
@@ -192,7 +192,7 @@ export function EditorShell(props: Props) {
 						Open Projects
 					</Button>
 				</div>
-				<RecordlySignInDialog
+				<DevCastSignInDialog
 					open={signInOpen}
 					onOpenChange={setSignInOpen}
 					reason={signInReason}
@@ -351,6 +351,7 @@ export function EditorShell(props: Props) {
 				</div>
 				<EditorTimelinePanel
 					isPlaying={ui.isPlaying}
+					captionGenerationProgress={autoCaption.captionGenerationProgress}
 					panelRef={timelinePanelRef}
 					timelineRef={ui.timelineRef}
 					timeline={timeline}
@@ -396,7 +397,7 @@ export function EditorShell(props: Props) {
 					</div>
 				</div>
 			)}
-			<RecordlySignInDialog
+			<DevCastSignInDialog
 				open={signInOpen}
 				onOpenChange={setSignInOpen}
 				reason={signInReason}

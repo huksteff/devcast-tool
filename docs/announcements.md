@@ -1,6 +1,6 @@
 # In-app announcements
 
-Recordly can show dismissible announcements in the editor as a popup, carousel slide, lightweight live notification, or header banner. Popups can contain images or video; notifications and banners are text-only with optional buttons.
+DevCast can show dismissible announcements in the editor as a popup, carousel slide, lightweight live notification, or header banner. Popups can contain images or video; notifications and banners are text-only with optional buttons.
 
 ## Remote announcements
 
@@ -13,9 +13,9 @@ Edit [`announcements.json`](../announcements.json) on the `main` branch to publi
 	},
 	"announcements": [
 		{
-			"id": "recordly-1.4-release",
-			"title": "A faster Recordly is here",
-			"body": "Exports are faster and cursor motion is smoother. Thanks for using Recordly!",
+			"id": "devcast-1.4-release",
+			"title": "A faster DevCast is here",
+			"body": "Exports are faster and cursor motion is smoother. Thanks for using DevCast!",
 			"presentation": "popup",
 			"audience": "editor",
 			"priority": 10,
@@ -34,16 +34,16 @@ Edit [`announcements.json`](../announcements.json) on the `main` branch to publi
 			"minVersion": "1.4.0",
 			"media": {
 				"type": "image",
-				"url": "https://example.com/recordly-1.4-banner.jpg",
-				"alt": "Recordly 1.4 feature preview"
+				"url": "https://example.com/devcast-1.4-banner.jpg",
+				"alt": "DevCast 1.4 feature preview"
 			},
 			"action": {
 				"label": "See what changed",
-				"url": "https://github.com/webadderallorg/Recordly/releases"
+				"url": "https://github.com/webadderallorg/DevCast/releases"
 			}
 		},
 		{
-			"id": "recordly-maintenance-notice",
+			"id": "devcast-maintenance-notice",
 			"title": "Quick service notice",
 			"body": "Cloud sharing will undergo brief maintenance tonight.",
 			"presentation": "notification",
@@ -54,7 +54,7 @@ Edit [`announcements.json`](../announcements.json) on the `main` branch to publi
 			"endsAt": "2026-09-06T00:00:00Z"
 		},
 		{
-			"id": "recordly-editor-banner",
+			"id": "devcast-editor-banner",
 			"title": "Try the new editor",
 			"body": "The redesigned timeline is now available.",
 			"presentation": "banner",
@@ -87,7 +87,7 @@ Supported fields:
 - `media.type` is `image` or `video` for popups. Media URLs must be HTTPS or root-relative bundled assets. Videos can also specify `posterUrl`.
 - `action` has a label and exactly one destination: an HTTPS `url` opened in the system browser, or an editor `section` opened inside the app. Supported sections are `scene`, `cursor`, `webcam`, `captions`, `settings`, and `extensions`. An action containing both destinations, neither destination, or an unknown section is ignored.
 
-Set `RECORDLY_ANNOUNCEMENTS_URL` before launching the app to use a different HTTPS feed. Set it to `off` to disable remote announcements.
+Set `DEVCAST_ANNOUNCEMENTS_URL` before launching the app to use a different HTTPS feed. Set it to `off` to disable remote announcements.
 
 ## Announcements bundled with an update
 

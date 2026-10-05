@@ -14,7 +14,7 @@ const errors = [];
 try {
   await expect.poll(async () => { try { return (await fetch('http://127.0.0.1:5189')).status; } catch { return 0; } }).toBe(200);
   const packaged = process.argv.includes('--packaged');
-  app = await electron.launch({ executablePath: path.join(root, packaged ? (process.env.RECORDLY_TEST_EXE || 'release/win-unpacked/Recordly.exe') : 'node_modules/electron/dist/electron.exe'), args: packaged ? [] : ['.'], env: { ...process.env, VITE_DEV_SERVER_URL: 'http://127.0.0.1:5189', RECORDLY_DEV_OPEN_RECORDING_INPUT: media }, timeout: 30000 });
+  app = await electron.launch({ executablePath: path.join(root, packaged ? (process.env.DEVCAST_TEST_EXE || 'release/win-unpacked/DevCast.exe') : 'node_modules/electron/dist/electron.exe'), args: packaged ? [] : ['.'], env: { ...process.env, VITE_DEV_SERVER_URL: 'http://127.0.0.1:5189', DEVCAST_DEV_OPEN_RECORDING_INPUT: media }, timeout: 30000 });
   app.on('window', page => page.on('pageerror', error => errors.push(error.message)));
   await expect.poll(() => app.windows().find(p => p.url().includes('windowType=editor'))?.url(), { timeout: 30000 }).toBeTruthy();
   const editor = app.windows().find(p => p.url().includes('windowType=editor'));

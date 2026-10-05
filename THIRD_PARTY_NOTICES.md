@@ -2,15 +2,15 @@
 
 ## Voom
 
-Recordly Share includes code adapted from the Voom project:
+DevCast Share includes code adapted from the Voom project:
 
 - Project: [Voom](https://github.com/aritropaul/voom)
-- Adapted component: `services/recordly-share/worker`
+- Adapted component: `services/devcast-share/worker`
 - License: MIT
 - Copyright © 2026 Aritro Paul
 - Upstream reference: `c1c0350ed610b0c9bc4a307fcc6a01aab0f926f9`
 
-Recordly changes include product branding, desktop publishing integration,
+DevCast changes include product branding, desktop publishing integration,
 authenticated commenting, local-development configuration, and viewer styling.
 
 The Voom software is provided under the following license:

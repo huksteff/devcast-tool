@@ -177,7 +177,7 @@ const SUPPORTED_CURSOR_KEYS: CursorAssetKey[] = [
 
 const CURSOR_PACK_POINTER_TYPES = new Set<CursorAssetKey>(["pointer", "open-hand", "closed-hand"]);
 const BUILTIN_CURSOR_PACK_SOURCES: Record<string, CursorPackSource> = {};
-const UPLOADED_CURSOR_STORAGE_KEY = "recordly:uploaded-cursor";
+const UPLOADED_CURSOR_STORAGE_KEY = "devcast:uploaded-cursor";
 
 function getCursorPackSources(): Record<string, CursorPackSource> {
 	const sources = { ...BUILTIN_CURSOR_PACK_SOURCES };

@@ -19,7 +19,7 @@ if(EXISTS "${NVIDIA_NVENC_SDK_DIR}/NvEncoder/NvEncoderD3D11.cpp")
     "${NVIDIA_VIDEO_SDK_SAMPLES_DIR}"
     "${NVIDIA_NVENC_SDK_DIR}"
   )
-  target_compile_definitions(gpu-export-probe PRIVATE RECORDLY_GPU_EXPORT_ENABLE_NVENC_SDK=1)
+  target_compile_definitions(gpu-export-probe PRIVATE DEVCAST_GPU_EXPORT_ENABLE_NVENC_SDK=1)
 endif()
 
 target_compile_options(gpu-export-probe PRIVATE /EHsc /W4 /utf-8)

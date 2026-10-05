@@ -35,7 +35,7 @@ struct TimelineSegment {
 
 struct Options {
     std::string inputPath;
-    std::string outputPath = "recordly-nvidia-cuda-compositor.h264";
+    std::string outputPath = "devcast-nvidia-cuda-compositor.h264";
     std::string sourcePtsPath;
     std::string timelineMapPath;
     std::vector<TimelineSegment> timelineSegments;
@@ -279,7 +279,7 @@ Options parseOptions(int argc, char** argv) {
         } else if (arg == "--zoom-samples") {
             options.zoomSamplesPath = requireValue("--zoom-samples");
         } else if (arg == "--help") {
-            std::cout << "Usage: recordly-nvidia-cuda-compositor --input input.annexb.h264 "
+            std::cout << "Usage: devcast-nvidia-cuda-compositor --input input.annexb.h264 "
                          "[--output out.h264] [--source-pts source-pts.csv] [--width N --height N] [--fps 30] "
                          "[--max-frames N] [--bitrate-mbps N] [--encoding-mode fast|balanced|quality] "
                          "[--post-select] [--callback-encode] [--stream-sync] [--prewarm-ms N] [--chunk-mb N] "

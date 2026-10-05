@@ -1,6 +1,6 @@
 # HeroUI editor redundancy audit
 
-Reviewed 19 September 2026 in the `recordly-heroui` redesign. Findings use the current renderer and source, including the existing uncommitted redesign work.
+Reviewed 19 September 2026 in the `devcast-heroui` redesign. Findings use the current renderer and source, including the existing uncommitted redesign work.
 
 ## Cleaned up
 
@@ -46,7 +46,7 @@ Regression coverage includes keyboard deletion for each block type, inspector de
 - HUD source/device rows and source/region triggers use ghost buttons. Project cards fit the 300px HUD popup, scroll vertically with thin scrollbars, and no longer truncate the library at 24 entries.
 - Caption generation skips session re-registration when the source is unchanged, preserving active companion-audio approvals. Local media URLs resolve the current server port; preview retries a failed local load once through the existing approved-media API.
 - Videos uses a secondary header button at the far left and replaces the existing left inspector with lightweight file cards (no embedded video players). It lists files in the configured recordings directory. Removal stages the selected recordings and their capture companions using filesystem moves. Undo restores the latest removal without copying media or overwriting newer files; the next removal or app exit sends staged files to system Trash. This replaces the earlier hide-only behavior. Automatic recording age/count pruning is removed.
-- Timeline drops insert at a clip boundary. Since preview/export share a single source, imports prepare an immutable combined source in `.recordly-media`. New footage fits the current source canvas/frame rate; subsequent imports copy existing prepared video, with lossless system/mic companions and shifted cursor telemetry. Preparation takes time for large recordings. Clip source bounds prevent trimming into the next recording. Timeline history can undo/redo insertions because existing source offsets are retained.
+- Timeline drops insert at a clip boundary. Since preview/export share a single source, imports prepare an immutable combined source in `.devcast-media`. New footage fits the current source canvas/frame rate; subsequent imports copy existing prepared video, with lossless system/mic companions and shifted cursor telemetry. Preparation takes time for large recordings. Clip source bounds prevent trimming into the next recording. Timeline history can undo/redo insertions because existing source offsets are retained.
 - The existing FFmpeg metadata parser is now shared by import and export, rather than duplicating it or depending on the incompatible FFprobe binary found in this development install.
 
 Validation: real FFmpeg integration covers differing dimensions, audio routing, repeated inserts, and original preservation. Browser tests cover library removal/undo, drag insertion/undo/redo, caption generation without session reset, preview recovery, and 30 projects in the HUD popup. Caption visibility at 1x/2x/4x and gap snapping remain covered.

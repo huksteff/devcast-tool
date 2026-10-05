@@ -28,7 +28,7 @@ const RECORDER_TIMESLICE_MS = 250;
 const BITS_PER_MEGABIT = 1_000_000;
 const MIN_FRAME_RATE = 30;
 const CHROME_MEDIA_SOURCE = "desktop";
-const RECORDING_FILE_PREFIX = "recording-";
+const RECORDING_FILE_PREFIX = "dev-cast-";
 const AUDIO_BITRATE_VOICE = 128_000;
 const AUDIO_BITRATE_SYSTEM = 192_000;
 const MIC_GAIN_BOOST = 1.4;
@@ -557,8 +557,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			await window.electronAPI.openScreenRecordingPreferences();
 			alert(
 				options.startup
-					? "Recordly needs Screen Recording permission before you start. System Settings has been opened. After enabling it, quit and reopen Recordly."
-					: "Screen Recording permission is still missing. System Settings has been opened again. Enable it, then quit and reopen Recordly before recording.",
+					? "DevCast needs Screen Recording permission before you start. System Settings has been opened. After enabling it, quit and reopen DevCast."
+					: "Screen Recording permission is still missing. System Settings has been opened again. Enable it, then quit and reopen DevCast before recording.",
 			);
 			return false;
 		}
@@ -580,8 +580,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		await window.electronAPI.openAccessibilityPreferences();
 		alert(
 			options.startup
-				? "Recordly also needs Accessibility permission for cursor tracking. System Settings has been opened. After enabling it, quit and reopen Recordly."
-				: "Accessibility permission is still missing. System Settings has been opened again. Enable it, then quit and reopen Recordly before recording.",
+				? "DevCast also needs Accessibility permission for cursor tracking. System Settings has been opened. After enabling it, quit and reopen DevCast."
+				: "Accessibility permission is still missing. System Settings has been opened again. Enable it, then quit and reopen DevCast before recording.",
 		);
 
 		return false;

@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef } from "react";
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { resolveAutoCaptionSourcePath } from "../autoCaptionSource";
 import { type CaptionEditTarget, updateCaptionCuesForEditedTarget } from "../captionEditing";
@@ -61,6 +61,7 @@ export function useAutoCaptionController({
 	syncActiveVideoSource,
 }: UseAutoCaptionControllerParams) {
 	const captionGenerationInFlightRef = useRef(false);
+	const [captionGenerationProgress, setCaptionGenerationProgress] = useState(0);
 	const activeSourceRef = useRef({ videoSourcePath, videoPath });
 	activeSourceRef.current = { videoSourcePath, videoPath };
 
@@ -159,6 +160,10 @@ export function useAutoCaptionController({
 		if (captionGenerationInFlightRef.current || isGeneratingCaptions) return;
 		captionGenerationInFlightRef.current = true;
 		setIsGeneratingCaptions(true);
+		setCaptionGenerationProgress(6);
+		const progressTimer = setInterval(() => {
+			setCaptionGenerationProgress((current) => Math.min(88, current + Math.max(1, Math.round((90 - current) / 7))));
+		}, 900);
 		try {
 			if (!whisperModelPath) {
 				toast.error("Select a Whisper model or download the small model first");
@@ -204,6 +209,7 @@ export function useAutoCaptionController({
 				return;
 			}
 			setAutoCaptions(result.cues);
+			setCaptionGenerationProgress(100);
 			if (result.cues.length > 0) {
 				setAutoCaptionSettings((current) => ({ ...current, enabled: true }));
 			}
@@ -211,8 +217,10 @@ export function useAutoCaptionController({
 		} catch (error) {
 			toast.error(getErrorMessage(error));
 		} finally {
+			clearInterval(progressTimer);
 			captionGenerationInFlightRef.current = false;
 			setIsGeneratingCaptions(false);
+			setTimeout(() => setCaptionGenerationProgress(0), 500);
 		}
 	}, [
 		autoCaptionSettings.language,
@@ -244,6 +252,7 @@ export function useAutoCaptionController({
 		handlePickWhisperModel,
 		handleDeleteWhisperSmallModel,
 		handleGenerateAutoCaptions,
+		captionGenerationProgress,
 		handleSaveAutoCaptionEdit,
 	};
 }

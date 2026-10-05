@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 
 const DEFAULT_ANNOUNCEMENT_FEED_URL =
-	"https://raw.githubusercontent.com/webadderallorg/Recordly/main/announcements.json";
+	"https://raw.githubusercontent.com/webadderallorg/DevCast/main/announcements.json";
 const ANNOUNCEMENT_FETCH_TIMEOUT_MS = 5_000;
 const ANNOUNCEMENT_CACHE_TTL_MS = 6 * 60 * 60 * 1_000;
 const MAX_ANNOUNCEMENT_FEED_BYTES = 1_000_000;
@@ -12,7 +12,7 @@ let hasCachedResult = false;
 let pendingFetch: Promise<unknown> | null = null;
 
 function getAnnouncementFeedUrl(): string | null {
-	const configuredUrl = process.env.RECORDLY_ANNOUNCEMENTS_URL?.trim();
+	const configuredUrl = process.env.DEVCAST_ANNOUNCEMENTS_URL?.trim();
 	if (configuredUrl?.toLowerCase() === "off") {
 		return null;
 	}

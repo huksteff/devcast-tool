@@ -9,6 +9,7 @@ import {
 	Label,
 	Popover,
 } from "@heroui/react";
+import type { Color } from "@react-types/color";
 import { Button } from "./button";
 
 type PaletteProps = {
@@ -42,6 +43,7 @@ export function ColorControl({
 	colors,
 	compact = false,
 	onClear,
+	clearLabel = "Transparent",
 }: {
 	value: string;
 	onChange: (value: string) => void;
@@ -49,7 +51,18 @@ export function ColorControl({
 	colors?: readonly string[];
 	compact?: boolean;
 	onClear?: () => void;
+	clearLabel?: string;
 }) {
+	const activateHueFromNeutral = (color: Color) => {
+		// A pure black/white value has zero saturation. Changing only its hue would
+		// otherwise still serialize to the exact same grey and reset the picker.
+		if (!/^#(?:000000|ffffff)$/i.test(value)) return;
+		const hue = color.getChannelValue?.("hue") ?? Number.parseFloat(color.toString("hsb").match(/[-+]?[\d.]+/)?.[0] ?? "0");
+		const normalizedHue = ((hue % 360) + 360) % 360;
+		const chroma = 1 - Math.abs(((normalizedHue / 60) % 2) - 1);
+		const [r, g, b] = normalizedHue < 60 ? [1, chroma, 0] : normalizedHue < 120 ? [chroma, 1, 0] : normalizedHue < 180 ? [0, 1, chroma] : normalizedHue < 240 ? [0, chroma, 1] : normalizedHue < 300 ? [chroma, 0, 1] : [1, 0, chroma];
+		onChange(`#${[r, g, b].map((channel) => Math.round(channel * 255).toString(16).padStart(2, "0")).join("")}`);
+	};
 	return (
 		<ColorPicker
 			value={value === "transparent" ? "#00000000" : value}
@@ -70,7 +83,7 @@ export function ColorControl({
 					<ColorArea colorSpace="hsb" xChannel="saturation" yChannel="brightness">
 						<ColorArea.Thumb />
 					</ColorArea>
-					<ColorSlider colorSpace="hsb" channel="hue">
+					<ColorSlider colorSpace="hsb" channel="hue" onChange={activateHueFromNeutral}>
 						<ColorSlider.Track>
 							<ColorSlider.Thumb />
 						</ColorSlider.Track>
@@ -91,7 +104,7 @@ export function ColorControl({
 					</ColorField>
 					{onClear && (
 						<Button variant="ghost" onClick={onClear}>
-							Clear background
+							{clearLabel}
 						</Button>
 					)}
 				</Popover.Dialog>

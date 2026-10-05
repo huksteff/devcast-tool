@@ -11,6 +11,8 @@ import {
 	TextItalic as Italic,
 	BoundingBox as SquareDashed,
 	PencilSimple as Pencil,
+	Copy,
+	Scissors,
 	Trash as Trash2,
 	TextT as Type,
 	TextUnderline as Underline,
@@ -58,6 +60,8 @@ interface AnnotationSettingsPanelProps {
 	onBlurColorChange?: (color: string) => void;
 	onStagesChange?: (stages: Partial<AnnotationStages>) => void;
 	onDelete: () => void;
+	onDuplicate?: () => void;
+	onCut?: () => void;
 }
 
 export const FONT_FAMILY_VALUES = [
@@ -84,6 +88,8 @@ export function AnnotationSettingsPanel({
 	onBlurColorChange,
 	onStagesChange,
 	onDelete,
+	onDuplicate,
+	onCut,
 }: AnnotationSettingsPanelProps) {
 	const t = useScopedT("editor");
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -529,11 +535,12 @@ export function AnnotationSettingsPanel({
 												colors={colorPalette}
 												compact
 												onClear={() =>
-													onStyleChange({
-														backgroundColor: "transparent",
-													})
-												}
-											/>
+														onStyleChange({
+															backgroundColor: "transparent",
+														})
+													}
+													clearLabel={t("annotations.transparent", "Transparent")}
+												/>
 										</div>
 									</div>
 								</div>
@@ -807,7 +814,15 @@ export function AnnotationSettingsPanel({
 					</details>
 				</div>
 			</div>
-			<div className="shrink-0 px-5 py-4">
+			<div className="shrink-0 px-5 py-4 space-y-2">
+				<div className="grid grid-cols-2 gap-2">
+					<Button onClick={onDuplicate} disabled={!onDuplicate} variant="secondary" size="sm" title="Duplicate annotation" aria-label="Duplicate annotation">
+						<Copy className="w-4 h-4" />
+					</Button>
+					<Button onClick={onCut} disabled={!onCut} variant="secondary" size="sm" title="Cut annotation" aria-label="Cut annotation">
+						<Scissors className="w-4 h-4" />
+					</Button>
+				</div>
 				<Button
 					onClick={onDelete}
 					variant="destructive-soft"

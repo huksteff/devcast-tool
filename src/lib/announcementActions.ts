@@ -1,6 +1,6 @@
 import type { AnnouncementAction, AnnouncementEditorSection } from "./announcements";
 
-export const OPEN_EDITOR_SECTION_EVENT = "recordly:open-editor-section";
+export const OPEN_EDITOR_SECTION_EVENT = "devcast:open-editor-section";
 
 export function openEditorSection(section: AnnouncementEditorSection): void {
 	window.dispatchEvent(

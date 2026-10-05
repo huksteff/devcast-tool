@@ -6,7 +6,7 @@ import { readWhisperCaptionOutput } from "./output";
 let directory: string;
 let output: string;
 beforeEach(async () => {
-	directory = await fs.mkdtemp(path.join(os.tmpdir(), "recordly-caption-output-"));
+	directory = await fs.mkdtemp(path.join(os.tmpdir(), "devcast-caption-output-"));
 	output = path.join(directory, "speech");
 	await fs.writeFile(`${output}.srt`, "1\n00:00:01,200 --> 00:00:02,400\nFallback speech\n");
 });

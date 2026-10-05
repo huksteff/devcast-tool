@@ -43,7 +43,7 @@ export const WALLPAPER_RELATIVE_PATHS = BUILT_IN_WALLPAPERS.map(
 export const DEFAULT_WALLPAPER_PATH = "/wallpapers/tahoe-light.jpg";
 export const DEFAULT_WALLPAPER_RELATIVE_PATH = "wallpapers/tahoe-light.jpg";
 /** A virtual wallpaper that reuses the recording as a blurred backdrop. */
-export const BLURRED_RECORDING_WALLPAPER = "recordly://blurred-recording";
+export const BLURRED_RECORDING_WALLPAPER = "devcast://blurred-recording";
 
 export function isBlurredRecordingWallpaper(value: string): boolean {
 	return value === BLURRED_RECORDING_WALLPAPER;

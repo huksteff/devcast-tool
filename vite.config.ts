@@ -6,7 +6,7 @@ import electron from "vite-plugin-electron/simple";
 
 function electronMainCjsOutputPlugin(): Plugin {
 	return {
-		name: "recordly-electron-main-cjs-output",
+		name: "devcast-electron-main-cjs-output",
 		enforce: "post",
 		config(config) {
 			// Vite mergeConfig concatenates lib.formats with the plugin's ESM default.
@@ -36,7 +36,7 @@ function electronMainCjsOutputPlugin(): Plugin {
 
 function electronMainCjsGuardPlugin(): Plugin {
 	return {
-		name: "recordly-electron-main-cjs-guard",
+		name: "devcast-electron-main-cjs-guard",
 		closeBundle() {
 			const scriptPath = path.resolve(__dirname, "scripts/smoke-electron-main-cjs.mjs");
 			const result = spawnSync(process.execPath, [scriptPath], {
@@ -58,7 +58,7 @@ function electronMainCjsGuardPlugin(): Plugin {
 export default defineConfig(({ mode }) => ({
 	plugins: [
 		react(),
-		...(mode === "ui" || process.env.RECORDLY_RENDERER_ONLY === "1"
+		...(mode === "ui" || process.env.DEVCAST_RENDERER_ONLY === "1"
 			? []
 			: [
 					electron({

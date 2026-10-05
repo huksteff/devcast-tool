@@ -1123,7 +1123,7 @@ export class FrameRenderer {
 			wallpaper.startsWith("/") &&
 			!wallpaper.startsWith("//") &&
 			!wallpaper.startsWith("/wallpapers/") &&
-			!wallpaper.startsWith("/app-icons/");
+			!wallpaper.startsWith("/content/icons/");
 
 		const wallpaperAsset = looksLikeAbsoluteFilePath
 			? `file://${encodeURI(wallpaper)}`

@@ -158,6 +158,28 @@ export function useAnnotationRegionCommands({
 		(id: string, figureData: FigureData) => updateRegion(id, { figureData }),
 		[updateRegion],
 	);
+
+	const handleAnnotationDuplicate = useCallback(
+		(region: AnnotationRegion) => {
+			const duration = Math.max(1, region.endMs - region.startMs);
+			const id = `annotation-${nextAnnotationIdRef.current++}`;
+			setAnnotationRegions((current) => {
+				const lastEnd = current
+					.filter((candidate) => (candidate.trackIndex ?? 0) === (region.trackIndex ?? 0))
+					.reduce((latest, candidate) => Math.max(latest, candidate.endMs), region.endMs);
+				const startMs = lastEnd + 100;
+				return [...current, {
+					...structuredClone(region),
+					id,
+					startMs,
+					endMs: startMs + duration,
+					zIndex: nextAnnotationZIndexRef.current++,
+				}];
+			});
+			onSelectAnnotation(id);
+		},
+		[nextAnnotationIdRef, nextAnnotationZIndexRef, onSelectAnnotation, setAnnotationRegions],
+	);
 	const handleAnnotationDrawingDataChange = useCallback(
 		(id: string, drawingData: DrawingData) => updateRegion(id, { drawingData }),
 		[updateRegion],
@@ -196,6 +218,7 @@ export function useAnnotationRegionCommands({
 		handleAnnotationAdded,
 		handleAnnotationSpanChange,
 		handleAnnotationDelete,
+		handleAnnotationDuplicate,
 		handleAnnotationContentChange,
 		handleAnnotationTypeChange,
 		handleAnnotationStyleChange,

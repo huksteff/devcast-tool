@@ -37,10 +37,16 @@ type Props = {
 	disableSuggestedZooms: boolean;
 	currentTime: number;
 	isPlaying: boolean;
+	captionGenerationProgress?: number;
 	handleSelectAnnotation: (id: string | null) => void;
 };
 
 export function EditorTimelinePanel(props: Props) {
+	const timelineWindowClipboard = useRef<
+		| { kind: "annotation"; region: ReturnType<typeof useTimelineState>["annotationRegions"][number] }
+		| { kind: "zoom"; region: ReturnType<typeof useTimelineState>["zoomRegions"][number] }
+		| null
+	>(null);
 	const [timelineWindowOpen, setTimelineWindowOpen] = useState(false);
 	const [panelHeight, setPanelHeight] = useState<number | null>(null);
 	const [rowScale, setRowScale] = useState(1);
@@ -64,6 +70,7 @@ export function EditorTimelinePanel(props: Props) {
 		handleAutoSuggestZoomsConsumed,
 		disableSuggestedZooms,
 		currentTime,
+		captionGenerationProgress = 0,
 		handleSelectAnnotation,
 	} = props;
 
@@ -115,6 +122,23 @@ export function EditorTimelinePanel(props: Props) {
 		};
 		const handleAction = (action: TimelineWindowAction) => {
 			switch (action.type) {
+				case "clipboard": {
+					if (action.operation === "paste") {
+						if (timelineWindowClipboard.current?.kind === "annotation") annotationCommands.handleAnnotationDuplicate(timelineWindowClipboard.current.region);
+						if (timelineWindowClipboard.current?.kind === "zoom") zoomCommands.handleZoomDuplicate(timelineWindowClipboard.current.region);
+						break;
+					}
+					const annotation = timeline.selectedAnnotationId ? timeline.annotationRegions.find((region) => region.id === timeline.selectedAnnotationId) : undefined;
+					const zoom = timeline.selectedZoomId ? timeline.zoomRegions.find((region) => region.id === timeline.selectedZoomId) : undefined;
+					if (annotation) {
+						timelineWindowClipboard.current = { kind: "annotation", region: structuredClone(annotation) };
+						if (action.operation === "cut") annotationCommands.handleAnnotationDelete(annotation.id);
+					} else if (zoom) {
+						timelineWindowClipboard.current = { kind: "zoom", region: structuredClone(zoom) };
+						if (action.operation === "cut") zoomCommands.handleZoomDelete(zoom.id);
+					}
+					break;
+				}
 				case "toggle-play": playback.togglePlayPause(); break;
 				case "skip-back": playback.handlePreviewSkipBack(); break;
 				case "skip-forward": playback.handlePreviewSkipForward(); break;
@@ -294,7 +318,14 @@ export function EditorTimelinePanel(props: Props) {
 						Open Timeline Window
 					</button>
 				</div>
-				{timelineEditor}
+				<div className="relative">
+					{timelineEditor}
+					{captionGenerationProgress > 0 ? (
+						<div className="pointer-events-none absolute left-0 right-0 top-0 z-40 h-1 overflow-hidden bg-primary/15" role="progressbar" aria-label="Generating captions" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(captionGenerationProgress)}>
+							<div className="h-full bg-primary transition-[width] duration-500" style={{ width: `${captionGenerationProgress}%` }} />
+						</div>
+					) : null}
+				</div>
 			</div>
 	);
 }

@@ -14,50 +14,50 @@ const repoRoot = path.resolve(__dirname, "..");
 const mainEntry = path.join(repoRoot, "dist-electron", "main.cjs");
 const rendererEntry = path.join(repoRoot, "dist", "index.html");
 
-const width = parseEvenInteger(process.env.RECORDLY_BENCH_EXPORT_WIDTH ?? "1280", "Width");
-const height = parseEvenInteger(process.env.RECORDLY_BENCH_EXPORT_HEIGHT ?? "720", "Height");
-const frameRate = parsePositiveInteger(process.env.RECORDLY_BENCH_EXPORT_FPS ?? "60", "Frame rate");
+const width = parseEvenInteger(process.env.DEVCAST_BENCH_EXPORT_WIDTH ?? "1280", "Width");
+const height = parseEvenInteger(process.env.DEVCAST_BENCH_EXPORT_HEIGHT ?? "720", "Height");
+const frameRate = parsePositiveInteger(process.env.DEVCAST_BENCH_EXPORT_FPS ?? "60", "Frame rate");
 const durationSeconds = parsePositiveInteger(
-	process.env.RECORDLY_BENCH_EXPORT_DURATION ?? "15",
+	process.env.DEVCAST_BENCH_EXPORT_DURATION ?? "15",
 	"Duration",
 );
 const timeoutMs = parsePositiveInteger(
-	process.env.RECORDLY_BENCH_EXPORT_TIMEOUT_MS ?? "180000",
+	process.env.DEVCAST_BENCH_EXPORT_TIMEOUT_MS ?? "180000",
 	"Timeout",
 );
-const runsPerVariant = parsePositiveInteger(process.env.RECORDLY_BENCH_EXPORT_RUNS ?? "2", "Runs");
-const useNativeExport = process.env.RECORDLY_BENCH_EXPORT_USE_NATIVE === "1";
-const useWebcamOverlay = process.env.RECORDLY_BENCH_EXPORT_ENABLE_WEBCAM === "1";
-const providedInputPath = process.env.RECORDLY_BENCH_EXPORT_INPUT ?? null;
-const providedWebcamInputPath = process.env.RECORDLY_BENCH_EXPORT_WEBCAM_INPUT ?? null;
-const keepTempArtifacts = process.env.RECORDLY_BENCH_EXPORT_KEEP_TEMP === "1";
+const runsPerVariant = parsePositiveInteger(process.env.DEVCAST_BENCH_EXPORT_RUNS ?? "2", "Runs");
+const useNativeExport = process.env.DEVCAST_BENCH_EXPORT_USE_NATIVE === "1";
+const useWebcamOverlay = process.env.DEVCAST_BENCH_EXPORT_ENABLE_WEBCAM === "1";
+const providedInputPath = process.env.DEVCAST_BENCH_EXPORT_INPUT ?? null;
+const providedWebcamInputPath = process.env.DEVCAST_BENCH_EXPORT_WEBCAM_INPUT ?? null;
+const keepTempArtifacts = process.env.DEVCAST_BENCH_EXPORT_KEEP_TEMP === "1";
 const exportEncodingMode = parseExportEncodingMode(
-	process.env.RECORDLY_BENCH_EXPORT_ENCODING_MODE ?? null,
+	process.env.DEVCAST_BENCH_EXPORT_ENCODING_MODE ?? null,
 );
-const exportQuality = parseExportQuality(process.env.RECORDLY_BENCH_EXPORT_QUALITY ?? null);
+const exportQuality = parseExportQuality(process.env.DEVCAST_BENCH_EXPORT_QUALITY ?? null);
 const exportShadowIntensity = parseExportShadowIntensity(
-	process.env.RECORDLY_BENCH_EXPORT_SHADOW_INTENSITY ?? null,
+	process.env.DEVCAST_BENCH_EXPORT_SHADOW_INTENSITY ?? null,
 );
 const webcamWidth = parseEvenInteger(
-	process.env.RECORDLY_BENCH_EXPORT_WEBCAM_WIDTH ?? "640",
+	process.env.DEVCAST_BENCH_EXPORT_WEBCAM_WIDTH ?? "640",
 	"Webcam width",
 );
 const webcamHeight = parseEvenInteger(
-	process.env.RECORDLY_BENCH_EXPORT_WEBCAM_HEIGHT ?? "360",
+	process.env.DEVCAST_BENCH_EXPORT_WEBCAM_HEIGHT ?? "360",
 	"Webcam height",
 );
 const webcamShadowIntensity = parseExportShadowIntensity(
-	process.env.RECORDLY_BENCH_EXPORT_WEBCAM_SHADOW ?? null,
+	process.env.DEVCAST_BENCH_EXPORT_WEBCAM_SHADOW ?? null,
 );
-const webcamSize = parseExportWebcamSize(process.env.RECORDLY_BENCH_EXPORT_WEBCAM_SIZE ?? null);
+const webcamSize = parseExportWebcamSize(process.env.DEVCAST_BENCH_EXPORT_WEBCAM_SIZE ?? null);
 const MODERN_BACKEND_SWEEP = ["auto", "webcodecs", "breeze"];
-const exportPipeline = parseExportPipeline(process.env.RECORDLY_BENCH_EXPORT_PIPELINE ?? null);
-const exportBackend = parseExportBackend(process.env.RECORDLY_BENCH_EXPORT_BACKEND ?? null);
+const exportPipeline = parseExportPipeline(process.env.DEVCAST_BENCH_EXPORT_PIPELINE ?? null);
+const exportBackend = parseExportBackend(process.env.DEVCAST_BENCH_EXPORT_BACKEND ?? null);
 const exportRenderBackend = parseRenderBackend(
-	process.env.RECORDLY_BENCH_EXPORT_RENDER_BACKEND ?? null,
+	process.env.DEVCAST_BENCH_EXPORT_RENDER_BACKEND ?? null,
 );
 const exportBackendList = parseExportBackendList(
-	process.env.RECORDLY_BENCH_EXPORT_BACKENDS ?? null,
+	process.env.DEVCAST_BENCH_EXPORT_BACKENDS ?? null,
 );
 
 const VARIANT_PRESETS = {
@@ -67,7 +67,7 @@ const VARIANT_PRESETS = {
 };
 
 const variantNameList = parseBenchmarkVariantList(
-	process.env.RECORDLY_BENCH_EXPORT_VARIANTS ?? null,
+	process.env.DEVCAST_BENCH_EXPORT_VARIANTS ?? null,
 );
 
 const variants = variantNameList
@@ -105,7 +105,7 @@ function parseExportPipeline(rawValue) {
 		return rawValue;
 	}
 
-	throw new Error("RECORDLY_BENCH_EXPORT_PIPELINE must be 'legacy' or 'modern'");
+	throw new Error("DEVCAST_BENCH_EXPORT_PIPELINE must be 'legacy' or 'modern'");
 }
 
 function parseExportBackend(rawValue) {
@@ -117,7 +117,7 @@ function parseExportBackend(rawValue) {
 		return rawValue;
 	}
 
-	throw new Error("RECORDLY_BENCH_EXPORT_BACKEND must be 'auto', 'webcodecs', or 'breeze'");
+	throw new Error("DEVCAST_BENCH_EXPORT_BACKEND must be 'auto', 'webcodecs', or 'breeze'");
 }
 
 function parseRenderBackend(rawValue) {
@@ -129,7 +129,7 @@ function parseRenderBackend(rawValue) {
 		return rawValue;
 	}
 
-	throw new Error("RECORDLY_BENCH_EXPORT_RENDER_BACKEND must be 'webgl' or 'webgpu'");
+	throw new Error("DEVCAST_BENCH_EXPORT_RENDER_BACKEND must be 'webgl' or 'webgpu'");
 }
 
 function parseExportBackendList(rawValue) {
@@ -150,7 +150,7 @@ function parseExportBackendList(rawValue) {
 
 	if (values.length === 0) {
 		throw new Error(
-			"RECORDLY_BENCH_EXPORT_BACKENDS must include at least one of: auto, webcodecs, breeze",
+			"DEVCAST_BENCH_EXPORT_BACKENDS must include at least one of: auto, webcodecs, breeze",
 		);
 	}
 
@@ -169,14 +169,14 @@ function parseBenchmarkVariantList(rawValue) {
 
 	if (values.length === 0) {
 		throw new Error(
-			"RECORDLY_BENCH_EXPORT_VARIANTS must include at least one of: adaptive, baseline, tuned",
+			"DEVCAST_BENCH_EXPORT_VARIANTS must include at least one of: adaptive, baseline, tuned",
 		);
 	}
 
 	for (const value of values) {
 		if (!(value in VARIANT_PRESETS)) {
 			throw new Error(
-				"RECORDLY_BENCH_EXPORT_VARIANTS must include only: adaptive, baseline, tuned",
+				"DEVCAST_BENCH_EXPORT_VARIANTS must include only: adaptive, baseline, tuned",
 			);
 		}
 	}
@@ -193,7 +193,7 @@ function parseExportEncodingMode(rawValue) {
 		return rawValue;
 	}
 
-	throw new Error("RECORDLY_BENCH_EXPORT_ENCODING_MODE must be 'fast', 'balanced', or 'quality'");
+	throw new Error("DEVCAST_BENCH_EXPORT_ENCODING_MODE must be 'fast', 'balanced', or 'quality'");
 }
 
 function parseExportQuality(rawValue) {
@@ -210,7 +210,7 @@ function parseExportQuality(rawValue) {
 		return rawValue;
 	}
 
-	throw new Error("RECORDLY_BENCH_EXPORT_QUALITY must be 'medium', 'good', 'high', or 'source'");
+	throw new Error("DEVCAST_BENCH_EXPORT_QUALITY must be 'medium', 'good', 'high', or 'source'");
 }
 
 function parseExportShadowIntensity(rawValue) {
@@ -220,7 +220,7 @@ function parseExportShadowIntensity(rawValue) {
 
 	const parsed = Number.parseFloat(rawValue);
 	if (!Number.isFinite(parsed) || parsed < 0) {
-		throw new Error("RECORDLY_BENCH_EXPORT_SHADOW_INTENSITY must be a non-negative number");
+		throw new Error("DEVCAST_BENCH_EXPORT_SHADOW_INTENSITY must be a non-negative number");
 	}
 
 	return parsed;
@@ -233,7 +233,7 @@ function parseExportWebcamSize(rawValue) {
 
 	const parsed = Number.parseFloat(rawValue);
 	if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) {
-		throw new Error("RECORDLY_BENCH_EXPORT_WEBCAM_SIZE must be a number between 0 and 100");
+		throw new Error("DEVCAST_BENCH_EXPORT_WEBCAM_SIZE must be a number between 0 and 100");
 	}
 
 	return parsed;
@@ -696,41 +696,41 @@ async function runVariant(
 		cwd: repoRoot,
 		env: {
 			...process.env,
-			RECORDLY_SMOKE_EXPORT: "1",
-			RECORDLY_SMOKE_EXPORT_INPUT: inputPath,
-			RECORDLY_SMOKE_EXPORT_OUTPUT: outputPath,
-			...(useNativeExport ? { RECORDLY_SMOKE_EXPORT_USE_NATIVE: "1" } : {}),
+			DEVCAST_SMOKE_EXPORT: "1",
+			DEVCAST_SMOKE_EXPORT_INPUT: inputPath,
+			DEVCAST_SMOKE_EXPORT_OUTPUT: outputPath,
+			...(useNativeExport ? { DEVCAST_SMOKE_EXPORT_USE_NATIVE: "1" } : {}),
 			...(exportEncodingMode
-				? { RECORDLY_SMOKE_EXPORT_ENCODING_MODE: exportEncodingMode }
+				? { DEVCAST_SMOKE_EXPORT_ENCODING_MODE: exportEncodingMode }
 				: {}),
-			...(exportQuality ? { RECORDLY_SMOKE_EXPORT_QUALITY: exportQuality } : {}),
+			...(exportQuality ? { DEVCAST_SMOKE_EXPORT_QUALITY: exportQuality } : {}),
 			...(exportShadowIntensity !== null
-				? { RECORDLY_SMOKE_EXPORT_SHADOW_INTENSITY: String(exportShadowIntensity) }
+				? { DEVCAST_SMOKE_EXPORT_SHADOW_INTENSITY: String(exportShadowIntensity) }
 				: {}),
-			...(webcamInputPath ? { RECORDLY_SMOKE_EXPORT_WEBCAM_INPUT: webcamInputPath } : {}),
+			...(webcamInputPath ? { DEVCAST_SMOKE_EXPORT_WEBCAM_INPUT: webcamInputPath } : {}),
 			...(webcamShadowIntensity !== null
-				? { RECORDLY_SMOKE_EXPORT_WEBCAM_SHADOW: String(webcamShadowIntensity) }
+				? { DEVCAST_SMOKE_EXPORT_WEBCAM_SHADOW: String(webcamShadowIntensity) }
 				: {}),
 			...(webcamSize !== null
-				? { RECORDLY_SMOKE_EXPORT_WEBCAM_SIZE: String(webcamSize) }
+				? { DEVCAST_SMOKE_EXPORT_WEBCAM_SIZE: String(webcamSize) }
 				: {}),
 			...(benchmarkRequest.pipeline
-				? { RECORDLY_SMOKE_EXPORT_PIPELINE: benchmarkRequest.pipeline }
+				? { DEVCAST_SMOKE_EXPORT_PIPELINE: benchmarkRequest.pipeline }
 				: {}),
 			...(benchmarkRequest.backend
-				? { RECORDLY_SMOKE_EXPORT_BACKEND: benchmarkRequest.backend }
+				? { DEVCAST_SMOKE_EXPORT_BACKEND: benchmarkRequest.backend }
 				: {}),
 			...(exportRenderBackend
-				? { RECORDLY_SMOKE_EXPORT_RENDER_BACKEND: exportRenderBackend }
+				? { DEVCAST_SMOKE_EXPORT_RENDER_BACKEND: exportRenderBackend }
 				: {}),
 			...(typeof variant.maxEncodeQueue === "number"
-				? { RECORDLY_SMOKE_EXPORT_MAX_ENCODE_QUEUE: String(variant.maxEncodeQueue) }
+				? { DEVCAST_SMOKE_EXPORT_MAX_ENCODE_QUEUE: String(variant.maxEncodeQueue) }
 				: {}),
 			...(typeof variant.maxDecodeQueue === "number"
-				? { RECORDLY_SMOKE_EXPORT_MAX_DECODE_QUEUE: String(variant.maxDecodeQueue) }
+				? { DEVCAST_SMOKE_EXPORT_MAX_DECODE_QUEUE: String(variant.maxDecodeQueue) }
 				: {}),
 			...(typeof variant.maxPendingFrames === "number"
-				? { RECORDLY_SMOKE_EXPORT_MAX_PENDING_FRAMES: String(variant.maxPendingFrames) }
+				? { DEVCAST_SMOKE_EXPORT_MAX_PENDING_FRAMES: String(variant.maxPendingFrames) }
 				: {}),
 		},
 		stdio: ["ignore", "pipe", "pipe"],
@@ -894,7 +894,7 @@ async function main() {
 	await ensureBuildArtifacts();
 	const benchmarkRequests = buildBenchmarkRequests();
 
-	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "recordly-export-queue-bench-"));
+	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "devcast-export-queue-bench-"));
 	const inputExtension = providedInputPath ? path.extname(providedInputPath) || ".mp4" : ".mp4";
 	const inputPath = path.join(tempDir, `input${inputExtension}`);
 	const webcamExtension = providedWebcamInputPath

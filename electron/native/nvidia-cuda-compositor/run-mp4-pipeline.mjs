@@ -45,8 +45,8 @@ function resolveToolCommand(envNames, moduleName, fallbackName) {
 	return resolvePackageBinary(moduleName) || fallbackName;
 }
 
-const ffmpegCommand = resolveToolCommand(["RECORDLY_FFMPEG_EXE"], "ffmpeg-static", "ffmpeg");
-const ffprobeCommand = resolveToolCommand(["RECORDLY_FFPROBE_EXE"], "ffprobe-static", "ffprobe");
+const ffmpegCommand = resolveToolCommand(["DEVCAST_FFMPEG_EXE"], "ffmpeg-static", "ffmpeg");
+const ffprobeCommand = resolveToolCommand(["DEVCAST_FFPROBE_EXE"], "ffprobe-static", "ffprobe");
 
 const cursorTypes = [
 	"arrow",
@@ -117,7 +117,7 @@ function hasArg(name) {
 }
 
 function shouldRaiseChildPriority() {
-	return process.env.RECORDLY_NVIDIA_CUDA_EXPORT_HIGH_PRIORITY !== "0";
+	return process.env.DEVCAST_NVIDIA_CUDA_EXPORT_HIGH_PRIORITY !== "0";
 }
 
 function raiseChildPriority(child, label) {
@@ -928,7 +928,7 @@ function parseProbeSummary(stdout) {
 
 const inputPath = resolve(getArg("--input"));
 const outputPath = resolve(
-	getArg("--output", join(scriptDir, "recordly-nvdec-nvenc-mp4-output.mp4")),
+	getArg("--output", join(scriptDir, "devcast-nvdec-nvenc-mp4-output.mp4")),
 );
 const requestedOutputWidth = Math.round(getNumberArg("--width", 0));
 const requestedOutputHeight = Math.round(getNumberArg("--height", 0));
@@ -990,21 +990,21 @@ mkdirSync(workDir, { recursive: true });
 mkdirSync(dirname(outputPath), { recursive: true });
 
 function resolveNativeProbePath() {
-	const configuredPath = process.env.RECORDLY_NVIDIA_CUDA_EXPORT_EXE;
+	const configuredPath = process.env.DEVCAST_NVIDIA_CUDA_EXPORT_EXE;
 	const platformArch = process.arch === "arm64" ? "win32-arm64" : "win32-x64";
 	const candidates = [
 		configuredPath,
-		join(scriptDir, "build", "Release", "recordly-nvidia-cuda-compositor.exe"),
+		join(scriptDir, "build", "Release", "devcast-nvidia-cuda-compositor.exe"),
 		join(
 			repoRoot,
 			"electron",
 			"native",
 			"bin",
 			platformArch,
-			"recordly-nvidia-cuda-compositor.exe",
+			"devcast-nvidia-cuda-compositor.exe",
 		),
 		// Backward-compatible legacy helper path while old work dirs are being retired.
-		join(scriptDir, "build", "Release", "recordly-nvdec-nvenc-probe.exe"),
+		join(scriptDir, "build", "Release", "devcast-nvdec-nvenc-probe.exe"),
 	].filter(Boolean);
 
 	for (const candidate of candidates) {

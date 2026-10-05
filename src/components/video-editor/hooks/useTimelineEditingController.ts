@@ -221,6 +221,8 @@ export function useTimelineEditingController(input: Input) {
 		handleUndo: input.handleUndo,
 		handleRedo: input.handleRedo,
 		startPlayback: playback.startPlayback,
+		annotationCommands,
+		zoomCommands,
 	});
 
 	return {

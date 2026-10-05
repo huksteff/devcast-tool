@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo.
-echo === Recordly Windows build ===
+echo === DevCast Windows build ===
 echo Working directory: %CD%
 echo.
 

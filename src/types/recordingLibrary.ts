@@ -19,4 +19,4 @@ export interface RecordingImportResult {
 	webcam?: RecordingWebcamSource;
 }
 export type LibraryResult<T> = { success: true; value: T } | { success: false; error: string };
-export const RECORDING_DRAG_TYPE = "application/x-recordly-recording";
+export const RECORDING_DRAG_TYPE = "application/x-devcast-recording";

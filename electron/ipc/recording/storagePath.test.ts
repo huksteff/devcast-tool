@@ -6,10 +6,10 @@ describe("resolveRecordedVideoStoragePath", () => {
 	const recordingsDir = path.resolve("recordings-root");
 
 	it.each([
-		"recording-0.webm",
-		"recording-1720588800000.mp4",
-		"recording-1720588800000-webcam.webm",
-		"recording-1720588800000-webcam.mp4",
+		"dev-cast-0.webm",
+		"dev-cast-1720588800000.mp4",
+		"dev-cast-1720588800000-webcam.webm",
+		"dev-cast-1720588800000-webcam.mp4",
 	])("accepts an app-generated recording name: %s", (fileName) => {
 		expect(resolveRecordedVideoStoragePath(recordingsDir, fileName)).toBe(
 			path.resolve(recordingsDir, fileName),

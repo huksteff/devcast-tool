@@ -114,7 +114,7 @@ test("populated project and preset popovers fit long names and dismiss outside",
 			success: true,
 			projects: [],
 			entries: Array.from({ length: 5 }, (_, i) => ({
-				path: `/projects/${i}.recordly`,
+				path: `/projects/${i}.devcast`,
 				name: `A very long project name with many words ${i}`,
 				updatedAt: Date.now(),
 				thumbnailPath: null,

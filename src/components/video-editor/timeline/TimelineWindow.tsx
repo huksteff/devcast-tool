@@ -28,6 +28,19 @@ export default function TimelineWindow() {
 	useEffect(() => {
 		if (snapshot) window.electronAPI.sendTimelineWindowMessage({ type: "window-ready" });
 	}, [Boolean(snapshot)]);
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) return;
+			const target = event.target as HTMLElement | null;
+			if (target?.matches("input, textarea, select") || target?.isContentEditable) return;
+			const key = event.key.toLowerCase();
+			if (key !== "c" && key !== "x" && key !== "v") return;
+			event.preventDefault();
+			send({ type: "clipboard", operation: key === "c" ? "copy" : key === "x" ? "cut" : "paste" });
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, []);
 
 	if (!snapshot) {
 		return (

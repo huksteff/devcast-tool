@@ -25,7 +25,7 @@ afterEach(async () => {
 
 describe("recording preferences store", () => {
 	it("preserves concurrent microphone and webcam preference updates", async () => {
-		const directory = await fs.mkdtemp(path.join(os.tmpdir(), "recordly-preferences-"));
+		const directory = await fs.mkdtemp(path.join(os.tmpdir(), "devcast-preferences-"));
 		temporaryDirectories.push(directory);
 		const store = createRecordingPreferencesStore(path.join(directory, "recording.json"));
 

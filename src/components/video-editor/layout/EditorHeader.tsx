@@ -198,7 +198,7 @@ export function EditorHeader(props: Props) {
 							aria-label={t("editor.project.renameInput", "Project name")}
 						/>
 						<span className="project-file-extension shrink-0 text-xs font-medium tracking-tight text-muted-foreground/70">
-							.recordly
+							.devcast
 						</span>
 					</form>
 				) : (
@@ -217,7 +217,7 @@ export function EditorHeader(props: Props) {
 							{projectDisplayName}
 						</span>
 						<span className="project-file-extension shrink-0 text-xs font-medium tracking-tight text-muted-foreground/70">
-							.recordly
+							.devcast
 						</span>
 					</Button>
 				)}

@@ -1,7 +1,7 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "dev.recordly.app",
+  "appId": "dev.devcast.app",
   "electronUpdaterCompatibility": ">=2.16",
   "asar": true,
   "asarUnpack": [
@@ -10,11 +10,11 @@
     "node_modules/uiohook-napi/**",
     "electron/native/bin/**"
   ],
-  "productName": "Recordly",
+  "productName": "DevCast",
   "protocols": [
     {
-      "name": "Recordly authentication",
-      "schemes": ["recordly"]
+      "name": "DevCast authentication",
+      "schemes": ["devcast"]
     }
   ],
   "npmRebuild": true,
@@ -53,7 +53,7 @@
     {
       "provider": "github",
       "owner": "webadderall",
-      "repo": "Recordly",
+      "repo": "DevCast",
       "tagNamePrefix": "v",
       "publishAutoUpdate": true
     }
@@ -73,32 +73,32 @@
         "arch": ["x64", "arm64"]
       }
     ],
-    "icon": "icons/icons/mac/icon.icns",
+    "icon": "branding/app-icon/mac/icon.icns",
     "artifactName": "${productName}-${arch}.${ext}",
     "extendInfo": {
-      "NSAudioCaptureUsageDescription": "Recordly needs audio capture permission to record system audio.",
-      "NSCameraUsageDescription": "Recordly needs camera access to record webcam video.",
-      "NSMicrophoneUsageDescription": "Recordly needs microphone access to record voice audio.",
+      "NSAudioCaptureUsageDescription": "DevCast needs audio capture permission to record system audio.",
+      "NSCameraUsageDescription": "DevCast needs camera access to record webcam video.",
+      "NSMicrophoneUsageDescription": "DevCast needs microphone access to record voice audio.",
       "NSCameraUseContinuityCameraDeviceType": true,
       "com.apple.security.device.audio-input": true,
       "CFBundleDocumentTypes": [
         {
-          "CFBundleTypeName": "Recordly Project",
+          "CFBundleTypeName": "DevCast Project",
           "CFBundleTypeRole": "Editor",
-          "CFBundleTypeExtensions": ["recordly"],
+          "CFBundleTypeExtensions": ["devcast"],
           "CFBundleTypeIconFile": "icon.icns",
           "LSHandlerRank": "Owner",
-          "LSItemContentTypes": ["dev.recordly.app.project"]
+          "LSItemContentTypes": ["dev.devcast.app.project"]
         }
       ],
       "UTExportedTypeDeclarations": [
         {
-          "UTTypeIdentifier": "dev.recordly.app.project",
-          "UTTypeDescription": "Recordly Project",
+          "UTTypeIdentifier": "dev.devcast.app.project",
+          "UTTypeDescription": "DevCast Project",
           "UTTypeConformsTo": ["public.json"],
           "UTTypeTagSpecification": {
-            "public.filename-extension": ["recordly"],
-            "public.mime-type": "application/x-recordly-project"
+            "public.filename-extension": ["devcast"],
+            "public.mime-type": "application/x-devcast-project"
           }
         }
       ]
@@ -108,18 +108,18 @@
     "target": [
       "AppImage"
     ],
-    "icon": "icons/icons/png",
+    "icon": "branding/app-icon/png",
     "artifactName": "${productName}-linux-x64.${ext}",
     "category": "AudioVideo"
   },
   "win": {
-	"signAndEditExecutable": false,
+    "signAndEditExecutable": true,
     "target": [
       "nsis",
       "zip"
     ],
-    "icon": "icons/icons/win/icon.ico",
-    "executableName": "Recordly",
+    "icon": "branding/app-icon/win/icon.ico",
+    "executableName": "DevCast",
     "artifactName": "${productName}-windows-${arch}.${ext}"
   },
   "nsis": {
@@ -127,6 +127,6 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "Recordly"
+    "shortcutName": "DevCast"
   }
 }

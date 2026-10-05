@@ -62,7 +62,7 @@ import {
 } from "./windows";
 
 const electronMainDir = path.dirname(fileURLToPath(import.meta.url));
-const IS_SMOKE_EXPORT = process.env.RECORDLY_SMOKE_EXPORT === "1";
+const IS_SMOKE_EXPORT = process.env.DEVCAST_SMOKE_EXPORT === "1";
 
 function ignoreBrokenConsolePipe(stream: NodeJS.WritableStream | undefined) {
 	stream?.on("error", (error: NodeJS.ErrnoException) => {
@@ -215,7 +215,7 @@ function closeEditorWindowToHud(window: BrowserWindow | null) {
 
 	// The HUD renderer normally remains hidden while the editor is open so
 	// recording finalization can continue. Restore that HUD before destroying
-	// the editor, keeping Recordly in its ready-to-record state on the taskbar.
+	// the editor, keeping DevCast in its ready-to-record state on the taskbar.
 	window.hide();
 	if (mainWindow === window) {
 		mainWindow = null;
@@ -259,8 +259,8 @@ let defaultTrayIcon: ReturnType<typeof getTrayIcon> | null = null;
 let recordingTrayIcon: ReturnType<typeof getTrayIcon> | null = null;
 
 function getPlatformAppIconFilename(size: 32 | 128 | 512) {
-	const baseName = process.platform === "darwin" ? "recordlymac" : "recordly";
-	return `app-icons/${baseName}-${size}.png`;
+	const baseName = process.platform === "darwin" ? "devcastmac" : "devcast";
+	return `content/icons/${baseName}-${size}.png`;
 }
 
 function getDefaultTrayIcon() {
@@ -711,7 +711,7 @@ ipcMain.handle("check-for-app-updates", async () => {
 function updateTrayMenu(recording: boolean = false) {
 	if (!tray) return;
 	const trayIcon = recording ? getRecordingTrayIcon() : getDefaultTrayIcon();
-	const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "Recordly";
+	const trayToolTip = recording ? `Recording: ${selectedSourceName}` : "DevCast";
 	const menuTemplate = recording
 		? [
 				{
@@ -909,7 +909,7 @@ app.whenReady().then(async () => {
 	if (startupAuthCallback) authCallbacks.dispatch(startupAuthCallback);
 
 	if (process.platform === "win32") {
-		app.setAppUserModelId("dev.recordly.app");
+		app.setAppUserModelId("dev.devcast.app");
 	}
 
 	session.defaultSession.setPermissionCheckHandler(
@@ -951,7 +951,7 @@ app.whenReady().then(async () => {
 		},
 	);
 
-	// Recordly does not use WebHID, Web Serial, or WebUSB. Do not grant devices by default.
+	// DevCast does not use WebHID, Web Serial, or WebUSB. Do not grant devices by default.
 	session.defaultSession.setDevicePermissionHandler(() => false);
 
 	// macOS prompts for camera and microphone access at the point of use. Asking
@@ -1035,17 +1035,17 @@ app.whenReady().then(async () => {
 		},
 	);
 
-	if (IS_SMOKE_EXPORT || process.env.RECORDLY_DEV_OPEN_RECORDING_INPUT) {
+	if (IS_SMOKE_EXPORT || process.env.DEVCAST_DEV_OPEN_RECORDING_INPUT) {
 		await logSmokeExportGpuDiagnostics();
 		if (IS_SMOKE_EXPORT) {
 			const smokeSource =
-				process.env.RECORDLY_SMOKE_EXPORT_PROJECT ??
-				process.env.RECORDLY_SMOKE_EXPORT_INPUT ??
+				process.env.DEVCAST_SMOKE_EXPORT_PROJECT ??
+				process.env.DEVCAST_SMOKE_EXPORT_INPUT ??
 				"<missing input>";
 			console.log(`[smoke-export] Starting editor smoke export for ${smokeSource}`);
 		} else {
 			console.log(
-				`[dev-open-recording] Starting editor for ${process.env.RECORDLY_DEV_OPEN_RECORDING_INPUT}`,
+				`[dev-open-recording] Starting editor for ${process.env.DEVCAST_DEV_OPEN_RECORDING_INPUT}`,
 			);
 		}
 		createEditorWindowWrapper();
@@ -1054,7 +1054,7 @@ app.whenReady().then(async () => {
 
 	createWindow();
 	setupAutoUpdates(getUpdateDialogWindow, sendUpdateToastToWindows);
-	if (IS_DEV && process.env.RECORDLY_DEV_PREVIEW_UPDATE === "1") {
+	if (IS_DEV && process.env.DEVCAST_DEV_PREVIEW_UPDATE === "1") {
 		setTimeout(() => {
 			if (process.platform === "darwin") {
 				previewUpdateToast(sendUpdateToastToWindows);

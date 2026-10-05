@@ -230,5 +230,6 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onAnnotationBlurColorChange: annotationCommands.handleAnnotationBlurColorChange,
 		onAnnotationStagesChange: annotationCommands.handleAnnotationStagesChange,
 		onAnnotationDelete: annotationCommands.handleAnnotationDelete,
+		onAnnotationDuplicate: annotationCommands.handleAnnotationDuplicate,
 	};
 }

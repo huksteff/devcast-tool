@@ -12,7 +12,7 @@ import type {
 } from "../types";
 import type { ClipSequenceSpan } from "./core/timelineTypes";
 
-export const TIMELINE_WINDOW_CHANNEL = "recordly-timeline-window";
+export const TIMELINE_WINDOW_CHANNEL = "devcast-timeline-window";
 
 export type TimelineWindowSnapshot = {
 	isPlaying: boolean;
@@ -71,7 +71,8 @@ export type TimelineWindowAction =
 	| { type: "annotation-added"; span: Span; trackIndex?: number }
 	| { type: "annotation-span-change"; id: string; span: Span; trackIndex?: number }
 	| { type: "annotation-delete"; id: string }
-	| { type: "select-annotation"; id: string | null };
+	| { type: "select-annotation"; id: string | null }
+	| { type: "clipboard"; operation: "copy" | "cut" | "paste" };
 
 export type TimelineWindowMessage =
 	| { type: "snapshot-request" }

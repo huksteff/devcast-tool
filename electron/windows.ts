@@ -20,10 +20,11 @@ const APP_ROOT = path.join(electronWindowsDir, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const RENDERER_DIST = path.join(APP_ROOT, "dist");
 const WINDOW_ICON_FILENAME =
-	process.platform === "darwin" ? "recordlymac-512.png" : "recordly-512.png";
+	process.platform === "darwin" ? "devcastmac-512.png" : "devcast-512.png";
 const WINDOW_ICON_PATH = path.join(
 	process.env.VITE_PUBLIC || RENDERER_DIST,
-	"app-icons",
+	"content",
+	"icons",
 	WINDOW_ICON_FILENAME,
 );
 
@@ -53,65 +54,65 @@ function getEditorWindowQuery(): Record<string, string> {
 		windowType: "editor",
 	};
 
-	if (process.env.RECORDLY_DEV_OPEN_RECORDING_INPUT) {
-		query.devOpenInput = process.env.RECORDLY_DEV_OPEN_RECORDING_INPUT;
+	if (process.env.DEVCAST_DEV_OPEN_RECORDING_INPUT) {
+		query.devOpenInput = process.env.DEVCAST_DEV_OPEN_RECORDING_INPUT;
 	}
-	if (process.env.RECORDLY_DEV_OPEN_RECORDING_WEBCAM) {
-		query.devOpenWebcam = process.env.RECORDLY_DEV_OPEN_RECORDING_WEBCAM;
+	if (process.env.DEVCAST_DEV_OPEN_RECORDING_WEBCAM) {
+		query.devOpenWebcam = process.env.DEVCAST_DEV_OPEN_RECORDING_WEBCAM;
 	}
 
-	if (process.env.RECORDLY_SMOKE_EXPORT === "1") {
+	if (process.env.DEVCAST_SMOKE_EXPORT === "1") {
 		query.smokeExport = "1";
-		if (process.env.RECORDLY_SMOKE_EXPORT_INPUT) {
-			query.smokeInput = process.env.RECORDLY_SMOKE_EXPORT_INPUT;
+		if (process.env.DEVCAST_SMOKE_EXPORT_INPUT) {
+			query.smokeInput = process.env.DEVCAST_SMOKE_EXPORT_INPUT;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_OUTPUT) {
-			query.smokeOutput = process.env.RECORDLY_SMOKE_EXPORT_OUTPUT;
+		if (process.env.DEVCAST_SMOKE_EXPORT_OUTPUT) {
+			query.smokeOutput = process.env.DEVCAST_SMOKE_EXPORT_OUTPUT;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_USE_NATIVE === "1") {
+		if (process.env.DEVCAST_SMOKE_EXPORT_USE_NATIVE === "1") {
 			query.smokeUseNativeExport = "1";
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_ENCODING_MODE) {
-			query.smokeEncodingMode = process.env.RECORDLY_SMOKE_EXPORT_ENCODING_MODE;
+		if (process.env.DEVCAST_SMOKE_EXPORT_ENCODING_MODE) {
+			query.smokeEncodingMode = process.env.DEVCAST_SMOKE_EXPORT_ENCODING_MODE;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_SHADOW_INTENSITY) {
-			query.smokeShadowIntensity = process.env.RECORDLY_SMOKE_EXPORT_SHADOW_INTENSITY;
+		if (process.env.DEVCAST_SMOKE_EXPORT_SHADOW_INTENSITY) {
+			query.smokeShadowIntensity = process.env.DEVCAST_SMOKE_EXPORT_SHADOW_INTENSITY;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_WEBCAM_INPUT) {
-			query.smokeWebcamInput = process.env.RECORDLY_SMOKE_EXPORT_WEBCAM_INPUT;
+		if (process.env.DEVCAST_SMOKE_EXPORT_WEBCAM_INPUT) {
+			query.smokeWebcamInput = process.env.DEVCAST_SMOKE_EXPORT_WEBCAM_INPUT;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_WEBCAM_SHADOW) {
-			query.smokeWebcamShadow = process.env.RECORDLY_SMOKE_EXPORT_WEBCAM_SHADOW;
+		if (process.env.DEVCAST_SMOKE_EXPORT_WEBCAM_SHADOW) {
+			query.smokeWebcamShadow = process.env.DEVCAST_SMOKE_EXPORT_WEBCAM_SHADOW;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_WEBCAM_SIZE) {
-			query.smokeWebcamSize = process.env.RECORDLY_SMOKE_EXPORT_WEBCAM_SIZE;
+		if (process.env.DEVCAST_SMOKE_EXPORT_WEBCAM_SIZE) {
+			query.smokeWebcamSize = process.env.DEVCAST_SMOKE_EXPORT_WEBCAM_SIZE;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_PIPELINE) {
-			query.smokePipelineModel = process.env.RECORDLY_SMOKE_EXPORT_PIPELINE;
+		if (process.env.DEVCAST_SMOKE_EXPORT_PIPELINE) {
+			query.smokePipelineModel = process.env.DEVCAST_SMOKE_EXPORT_PIPELINE;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_BACKEND) {
-			query.smokeBackendPreference = process.env.RECORDLY_SMOKE_EXPORT_BACKEND;
+		if (process.env.DEVCAST_SMOKE_EXPORT_BACKEND) {
+			query.smokeBackendPreference = process.env.DEVCAST_SMOKE_EXPORT_BACKEND;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_RENDER_BACKEND) {
-			query.smokeRenderBackend = process.env.RECORDLY_SMOKE_EXPORT_RENDER_BACKEND;
+		if (process.env.DEVCAST_SMOKE_EXPORT_RENDER_BACKEND) {
+			query.smokeRenderBackend = process.env.DEVCAST_SMOKE_EXPORT_RENDER_BACKEND;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_MAX_ENCODE_QUEUE) {
-			query.smokeMaxEncodeQueue = process.env.RECORDLY_SMOKE_EXPORT_MAX_ENCODE_QUEUE;
+		if (process.env.DEVCAST_SMOKE_EXPORT_MAX_ENCODE_QUEUE) {
+			query.smokeMaxEncodeQueue = process.env.DEVCAST_SMOKE_EXPORT_MAX_ENCODE_QUEUE;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_MAX_DECODE_QUEUE) {
-			query.smokeMaxDecodeQueue = process.env.RECORDLY_SMOKE_EXPORT_MAX_DECODE_QUEUE;
+		if (process.env.DEVCAST_SMOKE_EXPORT_MAX_DECODE_QUEUE) {
+			query.smokeMaxDecodeQueue = process.env.DEVCAST_SMOKE_EXPORT_MAX_DECODE_QUEUE;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_MAX_PENDING_FRAMES) {
-			query.smokeMaxPendingFrames = process.env.RECORDLY_SMOKE_EXPORT_MAX_PENDING_FRAMES;
+		if (process.env.DEVCAST_SMOKE_EXPORT_MAX_PENDING_FRAMES) {
+			query.smokeMaxPendingFrames = process.env.DEVCAST_SMOKE_EXPORT_MAX_PENDING_FRAMES;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_PROJECT) {
-			query.smokeProject = process.env.RECORDLY_SMOKE_EXPORT_PROJECT;
+		if (process.env.DEVCAST_SMOKE_EXPORT_PROJECT) {
+			query.smokeProject = process.env.DEVCAST_SMOKE_EXPORT_PROJECT;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_QUALITY) {
-			query.smokeQuality = process.env.RECORDLY_SMOKE_EXPORT_QUALITY;
+		if (process.env.DEVCAST_SMOKE_EXPORT_QUALITY) {
+			query.smokeQuality = process.env.DEVCAST_SMOKE_EXPORT_QUALITY;
 		}
-		if (process.env.RECORDLY_SMOKE_EXPORT_FPS) {
-			query.smokeFps = process.env.RECORDLY_SMOKE_EXPORT_FPS;
+		if (process.env.DEVCAST_SMOKE_EXPORT_FPS) {
+			query.smokeFps = process.env.DEVCAST_SMOKE_EXPORT_FPS;
 		}
 	}
 
@@ -671,7 +672,7 @@ export function createTimelineWindow(): BrowserWindow {
 		autoHideMenuBar: true,
 		resizable: true,
 		show: false,
-		title: "Recordly Timeline",
+		title: "DevCast Timeline",
 		backgroundColor: "#181a1f",
 		webPreferences: {
 			preload: path.join(electronWindowsDir, "preload.mjs"),
@@ -837,7 +838,7 @@ export function createUpdateToastWindow(): BrowserWindow {
 
 	win.setVisibleOnAllWorkspaces(true, {
 		visibleOnFullScreen: true,
-		// Keep Recordly a foreground application so macOS does not temporarily
+		// Keep DevCast a foreground application so macOS does not temporarily
 		// remove its Dock icon while showing an overlay window.
 		skipTransformProcessType: process.platform === "darwin",
 	});
@@ -1041,7 +1042,7 @@ export function createEditorWindow(): BrowserWindow {
 		resizable: true,
 		alwaysOnTop: false,
 		skipTaskbar: false,
-		title: "Recordly",
+		title: "DevCast",
 		show: false,
 		backgroundColor: "#000000",
 		webPreferences: {
@@ -1201,7 +1202,7 @@ export function createCountdownWindow(): BrowserWindow {
 
 	win.setVisibleOnAllWorkspaces(true, {
 		visibleOnFullScreen: true,
-		// Keep Recordly a foreground application so macOS does not temporarily
+		// Keep DevCast a foreground application so macOS does not temporarily
 		// remove its Dock icon while showing the countdown.
 		skipTransformProcessType: process.platform === "darwin",
 	});

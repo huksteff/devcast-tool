@@ -51,12 +51,12 @@ const formatFfmpegSeconds = (milliseconds: number) => (milliseconds / 1000).toFi
 const MISSING_NATIVE_STATIC_BACKGROUND_COLOR = "#ffffff";
 const NATIVE_EXPORT_HIGH_PRIORITY = os.constants.priority.PRIORITY_HIGH;
 const NVIDIA_PCI_VENDOR_ID = 0x10de;
-const NVIDIA_CUDA_EXPORT_ENV = "RECORDLY_EXPERIMENTAL_NVIDIA_CUDA_EXPORT";
-const NVIDIA_CUDA_ALLOW_AUDIO_EXPORT_ENV = "RECORDLY_NVIDIA_CUDA_ALLOW_AUDIO_EXPORT";
-const NVIDIA_CUDA_FORCE_VIDEO_ONLY_ENV = "RECORDLY_NVIDIA_CUDA_FORCE_VIDEO_ONLY";
-const NVIDIA_CUDA_AUTO_STALL_TIMEOUT_ENV = "RECORDLY_NVIDIA_CUDA_AUTO_STALL_TIMEOUT_MS";
+const NVIDIA_CUDA_EXPORT_ENV = "DEVCAST_EXPERIMENTAL_NVIDIA_CUDA_EXPORT";
+const NVIDIA_CUDA_ALLOW_AUDIO_EXPORT_ENV = "DEVCAST_NVIDIA_CUDA_ALLOW_AUDIO_EXPORT";
+const NVIDIA_CUDA_FORCE_VIDEO_ONLY_ENV = "DEVCAST_NVIDIA_CUDA_FORCE_VIDEO_ONLY";
+const NVIDIA_CUDA_AUTO_STALL_TIMEOUT_ENV = "DEVCAST_NVIDIA_CUDA_AUTO_STALL_TIMEOUT_MS";
 const DEFAULT_NVIDIA_CUDA_AUTO_STALL_TIMEOUT_MS = 120_000;
-const NATIVE_GPU_STALL_TIMEOUT_ENV = "RECORDLY_NATIVE_GPU_STALL_TIMEOUT_MS";
+const NATIVE_GPU_STALL_TIMEOUT_ENV = "DEVCAST_NATIVE_GPU_STALL_TIMEOUT_MS";
 const DEFAULT_NATIVE_GPU_STALL_TIMEOUT_MS = 120_000;
 const NATIVE_STATIC_LAYOUT_SOURCE_PROXY_REFERENCE_PIXEL_RATE = 1920 * 1080 * 30;
 const NATIVE_STATIC_LAYOUT_SOURCE_PROXY_1080P30_BITRATE = 24_000_000;
@@ -634,14 +634,14 @@ function isNvidiaCudaTimestampAlignedSummary(summary: NvidiaCudaExportSummary) {
 }
 
 function shouldPersistNativeExportDiagnostics() {
-	const rawValue = process.env.RECORDLY_NATIVE_EXPORT_DIAGNOSTICS?.trim().toLowerCase();
+	const rawValue = process.env.DEVCAST_NATIVE_EXPORT_DIAGNOSTICS?.trim().toLowerCase();
 	return rawValue !== "0" && rawValue !== "off" && rawValue !== "false";
 }
 
 function shouldPersistNvidiaCudaExportDiagnostics() {
 	return (
 		shouldPersistNativeExportDiagnostics() ||
-		process.env.RECORDLY_NVIDIA_CUDA_EXPORT_DIAGNOSTICS === "1"
+		process.env.DEVCAST_NVIDIA_CUDA_EXPORT_DIAGNOSTICS === "1"
 	);
 }
 
@@ -1901,9 +1901,9 @@ async function resolveExperimentalWindowsGpuExporterPath() {
 		return null;
 	}
 
-	const executableNames = ["recordly-gpu-export.exe", "gpu-export-probe.exe"];
+	const executableNames = ["devcast-gpu-export.exe", "gpu-export-probe.exe"];
 	const candidates: string[] = [];
-	const configuredPath = process.env.RECORDLY_WINDOWS_GPU_EXPORT_EXE;
+	const configuredPath = process.env.DEVCAST_WINDOWS_GPU_EXPORT_EXE;
 	if (configuredPath) {
 		candidates.push(configuredPath);
 	}
@@ -2102,7 +2102,7 @@ export async function resolveExperimentalNvidiaCudaExportScriptPath() {
 	}
 
 	const candidates: string[] = [];
-	const configuredPath = process.env.RECORDLY_NVIDIA_CUDA_EXPORT_SCRIPT;
+	const configuredPath = process.env.DEVCAST_NVIDIA_CUDA_EXPORT_SCRIPT;
 	if (configuredPath) {
 		candidates.push(configuredPath);
 	}
@@ -2155,7 +2155,7 @@ export async function resolveExperimentalNvidiaCudaExportScriptPath() {
 }
 
 function resolveExperimentalNvidiaCudaNodeCommand() {
-	const configuredNodePath = process.env.RECORDLY_NVIDIA_CUDA_NODE_EXE;
+	const configuredNodePath = process.env.DEVCAST_NVIDIA_CUDA_NODE_EXE;
 	if (configuredNodePath) {
 		return {
 			command: configuredNodePath,
@@ -2673,7 +2673,7 @@ export function buildExperimentalNvidiaCudaStaticLayoutArgs(
 		formatCliNumber(options.durationSec),
 		"--stream-sync",
 		"--prewarm-ms",
-		process.env.RECORDLY_NVIDIA_CUDA_PREWARM_MS || "500",
+		process.env.DEVCAST_NVIDIA_CUDA_PREWARM_MS || "500",
 		"--content-x",
 		String(Math.round(options.offsetX)),
 		"--content-y",
@@ -2772,7 +2772,7 @@ export function buildExperimentalNvidiaCudaStaticLayoutArgs(
 	if (options.timelineMapPath) {
 		args.push("--timeline-map", options.timelineMapPath);
 	}
-	if (process.env.RECORDLY_NVIDIA_CUDA_SAMPLE_GPU === "1") {
+	if (process.env.DEVCAST_NVIDIA_CUDA_SAMPLE_GPU === "1") {
 		args.push("--sample-gpu");
 	}
 
@@ -2822,10 +2822,10 @@ async function runExperimentalNvidiaCudaStaticLayoutExport(
 	const env = {
 		...process.env,
 		...nodeCommand.env,
-		RECORDLY_NVIDIA_CUDA_EXPORT_HIGH_PRIORITY:
-			process.env.RECORDLY_NVIDIA_CUDA_EXPORT_HIGH_PRIORITY ?? "1",
-		RECORDLY_FFMPEG_EXE: ffmpegPath,
-		RECORDLY_FFPROBE_EXE: process.env.RECORDLY_FFPROBE_EXE ?? getFfprobeBinaryPath(),
+		DEVCAST_NVIDIA_CUDA_EXPORT_HIGH_PRIORITY:
+			process.env.DEVCAST_NVIDIA_CUDA_EXPORT_HIGH_PRIORITY ?? "1",
+		DEVCAST_FFMPEG_EXE: ffmpegPath,
+		DEVCAST_FFPROBE_EXE: process.env.DEVCAST_FFPROBE_EXE ?? getFfprobeBinaryPath(),
 		[pathKey]: `${ffmpegDirectory}${path.delimiter}${process.env[pathKey] ?? ""}`,
 	};
 	const powerGuard = startNativeStaticLayoutExportPowerGuard();
@@ -3216,7 +3216,7 @@ export async function exportNativeStaticLayoutVideo(
 
 	const sessionId =
 		options.sessionId ??
-		`recordly-static-layout-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+		`devcast-static-layout-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 	const session: NativeStaticLayoutExportSession = {
 		terminating: false,
 		currentProcess: null,
@@ -3891,7 +3891,7 @@ export async function probeNativeVideoEncoder(
 ) {
 	const outputPath = path.join(
 		app.getPath("temp"),
-		`recordly-export-probe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`,
+		`devcast-export-probe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`,
 	);
 	const args = buildNativeVideoExportArgs(
 		encoderName,
@@ -4091,7 +4091,7 @@ export async function muxNativeVideoExportAudio(
 		const extension = getEditedAudioExtension(options.editedAudioMimeType);
 		audioInputPath = path.join(
 			app.getPath("temp"),
-			`recordly-export-audio-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${extension}`,
+			`devcast-export-audio-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${extension}`,
 		);
 		const tempAudioWriteStartedAt = getNowMs();
 		await fs.writeFile(audioInputPath, Buffer.from(options.editedAudioData));
@@ -4148,7 +4148,7 @@ export async function muxExportedVideoAudioBuffer(
 ) {
 	const tempVideoPath = path.join(
 		app.getPath("temp"),
-		`recordly-export-video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`,
+		`devcast-export-video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`,
 	);
 	const metrics: NativeVideoAudioMuxMetrics = {};
 	let succeeded = false;

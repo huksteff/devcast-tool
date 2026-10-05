@@ -200,7 +200,7 @@ test("HUD project list fits its popover and scrolls only vertically", async ({ p
 			success: true,
 			projects: [],
 			entries: Array.from({ length: 30 }, (_, i) => ({
-				path: `/projects/${i}.recordly`,
+				path: `/projects/${i}.devcast`,
 				name: `An extremely long project name that should never force sideways scrolling ${i}`,
 				updatedAt: Date.now(),
 				thumbnailPath: null,
@@ -298,9 +298,9 @@ for (const enabled of [true, false]) {
 	}) => {
 		await setup(page);
 		await page.evaluate((enabled) => {
-			const prefs = JSON.parse(localStorage.getItem("recordly.editor.preferences") || "{}");
+			const prefs = JSON.parse(localStorage.getItem("devcast.editor.preferences") || "{}");
 			localStorage.setItem(
-				"recordly.editor.preferences",
+				"devcast.editor.preferences",
 				JSON.stringify({ ...prefs, autoApplyFreshRecordingAutoZooms: enabled }),
 			);
 		}, enabled);
