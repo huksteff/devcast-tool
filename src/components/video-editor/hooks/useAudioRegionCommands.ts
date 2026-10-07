@@ -55,6 +55,7 @@ export function useAudioRegionCommands({
 				endMs: Math.round(span.end),
 				audioPath,
 				volume: 1,
+				gain: 1,
 				normalize: false,
 				trackIndex,
 			};
@@ -115,6 +116,19 @@ export function useAudioRegionCommands({
 		[selectedAudioId, setAudioRegions],
 	);
 
+	const handleAudioGainChange = useCallback(
+		(gain: number) => {
+			if (!selectedAudioId || !Number.isFinite(gain)) return;
+			const nextGain = Math.max(0, Math.min(10, gain));
+			setAudioRegions((current) =>
+				current.map((region) =>
+					region.id === selectedAudioId ? { ...region, gain: nextGain } : region,
+				),
+			);
+		},
+		[selectedAudioId, setAudioRegions],
+	);
+
 	const handleAudioDelete = useCallback(
 		(id: string) => {
 			setAudioRegions((current) => current.filter((region) => region.id !== id));
@@ -140,6 +154,7 @@ export function useAudioRegionCommands({
 		handleAudioAdded,
 		handleAudioSpanChange,
 		handleAudioVolumeChange,
+		handleAudioGainChange,
 		handleAudioDelete,
 		handleAudioNormalizeChange,
 	};

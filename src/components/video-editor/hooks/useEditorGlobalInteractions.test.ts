@@ -9,7 +9,13 @@ vi.mock("react", () => ({
 class Element {
 	isContentEditable = false;
 }
-class Input extends Element {}
+class Input extends Element {
+	type: string;
+	constructor(type = "text") {
+		super();
+		this.type = type;
+	}
+}
 class Textarea extends Element {}
 class Select extends Element {}
 afterEach(() => vi.unstubAllGlobals());
@@ -34,12 +40,14 @@ function setup(binding = DEFAULT_SHORTCUTS.playPause) {
 	const startPlayback = vi.fn(() => {
 		playback.isPlaying = true;
 	});
+	const stepFrame = vi.fn();
 	useEditorGlobalInteractions({
 		timeline: {},
 		videoPlaybackRef: { current: playback },
 		shortcuts: { ...DEFAULT_SHORTCUTS, playPause: binding },
 		isMac: true,
 		startPlayback,
+		stepFrame,
 		handleUndo: vi.fn(),
 		handleRedo: vi.fn(),
 	} as unknown as Parameters<typeof useEditorGlobalInteractions>[0]);
@@ -60,7 +68,7 @@ function setup(binding = DEFAULT_SHORTCUTS.playPause) {
 		handlers.get(type)!(event as unknown as KeyboardEvent);
 		return event;
 	};
-	return { send, playback, startPlayback };
+	return { send, playback, startPlayback, stepFrame };
 }
 
 describe("editor playback shortcut", () => {
@@ -116,5 +124,22 @@ describe("editor playback shortcut", () => {
 		send("keyup", { key: "k", code: "KeyK", metaKey: false });
 		send("keydown", { key: "k", code: "KeyK", metaKey: true });
 		expect(playback.pause).toHaveBeenCalledOnce();
+	});
+	it("plays after a switch or slider receives focus", () => {
+		for (const type of ["checkbox", "range"]) {
+			const { send, startPlayback } = setup();
+			const event = send("keydown", { target: new Input(type) });
+			expect(event.preventDefault).toHaveBeenCalledOnce();
+			expect(startPlayback).toHaveBeenCalledOnce();
+		}
+	});
+	it("moves one frame with horizontal arrows outside text fields", () => {
+		const { send, stepFrame } = setup();
+		send("keydown", { key: "ArrowLeft", code: "ArrowLeft", target: new Input("checkbox") });
+		send("keydown", { key: "ArrowRight", code: "ArrowRight" });
+		expect(stepFrame).toHaveBeenNthCalledWith(1, -1);
+		expect(stepFrame).toHaveBeenNthCalledWith(2, 1);
+		send("keydown", { key: "ArrowRight", code: "ArrowRight", target: new Input("text") });
+		expect(stepFrame).toHaveBeenCalledTimes(2);
 	});
 });

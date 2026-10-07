@@ -205,10 +205,26 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			return () => node?.removeEventListener("wheel", preventShiftScroll);
 		}, [videoDuration]);
 		const isTimelineFocusedRef = useRef(false);
-		const { setRange, clampedRange, handleTimelineWheel } = useTimelineRange({
+		const { setRange, clampedRange, handleTimelineWheel, panTimelineRange } = useTimelineRange({
 			totalMs,
 			timelineContainerRef,
 		});
+
+		const viewportDragRef = useRef<{ pointerId: number; offsetPx: number } | null>(null);
+		const moveTimelineViewport = (clientX: number, track: HTMLDivElement) => {
+			const drag = viewportDragRef.current;
+			if (!drag || totalMs <= 0) return;
+			const rect = track.getBoundingClientRect();
+			const visibleSpan = Math.max(1, clampedRange.end - clampedRange.start);
+			const maxStart = Math.max(0, totalMs - visibleSpan);
+			const trackWidth = Math.max(1, rect.width);
+			const startRatio = Math.max(
+				0,
+				Math.min(1, (clientX - rect.left - drag.offsetPx) / trackWidth),
+			);
+			const start = Math.max(0, Math.min(maxStart, startRatio * totalMs));
+			setRange({ start, end: start + visibleSpan });
+		};
 
 		const [liveSpanPreviewById, setLiveSpanPreviewById] = useState<Record<string, Span>>({});
 		const [isDragging, setIsDragging] = useState(false);
@@ -434,7 +450,10 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		}
 
 		return (
-			<div style={{ "--timeline-row-scale": rowScale } as CSSProperties} className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden">
+			<div
+				style={{ "--timeline-row-scale": rowScale } as CSSProperties}
+				className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden"
+			>
 				<div
 					ref={timelineContainerRef}
 					data-testid="timeline-scroll"
@@ -459,7 +478,10 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 						if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
 							event.stopPropagation();
 							const delta = event.deltaY || event.deltaX;
-							if (delta) onRowScaleChange?.(Math.max(0.5, Math.min(3, rowScale - Math.sign(delta) * 0.1)));
+							if (delta)
+								onRowScaleChange?.(
+									Math.max(0.5, Math.min(3, rowScale - Math.sign(delta) * 0.1)),
+								);
 							return;
 						}
 						handleTimelineWheel(event);
@@ -510,6 +532,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							videoDurationMs={totalMs}
 							currentTimeMs={currentTimeMs}
 							onSeek={onSeek}
+							onPanRange={panTimelineRange}
 							onAddZoomAtMs={addZoomAtMs}
 							canPlaceZoomAtMs={canPlaceZoomAtMs}
 							onAddCaptionAtMs={addCaptionAtMs}
@@ -541,6 +564,62 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							isLoading={isLoading}
 						/>
 					</TimelineWrapper>
+				</div>
+				<div className="shrink-0 px-6 pb-3 pt-4">
+					<div
+						aria-label="Timeline viewport"
+						className="relative h-2 cursor-pointer rounded-full bg-foreground/10"
+						onPointerDown={(event) => {
+							if (totalMs <= 0) return;
+							const track = event.currentTarget;
+							const rect = track.getBoundingClientRect();
+							const thumbWidth = Math.max(
+								3,
+								((clampedRange.end - clampedRange.start) / totalMs) * rect.width,
+							);
+							const thumbLeft = (clampedRange.start / totalMs) * rect.width;
+							const isThumb = (event.target as HTMLElement).closest(
+								"[data-timeline-viewport-thumb]",
+							);
+							viewportDragRef.current = {
+								pointerId: event.pointerId,
+								offsetPx: isThumb
+									? Math.max(
+											0,
+											Math.min(
+												thumbWidth,
+												event.clientX - rect.left - thumbLeft,
+											),
+										)
+									: thumbWidth / 2,
+							};
+							track.setPointerCapture(event.pointerId);
+							moveTimelineViewport(event.clientX, track);
+						}}
+						onPointerMove={(event) => {
+							if (viewportDragRef.current?.pointerId === event.pointerId) {
+								moveTimelineViewport(event.clientX, event.currentTarget);
+							}
+						}}
+						onPointerUp={(event) => {
+							if (viewportDragRef.current?.pointerId === event.pointerId) {
+								viewportDragRef.current = null;
+								event.currentTarget.releasePointerCapture(event.pointerId);
+							}
+						}}
+						onPointerCancel={() => {
+							viewportDragRef.current = null;
+						}}
+					>
+						<div
+							data-timeline-viewport-thumb
+							className="absolute top-0 h-2 rounded-full bg-foreground/45 shadow-sm"
+							style={{
+								left: `${(clampedRange.start / Math.max(1, totalMs)) * 100}%`,
+								width: `${Math.max(3, ((clampedRange.end - clampedRange.start) / Math.max(1, totalMs)) * 100)}%`,
+							}}
+						/>
+					</div>
 				</div>
 			</div>
 		);

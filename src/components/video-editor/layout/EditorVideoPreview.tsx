@@ -127,11 +127,8 @@ export function EditorVideoPreview({
 			cursorClickBounce={appearance.cursorClickBounce}
 			cursorClickBounceDuration={appearance.cursorClickBounceDuration}
 			cursorSway={appearance.cursorSway}
-			volume={
-				audio.shouldMutePreviewVideo || audio.isCurrentClipMuted
-					? 0
-					: Math.max(0, Math.min(1, previewVolume * audio.embeddedSourcePreviewGain))
-			}
+			volume={audio.shouldMutePreviewVideo || audio.isCurrentClipMuted ? 0 : previewVolume}
+			audioGain={audio.embeddedSourcePreviewGain}
 			suspendRendering={suspendRendering}
 			{...handlers}
 		/>

@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import {
-	SOURCE_AUDIO_NORMALIZE_GAIN,
+	resolveRecordingTrackGain,
 	type SourceAudioTrackSettings,
 } from "@/components/video-editor/audio/audioTypes";
 import { useSourceAudioTrackSettings } from "./useSourceAudioTrackSettings";
@@ -34,6 +34,7 @@ export function useClipAudioSettingsController({
 		getSourceAudioTrackSettingsForClip,
 		onSourceAudioTracksMetaChange,
 		onSelectedClipSourceAudioTrackVolumeChange,
+		onSelectedClipSourceAudioTrackGainChange,
 		onSelectedClipSourceAudioTrackNormalizeChange,
 	} = useSourceAudioTrackSettings({
 		selectedClipId,
@@ -58,23 +59,13 @@ export function useClipAudioSettingsController({
 	}, [sourceAudioTrackMeta]);
 
 	const embeddedSourcePreviewGain = useMemo(() => {
-		const settings = previewSourceAudioTrackSettings[embeddedTrackId] ?? {
-			volume: 1,
-			normalize: false,
-		};
-		const normalizeGain = settings.normalize ? SOURCE_AUDIO_NORMALIZE_GAIN : 1;
-		return Math.max(0, Math.min(1, settings.volume * normalizeGain));
+		return resolveRecordingTrackGain(previewSourceAudioTrackSettings, embeddedTrackId);
 	}, [embeddedTrackId, previewSourceAudioTrackSettings]);
 
 	const getSourceTrackPreviewGain = useCallback(
 		(audioPath: string) => {
 			const trackId = getSourceTrackIdFromPath(audioPath);
-			const settings = previewSourceAudioTrackSettings[trackId] ?? {
-				volume: 1,
-				normalize: false,
-			};
-			const normalizeGain = settings.normalize ? SOURCE_AUDIO_NORMALIZE_GAIN : 1;
-			return Math.max(0, Math.min(1, settings.volume * normalizeGain));
+			return resolveRecordingTrackGain(previewSourceAudioTrackSettings, trackId);
 		},
 		[previewSourceAudioTrackSettings],
 	);
@@ -86,6 +77,7 @@ export function useClipAudioSettingsController({
 		getSourceAudioTrackSettingsForClip,
 		onSourceAudioTracksMetaChange,
 		onSelectedClipSourceAudioTrackVolumeChange,
+		onSelectedClipSourceAudioTrackGainChange,
 		onSelectedClipSourceAudioTrackNormalizeChange,
 		embeddedSourcePreviewGain,
 		getSourceTrackPreviewGain,

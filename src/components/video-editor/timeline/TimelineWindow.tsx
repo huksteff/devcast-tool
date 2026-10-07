@@ -36,7 +36,10 @@ export default function TimelineWindow() {
 			const key = event.key.toLowerCase();
 			if (key !== "c" && key !== "x" && key !== "v") return;
 			event.preventDefault();
-			send({ type: "clipboard", operation: key === "c" ? "copy" : key === "x" ? "cut" : "paste" });
+			send({
+				type: "clipboard",
+				operation: key === "c" ? "copy" : key === "x" ? "cut" : "paste",
+			});
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
@@ -52,22 +55,47 @@ export default function TimelineWindow() {
 
 	return (
 		<div className="flex h-screen min-h-0 flex-col bg-editor-bg p-3 text-foreground">
-			<div className="mb-2 flex flex-shrink-0 items-center justify-between border-b border-separator pb-2">
+			<div className="mb-2 grid flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-separator pb-2">
 				<span className="text-sm font-medium">Timeline</span>
 				<div className="flex items-center gap-1.5">
-					<span className="text-xs tabular-nums text-muted-foreground">{Math.floor(snapshot.playheadTime / 60)}:{String(Math.floor(snapshot.playheadTime % 60)).padStart(2, "0")}</span>
-					<Button variant="ghost" size="icon" title="Skip back" aria-label="Skip back" onClick={() => send({ type: "skip-back" })}><SkipBack weight="fill" /></Button>
-					<Button variant="ghost" size="icon" className="rounded-full bg-foreground text-background" title={snapshot.isPlaying ? "Pause" : "Play"} aria-label={snapshot.isPlaying ? "Pause" : "Play"} onClick={() => send({ type: "toggle-play" })}>{snapshot.isPlaying ? <Pause weight="fill" /> : <Play weight="fill" />}</Button>
-					<Button variant="ghost" size="icon" title="Skip forward" aria-label="Skip forward" onClick={() => send({ type: "skip-forward" })}><SkipForward weight="fill" /></Button>
-					<span className="text-xs tabular-nums text-muted-foreground">{Math.floor(snapshot.videoDuration / 60)}:{String(Math.floor(snapshot.videoDuration % 60)).padStart(2, "0")}</span>
+					<span className="text-xs tabular-nums text-muted-foreground">
+						{Math.floor(snapshot.playheadTime / 60)}:
+						{String(Math.floor(snapshot.playheadTime % 60)).padStart(2, "0")}
+					</span>
+					<Button
+						variant="ghost"
+						size="icon"
+						title="Skip back"
+						aria-label="Skip back"
+						onClick={() => send({ type: "skip-back" })}
+					>
+						<SkipBack weight="fill" />
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="rounded-full bg-foreground text-background"
+						title={snapshot.isPlaying ? "Pause" : "Play"}
+						aria-label={snapshot.isPlaying ? "Pause" : "Play"}
+						onClick={() => send({ type: "toggle-play" })}
+					>
+						{snapshot.isPlaying ? <Pause weight="fill" /> : <Play weight="fill" />}
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						title="Skip forward"
+						aria-label="Skip forward"
+						onClick={() => send({ type: "skip-forward" })}
+					>
+						<SkipForward weight="fill" />
+					</Button>
+					<span className="text-xs tabular-nums text-muted-foreground">
+						{Math.floor(snapshot.videoDuration / 60)}:
+						{String(Math.floor(snapshot.videoDuration % 60)).padStart(2, "0")}
+					</span>
 				</div>
-				<button
-					type="button"
-					className="rounded-md border border-separator px-2.5 py-1 text-xs text-muted-foreground hover:bg-default hover:text-foreground"
-					onClick={() => void window.electronAPI.closeTimelineWindow()}
-				>
-					Close window
-				</button>
+				<div aria-hidden="true" />
 			</div>
 			<div className="flex min-h-0 flex-1 flex-col">
 				<TimelineEditor
@@ -109,7 +137,9 @@ export default function TimelineWindow() {
 					selectedAudioId={snapshot.selectedAudioId}
 					onSelectAudio={(id) => send({ type: "select-audio", id })}
 					captionRegions={snapshot.captionRegions}
-					onCaptionSpanChange={(id, span) => send({ type: "caption-span-change", id, span })}
+					onCaptionSpanChange={(id, span) =>
+						send({ type: "caption-span-change", id, span })
+					}
 					onCaptionDelete={(id) => send({ type: "caption-delete", id })}
 					onCaptionAdded={(span) => send({ type: "caption-added", span })}
 					captionsEnabled={snapshot.captionsEnabled}

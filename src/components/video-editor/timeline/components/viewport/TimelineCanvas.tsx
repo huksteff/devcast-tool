@@ -1,4 +1,5 @@
 import { useTimelinePresentation } from "../../core/TimelinePresentation";
+import { calculateAxisScale, formatTimeLabel } from "../../core/time";
 import { Plus } from "@phosphor-icons/react";
 import { useTimelineContext } from "dnd-timeline";
 import {
@@ -49,6 +50,7 @@ import {
 	TIMELINE_AXIS_HEIGHT_PX,
 } from "../../timelineLayout";
 import PlaybackCursor from "../playhead/PlaybackCursor";
+import { getTimelineEdgePanDelta } from "../../core/edgePan";
 
 const HINT_CLIP = "Press C to split clip";
 const HINT_ANNOTATION = "Press A to add annotation";
@@ -60,6 +62,7 @@ interface TimelineCanvasProps {
 	videoDurationMs: number;
 	currentTimeMs: number;
 	onSeek?: (time: number) => void;
+	onPanRange?: (deltaMs: number) => void;
 	canPlaceZoomAtMs?: (startMs: number) => boolean;
 	onSelectZoom?: (id: string | null) => void;
 	onSelectClip?: (id: string | null) => void;
@@ -1044,6 +1047,7 @@ export default function TimelineCanvas({
 	videoDurationMs,
 	currentTimeMs,
 	onSeek,
+	onPanRange,
 	onAddZoomAtMs,
 	onAddAnnotationAtMs,
 	annotationQuickAddDurationMs,
@@ -1078,6 +1082,17 @@ export default function TimelineCanvas({
 		useTimelineContext();
 	const { clips: clipPresentation } = useTimelinePresentation();
 	const localTimelineRef = useRef<HTMLDivElement | null>(null);
+	const axisTicks = useMemo(() => {
+		const intervalMs = calculateAxisScale(Math.max(1, range.end - range.start)).intervalMs;
+		const firstTick = Math.ceil(range.start / intervalMs) * intervalMs;
+		const ticks: number[] = [];
+		for (let tick = firstTick; tick <= range.end + 0.5; tick += intervalMs) {
+			ticks.push(tick);
+		}
+		return { intervalMs, ticks };
+	}, [range.end, range.start]);
+	const axisSideProperty = direction === "rtl" ? "right" : "left";
+
 	const [isSeeking, setIsSeeking] = useState(false);
 	const seekRafRef = useRef<number | null>(null);
 	const pendingSeekClientXRef = useRef<number | null>(null);
@@ -1192,7 +1207,31 @@ export default function TimelineCanvas({
 			if (!onSeek || !localTimelineRef.current || pendingSeekClientXRef.current === null)
 				return;
 			const rect = localTimelineRef.current.getBoundingClientRect();
-			onSeek(getAbsoluteMsFromClientX(pendingSeekClientXRef.current, rect) / 1000);
+			const requestedEdgeDelta =
+				onPanRange && range.end - range.start < videoDurationMs
+					? getTimelineEdgePanDelta(
+							pendingSeekClientXRef.current,
+							rect,
+							sidebarWidth,
+							range.end - range.start,
+							direction,
+						)
+					: 0;
+			const edgeDelta = Math.max(
+				-range.start,
+				Math.min(videoDurationMs - range.end, requestedEdgeDelta),
+			);
+			if (edgeDelta) onPanRange?.(edgeDelta);
+			onSeek(
+				Math.max(
+					0,
+					Math.min(
+						videoDurationMs,
+						getAbsoluteMsFromClientX(pendingSeekClientXRef.current, rect) + edgeDelta,
+					),
+				) / 1000,
+			);
+			if (edgeDelta) seekRafRef.current = requestAnimationFrame(flushSeek);
 		};
 
 		const handleMouseMove = (event: globalThis.MouseEvent) => {
@@ -1216,17 +1255,29 @@ export default function TimelineCanvas({
 
 		window.addEventListener("mousemove", handleMouseMove);
 		window.addEventListener("mouseup", handleMouseUp);
+		if (pendingSeekClientXRef.current !== null) {
+			seekRafRef.current = requestAnimationFrame(flushSeek);
+		}
 
 		return () => {
 			if (seekRafRef.current !== null) {
 				cancelAnimationFrame(seekRafRef.current);
 				seekRafRef.current = null;
 			}
-			pendingSeekClientXRef.current = null;
 			window.removeEventListener("mousemove", handleMouseMove);
 			window.removeEventListener("mouseup", handleMouseUp);
 		};
-	}, [getAbsoluteMsFromClientX, isSeeking, onSeek]);
+	}, [
+		getAbsoluteMsFromClientX,
+		isSeeking,
+		onSeek,
+		onPanRange,
+		range.end,
+		range.start,
+		sidebarWidth,
+		direction,
+		videoDurationMs,
+	]);
 
 	const timelineRowCount = useMemo(() => {
 		const annotationRowIds = new Set<string>();
@@ -1237,13 +1288,7 @@ export default function TimelineCanvas({
 		}
 		const sourceAudioRows = showSourceAudioTrack ? sourceAudioTracks.length : 0;
 		// The annotation renderer always keeps one spare drop/add lane.
-		return (
-			2 +
-			sourceAudioRows +
-			annotationRowIds.size +
-			1 +
-			audioRowIds.size
-		);
+		return 2 + sourceAudioRows + annotationRowIds.size + 1 + audioRowIds.size;
 	}, [items, showSourceAudioTrack, sourceAudioTracks.length]);
 	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
 	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
@@ -1304,12 +1349,32 @@ export default function TimelineCanvas({
 			onMouseMove={handleTimelineMouseMove}
 			onMouseLeave={handleTimelineMouseLeave}
 		>
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-x-0 top-0 z-20 border-b border-foreground/10 text-[10px] text-muted-foreground"
+				style={{ height: TIMELINE_AXIS_HEIGHT_PX }}
+			>
+				{axisTicks.ticks.map((tick) => (
+					<div
+						key={tick}
+						className="absolute top-0 h-full border-l border-foreground/20"
+						style={{
+							[axisSideProperty]: `${sidebarWidth + valueToPixels(tick - range.start)}px`,
+						}}
+					>
+						<span className="absolute top-0 px-1 tabular-nums">
+							{formatTimeLabel(tick, axisTicks.intervalMs)}
+						</span>
+					</div>
+				))}
+			</div>
 			<div aria-hidden="true" style={{ height: TIMELINE_AXIS_HEIGHT_PX, flexShrink: 0 }} />
 			<PlaybackCursor
 				clips={clipPresentation}
 				currentTimeMs={currentTimeMs}
 				videoDurationMs={videoDurationMs}
 				onSeek={onSeek}
+				onPanRange={onPanRange}
 				timelineRef={localTimelineRef}
 				keyframes={keyframes}
 				isLoading={isLoading}
@@ -1331,7 +1396,9 @@ export default function TimelineCanvas({
 
 			<div
 				className="relative z-10 flex flex-1 min-h-0 flex-col"
-				style={{ minHeight: `calc(${timelineRowsMinHeightPx}px * var(--timeline-row-scale, 1))` }}
+				style={{
+					minHeight: `calc(${timelineRowsMinHeightPx}px * var(--timeline-row-scale, 1))`,
+				}}
 			>
 				<TimelineCanvasRows
 					videoPath={videoPath}

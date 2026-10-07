@@ -284,6 +284,8 @@ interface VideoPlaybackProps {
 	cursorClickBounceDuration?: number;
 	cursorSway?: number;
 	volume?: number;
+	/** Additional source-audio gain; may exceed 1. */
+	audioGain?: number;
 	suspendRendering?: boolean;
 }
 
@@ -370,6 +372,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			cursorClickBounceDuration = DEFAULT_CURSOR_CLICK_BOUNCE_DURATION,
 			cursorSway = DEFAULT_CURSOR_SWAY,
 			volume = 1,
+			audioGain = 1,
 			suspendRendering = false,
 		},
 		ref,
@@ -394,6 +397,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const cameraContainerRef = useRef<Container | null>(null);
 		const [pixiReady, setPixiReady] = useState(false);
 		const videoReady = usePreviewVideoReady(videoRef, videoPath);
+		const videoAudioContextRef = useRef<AudioContext | null>(null);
+		const videoAudioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+		const videoAudioGainRef = useRef<GainNode | null>(null);
 
 		const [previewViewportWidth, setPreviewViewportWidth] = useState(640);
 		const [annotationSceneTransform, setAnnotationSceneTransform] =
@@ -1077,10 +1083,37 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			if (!video) return;
 
 			enablePitchPreservingPlayback(video);
-			const nextVolume = Math.max(0, Math.min(1, volume));
-			video.volume = nextVolume;
-			video.muted = nextVolume <= 0.001;
-		}, [volume]);
+			const baseVolume = Math.max(0, Math.min(1, volume));
+			const sourceGain = Math.max(0, Math.min(10, audioGain));
+			const effectiveGain = baseVolume * sourceGain;
+
+			if (effectiveGain > 1.001 || videoAudioGainRef.current) {
+				if (!videoAudioGainRef.current) {
+					try {
+						const context = new AudioContext({ latencyHint: "interactive" });
+						const source = context.createMediaElementSource(video);
+						const gain = context.createGain();
+						source.connect(gain);
+						gain.connect(context.destination);
+						videoAudioContextRef.current = context;
+						videoAudioSourceRef.current = source;
+						videoAudioGainRef.current = gain;
+					} catch {
+						// Keep normal media-element playback as a safe fallback.
+					}
+				}
+				if (videoAudioGainRef.current) {
+					video.volume = 1;
+					video.muted = effectiveGain <= 0.001;
+					videoAudioGainRef.current.gain.value = effectiveGain;
+					void videoAudioContextRef.current?.resume().catch(() => undefined);
+					return;
+				}
+			}
+
+			video.volume = Math.max(0, Math.min(1, effectiveGain));
+			video.muted = effectiveGain <= 0.001;
+		}, [audioGain, volume]);
 
 		useEffect(() => {
 			layoutVideoContentRef.current = layoutVideoContent;
@@ -2796,12 +2829,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											onPositionChange={(id, position) =>
 												onAnnotationPositionChange?.(id, position)
 											}
-									onSizeChange={(id, size) =>
-											onAnnotationSizeChange?.(id, size)
-										}
-										onDrawingChange={(id, drawing) =>
-											onAnnotationDrawingChange?.(id, drawing)
-										}
+											onSizeChange={(id, size) =>
+												onAnnotationSizeChange?.(id, size)
+											}
+											onDrawingChange={(id, drawing) =>
+												onAnnotationDrawingChange?.(id, drawing)
+											}
 											onClick={handleAnnotationClick}
 											zIndex={annotation.zIndex}
 											isSelectedBoost={annotation.id === selectedAnnotationId}
@@ -2817,6 +2850,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					browser continues producing presented frames for Pixi and preview sync. */}
 				<video
 					ref={attachVideo}
+					crossOrigin="anonymous"
 					src={videoPath}
 					className="pointer-events-none absolute left-0 top-0 h-px w-px opacity-0"
 					style={{ visibility: isGap ? "hidden" : "visible" }}

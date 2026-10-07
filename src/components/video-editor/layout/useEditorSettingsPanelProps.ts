@@ -103,17 +103,33 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		sourceAudioTrackMeta: audio.sourceAudioTrackMeta,
 		selectedClipSourceAudioTrackSettings: audio.selectedClipSourceAudioTrackSettings,
 		onSourceAudioTrackVolumeChange: audio.onSelectedClipSourceAudioTrackVolumeChange,
+		onSourceAudioTrackGainChange: audio.onSelectedClipSourceAudioTrackGainChange,
 		onSourceAudioTrackNormalizeChange: audio.onSelectedClipSourceAudioTrackNormalizeChange,
 		onClipSpeedChange: clipCommands.handleClipSpeedChange,
 		onClipMutedChange: clipCommands.handleClipMutedChange,
 		onClipShowSourceAudioChange: clipCommands.handleClipShowSourceAudioChange,
 		onClipDelete: clipCommands.handleClipDelete,
 		selectedAudioId: timeline.selectedAudioId,
-		selectedAudioVolume: selectedAudio?.volume ?? null,
+		// The Audio tool controls a selected imported audio clip, or the recording
+		// audio globally when no clip is selected.
+		selectedAudioVolume:
+			selectedAudio?.volume ?? audio.selectedClipSourceAudioTrackSettings.mixed?.volume ?? 1,
+		selectedAudioGain:
+			selectedAudio?.gain ?? audio.selectedClipSourceAudioTrackSettings.mixed?.gain ?? 1,
 		selectedAudioNormalize:
-			selectedAudio?.normalize ?? (timeline.selectedAudioId ? false : null),
-		onAudioVolumeChange: audioCommands.handleAudioVolumeChange,
-		onAudioNormalizeChange: audioCommands.handleAudioNormalizeChange,
+			selectedAudio?.normalize ??
+			audio.selectedClipSourceAudioTrackSettings.mixed?.normalize ??
+			false,
+		onAudioVolumeChange: selectedAudio
+			? audioCommands.handleAudioVolumeChange
+			: (volume) => audio.onSelectedClipSourceAudioTrackVolumeChange("mixed", volume),
+		onAudioGainChange: selectedAudio
+			? audioCommands.handleAudioGainChange
+			: (gain) => audio.onSelectedClipSourceAudioTrackGainChange("mixed", gain),
+		onAudioNormalizeChange: selectedAudio
+			? audioCommands.handleAudioNormalizeChange
+			: (normalize) =>
+					audio.onSelectedClipSourceAudioTrackNormalizeChange("mixed", normalize),
 		onAudioDelete: audioCommands.handleAudioDelete,
 		shadowIntensity: appearance.shadowIntensity,
 		onShadowChange: appearance.setShadowIntensity,

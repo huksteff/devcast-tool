@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -158,7 +158,18 @@ if (!existsSync(exePath)) {
 }
 
 mkdirSync(bundledDir, { recursive: true });
-copyFileSync(exePath, bundledExePath);
+const bundledHelperIsCurrent =
+	existsSync(bundledExePath) && readFileSync(exePath).equals(readFileSync(bundledExePath));
+if (!bundledHelperIsCurrent) {
+	try {
+		copyFileSync(exePath, bundledExePath);
+	} catch (error) {
+		console.error(
+			`[build-windows-gpu-export] Could not replace ${bundledExePath}. Close any running DevCast or GPU export helper, then retry.`,
+		);
+		throw error;
+	}
+}
 console.log(`[build-windows-gpu-export] Staged bundled helper: ${bundledExePath}`);
 const manifestPath = updateNativeHelperManifest({
 	projectRoot,

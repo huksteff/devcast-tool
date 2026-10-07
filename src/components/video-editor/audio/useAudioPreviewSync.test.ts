@@ -34,6 +34,62 @@ afterEach(() => {
 });
 
 describe("source preview playback ownership", () => {
+	it("applies boost above 100% through a gain node and can mute it", () => {
+		const audio = {
+			src: "",
+			dataset: {},
+			volume: 1,
+			paused: true,
+			preload: "",
+			crossOrigin: "",
+			pause: vi.fn(),
+			load: vi.fn(),
+			play: vi.fn().mockResolvedValue(undefined),
+		};
+		const gains: Array<{ gain: { value: number }; connect: ReturnType<typeof vi.fn> }> = [];
+		vi.stubGlobal("Audio", function () {
+			return audio;
+		});
+		vi.stubGlobal(
+			"AudioContext",
+			class {
+				state = "running";
+				destination = {};
+				createGain() {
+					const node = { gain: { value: 1 }, connect: vi.fn() };
+					gains.push(node);
+					return node;
+				}
+				createMediaElementSource() {
+					return { connect: vi.fn() };
+				}
+			},
+		);
+		const render = (boost: number) => {
+			harness.index = 0;
+			harness.effects = [];
+			useAudioPreviewSync({
+				audioRegions: [],
+				previewVolume: 1,
+				isPlaying: false,
+				currentTime: 0,
+				timelineTime: 0,
+				duration: 10,
+				sourcePlaybackRate: 1,
+				previewSourceAudioFallbackPaths: ["/audio.system.wav"],
+				sourceAudioFallbackStartDelayMsByPath: {},
+				sourceAudioResourceVersion: 0,
+				isCurrentClipMuted: false,
+				getSourceTrackPreviewGain: () => boost,
+				onSourceFallbackLoadError: vi.fn(),
+			});
+			for (const effect of harness.effects) effect();
+		};
+		render(10);
+		expect(gains[1]?.gain.value).toBe(10);
+		render(0);
+		expect(gains[1]?.gain.value).toBe(0);
+	});
 	it.each([
 		{
 			name: "sub-second offset",

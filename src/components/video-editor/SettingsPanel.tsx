@@ -441,6 +441,7 @@ interface SettingsPanelProps {
 	sourceAudioTrackMeta?: SourceAudioTrackMeta;
 	selectedClipSourceAudioTrackSettings?: SourceAudioTrackSettings;
 	onSourceAudioTrackVolumeChange?: (id: string, volume: number) => void;
+	onSourceAudioTrackGainChange?: (id: string, gain: number) => void;
 	onSourceAudioTrackNormalizeChange?: (id: string, normalize: boolean) => void;
 	hasClipAudioOverrides?: boolean;
 	onResetClipAudio?: () => void;
@@ -450,8 +451,10 @@ interface SettingsPanelProps {
 	onClipDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
 	selectedAudioVolume?: number | null;
+	selectedAudioGain?: number | null;
 	selectedAudioNormalize?: boolean | null;
 	onAudioVolumeChange?: (volume: number) => void;
+	onAudioGainChange?: (gain: number) => void;
 	onAudioNormalizeChange?: (normalize: boolean) => void;
 	onAudioDelete?: (id: string) => void;
 	shadowIntensity?: number;
@@ -542,7 +545,10 @@ interface SettingsPanelProps {
 	onAnnotationDrawingDataChange?: (id: string, drawingData: DrawingData) => void;
 	onAnnotationBlurIntensityChange?: (id: string, intensity: number) => void;
 	onAnnotationBlurColorChange?: (id: string, color: string) => void;
-	onAnnotationStagesChange?: (id: string, stages: Partial<import("./types").AnnotationStages>) => void;
+	onAnnotationStagesChange?: (
+		id: string,
+		stages: Partial<import("./types").AnnotationStages>,
+	) => void;
 	onAnnotationDelete?: (id: string) => void;
 	onAnnotationDuplicate?: (annotation: AnnotationRegion) => void;
 	autoCaptions?: CaptionCue[];
@@ -788,13 +794,13 @@ function CursorStylePreview({
 				? (previewUrls.tahoe ?? tahoeCursorUrl)
 				: style === "windows11"
 					? (previewUrls.windows11 ?? tahoeCursorUrl)
-				: style === "figma"
-					? (previewUrls.figma ?? minimalCursorUrl)
-					: style === "win11-concept"
-						? (previewUrls["win11-concept"] ?? win11ConceptCursorUrl)
-					: style === "tahoe-inverted"
-							? (previewUrls["tahoe-inverted"] ?? tahoeCursorUrl)
-							: previewUrls[style];
+					: style === "figma"
+						? (previewUrls.figma ?? minimalCursorUrl)
+						: style === "win11-concept"
+							? (previewUrls["win11-concept"] ?? win11ConceptCursorUrl)
+							: style === "tahoe-inverted"
+								? (previewUrls["tahoe-inverted"] ?? tahoeCursorUrl)
+								: previewUrls[style];
 
 	if (
 		style === "macos" ||
@@ -902,6 +908,7 @@ export function SettingsPanel({
 	sourceAudioTrackMeta = [],
 	selectedClipSourceAudioTrackSettings = {},
 	onSourceAudioTrackVolumeChange,
+	onSourceAudioTrackGainChange,
 	onSourceAudioTrackNormalizeChange,
 	hasClipAudioOverrides = false,
 	onResetClipAudio,
@@ -911,8 +918,10 @@ export function SettingsPanel({
 	onClipDelete,
 	selectedAudioId,
 	selectedAudioVolume,
+	selectedAudioGain,
 	selectedAudioNormalize,
 	onAudioVolumeChange,
+	onAudioGainChange,
 	onAudioNormalizeChange,
 	onAudioDelete,
 	shadowIntensity = 0.67,
@@ -1176,7 +1185,10 @@ export function SettingsPanel({
 		Partial<Record<string, string>>
 	>({});
 
-	const cursorPreviewUrls = { ...builtInCursorPreviewUrls, "custom-upload": uploadedCursorUrl ?? undefined };
+	const cursorPreviewUrls = {
+		...builtInCursorPreviewUrls,
+		"custom-upload": uploadedCursorUrl ?? undefined,
+	};
 	const handleUploadedCursor = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0];
 		if (!file) return;
@@ -1500,19 +1512,17 @@ export function SettingsPanel({
 	};
 
 	const activeMotionPresetId = useMemo(() => {
-		return (
-			getMatchingCursorMotionPresetId({
-				zoomInDurationMs,
-				zoomOutDurationMs,
-				cursorSize,
-				cursorSmoothing,
-				cursorSpringStiffnessMultiplier,
-				cursorSpringDampingMultiplier,
-				cursorSpringMassMultiplier,
-				cursorClickBounce,
-				cursorClickBounceDuration,
-			}) ?? "focused"
-		);
+		return getMatchingCursorMotionPresetId({
+			zoomInDurationMs,
+			zoomOutDurationMs,
+			cursorSize,
+			cursorSmoothing,
+			cursorSpringStiffnessMultiplier,
+			cursorSpringDampingMultiplier,
+			cursorSpringMassMultiplier,
+			cursorClickBounce,
+			cursorClickBounceDuration,
+		});
 	}, [
 		cursorClickBounce,
 		cursorClickBounceDuration,
@@ -1692,11 +1702,27 @@ export function SettingsPanel({
 				>
 					{(
 						[
-							{ value: "image", label: tSettings("background.image"), icon: ImageSquare },
-							{ value: "video", label: tSettings("background.video", "Video"), icon: VideoCamera },
+							{
+								value: "image",
+								label: tSettings("background.image"),
+								icon: ImageSquare,
+							},
+							{
+								value: "video",
+								label: tSettings("background.video", "Video"),
+								icon: VideoCamera,
+							},
 							{ value: "color", label: tSettings("background.color"), icon: Palette },
-							{ value: "gradient", label: tSettings("background.gradient"), icon: Drop },
-							{ value: "blur", label: tSettings("background.blurVideo", "Blurred recording"), icon: Drop },
+							{
+								value: "gradient",
+								label: tSettings("background.gradient"),
+								icon: Drop,
+							},
+							{
+								value: "blur",
+								label: tSettings("background.blurVideo", "Blurred recording"),
+								icon: Drop,
+							},
 						] as const
 					).map((option) => (
 						<Tooltip key={option.value}>
@@ -1777,7 +1803,10 @@ export function SettingsPanel({
 								}}
 							>
 								<Drop className="size-5" />
-								{tSettings("background.useBlurredRecording", "Use blurred recording")}
+								{tSettings(
+									"background.useBlurredRecording",
+									"Use blurred recording",
+								)}
 							</Button>
 						) : backgroundTab === "color" ? (
 							<div className="mt-0 space-y-4">
@@ -1868,9 +1897,17 @@ export function SettingsPanel({
 						? (color) => onAnnotationBlurColorChange(selectedAnnotation.id, color)
 						: undefined
 				}
-				onStagesChange={onAnnotationStagesChange ? (stages) => onAnnotationStagesChange(selectedAnnotation.id, stages) : undefined}
+				onStagesChange={
+					onAnnotationStagesChange
+						? (stages) => onAnnotationStagesChange(selectedAnnotation.id, stages)
+						: undefined
+				}
 				onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
-				onDuplicate={onAnnotationDuplicate ? () => onAnnotationDuplicate(selectedAnnotation) : undefined}
+				onDuplicate={
+					onAnnotationDuplicate
+						? () => onAnnotationDuplicate(selectedAnnotation)
+						: undefined
+				}
 				onCut={() => onAnnotationDelete(selectedAnnotation.id)}
 			/>
 		);
@@ -1991,6 +2028,15 @@ export function SettingsPanel({
 						</div>
 					)}
 				</div>
+				<SliderControl
+					label={tSettings("audio.gain", "Boost")}
+					value={selectedAudioGain ?? 1}
+					min={0}
+					max={10}
+					step={0.05}
+					onChange={(v) => onAudioGainChange?.(v)}
+					formatValue={(v) => `${v.toFixed(2)}×`}
+				/>
 				<div className="flex items-center justify-between py-2">
 					<span className="text-xs text-muted-foreground">
 						{tSettings("effects.removeBackground")}
@@ -2253,13 +2299,16 @@ export function SettingsPanel({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{["Inter, sans-serif", "Arial, sans-serif", "Georgia, serif", "monospace"].map(
-								(fontFamily) => (
-									<SelectItem key={fontFamily} value={fontFamily}>
-										{fontFamily.split(",")[0]}
-									</SelectItem>
-								),
-							)}
+							{[
+								"Inter, sans-serif",
+								"Arial, sans-serif",
+								"Georgia, serif",
+								"monospace",
+							].map((fontFamily) => (
+								<SelectItem key={fontFamily} value={fontFamily}>
+									{fontFamily.split(",")[0]}
+								</SelectItem>
+							))}
 						</SelectContent>
 					</Select>
 				</div>
@@ -2763,6 +2812,7 @@ export function SettingsPanel({
 						type="button"
 						onClick={() => {
 							onAudioVolumeChange?.(1);
+							onAudioGainChange?.(1);
 							onAudioNormalizeChange?.(false);
 						}}
 					>
@@ -2778,6 +2828,15 @@ export function SettingsPanel({
 					onChange={(v) => onAudioVolumeChange?.(v)}
 					formatValue={(v) => `${Math.round(v * 100)}%`}
 				/>
+				<SliderControl
+					label={tSettings("audio.gain", "Boost")}
+					value={selectedAudioGain ?? 1}
+					min={0}
+					max={10}
+					step={0.05}
+					onChange={(v) => onAudioGainChange?.(v)}
+					formatValue={(v) => `${v.toFixed(2)}×`}
+				/>
 				<div className="flex items-center justify-between py-2">
 					<span className="text-xs text-muted-foreground">
 						{tSettings("audio.normalize", "Normalize")}
@@ -2788,6 +2847,43 @@ export function SettingsPanel({
 						onCheckedChange={(v) => onAudioNormalizeChange?.(v)}
 					/>
 				</div>
+				{!selectedAudioId && (
+					<div className="flex flex-col gap-3 border-t border-separator pt-3">
+						<SectionLabel>
+							{tSettings("audio.systemSounds", "System sounds")}
+						</SectionLabel>
+						<SliderControl
+							label={tSettings("audio.volume", "Volume")}
+							value={selectedClipSourceAudioTrackSettings.system?.volume ?? 1}
+							min={0}
+							max={1}
+							step={0.01}
+							onChange={(value) => onSourceAudioTrackVolumeChange?.("system", value)}
+							formatValue={(value) => `${Math.round(value * 100)}%`}
+						/>
+						<SliderControl
+							label={tSettings("audio.gain", "Boost")}
+							value={selectedClipSourceAudioTrackSettings.system?.gain ?? 1}
+							min={0}
+							max={10}
+							step={0.05}
+							onChange={(value) => onSourceAudioTrackGainChange?.("system", value)}
+							formatValue={(value) => `${value.toFixed(2)}×`}
+						/>
+						<label className="flex items-center justify-between py-1 text-xs text-muted-foreground">
+							<span>{tSettings("audio.normalize", "Normalize")}</span>
+							<Switch
+								checked={
+									selectedClipSourceAudioTrackSettings.system?.normalize ?? false
+								}
+								onCheckedChange={(value) =>
+									onSourceAudioTrackNormalizeChange?.("system", value)
+								}
+								aria-label={tSettings("audio.systemSounds", "System sounds")}
+							/>
+						</label>
+					</div>
+				)}
 			</section>
 		);
 
@@ -2854,12 +2950,23 @@ export function SettingsPanel({
 										label={track.label}
 										value={settings.volume}
 										min={0}
-										max={2}
+										max={1}
 										step={0.01}
 										onChange={(volume) =>
 											onSourceAudioTrackVolumeChange?.(track.id, volume)
 										}
 										formatValue={(volume) => `${Math.round(volume * 100)}%`}
+									/>
+									<SliderControl
+										label={tSettings("audio.gain", "Boost")}
+										value={settings.gain ?? 1}
+										min={0}
+										max={10}
+										step={0.05}
+										onChange={(gain) =>
+											onSourceAudioTrackGainChange?.(track.id, gain)
+										}
+										formatValue={(gain) => `${gain.toFixed(2)}×`}
 									/>
 									<label className="flex items-center justify-between py-1 text-xs text-muted-foreground">
 										<span>{tSettings("audio.normalize", "Normalize")}</span>
@@ -2867,7 +2974,10 @@ export function SettingsPanel({
 											aria-label={`${track.label}: ${tSettings("audio.normalize", "Normalize")}`}
 											checked={settings.normalize}
 											onCheckedChange={(normalize) =>
-												onSourceAudioTrackNormalizeChange?.(track.id, normalize)
+												onSourceAudioTrackNormalizeChange?.(
+													track.id,
+													normalize,
+												)
 											}
 										/>
 									</label>
@@ -2948,6 +3058,24 @@ export function SettingsPanel({
 									{t("common.actions.reset", "Reset")}
 								</Button>
 							</div>
+							<label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+								<span>
+									{tSettings(
+										"effects.cursorExactPlayback",
+										"Exact cursor movement",
+									)}
+								</span>
+								<Switch
+									aria-label={tSettings(
+										"effects.cursorExactPlayback",
+										"Exact cursor movement",
+									)}
+									checked={cursorSmoothing === 0}
+									onCheckedChange={(enabled) =>
+										onCursorSmoothingChange?.(enabled ? 0 : 0.18)
+									}
+								/>
+							</label>
 							{advanced && (
 								<div className="flex flex-col gap-3">
 									<label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -3013,8 +3141,8 @@ export function SettingsPanel({
 								<Button
 									variant="outline"
 									size="sm"
-					className="w-full gap-2"
-					title="PNG, SVG, WebP или GIF; размер файла — до 1 МБ"
+									className="w-full gap-2"
+									title="PNG, SVG, WebP или GIF; размер файла — до 1 МБ"
 									onClick={() => uploadedCursorInputRef.current?.click()}
 								>
 									<Upload className="h-4 w-4" /> Upload cursor

@@ -35,6 +35,7 @@ type Input = {
 	currentTime: number;
 	isPlaying: boolean;
 	previewVolume: number;
+	frameRate: number;
 	loading: boolean;
 	isPreviewReady: boolean;
 	setActiveEffectSection: Dispatch<SetStateAction<EditorEffectSection>>;
@@ -221,6 +222,13 @@ export function useTimelineEditingController(input: Input) {
 		handleUndo: input.handleUndo,
 		handleRedo: input.handleRedo,
 		startPlayback: playback.startPlayback,
+		stepFrame: (direction) => {
+			const frameRate = Math.max(1, input.frameRate);
+			const frame = Math.round(projection.timelinePlayheadTime * frameRate + direction);
+			playback.handleTimelineSeek(
+				Math.max(0, Math.min(projection.timelineDuration, frame / frameRate)),
+			);
+		},
 		annotationCommands,
 		zoomCommands,
 	});

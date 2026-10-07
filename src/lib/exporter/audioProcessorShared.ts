@@ -1,4 +1,4 @@
-import { SOURCE_AUDIO_NORMALIZE_GAIN } from "@/components/video-editor/audio/audioTypes";
+import { resolveRecordingTrackGain } from "@/components/video-editor/audio/audioTypes";
 import type {
 	AudioRegion,
 	ClipRegion,
@@ -58,12 +58,7 @@ export function resolveSourceTrackGain(
 	sourceAudioTrackSettings: SourceAudioTrackSettings | undefined,
 	trackId: "mic" | "system" | "mixed",
 ) {
-	const settings = sourceAudioTrackSettings?.[trackId];
-	if (!settings) {
-		return 1;
-	}
-	const normalizeGain = settings.normalize ? SOURCE_AUDIO_NORMALIZE_GAIN : 1;
-	return Math.max(0, Math.min(2, settings.volume * normalizeGain));
+	return resolveRecordingTrackGain(sourceAudioTrackSettings, trackId);
 }
 
 export function getSourceTrackIdFromPath(audioPath: string): SourceTrackId {
@@ -104,7 +99,9 @@ export function hasNonDefaultSourceTrackSettings(
 	}
 	return Object.values(sourceAudioTrackSettings).some(
 		(settings) =>
-			Math.abs((settings?.volume ?? 1) - 1) > 0.0005 || Boolean(settings?.normalize),
+			Math.abs((settings?.volume ?? 1) - 1) > 0.0005 ||
+			Math.abs((settings?.gain ?? 1) - 1) > 0.0005 ||
+			Boolean(settings?.normalize),
 	);
 }
 

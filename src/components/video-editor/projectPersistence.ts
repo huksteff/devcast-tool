@@ -590,11 +590,11 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						id: region.id,
 						startMs,
 						endMs,
-							type:
-								region.type === "image" ||
-								region.type === "figure" ||
-								region.type === "blur" ||
-								region.type === "drawing"
+						type:
+							region.type === "image" ||
+							region.type === "figure" ||
+							region.type === "blur" ||
+							region.type === "drawing"
 								? region.type
 								: "text",
 						content: typeof region.content === "string" ? region.content : "",
@@ -644,39 +644,74 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						drawingData:
 							region.drawingData && Array.isArray(region.drawingData.points)
 								? {
-									...DEFAULT_DRAWING_DATA,
-									...region.drawingData,
-									points: region.drawingData.points
-										.filter(
-											(point) =>
-												isFiniteNumber(point?.x) && isFiniteNumber(point?.y),
-										)
-										.map((point) => ({
-											x: clamp(point.x, 0, 100),
-											y: clamp(point.y, 0, 100),
-										})),
-									strokes: Array.isArray(region.drawingData.strokes)
-										? region.drawingData.strokes
-											.filter((stroke) => Array.isArray(stroke))
-											.map((stroke) => stroke
-												.filter((point) => isFiniteNumber(point?.x) && isFiniteNumber(point?.y))
-												.map((point) => ({ x: clamp(point.x, 0, 100), y: clamp(point.y, 0, 100) })))
-										: undefined,
-								}
+										...DEFAULT_DRAWING_DATA,
+										...region.drawingData,
+										points: region.drawingData.points
+											.filter(
+												(point) =>
+													isFiniteNumber(point?.x) &&
+													isFiniteNumber(point?.y),
+											)
+											.map((point) => ({
+												x: clamp(point.x, 0, 100),
+												y: clamp(point.y, 0, 100),
+											})),
+										strokes: Array.isArray(region.drawingData.strokes)
+											? region.drawingData.strokes
+													.filter((stroke) => Array.isArray(stroke))
+													.map((stroke) =>
+														stroke
+															.filter(
+																(point) =>
+																	isFiniteNumber(point?.x) &&
+																	isFiniteNumber(point?.y),
+															)
+															.map((point) => ({
+																x: clamp(point.x, 0, 100),
+																y: clamp(point.y, 0, 100),
+															})),
+													)
+											: undefined,
+									}
 								: undefined,
 						stages: (() => {
-							if (!region.stages || typeof region.stages !== "object") return undefined;
+							if (!region.stages || typeof region.stages !== "object")
+								return undefined;
 							const duration = endMs - startMs;
-							const inDurationMs = clamp(region.stages.inDurationMs ?? 300, 0, duration);
+							const inDurationMs = clamp(
+								region.stages.inDurationMs ?? 300,
+								0,
+								duration,
+							);
 							return {
 								...DEFAULT_ANNOTATION_STAGES,
 								...region.stages,
 								inEnabled: Boolean(region.stages.inEnabled),
 								outEnabled: Boolean(region.stages.outEnabled),
-								inTransition: ["none", "fade", "pop", "slide-up", "slide-down"].includes(region.stages.inTransition) ? region.stages.inTransition : "fade",
-								outTransition: ["none", "fade", "pop", "slide-up", "slide-down"].includes(region.stages.outTransition) ? region.stages.outTransition : "fade",
+								inTransition: [
+									"none",
+									"fade",
+									"pop",
+									"slide-up",
+									"slide-down",
+								].includes(region.stages.inTransition)
+									? region.stages.inTransition
+									: "fade",
+								outTransition: [
+									"none",
+									"fade",
+									"pop",
+									"slide-up",
+									"slide-down",
+								].includes(region.stages.outTransition)
+									? region.stages.outTransition
+									: "fade",
 								inDurationMs,
-								outDurationMs: clamp(region.stages.outDurationMs ?? 300, 0, duration - inDurationMs),
+								outDurationMs: clamp(
+									region.stages.outDurationMs ?? 300,
+									0,
+									duration - inDurationMs,
+								),
 							};
 						})(),
 						blurIntensity: isFiniteNumber(region.blurIntensity)
@@ -714,6 +749,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						endMs,
 						audioPath: typeof region.audioPath === "string" ? region.audioPath : "",
 						volume: isFiniteNumber(region.volume) ? clamp(region.volume, 0, 1) : 1,
+						gain: isFiniteNumber(region.gain) ? clamp(region.gain, 0, 10) : 1,
 						normalize: Boolean(region.normalize),
 						trackIndex: isFiniteNumber(region.trackIndex)
 							? Math.max(0, Math.floor(region.trackIndex))

@@ -79,7 +79,12 @@ export function buildResolvedAudioPlan(input: {
 			path: region.audioPath,
 			startDelayMs: 0,
 		},
-		gain: clampGain(region.volume * (region.normalize ? SOURCE_AUDIO_NORMALIZE_GAIN : 1), 1),
+		gain: clampGain(
+			region.volume *
+				(region.gain ?? 1) *
+				(region.normalize ? SOURCE_AUDIO_NORMALIZE_GAIN : 1),
+			10,
+		),
 		timelineBinding: {
 			startMs: Math.max(0, region.startMs),
 			endMs: Math.max(0, region.endMs),
@@ -95,7 +100,7 @@ export function buildResolvedAudioPlan(input: {
 				path: audioPath,
 				startDelayMs: 0,
 			},
-			gain: clampGain(input.sourceTrackGainById?.[trackId] ?? 1, 2),
+			gain: clampGain(input.sourceTrackGainById?.[trackId] ?? 1, 10),
 			timelineBinding: {
 				startMs: 0,
 				endMs: Number.POSITIVE_INFINITY,
@@ -111,7 +116,7 @@ export function buildResolvedAudioPlan(input: {
 				path: input.videoResource,
 				startDelayMs: 0,
 			},
-			gain: clampGain(input.embeddedGain ?? input.sourceTrackGainById?.mixed ?? 1, 2),
+			gain: clampGain(input.embeddedGain ?? input.sourceTrackGainById?.mixed ?? 1, 10),
 			timelineBinding: {
 				startMs: 0,
 				endMs: Number.POSITIVE_INFINITY,

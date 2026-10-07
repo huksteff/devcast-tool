@@ -80,7 +80,7 @@ export class OfflineAudioProcessor extends AudioMediaProcessor {
 			embeddedGain: Math.max(
 				0,
 				Math.min(
-					2,
+					10,
 					sourceAudioTrackSettings?.mixed
 						? resolveSourceTrackGain(sourceAudioTrackSettings, "mixed")
 						: sourceAudioTrackSettings?.system
@@ -411,7 +411,10 @@ export class OfflineAudioProcessor extends AudioMediaProcessor {
 
 		const gainNode = ctx.createGain();
 		const normalizeGain = region.normalize ? SOURCE_AUDIO_NORMALIZE_GAIN : 1;
-		gainNode.gain.value = Math.max(0, Math.min(1, region.volume * normalizeGain));
+		gainNode.gain.value = Math.max(
+			0,
+			Math.min(10, region.volume * (region.gain ?? 1) * normalizeGain),
+		);
 		gainNode.connect(ctx.destination);
 
 		const source = ctx.createBufferSource();

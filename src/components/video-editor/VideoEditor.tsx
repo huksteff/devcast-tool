@@ -273,6 +273,30 @@ export default function VideoEditor() {
 		lifecycle: { handleUploadWebcam, handleClearWebcam },
 		autoCaption: autoCaptionController,
 	} = projectController;
+	const [sourceFrameRate, setSourceFrameRate] = useState<{
+		path: string;
+		value: number;
+	} | null>(null);
+	useEffect(() => {
+		if (!currentSourcePath || !window.electronAPI?.probeNativeVideoMetadata) return;
+		let active = true;
+		void window.electronAPI
+			.probeNativeVideoMetadata(currentSourcePath)
+			.then((result) => {
+				const value = result.metadata?.frameRate;
+				if (active && result.success && value && Number.isFinite(value) && value > 0) {
+					setSourceFrameRate({ path: currentSourcePath, value });
+				}
+			})
+			.catch(() => {
+				/* Fall back to the configured frame rate if this source cannot be probed. */
+			});
+		return () => {
+			active = false;
+		};
+	}, [currentSourcePath]);
+	const timelineFrameRate =
+		sourceFrameRate?.path === currentSourcePath ? sourceFrameRate.value : mp4FrameRate;
 
 	const editing = useTimelineEditingController({
 		t,
@@ -288,6 +312,7 @@ export default function VideoEditor() {
 		currentTime,
 		isPlaying,
 		previewVolume,
+		frameRate: timelineFrameRate,
 		loading,
 		isPreviewReady,
 		setActiveEffectSection,

@@ -69,6 +69,8 @@ export function useAudioPreviewSync({
 	);
 
 	const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+	const userAudioMediaNodesRef = useRef<Map<string, MediaElementAudioSourceNode>>(new Map());
+	const userAudioGainNodesRef = useRef<Map<string, GainNode>>(new Map());
 	const audioElementRevokersRef = useRef<Map<string, () => void>>(new Map());
 	const audioElementResourcesRef = useRef<Map<string, string>>(new Map());
 	const sourceAudioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
@@ -114,6 +116,59 @@ export function useAudioPreviewSync({
 		void ensureSourceAudioRunning();
 	}, [ensureSourceAudioRunning]);
 
+	const setUserTrackPreviewGain = useCallback(
+		(id: string, audio: HTMLAudioElement, gainValue: number) => {
+			const context = ensureSourceAudioContext();
+			let gain = userAudioGainNodesRef.current.get(id);
+			if (!gain) {
+				try {
+					const source = context.createMediaElementSource(audio);
+					gain = context.createGain();
+					source.connect(gain);
+					gain.connect(context.destination);
+					userAudioMediaNodesRef.current.set(id, source);
+					userAudioGainNodesRef.current.set(id, gain);
+				} catch {
+					// Keep direct playback available if Web Audio cannot own this element.
+				}
+			}
+			if (gain) {
+				audio.volume = 1;
+				gain.gain.value = Math.max(0, Math.min(10, gainValue));
+			} else {
+				audio.volume = Math.max(0, Math.min(1, gainValue));
+			}
+		},
+		[ensureSourceAudioContext],
+	);
+
+	const setSourceTrackPreviewGain = useCallback(
+		(audioPath: string, audio: HTMLAudioElement, gainValue: number) => {
+			const context = ensureSourceAudioContext();
+			let source = sourceAudioMediaNodesRef.current.get(audioPath);
+			let gain = sourceAudioGainNodesRef.current.get(audioPath);
+			if (!source || !gain) {
+				try {
+					source = context.createMediaElementSource(audio);
+					gain = context.createGain();
+					source.connect(gain);
+					gain.connect(sourceAudioMasterGainRef.current ?? context.destination);
+					sourceAudioMediaNodesRef.current.set(audioPath, source);
+					sourceAudioGainNodesRef.current.set(audioPath, gain);
+				} catch {
+					// The media element may already be owned by another graph.
+				}
+			}
+			if (gain) {
+				audio.volume = 1;
+				gain.gain.value = Math.max(0, Math.min(10, gainValue));
+			} else {
+				audio.volume = Math.max(0, Math.min(1, gainValue));
+			}
+		},
+		[ensureSourceAudioContext],
+	);
+
 	useEffect(() => {
 		let cancelled = false;
 		const existing = audioElementsRef.current;
@@ -123,6 +178,10 @@ export function useAudioPreviewSync({
 			if (!currentIds.has(id)) {
 				audio.pause();
 				audio.src = "";
+				userAudioMediaNodesRef.current.get(id)?.disconnect();
+				userAudioMediaNodesRef.current.delete(id);
+				userAudioGainNodesRef.current.get(id)?.disconnect();
+				userAudioGainNodesRef.current.delete(id);
 				audioElementRevokersRef.current.get(id)?.();
 				audioElementRevokersRef.current.delete(id);
 				audioElementResourcesRef.current.delete(id);
@@ -135,6 +194,7 @@ export function useAudioPreviewSync({
 			if (!audio) {
 				audio = new Audio();
 				audio.preload = "auto";
+				audio.crossOrigin = "anonymous";
 				existing.set(track.id, audio);
 			}
 
@@ -163,13 +223,13 @@ export function useAudioPreviewSync({
 				})();
 			}
 
-			audio.volume = Math.max(0, Math.min(1, track.gain * previewVolume));
+			setUserTrackPreviewGain(track.id, audio, track.gain * previewVolume);
 		}
 
 		return () => {
 			cancelled = true;
 		};
-	}, [previewVolume, resolvedUserTracks]);
+	}, [previewVolume, resolvedUserTracks, setUserTrackPreviewGain]);
 
 	useEffect(() => {
 		const existing = sourceAudioElementsRef.current;
@@ -203,9 +263,7 @@ export function useAudioPreviewSync({
 			audio.volume = 1;
 			audio.dataset.sourceAudioPath = audioPath;
 
-			// Web Audio API createMediaElementSource breaks preservesPitch on Chromium.
-			// We route directly through the HTMLAudioElement to ensure pitch preservation works
-			// during speed changes. Note: this limits maximum preview volume to 1.0 (100%).
+			// Source tracks use a Web Audio gain node so Boost remains audible above 100%.
 
 			if (sourceAudioElementResourcesRef.current.get(audioPath) !== resourceKey) {
 				audio.pause();
@@ -266,12 +324,10 @@ export function useAudioPreviewSync({
 				})();
 			}
 
-			audio.volume = Math.max(
-				0,
-				Math.min(
-					1,
-					getSourceTrackPreviewGain(audioPath) * (isCurrentClipMuted ? 0 : previewVolume),
-				),
+			setSourceTrackPreviewGain(
+				audioPath,
+				audio,
+				getSourceTrackPreviewGain(audioPath) * (isCurrentClipMuted ? 0 : 1),
 			);
 		}
 
@@ -291,6 +347,7 @@ export function useAudioPreviewSync({
 		resolvedSourceTracks,
 		sourceAudioResourceVersion,
 		previewVolume,
+		setSourceTrackPreviewGain,
 	]);
 
 	useEffect(() => {
@@ -299,6 +356,10 @@ export function useAudioPreviewSync({
 				audio.pause();
 				audio.src = "";
 			}
+			for (const node of userAudioMediaNodesRef.current.values()) node.disconnect();
+			for (const node of userAudioGainNodesRef.current.values()) node.disconnect();
+			userAudioMediaNodesRef.current.clear();
+			userAudioGainNodesRef.current.clear();
 			for (const revoke of audioElementRevokersRef.current.values()) {
 				revoke();
 			}
@@ -315,6 +376,8 @@ export function useAudioPreviewSync({
 			for (const node of sourceAudioGainNodesRef.current.values()) {
 				node.disconnect();
 			}
+			sourceAudioMediaNodesRef.current.clear();
+			sourceAudioGainNodesRef.current.clear();
 			for (const revoke of sourceAudioElementRevokersRef.current.values()) {
 				revoke();
 			}
@@ -363,13 +426,13 @@ export function useAudioPreviewSync({
 					audio.playbackRate = syncedPlaybackRate;
 				}
 				if (audio.paused) {
-					audio.play().catch(() => undefined);
+					void ensureSourceAudioRunning().then(() => audio.play().catch(() => undefined));
 				}
 			} else if (!audio.paused) {
 				audio.pause();
 			}
 		}
-	}, [isPlaying, resolvedUserTracks, timelineTime]);
+	}, [ensureSourceAudioRunning, isPlaying, resolvedUserTracks, timelineTime]);
 
 	useEffect(() => {
 		if (resolvedSourceTracks.length === 0) {
@@ -399,13 +462,10 @@ export function useAudioPreviewSync({
 				continue;
 			}
 			const sourceAudioPath = audio.dataset.sourceAudioPath ?? "";
-			audio.volume = Math.max(
-				0,
-				Math.min(
-					1,
-					getSourceTrackPreviewGain(sourceAudioPath) *
-						(isCurrentClipMuted ? 0 : previewVolume),
-				),
+			setSourceTrackPreviewGain(
+				sourceAudioPath,
+				audio,
+				getSourceTrackPreviewGain(sourceAudioPath) * (isCurrentClipMuted ? 0 : 1),
 			);
 
 			enablePitchPreservingPlayback(audio);
@@ -476,6 +536,7 @@ export function useAudioPreviewSync({
 		resolvedSourceTracks,
 		sourceAudioFallbackStartDelayMsByPath,
 		ensureSourceAudioRunning,
+		setSourceTrackPreviewGain,
 	]);
 
 	return { playSourceAudioPreview };

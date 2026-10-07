@@ -310,6 +310,7 @@ export function EditorShell(props: Props) {
 							ui.setActiveEffectSection(section);
 						}}
 						settingsPanelProps={settingsPanelProps}
+						onPlayPauseShortcut={editing.playback.togglePlayPause}
 					/>
 					<EditorPreviewPanel
 						t={t}

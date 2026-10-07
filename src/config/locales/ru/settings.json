@@ -151,7 +151,8 @@
 		"paddingBottom": "Снизу",
 		"paddingLeft": "Слева",
 		"paddingRight": "Справа",
-		"removeBackground": "Удалить фон"
+		"removeBackground": "Удалить фон",
+		"cursorExactPlayback": "Точное движение курсора"
 	},
 	"sections": {
 		"scene": "Сцена",

@@ -157,7 +157,8 @@
 		"paddingBottom": "Bottom",
 		"paddingLeft": "Left",
 		"paddingRight": "Right",
-		"removeBackground": "Remove background"
+		"removeBackground": "Remove background",
+		"cursorExactPlayback": "Exact cursor movement"
 	},
 	"sections": {
 		"scene": "Scene",

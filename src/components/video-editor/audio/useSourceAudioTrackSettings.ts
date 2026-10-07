@@ -24,6 +24,7 @@ export interface UseSourceAudioTrackSettingsResult {
 	getSourceAudioTrackSettingsForClip: (clipId: string | null) => SourceAudioTrackSettings;
 	onSourceAudioTracksMetaChange: (tracks: SourceAudioTrackMeta) => void;
 	onSelectedClipSourceAudioTrackVolumeChange: (id: string, volume: number) => void;
+	onSelectedClipSourceAudioTrackGainChange: (id: string, gain: number) => void;
 	onSelectedClipSourceAudioTrackNormalizeChange: (id: string, normalize: boolean) => void;
 }
 
@@ -76,7 +77,11 @@ export function useSourceAudioTrackSettings({
 			setDefaultSourceAudioTrackSettings((prev) => {
 				const next: SourceAudioTrackSettings = {};
 				for (const track of tracks) {
-					next[track.id] = prev[track.id] ?? { volume: 1, normalize: false };
+					next[track.id] = prev[track.id] ?? { volume: 1, gain: 1, normalize: false };
+				}
+				// Keep explicit routing controls even when a loaded recording has no sidecar yet.
+				for (const id of ["mixed", "system", "mic"]) {
+					if (prev[id] && !next[id]) next[id] = prev[id];
 				}
 				const prevKeys = Object.keys(prev);
 				const nextKeys = Object.keys(next);
@@ -91,6 +96,7 @@ export function useSourceAudioTrackSettings({
 					}
 					if (
 						prevSetting.volume !== nextSetting.volume ||
+						(prevSetting.gain ?? 1) !== (nextSetting.gain ?? 1) ||
 						prevSetting.normalize !== nextSetting.normalize
 					) {
 						return next;
@@ -117,13 +123,26 @@ export function useSourceAudioTrackSettings({
 
 	const onSelectedClipSourceAudioTrackVolumeChange = useCallback(
 		(id: string, volume: number) => {
-			if (!selectedClipId) return;
+			if (!selectedClipId) {
+				setDefaultSourceAudioTrackSettings((prev) => ({
+					...prev,
+					[id]: {
+						volume: Number.isFinite(volume)
+							? Math.max(0, Math.min(1, volume))
+							: (prev[id]?.volume ?? 1),
+						gain: prev[id]?.gain ?? 1,
+						normalize: prev[id]?.normalize ?? false,
+					},
+				}));
+				return;
+			}
 			setSourceAudioTrackSettingsByClip((prev) => {
 				const prevClip = prev[selectedClipId] ?? defaultSourceAudioTrackSettings;
 				const nextVolume = Number.isFinite(volume)
-					? Math.max(0, Math.min(2, volume))
+					? Math.max(0, Math.min(1, volume))
 					: (prevClip[id]?.volume ?? 1);
 				const prevNormalize = prevClip[id]?.normalize ?? false;
+				const prevGain = prevClip[id]?.gain ?? 1;
 				if (
 					prevClip[id]?.volume === nextVolume &&
 					prevClip[id]?.normalize === prevNormalize
@@ -136,21 +155,72 @@ export function useSourceAudioTrackSettings({
 						...prevClip,
 						[id]: {
 							volume: nextVolume,
+							gain: prevGain,
 							normalize: prevNormalize,
 						},
 					},
 				};
 			});
 		},
-		[defaultSourceAudioTrackSettings, selectedClipId, setSourceAudioTrackSettingsByClip],
+		[
+			defaultSourceAudioTrackSettings,
+			selectedClipId,
+			setDefaultSourceAudioTrackSettings,
+			setSourceAudioTrackSettingsByClip,
+		],
+	);
+
+	const onSelectedClipSourceAudioTrackGainChange = useCallback(
+		(id: string, gain: number) => {
+			const nextGain = Number.isFinite(gain) ? Math.max(0, Math.min(10, gain)) : 1;
+			if (!selectedClipId) {
+				setDefaultSourceAudioTrackSettings((prev) => ({
+					...prev,
+					[id]: {
+						volume: prev[id]?.volume ?? 1,
+						gain: nextGain,
+						normalize: prev[id]?.normalize ?? false,
+					},
+				}));
+				return;
+			}
+			setSourceAudioTrackSettingsByClip((prev) => {
+				const prevClip = prev[selectedClipId] ?? defaultSourceAudioTrackSettings;
+				if ((prevClip[id]?.gain ?? 1) === nextGain) return prev;
+				return {
+					...prev,
+					[selectedClipId]: {
+						...prevClip,
+						[id]: {
+							volume: prevClip[id]?.volume ?? 1,
+							gain: nextGain,
+							normalize: prevClip[id]?.normalize ?? false,
+						},
+					},
+				};
+			});
+		},
+		[
+			defaultSourceAudioTrackSettings,
+			selectedClipId,
+			setDefaultSourceAudioTrackSettings,
+			setSourceAudioTrackSettingsByClip,
+		],
 	);
 
 	const onSelectedClipSourceAudioTrackNormalizeChange = useCallback(
 		(id: string, normalize: boolean) => {
-			if (!selectedClipId) return;
+			if (!selectedClipId) {
+				setDefaultSourceAudioTrackSettings((prev) => ({
+					...prev,
+					[id]: { volume: prev[id]?.volume ?? 1, gain: prev[id]?.gain ?? 1, normalize },
+				}));
+				return;
+			}
 			setSourceAudioTrackSettingsByClip((prev) => {
 				const prevClip = prev[selectedClipId] ?? defaultSourceAudioTrackSettings;
 				const prevVolume = prevClip[id]?.volume ?? 1;
+				const prevGain = prevClip[id]?.gain ?? 1;
 				if (prevClip[id]?.normalize === normalize) {
 					return prev;
 				}
@@ -160,13 +230,19 @@ export function useSourceAudioTrackSettings({
 						...prevClip,
 						[id]: {
 							volume: prevVolume,
+							gain: prevGain,
 							normalize,
 						},
 					},
 				};
 			});
 		},
-		[defaultSourceAudioTrackSettings, selectedClipId, setSourceAudioTrackSettingsByClip],
+		[
+			defaultSourceAudioTrackSettings,
+			selectedClipId,
+			setDefaultSourceAudioTrackSettings,
+			setSourceAudioTrackSettingsByClip,
+		],
 	);
 
 	return {
@@ -176,6 +252,7 @@ export function useSourceAudioTrackSettings({
 		getSourceAudioTrackSettingsForClip,
 		onSourceAudioTracksMetaChange,
 		onSelectedClipSourceAudioTrackVolumeChange,
+		onSelectedClipSourceAudioTrackGainChange,
 		onSelectedClipSourceAudioTrackNormalizeChange,
 	};
 }

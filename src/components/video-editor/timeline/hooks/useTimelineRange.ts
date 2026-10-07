@@ -68,6 +68,7 @@ export function useTimelineRange({ totalMs, timelineContainerRef }: UseTimelineR
 				const visibleSpan = Math.max(1, previous.end - previous.start);
 				const maxStart = Math.max(0, totalMs - visibleSpan);
 				const nextStart = Math.max(0, Math.min(previous.start + deltaMs, maxStart));
+				if (nextStart === previous.start) return previous;
 				return { start: nextStart, end: nextStart + visibleSpan };
 			});
 		},
@@ -114,6 +115,7 @@ export function useTimelineRange({ totalMs, timelineContainerRef }: UseTimelineR
 		range,
 		setRange,
 		clampedRange,
+		panTimelineRange,
 		handleTimelineWheel,
 	};
 }

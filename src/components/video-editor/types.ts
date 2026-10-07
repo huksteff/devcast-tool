@@ -119,6 +119,7 @@ export type EditorEffectSection =
 	| "extensions"
 	| "clip"
 	| "audio"
+	| "audio"
 	| `ext:${string}`;
 
 export type ZoomTransitionEasing = "devcast" | "glide" | "smooth" | "snappy" | "linear";
@@ -504,36 +505,126 @@ export function getAnnotationStageState(
 	timeMs: number,
 ) {
 	const stages = annotation.stages;
-	if (!stages) return { alpha: 1, translateY: 0, scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
+	if (!stages)
+		return {
+			alpha: 1,
+			translateY: 0,
+			scale: 1,
+			rotate: 0,
+			drawingProgress: 1,
+			textProgress: 1,
+		};
 	let progress: number | null = null;
 	let transition = stages.inTransition;
 	let entering = true;
 	if (stages.inEnabled && timeMs < annotation.startMs + stages.inDurationMs) {
-		progress = Math.max(0, Math.min(1, (timeMs - annotation.startMs) / Math.max(1, stages.inDurationMs)));
+		progress = Math.max(
+			0,
+			Math.min(1, (timeMs - annotation.startMs) / Math.max(1, stages.inDurationMs)),
+		);
 	} else if (stages.outEnabled && timeMs > annotation.endMs - stages.outDurationMs) {
-		progress = Math.max(0, Math.min(1, (annotation.endMs - timeMs) / Math.max(1, stages.outDurationMs)));
+		progress = Math.max(
+			0,
+			Math.min(1, (annotation.endMs - timeMs) / Math.max(1, stages.outDurationMs)),
+		);
 		transition = stages.outTransition;
 		entering = false;
 	}
 	if (progress === null || transition === "none") {
-		return { alpha: 1, translateY: 0, scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
+		return {
+			alpha: 1,
+			translateY: 0,
+			scale: 1,
+			rotate: 0,
+			drawingProgress: 1,
+			textProgress: 1,
+		};
 	}
 	if (transition === "draw-in" || transition === "draw-out") {
 		// During an Out stage progress runs from 1 to 0, naturally erasing the
 		// path from its finishing end. During In it runs 0 to 1 and draws it.
-		return { alpha: 1, translateY: 0, scale: 1, rotate: 0, drawingProgress: progress, textProgress: 1 };
+		return {
+			alpha: 1,
+			translateY: 0,
+			scale: 1,
+			rotate: 0,
+			drawingProgress: progress,
+			textProgress: 1,
+		};
 	}
-	if (transition === "typewriter") return { alpha: 1, translateY: 0, scale: 1, rotate: 0, drawingProgress: 1, textProgress: progress };
+	if (transition === "typewriter")
+		return {
+			alpha: 1,
+			translateY: 0,
+			scale: 1,
+			rotate: 0,
+			drawingProgress: 1,
+			textProgress: progress,
+		};
 	if (transition === "bounce") {
 		const bounce = Math.sin(progress * Math.PI * 2.5) * (1 - progress) * 0.24;
-		return { alpha: progress, translateY: 0, scale: 0.68 + progress * 0.32 + bounce, rotate: 0, drawingProgress: 1, textProgress: 1 };
+		return {
+			alpha: progress,
+			translateY: 0,
+			scale: 0.68 + progress * 0.32 + bounce,
+			rotate: 0,
+			drawingProgress: 1,
+			textProgress: 1,
+		};
 	}
-	if (transition === "zoom") return { alpha: progress, translateY: 0, scale: 0.45 + progress * 0.55, rotate: 0, drawingProgress: 1, textProgress: 1 };
-	if (transition === "swing") return { alpha: progress, translateY: 0, scale: 1, rotate: Math.sin(progress * Math.PI * 3) * (1 - progress) * (entering ? -24 : 24), drawingProgress: 1, textProgress: 1 };
-	if (transition === "pop") return { alpha: progress, translateY: 0, scale: 0.82 + progress * 0.18, rotate: 0, drawingProgress: 1, textProgress: 1 };
-	if (transition === "slide-up") return { alpha: progress, translateY: (1 - progress) * (entering ? 24 : -24), scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
-	if (transition === "slide-down") return { alpha: progress, translateY: (1 - progress) * (entering ? -24 : 24), scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
-	return { alpha: progress, translateY: 0, scale: 1, rotate: 0, drawingProgress: 1, textProgress: 1 };
+	if (transition === "zoom")
+		return {
+			alpha: progress,
+			translateY: 0,
+			scale: 0.45 + progress * 0.55,
+			rotate: 0,
+			drawingProgress: 1,
+			textProgress: 1,
+		};
+	if (transition === "swing")
+		return {
+			alpha: progress,
+			translateY: 0,
+			scale: 1,
+			rotate: Math.sin(progress * Math.PI * 3) * (1 - progress) * (entering ? -24 : 24),
+			drawingProgress: 1,
+			textProgress: 1,
+		};
+	if (transition === "pop")
+		return {
+			alpha: progress,
+			translateY: 0,
+			scale: 0.82 + progress * 0.18,
+			rotate: 0,
+			drawingProgress: 1,
+			textProgress: 1,
+		};
+	if (transition === "slide-up")
+		return {
+			alpha: progress,
+			translateY: (1 - progress) * (entering ? 24 : -24),
+			scale: 1,
+			rotate: 0,
+			drawingProgress: 1,
+			textProgress: 1,
+		};
+	if (transition === "slide-down")
+		return {
+			alpha: progress,
+			translateY: (1 - progress) * (entering ? -24 : 24),
+			scale: 1,
+			rotate: 0,
+			drawingProgress: 1,
+			textProgress: 1,
+		};
+	return {
+		alpha: progress,
+		translateY: 0,
+		scale: 1,
+		rotate: 0,
+		drawingProgress: 1,
+		textProgress: 1,
+	};
 }
 
 /** Return the portion of a multi-stroke drawing visible at `progress`.
@@ -544,7 +635,11 @@ export function getVisibleDrawingStrokes(
 	progress: number,
 ): DrawingPoint[][] {
 	if (!drawing) return [];
-	const strokes = drawing.strokes?.length ? drawing.strokes : drawing.points?.length ? [drawing.points] : [];
+	const strokes = drawing.strokes?.length
+		? drawing.strokes
+		: drawing.points?.length
+			? [drawing.points]
+			: [];
 	const boundedProgress = Math.max(0, Math.min(1, progress));
 	if (boundedProgress >= 1) return strokes.map((stroke) => [...stroke]);
 	if (boundedProgress <= 0) return [];
@@ -553,7 +648,10 @@ export function getVisibleDrawingStrokes(
 		if (stroke.length <= 1) return stroke.length ? 1 : 0;
 		let length = 0;
 		for (let index = 1; index < stroke.length; index++) {
-			length += Math.hypot(stroke[index].x - stroke[index - 1].x, stroke[index].y - stroke[index - 1].y);
+			length += Math.hypot(
+				stroke[index].x - stroke[index - 1].x,
+				stroke[index].y - stroke[index - 1].y,
+			);
 		}
 		return Math.max(1, length);
 	});
@@ -580,7 +678,10 @@ export function getVisibleDrawingStrokes(
 				remaining -= segmentLength;
 			} else {
 				const ratio = remaining / segmentLength;
-				visible.push({ x: from.x + (to.x - from.x) * ratio, y: from.y + (to.y - from.y) * ratio });
+				visible.push({
+					x: from.x + (to.x - from.x) * ratio,
+					y: from.y + (to.y - from.y) * ratio,
+				});
 				remaining = 0;
 			}
 		}
@@ -714,7 +815,10 @@ export interface AudioRegion {
 	startMs: number;
 	endMs: number;
 	audioPath: string;
+	/** Base fader: 0–100%. */
 	volume: number;
+	/** Post-fader amplification, up to 10×. */
+	gain?: number;
 	normalize?: boolean;
 	trackIndex?: number;
 }

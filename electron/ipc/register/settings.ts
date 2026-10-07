@@ -31,6 +31,24 @@ const BROWSER_MICROPHONE_PROFILES = new Set([
 	"raw",
 ]);
 
+// Cancellation comes from a separate IPC handler, so it must be able to
+// settle the Promise that `start-countdown` returned to the recorder.
+let resolveActiveCountdown: ((result: { success: boolean; cancelled?: boolean }) => void) | null =
+	null;
+
+function finishCountdown(result: { success: boolean; cancelled?: boolean }) {
+	if (countdownTimer) {
+		clearInterval(countdownTimer);
+		setCountdownTimer(null);
+	}
+	closeCountdownWindow();
+	setCountdownInProgress(false);
+	setCountdownRemaining(null);
+	const resolve = resolveActiveCountdown;
+	resolveActiveCountdown = null;
+	resolve?.(result);
+}
+
 function getBrowserMicrophoneProfileFromEnv() {
 	const requested = process.env[BROWSER_MICROPHONE_PROFILE_ENV]?.trim() || null;
 	const normalized = requested?.toLowerCase() ?? DEFAULT_BROWSER_MICROPHONE_PROFILE;
@@ -217,6 +235,7 @@ export function registerSettingsHandlers() {
 		}
 
 		return new Promise<{ success: boolean; cancelled?: boolean }>((resolve) => {
+			resolveActiveCountdown = resolve;
 			let remaining = seconds;
 			setCountdownRemaining(remaining);
 
@@ -225,14 +244,7 @@ export function registerSettingsHandlers() {
 			setCountdownTimer(
 				setInterval(() => {
 					if (countdownCancelled) {
-						if (countdownTimer) {
-							clearInterval(countdownTimer);
-							setCountdownTimer(null);
-						}
-						closeCountdownWindow();
-						setCountdownInProgress(false);
-						setCountdownRemaining(null);
-						resolve({ success: false, cancelled: true });
+						finishCountdown({ success: false, cancelled: true });
 						return;
 					}
 
@@ -240,14 +252,7 @@ export function registerSettingsHandlers() {
 					setCountdownRemaining(remaining);
 
 					if (remaining <= 0) {
-						if (countdownTimer) {
-							clearInterval(countdownTimer);
-							setCountdownTimer(null);
-						}
-						closeCountdownWindow();
-						setCountdownInProgress(false);
-						setCountdownRemaining(null);
-						resolve({ success: true });
+						finishCountdown({ success: true });
 					} else {
 						const win = getCountdownWindow();
 						if (win && !win.isDestroyed()) {
@@ -261,13 +266,7 @@ export function registerSettingsHandlers() {
 
 	ipcMain.handle("cancel-countdown", () => {
 		setCountdownCancelled(true);
-		setCountdownInProgress(false);
-		setCountdownRemaining(null);
-		if (countdownTimer) {
-			clearInterval(countdownTimer);
-			setCountdownTimer(null);
-		}
-		closeCountdownWindow();
+		finishCountdown({ success: false, cancelled: true });
 		return { success: true };
 	});
 

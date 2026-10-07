@@ -64,7 +64,7 @@ describe("Audio path handling", () => {
 
 describe("Audio region normalization", () => {
 	describe("volume is clamped to [0, 1]", () => {
-		it("should clamp volume > 1 down to 1", () => {
+		it("should clamp volume above 100% down to 100%", () => {
 			const result = normalizeProjectEditor({
 				audioRegions: [
 					{ id: "audio-1", startMs: 0, endMs: 1000, audioPath: "/test.mp3", volume: 5 },

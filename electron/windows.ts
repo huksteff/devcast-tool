@@ -1172,11 +1172,11 @@ export function createSourceSelectorWindow(): BrowserWindow {
 
 export function createCountdownWindow(): BrowserWindow {
 	const primaryDisplay = getScreen().getPrimaryDisplay();
-	const { width, height } = primaryDisplay.workAreaSize;
+	const { x: workAreaX, y: workAreaY, width, height } = primaryDisplay.workArea;
 
 	const windowSize = 200;
-	const x = Math.floor((width - windowSize) / 2);
-	const y = Math.floor((height - windowSize) / 2);
+	const x = workAreaX + Math.floor((width - windowSize) / 2);
+	const y = workAreaY + Math.floor((height - windowSize) / 2);
 
 	const win = new BrowserWindow({
 		width: windowSize,

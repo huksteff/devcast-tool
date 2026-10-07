@@ -4,15 +4,9 @@ import {
 	Cursor,
 	Gear,
 	FrameCorners,
+	Waveform,
 } from "@phosphor-icons/react";
-import {
-	ToggleButtonGroup,
-	ToggleButton,
-	Tooltip,
-	Card,
-	Switch,
-	Label,
-} from "@heroui/react";
+import { ToggleButtonGroup, ToggleButton, Tooltip, Card, Switch, Label } from "@heroui/react";
 import type { ComponentProps, ReactNode } from "react";
 import { useMemo, useState } from "react";
 import type { useI18n } from "@/contexts/I18nContext";
@@ -26,13 +20,25 @@ type Props = {
 	activeSection: EditorEffectSection;
 	setActiveSection: (section: EditorEffectSection) => void;
 	settingsPanelProps: ComponentProps<typeof SettingsPanel>;
+	onPlayPauseShortcut: () => void;
 };
+
+function isTextEntry(target: EventTarget | null): boolean {
+	return (
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		(target instanceof HTMLInputElement &&
+			!["checkbox", "radio", "range", "button"].includes(target.type)) ||
+		(target instanceof HTMLElement && target.isContentEditable)
+	);
+}
 
 export function EditorSidebar({
 	t,
 	activeSection,
 	setActiveSection,
 	settingsPanelProps,
+	onPlayPauseShortcut,
 	panelContent,
 }: Props) {
 	const [advancedSections, setAdvancedSections] = useState<Record<string, boolean>>({});
@@ -51,6 +57,7 @@ export function EditorSidebar({
 			},
 			{ id: "cursor" as const, label: t("settings.sections.cursor", "Cursor"), icon: Cursor },
 			{ id: "webcam" as const, label: t("settings.sections.webcam", "Webcam"), icon: Camera },
+			{ id: "audio" as const, label: t("settings.sections.audio", "Audio"), icon: Waveform },
 			{
 				id: "captions" as const,
 				label: t("settings.sections.captions", "Captions"),
@@ -100,6 +107,25 @@ export function EditorSidebar({
 			<aside
 				aria-label={panelContent ? "Videos" : undefined}
 				className="editor-inspector [--text-sm:0.8125rem] [--text-base:0.8125rem] flex w-[320px] min-h-0 flex-col"
+				onKeyDownCapture={(event) => {
+					if (
+						panelContent ||
+						event.code !== "Space" ||
+						event.altKey ||
+						event.ctrlKey ||
+						event.metaKey
+					)
+						return;
+					if (isTextEntry(event.target)) return;
+					event.preventDefault();
+					event.stopPropagation();
+					if (!event.repeat) onPlayPauseShortcut();
+				}}
+				onKeyUpCapture={(event) => {
+					if (panelContent || event.code !== "Space" || isTextEntry(event.target)) return;
+					event.preventDefault();
+					event.stopPropagation();
+				}}
 			>
 				<Card className="min-h-0 flex-1 gap-0 overflow-hidden p-0">
 					{panelContent ?? (
