@@ -28,12 +28,21 @@ const KeyframeMarkers: React.FC<KeyframeMarkersProps> = ({
 	const { sidebarWidth, range, valueToPixels, pixelsToValue } = useTimelineContext();
 	const { clips } = useTimelinePresentation();
 	const [draggingKeyframeId, setDraggingKeyframeId] = useState<string | null>(null);
+	const [dragCandidate, setDragCandidate] = useState<{
+		id: string;
+		clientX: number;
+		clientY: number;
+	} | null>(null);
 
 	useEffect(() => {
-		if (!draggingKeyframeId) return;
+		if (!dragCandidate) return;
 
 		const handleMouseMove = (e: MouseEvent) => {
 			if (!timelineRef.current) return;
+			const movedEnough =
+				Math.hypot(e.clientX - dragCandidate.clientX, e.clientY - dragCandidate.clientY) > 3;
+			if (!draggingKeyframeId && !movedEnough) return;
+			if (!draggingKeyframeId) setDraggingKeyframeId(dragCandidate.id);
 
 			const rect = timelineRef.current.getBoundingClientRect();
 			const clickX = e.clientX - rect.left - sidebarWidth;
@@ -41,11 +50,12 @@ const KeyframeMarkers: React.FC<KeyframeMarkersProps> = ({
 			const absoluteMs = Math.max(0, Math.min(range.start + relativeMs, videoDurationMs));
 
 			// Update the keyframe position in real-time
-			onKeyframeMove(draggingKeyframeId, getTimeAtClipSeam(absoluteMs, clips));
+			onKeyframeMove(dragCandidate.id, getTimeAtClipSeam(absoluteMs, clips));
 		};
 
 		const handleMouseUp = () => {
 			setDraggingKeyframeId(null);
+			setDragCandidate(null);
 			document.body.style.cursor = "";
 		};
 
@@ -60,6 +70,7 @@ const KeyframeMarkers: React.FC<KeyframeMarkersProps> = ({
 		};
 	}, [
 		clips,
+		dragCandidate,
 		draggingKeyframeId,
 		onKeyframeMove,
 		timelineRef,
@@ -86,12 +97,14 @@ const KeyframeMarkers: React.FC<KeyframeMarkersProps> = ({
 							transition: isDragging ? "none" : "left 0.1s ease-out",
 						}}
 						onMouseDown={(e) => {
+							if (e.button !== 0) return;
 							e.stopPropagation();
 							setSelectedKeyframeId(kf.id);
-							if (e.button !== 0) {
-								return;
-							}
-							setDraggingKeyframeId(kf.id);
+							setDragCandidate({ id: kf.id, clientX: e.clientX, clientY: e.clientY });
+						}}
+						onClick={(e) => {
+							e.stopPropagation();
+							setSelectedKeyframeId(kf.id);
 						}}
 						onContextMenu={(e) => {
 							e.preventDefault();

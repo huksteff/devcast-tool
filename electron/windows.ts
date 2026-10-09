@@ -35,6 +35,9 @@ let hudOverlayFallbackExpanded = false;
 let hudOverlayIgnoringMouse = true;
 let hudOverlaySourceSelectionActive = false;
 let hudOverlayMouseReassertTimer: NodeJS.Timeout | null = null;
+let hudOverlayInteractiveBounds: Array<{ left: number; top: number; right: number; bottom: number }> =
+	[];
+let hudOverlayMouseWatchTimer: NodeJS.Timeout | null = null;
 let hudOverlayRecordingActive = false;
 let hudOverlayWebcamPreviewVisible = false;
 let countdownWindow: BrowserWindow | null = null;
@@ -335,6 +338,57 @@ ipcMain.on("hud-overlay-set-ignore-mouse", (_event, ignore: boolean) => {
 	setHudOverlayMousePassthrough(Boolean(ignore));
 });
 
+ipcMain.on(
+	"hud-overlay-set-interactive-bounds",
+	(_event, bounds: Array<{ left?: unknown; top?: unknown; right?: unknown; bottom?: unknown }>) => {
+		if (!Array.isArray(bounds)) return;
+		hudOverlayInteractiveBounds = bounds.flatMap((bound) => {
+			const { left, top, right, bottom } = bound;
+			if (
+				typeof left !== "number" ||
+				typeof top !== "number" ||
+				typeof right !== "number" ||
+				typeof bottom !== "number" ||
+				!Number.isFinite(left) ||
+				!Number.isFinite(top) ||
+				!Number.isFinite(right) ||
+				!Number.isFinite(bottom) ||
+				right <= left ||
+				bottom <= top
+			) {
+				return [];
+			}
+			return [{ left, top, right, bottom }];
+		});
+	},
+);
+
+function refreshHudMousePassthroughFromCursor(): void {
+	if (
+		process.platform !== "win32" ||
+		!isHudOverlayMousePassthroughSupported() ||
+		hudOverlaySourceSelectionActive ||
+		hudOverlayInteractiveBounds.length === 0
+	) {
+		return;
+	}
+
+	const hud = getHudOverlayWindow();
+	if (!hud || !hud.isVisible()) return;
+	const cursor = getScreen().getCursorScreenPoint();
+	const { x, y } = hud.getBounds();
+	const interactive = hudOverlayInteractiveBounds.some(
+		(bound) =>
+			cursor.x >= x + bound.left &&
+			cursor.x <= x + bound.right &&
+			cursor.y >= y + bound.top &&
+			cursor.y <= y + bound.bottom,
+	);
+	if (interactive === hudOverlayIgnoringMouse) {
+		setHudOverlayMousePassthrough(!interactive);
+	}
+}
+
 ipcMain.on("hud-overlay-set-source-selection-active", (_event, active: boolean) => {
 	hudOverlaySourceSelectionActive = Boolean(active);
 	if (hudOverlaySourceSelectionActive) {
@@ -565,6 +619,9 @@ export function createHudOverlayWindow(): BrowserWindow {
 				}, 50);
 			}
 		});
+		// Forwarded events can stop arriving after Windows recreates the transparent
+		// overlay's input region. Native cursor/bounds polling is a recovery path.
+		hudOverlayMouseWatchTimer = setInterval(refreshHudMousePassthroughFromCursor, 80);
 	}
 
 	win.webContents.on("did-finish-load", () => {
@@ -638,6 +695,11 @@ export function createHudOverlayWindow(): BrowserWindow {
 		screen.removeListener("display-metrics-changed", handleDisplayMetricsChanged);
 		if (hudOverlayWindow === win) {
 			hudOverlayWindow = null;
+			hudOverlayInteractiveBounds = [];
+			if (hudOverlayMouseWatchTimer) {
+				clearInterval(hudOverlayMouseWatchTimer);
+				hudOverlayMouseWatchTimer = null;
+			}
 		}
 	});
 
@@ -1059,6 +1121,11 @@ export function createEditorWindow(): BrowserWindow {
 	win.once("closed", () => {
 		editorWindows.delete(win);
 		notifyEditorMode();
+		// Destroying a sibling BrowserWindow can leave the transparent HUD with a
+		// stale WS_EX_TRANSPARENT state on Windows 11. Rebuild the passthrough
+		// state after the editor's native window has actually gone away so hover
+		// forwarding (and therefore the HUD buttons) starts working immediately.
+		reassertHudOverlayMousePassthrough();
 	});
 
 	const publishWindowChrome = () => {

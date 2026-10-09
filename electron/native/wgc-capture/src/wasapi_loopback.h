@@ -50,6 +50,9 @@ private:
     std::atomic<bool> capturing_{false};
     std::atomic<bool> paused_{false};
     HANDLE outputFile_ = INVALID_HANDLE_VALUE;
+    // Event-driven WASAPI avoids periodic polling missing a full shared-mode
+    // buffer while the capture thread is briefly descheduled under GPU load.
+    HANDLE captureEvent_ = nullptr;
     std::atomic<uint64_t> totalDataBytes_{0};
     std::atomic<uint64_t> framesWritten_{0};
 

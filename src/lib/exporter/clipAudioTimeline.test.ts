@@ -20,11 +20,17 @@ const clips = [
 ];
 function context() {
 	const starts: ReturnType<typeof vi.fn>[] = [];
+	const gains: Array<{ value: number }> = [];
 	return {
 		starts,
+		gains,
 		ctx: {
 			destination: {},
-			createGain: () => ({ gain: { value: 1 }, connect: vi.fn() }),
+			createGain: () => {
+				const gain = { value: 1 };
+				gains.push(gain);
+				return { gain, connect: vi.fn() };
+			},
 			createBufferSource: () => {
 				const start = vi.fn();
 				starts.push(start);
@@ -86,6 +92,12 @@ describe("clip audio timeline", () => {
 		processor.schedule(ctx, buffer, prepared.slices, 0, 1, 2.5, 1);
 		expect(starts).toHaveLength(1);
 		expect(starts[0]).toHaveBeenCalledWith(0);
+	});
+	it("preserves source boost above 2x in the offline export mix", () => {
+		const processor = new TestAudioProcessor();
+		const { gains, ctx } = context();
+		processor.schedule(ctx, buffer, [{ sourceStartMs: 0, sourceEndMs: 1000, speed: 1 }], 0, 10);
+		expect(gains[0]?.value).toBe(10);
 	});
 	it("an explicitly empty clip list schedules no source audio", async () => {
 		const processor = new TestAudioProcessor();

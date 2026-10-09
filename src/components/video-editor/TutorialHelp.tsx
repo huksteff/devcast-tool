@@ -234,6 +234,58 @@ export function KeyboardShortcutsDialog({
 		pan: "Shift + Scroll",
 		zoom: "Ctrl + Scroll",
 	});
+	const shortcutLabel = (action: (typeof SHORTCUT_ACTIONS)[number]) =>
+		t(`keyboardShortcuts.action.${action}`, SHORTCUT_LABELS[action]);
+	const navigationShortcuts = [
+		{
+			label: t("keyboardShortcuts.shortcut.stepFrameBack", "Previous frame"),
+			binding: formatBinding({ key: "arrowleft" }, isMac),
+		},
+		{
+			label: t("keyboardShortcuts.shortcut.stepFrameForward", "Next frame"),
+			binding: formatBinding({ key: "arrowright" }, isMac),
+		},
+		{
+			label: t("keyboardShortcuts.shortcut.cycleForward", "Next annotation"),
+			binding: "Tab",
+		},
+		{
+			label: t("keyboardShortcuts.shortcut.cycleBackward", "Previous annotation"),
+			binding: "Shift + Tab",
+		},
+	];
+	const editingShortcuts = [
+		{
+			label: t("keyboardShortcuts.shortcut.undo", "Undo"),
+			binding: formatBinding({ key: "z", ctrl: true }, isMac),
+		},
+		{
+			label: t("keyboardShortcuts.shortcut.redo", "Redo"),
+			binding: isMac
+				? formatBinding({ key: "z", ctrl: true, shift: true }, isMac)
+				: `${formatBinding({ key: "z", ctrl: true, shift: true }, isMac)} / ${formatBinding({ key: "y", ctrl: true }, isMac)}`,
+		},
+		{
+			label: t("keyboardShortcuts.shortcut.copy", "Copy selected"),
+			binding: formatBinding({ key: "c", ctrl: true }, isMac),
+		},
+		{
+			label: t("keyboardShortcuts.shortcut.cut", "Cut selected"),
+			binding: formatBinding({ key: "x", ctrl: true }, isMac),
+		},
+		{
+			label: t("keyboardShortcuts.shortcut.paste", "Paste"),
+			binding: formatBinding({ key: "v", ctrl: true }, isMac),
+		},
+		{
+			label: t("keyboardShortcuts.shortcut.delete", "Delete selected"),
+			binding: "Del / ⌫",
+		},
+		{
+			label: t("keyboardShortcuts.shortcut.selectAllZooms", "Select all zoom regions"),
+			binding: formatBinding({ key: "a", ctrl: true }, isMac),
+		},
+	];
 
 	useEffect(() => {
 		Promise.all([formatShortcut(["shift", "Scroll"]), formatShortcut(["mod", "Scroll"])]).then(
@@ -268,15 +320,18 @@ export function KeyboardShortcutsDialog({
 						)}
 					</DialogDescription>
 				</DialogHeader>
-				<div className="mt-4 space-y-4">
+				<div className="mt-4 max-h-[60vh] space-y-4 overflow-y-auto pr-2">
 					<div className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4 space-y-2 text-xs">
+						<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+							{t("keyboardShortcuts.configurable", "Configurable")}
+						</p>
 						{SHORTCUT_ACTIONS.map((action) => (
 							<div
 								key={action}
 								className="flex items-center justify-between gap-3 rounded-lg border border-foreground/5 bg-foreground/5 px-3 py-2.5"
 							>
 								<span className="text-muted-foreground">
-									{SHORTCUT_LABELS[action]}
+									{shortcutLabel(action)}
 								</span>
 								<kbd className="rounded border border-foreground/10 bg-foreground/10 px-2 py-1 font-mono text-[#2563EB]">
 									{formatBinding(shortcuts[action], isMac)}
@@ -309,6 +364,28 @@ export function KeyboardShortcutsDialog({
 								</kbd>
 							</div>
 						</div>
+					</div>
+					<div className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4 space-y-2 text-xs">
+						<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+							{t("keyboardShortcuts.navigation", "Navigation")}
+						</p>
+						{navigationShortcuts.map(({ label, binding }) => (
+							<div key={label} className="flex items-center justify-between gap-3 rounded-lg border border-foreground/5 bg-foreground/5 px-3 py-2.5">
+								<span className="text-muted-foreground">{label}</span>
+								<kbd className="rounded border border-foreground/10 bg-foreground/10 px-2 py-1 font-mono text-[#2563EB]">{binding}</kbd>
+							</div>
+						))}
+					</div>
+					<div className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4 space-y-2 text-xs">
+						<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+							{t("keyboardShortcuts.editing", "Editing")}
+						</p>
+						{editingShortcuts.map(({ label, binding }) => (
+							<div key={label} className="flex items-center justify-between gap-3 rounded-lg border border-foreground/5 bg-foreground/5 px-3 py-2.5">
+								<span className="text-muted-foreground">{label}</span>
+								<kbd className="rounded border border-foreground/10 bg-foreground/10 px-2 py-1 font-mono text-[#2563EB]">{binding}</kbd>
+							</div>
+						))}
 					</div>
 					<div className="flex justify-end">
 						<Button type="button" variant="outline" onClick={openConfig}>

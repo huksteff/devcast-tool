@@ -85,6 +85,9 @@ interface TimelineCanvasProps {
 	selectAllBlocksActive?: boolean;
 	onClearBlockSelection?: () => void;
 	keyframes?: { id: string; time: number }[];
+	selectedKeyframeId?: string | null;
+	onSelectKeyframe?: (id: string) => void;
+	onMoveKeyframe?: (id: string, time: number) => void;
 	sourceAudioTracks?: SourceAudioTrackWithPeaks[];
 	getSourceAudioTrackSettingsForClip?: (clipId: string | null) => SourceAudioTrackSettings;
 	showSourceAudioTrack?: boolean;
@@ -424,6 +427,10 @@ interface TimelineCanvasRowsProps {
 	selectedZoomId: string | null;
 	selectedClipId?: string | null;
 	selectedAnnotationId?: string | null;
+	keyframes?: { id: string; time: number }[];
+	selectedKeyframeId?: string | null;
+	onSelectKeyframe?: (id: string) => void;
+	onMoveKeyframe?: (id: string, time: number) => void;
 	selectedAudioId?: string | null;
 	selectedCaptionId?: string | null;
 	onSelectZoom?: (id: string | null) => void;
@@ -509,6 +516,10 @@ interface AnnotationTimelineRowProps {
 	clipPresentation: ClipPresentation[];
 	isDragging: boolean;
 	selectedAnnotationId?: string | null;
+	keyframes?: { id: string; time: number }[];
+	selectedKeyframeId?: string | null;
+	onSelectKeyframe?: (id: string) => void;
+	onMoveKeyframe?: (id: string, time: number) => void;
 	onSelectAnnotation?: (id: string | null) => void;
 	onAddAnnotationAtMs?: (startMs: number, trackIndex: number, durationMs?: number) => void;
 	annotationQuickAddDurationMs?: number;
@@ -527,6 +538,10 @@ function AnnotationTimelineRow({
 	clipPresentation,
 	isDragging,
 	selectedAnnotationId,
+	keyframes = [],
+	selectedKeyframeId,
+	onSelectKeyframe,
+	onMoveKeyframe,
 	onSelectAnnotation,
 	onAddAnnotationAtMs,
 	annotationQuickAddDurationMs = 0,
@@ -605,6 +620,10 @@ function AnnotationTimelineRow({
 					onSelectId={onSelectAnnotation}
 					annotationStages={item.annotationStages}
 					annotationType={item.annotationType}
+					annotationKeyframes={item.id === selectedAnnotationId ? keyframes : []}
+					selectedKeyframeId={selectedKeyframeId}
+					onSelectKeyframe={onSelectKeyframe}
+					onMoveKeyframe={onMoveKeyframe}
 					variant="annotation"
 				>
 					{item.label}
@@ -622,6 +641,10 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	selectedZoomId,
 	selectedClipId,
 	selectedAnnotationId,
+	keyframes,
+	selectedKeyframeId,
+	onSelectKeyframe,
+	onMoveKeyframe,
 	selectedAudioId,
 	selectedCaptionId,
 	onSelectZoom,
@@ -1012,6 +1035,10 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 					clipPresentation={clipPresentation}
 					isDragging={isDragging}
 					selectedAnnotationId={selectedAnnotationId}
+					keyframes={keyframes}
+					selectedKeyframeId={selectedKeyframeId}
+					onSelectKeyframe={onSelectKeyframe}
+					onMoveKeyframe={onMoveKeyframe}
 					onSelectAnnotation={onSelectAnnotation}
 					onAddAnnotationAtMs={onAddAnnotationAtMs}
 					annotationQuickAddDurationMs={annotationQuickAddDurationMs}

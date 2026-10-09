@@ -1,10 +1,31 @@
 import type { Range } from "dnd-timeline";
-import { useCallback, useEffect, useMemo, useState, type RefObject, type WheelEvent } from "react";
+import {
+	type RefObject,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type WheelEvent,
+} from "react";
 import { createInitialRange, normalizeWheelDeltaToPixels } from "../core/time";
 
 interface UseTimelineRangeParams {
 	totalMs: number;
 	timelineContainerRef: RefObject<HTMLDivElement | null>;
+	/** Changes only when a different source is loaded. Item edits must not reset zoom. */
+	resetKey?: string | null;
+}
+
+export function preserveTimelineRange(range: Range, totalMs: number): Range {
+	if (totalMs <= 0) return createInitialRange(totalMs);
+	if (!Number.isFinite(range.start) || !Number.isFinite(range.end) || range.end <= range.start) {
+		return createInitialRange(totalMs);
+	}
+	const visibleSpan = Math.max(1, Math.min(range.end - range.start, totalMs));
+	const maxStart = Math.max(0, totalMs - visibleSpan);
+	const start = Math.max(0, Math.min(range.start, maxStart));
+	return { start, end: start + visibleSpan };
 }
 
 export interface TimelineWheelPanDeltaInput {
@@ -41,12 +62,26 @@ export function resolveTimelineWheelPanDeltaPx({
 	return 0;
 }
 
-export function useTimelineRange({ totalMs, timelineContainerRef }: UseTimelineRangeParams) {
+export function useTimelineRange({
+	totalMs,
+	timelineContainerRef,
+	resetKey,
+}: UseTimelineRangeParams) {
 	const [range, setRange] = useState<Range>(() => createInitialRange(totalMs));
+	const previousResetKeyRef = useRef(resetKey);
+	const previousTotalMsRef = useRef(totalMs);
 
 	useEffect(() => {
-		setRange(createInitialRange(totalMs));
-	}, [totalMs]);
+		const sourceChanged = previousResetKeyRef.current !== resetKey;
+		const durationBecameAvailable = previousTotalMsRef.current <= 0 && totalMs > 0;
+		previousResetKeyRef.current = resetKey;
+		previousTotalMsRef.current = totalMs;
+		setRange((previous) =>
+			sourceChanged || durationBecameAvailable
+				? createInitialRange(totalMs)
+				: preserveTimelineRange(previous, totalMs),
+		);
+	}, [resetKey, totalMs]);
 
 	const clampedRange = useMemo<Range>(() => {
 		if (totalMs === 0) {

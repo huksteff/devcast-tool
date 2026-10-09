@@ -197,6 +197,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	hudOverlaySetIgnoreMouse: (ignore: boolean) => {
 		ipcRenderer.send("hud-overlay-set-ignore-mouse", ignore);
 	},
+	hudOverlaySetInteractiveBounds: (
+		bounds: Array<{ left: number; top: number; right: number; bottom: number }>,
+	) => {
+		ipcRenderer.send("hud-overlay-set-interactive-bounds", bounds);
+	},
 	hudOverlaySetSourceSelectionActive: (active: boolean) => {
 		ipcRenderer.send("hud-overlay-set-source-selection-active", active);
 	},

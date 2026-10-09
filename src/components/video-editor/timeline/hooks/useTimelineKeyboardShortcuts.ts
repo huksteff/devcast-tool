@@ -22,6 +22,8 @@ interface UseTimelineKeyboardShortcutsParams {
 	handleSplitClip: () => void;
 	handleAddAnnotation: () => void;
 	deleteSelectedKeyframe: () => void;
+	copySelectedKeyframe: () => void;
+	pasteKeyframe: () => void;
 	deleteSelectedZoom: () => void;
 	deleteSelectedClip: () => void;
 	deleteSelectedAnnotation: () => void;
@@ -49,6 +51,8 @@ export function useTimelineKeyboardShortcuts({
 	handleSplitClip,
 	handleAddAnnotation,
 	deleteSelectedKeyframe,
+	copySelectedKeyframe,
+	pasteKeyframe,
 	deleteSelectedZoom,
 	deleteSelectedClip,
 	deleteSelectedAnnotation,
@@ -113,6 +117,16 @@ export function useTimelineKeyboardShortcuts({
 			if (!isTimelineFocusedRef.current) {
 				return;
 			}
+			if (selectedKeyframeId && matchesShortcut(e, { key: "c", ctrl: true }, isMac)) {
+				e.preventDefault();
+				copySelectedKeyframe();
+				return;
+			}
+			if (matchesShortcut(e, { key: "v", ctrl: true }, isMac)) {
+				e.preventDefault();
+				pasteKeyframe();
+				return;
+			}
 
 			if (matchesShortcut(e, { key: "a", ctrl: true }, isMac)) {
 				if (!hasAnyZoomBlocks) {
@@ -149,6 +163,8 @@ export function useTimelineKeyboardShortcuts({
 		deleteSelectedCaption,
 		deleteSelectedClip,
 		deleteSelectedKeyframe,
+		copySelectedKeyframe,
+		pasteKeyframe,
 		deleteSelectedZoom,
 		handleAddAnnotation,
 		handleAddZoom,

@@ -42,6 +42,11 @@ import {
 	DEFAULT_CURSOR_CLICK_EFFECT_DURATION_MS,
 	DEFAULT_CURSOR_CLICK_EFFECT_OPACITY,
 	DEFAULT_CURSOR_CLICK_EFFECT_SCALE,
+	DEFAULT_CURSOR_CALLOUT_BACKGROUND,
+	DEFAULT_CURSOR_CALLOUT_GRADIENT,
+	DEFAULT_CURSOR_CALLOUT_SCALE,
+	DEFAULT_CURSOR_CALLOUT_TEXT,
+	DEFAULT_CURSOR_CALLOUT_TEXT_COLOR,
 	DEFAULT_CURSOR_MOTION_BLUR,
 	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SWAY,
@@ -131,6 +136,14 @@ export interface ProjectEditorState {
 	cursorClickBounce: number;
 	cursorClickBounceDuration: number;
 	cursorSway: number;
+	cursorCalloutEnabled: boolean;
+	cursorCalloutText: string;
+	cursorCalloutBackground: string;
+	cursorCalloutTextColor: string;
+	cursorCalloutScale: number;
+	cursorCalloutGradientEnabled: boolean;
+	cursorCalloutGradientColors: string[];
+	cursorCalloutGradientGlow: number;
 	borderRadius: number;
 	padding: Padding;
 	cropRegion: CropRegion;
@@ -590,11 +603,13 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						id: region.id,
 						startMs,
 						endMs,
-						type:
+							type:
 							region.type === "image" ||
 							region.type === "figure" ||
 							region.type === "blur" ||
-							region.type === "drawing"
+							region.type === "drawing" ||
+							region.type === "click"
+								|| region.type === "cursor-callout"
 								? region.type
 								: "text",
 						content: typeof region.content === "string" ? region.content : "",
@@ -604,7 +619,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 							typeof region.imageContent === "string"
 								? region.imageContent
 								: undefined,
-						position: {
+									position: {
 							x: isFiniteNumber(region.position?.x)
 								? region.position.x
 								: DEFAULT_ANNOTATION_POSITION.x,
@@ -612,6 +627,38 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 								? region.position.y
 								: DEFAULT_ANNOTATION_POSITION.y,
 						},
+						positionKeyframes: Array.isArray(region.positionKeyframes)
+							? region.positionKeyframes
+									.filter(
+										(frame) =>
+											frame &&
+											typeof frame.id === "string" &&
+											isFiniteNumber(frame.timeMs),
+									)
+									.map((frame) => ({
+										id: frame.id,
+										timeMs: Math.max(
+											startMs,
+											Math.min(endMs, Math.round(frame.timeMs)),
+										),
+										position: {
+											x: isFiniteNumber(frame.position?.x)
+												? frame.position.x
+												: DEFAULT_ANNOTATION_POSITION.x,
+											y: isFiniteNumber(frame.position?.y)
+												? frame.position.y
+												: DEFAULT_ANNOTATION_POSITION.y,
+									},
+									size:
+										isFiniteNumber(frame.size?.width) && isFiniteNumber(frame.size?.height)
+											? {
+													width: Math.max(1, frame.size.width),
+													height: Math.max(1, frame.size.height),
+												}
+											: undefined,
+								}))
+									.sort((left, right) => left.timeMs - right.timeMs)
+							: undefined,
 						size: {
 							width: clamp(
 								isFiniteNumber(region.size?.width)
@@ -673,6 +720,30 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 													)
 											: undefined,
 									}
+								: undefined,
+						clickData:
+							region.clickData && typeof region.clickData === "object"
+								? {
+										color:
+											typeof region.clickData.color === "string"
+												? region.clickData.color
+												: "#60A5FA",
+										particleCount: clamp(
+											region.clickData.particleCount ?? 18,
+											0,
+											60,
+										),
+										radius: clamp(region.clickData.radius ?? 90, 20, 300),
+										durationMs: clamp(
+											region.clickData.durationMs ?? 750,
+											100,
+											5000,
+										),
+									}
+								: undefined,
+						calloutEvent:
+							region.calloutEvent && typeof region.calloutEvent === "object"
+								? { action: region.calloutEvent.action === "enable" || region.calloutEvent.action === "disable" || region.calloutEvent.action === "text" ? region.calloutEvent.action : "enable" }
 								: undefined,
 						stages: (() => {
 							if (!region.stages || typeof region.stages !== "object")
@@ -961,6 +1032,23 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		(editor as Partial<ProjectEditorState>).cursorClickEffectColor,
 		DEFAULT_CURSOR_CLICK_EFFECT_COLOR,
 	);
+	const rawCursorCalloutText = (editor as Partial<ProjectEditorState>).cursorCalloutText;
+	const normalizedCursorCalloutBackground = normalizeCursorClickEffectColor(
+		(editor as Partial<ProjectEditorState>).cursorCalloutBackground,
+		DEFAULT_CURSOR_CALLOUT_BACKGROUND,
+	);
+	const normalizedCursorCalloutTextColor = normalizeCursorClickEffectColor(
+		(editor as Partial<ProjectEditorState>).cursorCalloutTextColor,
+		DEFAULT_CURSOR_CALLOUT_TEXT_COLOR,
+	);
+	const rawCursorCalloutGradientColors = (editor as Partial<ProjectEditorState>).cursorCalloutGradientColors;
+	const normalizedCursorCalloutGradientColors = Array.isArray(rawCursorCalloutGradientColors)
+		? rawCursorCalloutGradientColors
+				.filter((color): color is string => typeof color === "string")
+				.map((color) => normalizeCursorClickEffectColor(color, ""))
+				.filter(Boolean)
+				.slice(0, 4)
+		: [];
 	const normalizedMotionPreset =
 		CURSOR_MOTION_PRESETS[resolveCursorMotionPresetId(normalizedMotionValues)];
 
@@ -1016,6 +1104,30 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		cursorSway: isFiniteNumber((editor as Partial<ProjectEditorState>).cursorSway)
 			? clamp((editor as Partial<ProjectEditorState>).cursorSway as number, 0, 2)
 			: DEFAULT_CURSOR_SWAY,
+		cursorCalloutEnabled:
+			typeof (editor as Partial<ProjectEditorState>).cursorCalloutEnabled === "boolean"
+				? (editor as Partial<ProjectEditorState>).cursorCalloutEnabled!
+				: false,
+		cursorCalloutText:
+			typeof rawCursorCalloutText === "string"
+				? rawCursorCalloutText.slice(0, 80)
+				: DEFAULT_CURSOR_CALLOUT_TEXT,
+		cursorCalloutBackground: normalizedCursorCalloutBackground,
+		cursorCalloutTextColor: normalizedCursorCalloutTextColor,
+		cursorCalloutScale: isFiniteNumber((editor as Partial<ProjectEditorState>).cursorCalloutScale)
+			? clamp((editor as Partial<ProjectEditorState>).cursorCalloutScale as number, 0.5, 2)
+			: DEFAULT_CURSOR_CALLOUT_SCALE,
+		cursorCalloutGradientEnabled:
+			typeof (editor as Partial<ProjectEditorState>).cursorCalloutGradientEnabled === "boolean"
+				? (editor as Partial<ProjectEditorState>).cursorCalloutGradientEnabled!
+				: DEFAULT_CURSOR_CALLOUT_GRADIENT.enabled,
+		cursorCalloutGradientColors:
+			normalizedCursorCalloutGradientColors.length >= 2
+				? normalizedCursorCalloutGradientColors
+				: [...DEFAULT_CURSOR_CALLOUT_GRADIENT.colors],
+		cursorCalloutGradientGlow: isFiniteNumber((editor as Partial<ProjectEditorState>).cursorCalloutGradientGlow)
+			? clamp((editor as Partial<ProjectEditorState>).cursorCalloutGradientGlow as number, 0, 40)
+			: DEFAULT_CURSOR_CALLOUT_GRADIENT.glow,
 		borderRadius: isFiniteNumber(editor.borderRadius)
 			? clamp(editor.borderRadius, 0, 50)
 			: getDefaultBorderRadiusPercent(),

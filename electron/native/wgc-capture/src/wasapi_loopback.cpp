@@ -105,6 +105,7 @@ WasapiCapture::WasapiCapture() {}
 
 WasapiCapture::~WasapiCapture() {
     stop();
+    if (captureEvent_) CloseHandle(captureEvent_);
     if (mixFormat_) CoTaskMemFree(mixFormat_);
     if (captureClient_) captureClient_->Release();
     if (audioClient_) audioClient_->Release();
@@ -208,11 +209,19 @@ bool WasapiCapture::initializeCommon() {
     hr = audioClient_->GetMixFormat(&mixFormat_);
     if (FAILED(hr)) return false;
 
-    REFERENCE_TIME bufferDuration = 200000; // 20ms
+    // A larger shared-mode buffer gives the disk/conversion path enough headroom
+    // when the encoder briefly saturates a core.  Delivery itself stays prompt
+    // because the capture thread waits on WASAPI's event instead of polling.
+    REFERENCE_TIME bufferDuration = 1000000; // 100ms
     hr = audioClient_->Initialize(
         AUDCLNT_SHAREMODE_SHARED,
-        streamFlags_,
+        streamFlags_ | AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
         bufferDuration, 0, mixFormat_, nullptr);
+    if (FAILED(hr)) return false;
+
+    captureEvent_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    if (!captureEvent_) return false;
+    hr = audioClient_->SetEventHandle(captureEvent_);
     if (FAILED(hr)) return false;
 
     hr = audioClient_->GetBufferSize(&bufferFrameCount_);
@@ -291,6 +300,7 @@ bool WasapiCapture::resume() {
 void WasapiCapture::stop() {
     if (!capturing_) return;
     capturing_ = false;
+    if (captureEvent_) SetEvent(captureEvent_);
     if (thread_.joinable()) thread_.join();
     if (audioClient_) audioClient_->Stop();
 
@@ -440,16 +450,23 @@ void WasapiCapture::captureThread() {
 
     std::vector<int16_t> pcmBuffer;
 
-    DWORD sleepMs = static_cast<DWORD>((static_cast<double>(bufferFrameCount_) / mixFormat_->nSamplesPerSec) * 500.0);
-    if (sleepMs < 5) sleepMs = 5;
-
     while (capturing_) {
         if (paused_) {
             Sleep(10);
             continue;
         }
 
-        Sleep(sleepMs);
+        // Polling every half buffer was susceptible to scheduler stalls: when a
+        // GPU encode frame or WriteFile took longer than one period, the next
+        // packet arrived with DATA_DISCONTINUITY and audible gaps.  Event mode
+        // wakes exactly when the shared engine has a packet ready.
+        const DWORD waitResult = WaitForSingleObject(captureEvent_, 250);
+        if (!capturing_) break;
+        if (waitResult == WAIT_FAILED) {
+            std::cerr << "WASAPI: audio capture event wait failed" << std::endl;
+            break;
+        }
+        if (waitResult == WAIT_TIMEOUT) continue;
 
         UINT32 packetLength = 0;
         HRESULT hr = captureClient_->GetNextPacketSize(&packetLength);

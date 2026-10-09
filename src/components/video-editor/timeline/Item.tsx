@@ -1,32 +1,36 @@
+import { useDndMonitor } from "@dnd-kit/core";
 import {
-	Gauge,
-	MagnifyingGlassPlus as ZoomIn,
-	ChatCircle as MessageSquare,
-	MusicNotes as Music,
-	TextT,
-	ImageSquare,
 	ArrowRight,
 	BoundingBox,
+	Gauge,
+	ImageSquare,
+	ChatCircle as MessageSquare,
+	MusicNotes as Music,
 	PencilSimple,
 	Scissors,
 	SpeakerX,
+	TextT,
+	MagnifyingGlassPlus as ZoomIn,
 } from "@phosphor-icons/react";
-import { ClipFilmstrip } from "./components/filmstrip/ClipFilmstrip";
-import type { Span, GetSpanFromDragEvent, GetSpanFromResizeEvent } from "dnd-timeline";
+import type { GetSpanFromDragEvent, GetSpanFromResizeEvent, Span } from "dnd-timeline";
 import { useItem, useTimelineContext } from "dnd-timeline";
 import { useCallback, useMemo, useRef } from "react";
-import { useDndMonitor } from "@dnd-kit/core";
-import { useTimelinePresentation } from "./core/TimelinePresentation";
-import { getRegionDisplaySpan, snapRegionSpan } from "./core/clipPresentation";
-import { resolveDragEnd, resolveResizeEnd } from "./dnd/engine";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatClipSpeedLabel } from "../clipSpeedChange";
-import { getTimeAtClipSeam, type ClipPresentation } from "./core/clipPresentation";
-import { formatPlayheadTime } from "./core/time";
-import AudioWaveform from "./components/waveform/AudioWaveform";
-import type { AudioPeaksData } from "./core/timelineTypes";
 import type { AnnotationStages, AnnotationType } from "../types";
+import { ClipFilmstrip } from "./components/filmstrip/ClipFilmstrip";
+import AudioWaveform from "./components/waveform/AudioWaveform";
+import {
+	type ClipPresentation,
+	getRegionDisplaySpan,
+	getTimeAtClipSeam,
+	snapRegionSpan,
+} from "./core/clipPresentation";
+import { useTimelinePresentation } from "./core/TimelinePresentation";
+import { formatPlayheadTime } from "./core/time";
+import type { AudioPeaksData } from "./core/timelineTypes";
+import { resolveDragEnd, resolveResizeEnd } from "./dnd/engine";
 import glassStyles from "./ItemGlass.module.css";
 
 interface ItemProps {
@@ -59,6 +63,10 @@ interface ItemProps {
 	loadingLabel?: string;
 	annotationStages?: AnnotationStages;
 	annotationType?: AnnotationType;
+	annotationKeyframes?: { id: string; time: number }[];
+	selectedKeyframeId?: string | null;
+	onSelectKeyframe?: (id: string) => void;
+	onMoveKeyframe?: (id: string, time: number) => void;
 }
 
 // Map zoom depth to multiplier labels
@@ -100,6 +108,10 @@ export default function Item({
 	loadingLabel,
 	annotationStages,
 	annotationType,
+	annotationKeyframes = [],
+	selectedKeyframeId,
+	onSelectKeyframe,
+	onMoveKeyframe,
 	children,
 }: ItemProps) {
 	const timeline = useTimelineContext();
@@ -184,7 +196,9 @@ export default function Item({
 			getSpanFromDragEvent: getMediaSpanFromDrag,
 			getSpanFromResizeEvent: getMediaSpanFromResize,
 		},
-		resizeHandleWidth: variant === "clip" ? 12 : undefined,
+		// Match the interaction area to the visible grip. The former inherited 28 px
+		// zone made audio clips resize when pressing the body beside the white line.
+		resizeHandleWidth: variant === "clip" ? 12 : variant === "audio" ? 10 : undefined,
 		onResizeMove(event) {
 			if (!clipPresentation) return;
 			const next = getMediaSpanFromResize(event);
@@ -355,6 +369,7 @@ export default function Item({
 							glassStyles.zoomEndCap,
 							glassStyles.left,
 							isClip && glassStyles.clipHandle,
+							isAudio && glassStyles.audioHandle,
 						)}
 						style={{
 							cursor: "col-resize",
@@ -368,6 +383,7 @@ export default function Item({
 							glassStyles.zoomEndCap,
 							glassStyles.right,
 							isClip && glassStyles.clipHandle,
+							isAudio && glassStyles.audioHandle,
 						)}
 						style={{
 							cursor: "col-resize",
@@ -386,12 +402,32 @@ export default function Item({
 							className="absolute inset-0 w-full h-full pointer-events-none opacity-45"
 						/>
 					)}
-					{variant === "annotation" && (annotationStages?.inEnabled || annotationStages?.outEnabled) && (
-						<div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20" aria-label="Annotation stages">
-							{annotationStages.inEnabled && <div className="absolute inset-y-0 border-r border-white/80 border-dashed" style={{ left: `${inBoundaryPercent}%` }} title={`In: ${Math.round(annotationStages.inDurationMs)} ms`} />}
-							{annotationStages.outEnabled && <div className="absolute inset-y-0 border-l border-white/80 border-dashed" style={{ left: `${outBoundaryPercent}%` }} title={`Out: ${Math.round(annotationStages.outDurationMs)} ms`} />}
-						</div>
-					)}
+					{variant === "annotation" &&
+						(annotationStages?.inEnabled || annotationStages?.outEnabled) && (
+							<div
+								className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20"
+								aria-label="Annotation stages"
+							>
+								{annotationStages.inEnabled && (
+									<div
+										className="absolute inset-y-0 border-r border-white/80 border-dashed"
+										style={{ left: `${inBoundaryPercent}%` }}
+										title={`In: ${Math.round(annotationStages.inDurationMs)} ms`}
+									/>
+								)}
+								{annotationStages.outEnabled && (
+									<div
+										className="absolute inset-y-0 border-l border-white/80 border-dashed"
+										style={{ left: `${outBoundaryPercent}%` }}
+										title={`Out: ${Math.round(annotationStages.outDurationMs)} ms`}
+									/>
+								)}
+							</div>
+						)}
+					{variant === "annotation" && annotationKeyframes.map((keyframe) => {
+						const percent = Math.max(0, Math.min(100, ((keyframe.time - span.start) / Math.max(1, span.end - span.start)) * 100));
+						return <button key={keyframe.id} type="button" className="absolute z-30 h-3 w-3 -translate-x-1/2 rotate-45 cursor-grab active:cursor-grabbing border border-black/60 bg-cyan-300 shadow-[0_0_6px_rgba(34,211,238,.9)]" style={{ left: `${percent}%`, top: "50%", marginTop: "-6px", opacity: keyframe.id === selectedKeyframeId ? 1 : 0.75 }} onPointerDown={(event) => { event.stopPropagation(); onSelectKeyframe?.(keyframe.id); const block = event.currentTarget.parentElement; if (!block) return; const move = (moveEvent: PointerEvent) => { const rect = block.getBoundingClientRect(); const progress = Math.max(0, Math.min(1, (moveEvent.clientX - rect.left) / Math.max(1, rect.width))); onMoveKeyframe?.(keyframe.id, span.start + progress * (span.end - span.start)); }; const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }} title={`Keyframe @ ${Math.round(keyframe.time)}ms (drag to move)`} />;
+					})}
 					{/* Muted overlay for source audio track items */}
 					{isAudio && muted && (
 						<div className="absolute inset-0 z-20 flex items-center justify-center gap-1 bg-red-900/40 pointer-events-none">

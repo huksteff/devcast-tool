@@ -3,6 +3,7 @@ import type { ForwardedRef, RefObject } from "react";
 import { useCallback, useImperativeHandle } from "react";
 import type {
 	AnnotationRegion,
+	AnnotationPositionKeyframe,
 	AudioRegion,
 	CaptionCue,
 	ClipRegion,
@@ -51,6 +52,7 @@ interface UseTimelineEditorRuntimeParams {
 	onAnnotationAdded?: (span: Span, trackIndex?: number) => void;
 	onAnnotationSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAnnotationDelete?: (id: string) => void;
+	onAnnotationPositionKeyframesChange?: (id: string, keyframes: AnnotationPositionKeyframe[]) => void;
 	selectedAnnotationId?: string | null;
 	onSelectAnnotation?: (id: string | null) => void;
 	speedRegions: SpeedRegion[];
@@ -101,6 +103,7 @@ export function useTimelineEditorRuntime({
 	onAnnotationAdded,
 	onAnnotationSpanChange,
 	onAnnotationDelete,
+	onAnnotationPositionKeyframesChange,
 	selectedAnnotationId,
 	onSelectAnnotation,
 	speedRegions,
@@ -131,6 +134,8 @@ export function useTimelineEditorRuntime({
 		activateSelectAllZooms,
 		addKeyframe,
 		deleteSelectedKeyframe,
+		copySelectedKeyframe,
+		pasteKeyframe,
 		handleKeyframeMove,
 		deleteSelectedZoom,
 		deleteSelectedClip,
@@ -159,6 +164,7 @@ export function useTimelineEditorRuntime({
 		onZoomDelete,
 		onClipDelete,
 		onAnnotationDelete,
+		onAnnotationPositionKeyframesChange,
 		onAudioDelete,
 		onCaptionDelete,
 		onSelectZoom,
@@ -288,6 +294,8 @@ export function useTimelineEditorRuntime({
 		handleSplitClip,
 		handleAddAnnotation: () => handleAddAnnotation(),
 		deleteSelectedKeyframe,
+		copySelectedKeyframe,
+		pasteKeyframe,
 		deleteSelectedZoom,
 		deleteSelectedClip,
 		deleteSelectedAnnotation,

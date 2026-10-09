@@ -387,6 +387,33 @@ describe("ModernFrameRenderer blur export path", () => {
 });
 
 describe("ModernFrameRenderer webcam frame cache", () => {
+	it("stages changing scene frames on WebGPU to keep texture uploads stable", async () => {
+		const renderer = createRenderer() as any;
+		renderer.rendererBackend = "webgpu";
+
+		const frame = {
+			displayWidth: 1920,
+			displayHeight: 1080,
+			timestamp: 0,
+		} as VideoFrame;
+
+		const result = await renderer.resolveDetachedVideoFrameSource(
+			frame,
+			"scene",
+			1920,
+			1080,
+		);
+
+		expect(result).toBe(renderer.sceneVideoFrameStagingCanvas);
+		expect(renderer.sceneVideoFrameStagingCtx.drawImage).toHaveBeenCalledWith(
+			frame,
+			0,
+			0,
+			1920,
+			1080,
+		);
+	});
+
 	it("stages webcam video frames on WebGPU instead of using retained frame uploads", () => {
 		const renderer = createRenderer() as any;
 		renderer.rendererBackend = "webgpu";

@@ -340,6 +340,17 @@
 	right: -9px;
 }
 
+/* Audio grips mark the actual clip boundary and share the exact hit area. */
+.zoomEndCap.audioHandle {
+	opacity: 1;
+}
+.zoomEndCap.audioHandle.left {
+	left: 0;
+}
+.zoomEndCap.audioHandle.right {
+	right: 0;
+}
+
 /* Caption previews share the filmstrip, with enough contrast over any footage. */
 .glassCaption.embeddedCaption,
 :global(:root:not(.dark)) .glassCaption.embeddedCaption {

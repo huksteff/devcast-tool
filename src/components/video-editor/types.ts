@@ -53,6 +53,11 @@ export interface CursorVisualSettings {
 	clickEffectDurationMs: number;
 	sway: number;
 	style: CursorStyle;
+	calloutEnabled: boolean;
+	calloutText: string;
+	calloutBackground: string;
+	calloutTextColor: string;
+	calloutScale: number;
 }
 
 export type CursorStyle =
@@ -71,6 +76,10 @@ export const DEFAULT_CURSOR_CLICK_EFFECT_COLOR = "#2563EB";
 export const DEFAULT_CURSOR_CLICK_EFFECT_SCALE = 1;
 export const DEFAULT_CURSOR_CLICK_EFFECT_OPACITY = 1;
 export const DEFAULT_CURSOR_CLICK_EFFECT_DURATION_MS = 600;
+export const DEFAULT_CURSOR_CALLOUT_TEXT = "";
+export const DEFAULT_CURSOR_CALLOUT_BACKGROUND = "#14B8C4";
+export const DEFAULT_CURSOR_CALLOUT_TEXT_COLOR = "#FFFFFF";
+export const DEFAULT_CURSOR_CALLOUT_SCALE = 1;
 
 export function normalizeCursorClickEffectStyle(
 	value: unknown,
@@ -395,12 +404,20 @@ export function clipsToTrims(clips: ClipRegion[], totalDurationMs: number): Trim
 	let trimId = 1;
 	for (const span of coveredSpans) {
 		if (span.startMs > cursor) {
-			trims.push({ id: `trim-gap-${trimId++}`, startMs: cursor, endMs: span.startMs });
+			trims.push({
+				id: `trim-gap-${trimId++}`,
+				startMs: cursor,
+				endMs: span.startMs,
+			});
 		}
 		cursor = Math.max(cursor, span.endMs);
 	}
 	if (cursor < totalDurationMs) {
-		trims.push({ id: `trim-gap-${trimId++}`, startMs: cursor, endMs: totalDurationMs });
+		trims.push({
+			id: `trim-gap-${trimId++}`,
+			startMs: cursor,
+			endMs: totalDurationMs,
+		});
 	}
 	return trims;
 }
@@ -414,18 +431,28 @@ export function trimsToClips(trims: TrimRegion[], totalDurationMs: number): Clip
 	let clipId = 1;
 	for (const trim of sorted) {
 		if (trim.startMs > cursor) {
-			clips.push({ id: `clip-${clipId++}`, startMs: cursor, endMs: trim.startMs, speed: 1 });
+			clips.push({
+				id: `clip-${clipId++}`,
+				startMs: cursor,
+				endMs: trim.startMs,
+				speed: 1,
+			});
 		}
 		cursor = trim.endMs;
 	}
 	if (cursor < totalDurationMs) {
-		clips.push({ id: `clip-${clipId++}`, startMs: cursor, endMs: totalDurationMs, speed: 1 });
+		clips.push({
+			id: `clip-${clipId++}`,
+			startMs: cursor,
+			endMs: totalDurationMs,
+			speed: 1,
+		});
 	}
 	return clips;
 }
 
 /** Visual layers placed over the recording. `drawing` stores a freehand stroke. */
-export type AnnotationType = "text" | "image" | "figure" | "blur" | "drawing";
+export type AnnotationType = "text" | "image" | "figure" | "blur" | "drawing" | "click" | "cursor-callout";
 export const BLUR_ANNOTATION_STRENGTH = 20;
 export const BASE_PREVIEW_WIDTH = 1920;
 export const BASE_PREVIEW_HEIGHT = 1080;
@@ -441,11 +468,93 @@ export type ArrowDirection =
 	| "down-left";
 
 export interface FigureData {
-	kind?: "arrow" | "rectangle" | "ellipse" | "line" | "highlight";
+	kind?: "arrow" | "rectangle" | "ellipse" | "circle" | "line" | "highlight";
 	arrowDirection: ArrowDirection;
 	color: string;
 	strokeWidth: number;
+	/** A left-to-right animated, glowing multi-colour stroke. */
+	gradient?: AnnotationGradient;
 }
+
+export interface AnnotationGradient {
+	enabled: boolean;
+	/** Any number of colours can be saved; the editor exposes the first four. */
+	colors: string[];
+	cycleDurationMs: number;
+	glow: number;
+}
+
+export const DEFAULT_ANNOTATION_GRADIENT: AnnotationGradient = {
+	enabled: false,
+	// Keep the initial editor state deliberately simple. Extra stops are opt-in
+	// through the 2–4 colour control, instead of silently changing old presets.
+	colors: ["#FF4D9D", "#22D3EE"],
+	cycleDurationMs: 2400,
+	glow: 14,
+};
+
+export const DEFAULT_CURSOR_CALLOUT_GRADIENT = {
+	enabled: false,
+	colors: ["#14B8C4", "#A855F7"],
+	glow: 14,
+} as const;
+
+export interface ClickHighlightData {
+	color: string;
+	particleCount: number;
+	radius: number;
+	durationMs: number;
+}
+
+/** A zero-content timeline event controlling the cursor label. */
+export interface CursorCalloutEventData {
+	action: "enable" | "disable" | "text";
+}
+
+export interface ResolvedCursorCalloutState {
+	enabled: boolean;
+	text: string;
+}
+
+/**
+ * Applies callout events in timeline order. The event's span is its typewriter
+ * duration: text writes during the span; disable erases during the span and
+ * only hides after it completes. This shared resolver keeps preview and export
+ * frame-perfect.
+ */
+export function resolveCursorCalloutState(
+	annotations: AnnotationRegion[] | undefined,
+	timeMs: number,
+	fallback: ResolvedCursorCalloutState,
+): ResolvedCursorCalloutState {
+	let state = { ...fallback };
+	const events = (annotations ?? [])
+		.filter((annotation) => annotation.type === "cursor-callout" && annotation.startMs <= timeMs)
+		.sort((left, right) => left.startMs - right.startMs || left.id.localeCompare(right.id));
+	for (const event of events) {
+		const action = event.calloutEvent?.action ?? "text";
+		const duration = Math.max(1, event.endMs - event.startMs);
+		const progress = Math.max(0, Math.min(1, (timeMs - event.startMs) / duration));
+		if (action === "enable") {
+			state = { enabled: true, text: "" };
+		} else if (action === "text" && state.enabled) {
+			const target = event.content.slice(0, 80);
+			state.text = target.slice(0, Math.round(target.length * progress));
+			if (progress >= 1) state.text = target;
+		} else if (action === "disable" && state.enabled) {
+			state.text = state.text.slice(0, Math.round(state.text.length * (1 - progress)));
+			if (progress >= 1) state = { enabled: false, text: "" };
+		}
+	}
+	return state;
+}
+
+export const DEFAULT_CLICK_HIGHLIGHT_DATA: ClickHighlightData = {
+	color: "#60A5FA",
+	particleCount: 18,
+	radius: 90,
+	durationMs: 750,
+};
 
 export interface DrawingPoint {
 	x: number;
@@ -462,6 +571,12 @@ export interface DrawingData {
 	strokes?: DrawingPoint[][];
 	color: string;
 	strokeWidth: number;
+	/** Active editor tool. Persisted so the overlay and settings panel stay in sync. */
+	tool?: "pencil" | "eraser";
+	eraserSize?: number;
+	/** Show the eraser head while the Draw Out stage retraces the path. */
+	showEraserInDrawOut?: boolean;
+	gradient?: AnnotationGradient;
 }
 
 /**
@@ -475,6 +590,8 @@ export type AnnotationTransition =
 	| "pop"
 	| "slide-up"
 	| "slide-down"
+	| "slide-left"
+	| "slide-right"
 	| "bounce"
 	| "zoom"
 	| "swing"
@@ -508,6 +625,7 @@ export function getAnnotationStageState(
 	if (!stages)
 		return {
 			alpha: 1,
+			translateX: 0,
 			translateY: 0,
 			scale: 1,
 			rotate: 0,
@@ -533,6 +651,7 @@ export function getAnnotationStageState(
 	if (progress === null || transition === "none") {
 		return {
 			alpha: 1,
+			translateX: 0,
 			translateY: 0,
 			scale: 1,
 			rotate: 0,
@@ -545,6 +664,7 @@ export function getAnnotationStageState(
 		// path from its finishing end. During In it runs 0 to 1 and draws it.
 		return {
 			alpha: 1,
+			translateX: 0,
 			translateY: 0,
 			scale: 1,
 			rotate: 0,
@@ -555,18 +675,24 @@ export function getAnnotationStageState(
 	if (transition === "typewriter")
 		return {
 			alpha: 1,
+			translateX: 0,
 			translateY: 0,
 			scale: 1,
 			rotate: 0,
 			drawingProgress: 1,
 			textProgress: progress,
 		};
+	// Use a smooth progress curve for transform-based transitions. Unlike a
+	// CSS transition this is evaluated from the media clock, so preview and
+	// every export frame follow exactly the same motion.
+	const eased = progress * progress * (3 - 2 * progress);
 	if (transition === "bounce") {
-		const bounce = Math.sin(progress * Math.PI * 2.5) * (1 - progress) * 0.24;
+		const bounce = Math.sin(eased * Math.PI * 3) * (1 - eased) * 0.38;
 		return {
-			alpha: progress,
+			alpha: eased,
+			translateX: 0,
 			translateY: 0,
-			scale: 0.68 + progress * 0.32 + bounce,
+			scale: 0.52 + eased * 0.48 + bounce,
 			rotate: 0,
 			drawingProgress: 1,
 			textProgress: 1,
@@ -574,35 +700,40 @@ export function getAnnotationStageState(
 	}
 	if (transition === "zoom")
 		return {
-			alpha: progress,
+			alpha: eased,
+			translateX: 0,
 			translateY: 0,
-			scale: 0.45 + progress * 0.55,
+			scale: 0.12 + eased * 0.88,
 			rotate: 0,
 			drawingProgress: 1,
 			textProgress: 1,
 		};
 	if (transition === "swing")
 		return {
-			alpha: progress,
+			alpha: eased,
+			translateX: 0,
 			translateY: 0,
 			scale: 1,
-			rotate: Math.sin(progress * Math.PI * 3) * (1 - progress) * (entering ? -24 : 24),
+			rotate:
+				Math.sin(eased * Math.PI * 3.25) * (1 - eased) * (entering ? -36 : 36),
 			drawingProgress: 1,
 			textProgress: 1,
 		};
 	if (transition === "pop")
 		return {
-			alpha: progress,
+			alpha: eased,
+			translateX: 0,
 			translateY: 0,
-			scale: 0.82 + progress * 0.18,
+			scale: 0.58 + eased * 0.42 + Math.sin(eased * Math.PI) * 0.14,
 			rotate: 0,
 			drawingProgress: 1,
 			textProgress: 1,
 		};
 	if (transition === "slide-up")
 		return {
-			alpha: progress,
-			translateY: (1 - progress) * (entering ? 24 : -24),
+			alpha: eased,
+			translateX: 0,
+			translateY: (1 - eased) * (entering ? 72 : -72),
 			scale: 1,
 			rotate: 0,
 			drawingProgress: 1,
@@ -610,15 +741,29 @@ export function getAnnotationStageState(
 		};
 	if (transition === "slide-down")
 		return {
-			alpha: progress,
-			translateY: (1 - progress) * (entering ? -24 : 24),
+			alpha: eased,
+			translateX: 0,
+			translateY: (1 - eased) * (entering ? -72 : 72),
 			scale: 1,
 			rotate: 0,
 			drawingProgress: 1,
 			textProgress: 1,
 		};
+	if (transition === "slide-left" || transition === "slide-right") {
+		const direction = transition === "slide-left" ? -1 : 1;
+		return {
+			alpha: eased,
+			translateX: (1 - eased) * direction * (entering ? 96 : -96),
+			translateY: 0,
+			scale: 1,
+			rotate: 0,
+			drawingProgress: 1,
+			textProgress: 1,
+		};
+	}
 	return {
 		alpha: progress,
+		translateX: 0,
 		translateY: 0,
 		scale: 1,
 		rotate: 0,
@@ -699,6 +844,14 @@ export interface AnnotationSize {
 	height: number;
 }
 
+export interface AnnotationPositionKeyframe {
+	id: string;
+	timeMs: number;
+	position: AnnotationPosition;
+	/** Optional for projects saved before transform keyframes supported size. */
+	size?: AnnotationSize;
+}
+
 export interface AnnotationTextStyle {
 	color: string;
 	backgroundColor: string;
@@ -728,12 +881,15 @@ export interface AnnotationRegion {
 	textContent?: string; // Separate storage for text
 	imageContent?: string; // Separate storage for image data URL
 	position: AnnotationPosition;
+	positionKeyframes?: AnnotationPositionKeyframe[];
 	size: AnnotationSize;
 	style: AnnotationTextStyle;
 	zIndex: number;
 	trackIndex?: number;
 	figureData?: FigureData;
 	drawingData?: DrawingData;
+	clickData?: ClickHighlightData;
+	calloutEvent?: CursorCalloutEventData;
 	stages?: AnnotationStages;
 	blurIntensity?: number;
 	blurColor?: string;
@@ -772,7 +928,59 @@ export const DEFAULT_DRAWING_DATA: DrawingData = {
 	points: [],
 	color: "#2563EB",
 	strokeWidth: 4,
+	tool: "pencil",
+	eraserSize: 12,
 };
+
+/**
+ * Colour stops for the shared neon style. The offset advances through the
+ * supplied colours, but the gradient direction is always left-to-right.
+ */
+export function getAnimatedGradientColors(
+	gradient: AnnotationGradient | undefined,
+	timeMs: number,
+	fallback: string,
+): string[] {
+	if (!gradient?.enabled) return [fallback];
+	const colors = gradient.colors.filter((color) => /^#[0-9a-f]{6}$/i.test(color));
+	if (colors.length < 2) return [fallback];
+	const duration = Math.max(
+		250,
+		gradient.cycleDurationMs || DEFAULT_ANNOTATION_GRADIENT.cycleDurationMs,
+	);
+	const offset = Math.floor(
+		((((timeMs % duration) + duration) % duration) / duration) * colors.length,
+	);
+	return [...colors.slice(offset), ...colors.slice(0, offset)];
+}
+
+/** Erase a circular area while preserving the remaining stroke fragments. */
+export function eraseDrawingAtPoint(
+	drawing: DrawingData,
+	point: DrawingPoint,
+	radius: number,
+): DrawingData {
+	const source = drawing.strokes?.length
+		? drawing.strokes
+		: drawing.points?.length
+			? [drawing.points]
+			: [];
+	const safeRadius = Math.max(0.1, radius);
+	const fragments: DrawingPoint[][] = [];
+	for (const stroke of source) {
+		let fragment: DrawingPoint[] = [];
+		for (const candidate of stroke) {
+			if (Math.hypot(candidate.x - point.x, candidate.y - point.y) <= safeRadius) {
+				if (fragment.length) fragments.push(fragment);
+				fragment = [];
+			} else {
+				fragment.push(candidate);
+			}
+		}
+		if (fragment.length) fragments.push(fragment);
+	}
+	return { ...drawing, points: fragments.flat(), strokes: fragments };
+}
 
 export interface CropRegion {
 	x: number;

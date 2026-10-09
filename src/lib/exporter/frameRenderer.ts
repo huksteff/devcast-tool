@@ -20,6 +20,7 @@ import {
 	BASE_PREVIEW_HEIGHT,
 	BASE_PREVIEW_WIDTH,
 	DEFAULT_WEBCAM_ROUNDNESS,
+	resolveCursorCalloutState,
 } from "@/components/video-editor/types";
 import { DEFAULT_FOCUS } from "@/components/video-editor/videoPlayback/constants";
 import {
@@ -133,6 +134,14 @@ interface FrameRenderConfig {
 	cursorClickBounce?: number;
 	cursorClickBounceDuration?: number;
 	cursorSway?: number;
+	cursorCalloutEnabled?: boolean;
+	cursorCalloutText?: string;
+	cursorCalloutBackground?: string;
+	cursorCalloutTextColor?: string;
+	cursorCalloutScale?: number;
+	cursorCalloutGradientEnabled?: boolean;
+	cursorCalloutGradientColors?: string[];
+	cursorCalloutGradientGlow?: number;
 }
 
 interface AnimationState {
@@ -424,6 +433,14 @@ export class FrameRenderer {
 					this.config.cursorClickBounceDuration ??
 					DEFAULT_CURSOR_CONFIG.clickBounceDuration,
 				sway: this.config.cursorSway ?? DEFAULT_CURSOR_CONFIG.sway,
+				calloutEnabled: this.config.cursorCalloutEnabled ?? false,
+				calloutText: this.config.cursorCalloutText ?? "",
+				calloutBackground: this.config.cursorCalloutBackground ?? "#14B8C4",
+				calloutTextColor: this.config.cursorCalloutTextColor ?? "#FFFFFF",
+				calloutScale: this.config.cursorCalloutScale ?? 1,
+				calloutGradientEnabled: this.config.cursorCalloutGradientEnabled ?? false,
+				calloutGradientColors: this.config.cursorCalloutGradientColors ?? ["#14B8C4", "#A855F7"],
+				calloutGradientGlow: this.config.cursorCalloutGradientGlow ?? 14,
 			});
 		}
 
@@ -1456,6 +1473,11 @@ export class FrameRenderer {
 		const cursorTimeMs = cursorTimestamp / 1000;
 
 		if (this.cursorOverlay) {
+			const callout = resolveCursorCalloutState(this.config.annotationRegions, cursorTimeMs, {
+				enabled: this.config.cursorCalloutEnabled ?? false,
+				text: this.config.cursorCalloutText ?? "",
+			});
+			this.cursorOverlay.setCallout(callout.enabled, callout.text, this.config.cursorCalloutBackground ?? "#14B8C4", this.config.cursorCalloutTextColor ?? "#FFFFFF", this.config.cursorCalloutScale ?? 1, this.config.cursorCalloutGradientEnabled ?? false, this.config.cursorCalloutGradientColors ?? ["#14B8C4", "#A855F7"], this.config.cursorCalloutGradientGlow ?? 14);
 			this.cursorOverlay.update(
 				this.config.cursorTelemetry ?? [],
 				cursorTimeMs,

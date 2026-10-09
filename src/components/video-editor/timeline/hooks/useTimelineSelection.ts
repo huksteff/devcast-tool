@@ -1,4 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { resolveAnnotationTransformAtTime } from "../../annotationKeyframes";
+import type { AnnotationPositionKeyframe, AnnotationRegion } from "../../types";
 import type { TimelineRegion } from "../core/timelineTypes";
 
 interface UseTimelineSelectionParams {
@@ -6,7 +8,7 @@ interface UseTimelineSelectionParams {
 	currentTimeMs: number;
 	zoomRegions: TimelineRegion[];
 	clipRegions: TimelineRegion[];
-	annotationRegions: (TimelineRegion & { zIndex: number })[];
+	annotationRegions: AnnotationRegion[];
 	audioRegions: TimelineRegion[];
 	selectedZoomId: string | null;
 	selectedClipId?: string | null;
@@ -16,6 +18,10 @@ interface UseTimelineSelectionParams {
 	onZoomDelete: (id: string) => void;
 	onClipDelete?: (id: string) => void;
 	onAnnotationDelete?: (id: string) => void;
+	onAnnotationPositionKeyframesChange?: (
+		id: string,
+		keyframes: AnnotationPositionKeyframe[],
+	) => void;
 	onAudioDelete?: (id: string) => void;
 	onCaptionDelete?: (id: string) => void;
 	onSelectZoom: (id: string | null) => void;
@@ -38,6 +44,7 @@ export function useTimelineSelection({
 	onZoomDelete,
 	onClipDelete,
 	onAnnotationDelete,
+	onAnnotationPositionKeyframesChange,
 	onAudioDelete,
 	onCaptionDelete,
 	onSelectZoom,
@@ -46,33 +53,79 @@ export function useTimelineSelection({
 	onSelectAudio,
 	onSelectCaption,
 }: UseTimelineSelectionParams) {
-	const [keyframes, setKeyframes] = useState<{ id: string; time: number }[]>([]);
+	const selectedAnnotation = annotationRegions.find(
+		(region) => region.id === selectedAnnotationId,
+	);
+	const keyframes = useMemo(
+		() =>
+			(selectedAnnotation?.positionKeyframes ?? []).map((frame) => ({
+				id: frame.id,
+				time: frame.timeMs,
+			})),
+		[selectedAnnotation?.positionKeyframes],
+	);
 	const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
+	const copiedKeyframeRef = useRef<AnnotationPositionKeyframe | null>(null);
 	const [selectAllBlocksActive, setSelectAllBlocksActive] = useState(false);
 	const hasAnyZoomBlocks = useMemo(() => zoomRegions.length > 0, [zoomRegions.length]);
 
 	const addKeyframe = useCallback(() => {
-		if (totalMs === 0) return;
+		if (totalMs === 0 || !selectedAnnotation || !onAnnotationPositionKeyframesChange) return;
 		const time = Math.max(0, Math.min(currentTimeMs, totalMs));
 		if (keyframes.some((kf) => Math.abs(kf.time - time) < 1)) return;
-		setKeyframes((prev) => [...prev, { id: globalThis.crypto.randomUUID(), time }]);
-	}, [currentTimeMs, totalMs, keyframes]);
+		onAnnotationPositionKeyframesChange(selectedAnnotation.id, [
+			...(selectedAnnotation.positionKeyframes ?? []),
+			{
+				id: globalThis.crypto.randomUUID(),
+				timeMs: time,
+				...resolveAnnotationTransformAtTime(selectedAnnotation, time),
+			},
+		]);
+	}, [currentTimeMs, totalMs, keyframes, onAnnotationPositionKeyframesChange, selectedAnnotation]);
 
 	const deleteSelectedKeyframe = useCallback(() => {
 		if (!selectedKeyframeId) return;
-		setKeyframes((prev) => prev.filter((kf) => kf.id !== selectedKeyframeId));
+		if (selectedAnnotation && onAnnotationPositionKeyframesChange) {
+			onAnnotationPositionKeyframesChange(
+				selectedAnnotation.id,
+				(selectedAnnotation.positionKeyframes ?? []).filter(
+					(frame) => frame.id !== selectedKeyframeId,
+				),
+			);
+		}
 		setSelectedKeyframeId(null);
-	}, [selectedKeyframeId]);
+	}, [onAnnotationPositionKeyframesChange, selectedAnnotation, selectedKeyframeId]);
+
+	const copySelectedKeyframe = useCallback(() => {
+		const frame = selectedAnnotation?.positionKeyframes?.find((item) => item.id === selectedKeyframeId);
+		if (frame) copiedKeyframeRef.current = structuredClone(frame);
+	}, [selectedAnnotation, selectedKeyframeId]);
+
+	const pasteKeyframe = useCallback(() => {
+		if (!selectedAnnotation || !onAnnotationPositionKeyframesChange || !copiedKeyframeRef.current) return;
+		const timeMs = Math.max(0, Math.min(totalMs, Math.round(currentTimeMs)));
+		const copied = copiedKeyframeRef.current;
+		const next = (selectedAnnotation.positionKeyframes ?? []).filter((frame) => Math.abs(frame.timeMs - timeMs) >= 1);
+		const pasted = { ...copied, id: globalThis.crypto.randomUUID(), timeMs, position: { ...copied.position }, size: copied.size ? { ...copied.size } : undefined };
+		onAnnotationPositionKeyframesChange(selectedAnnotation.id, [...next, pasted].sort((a, b) => a.timeMs - b.timeMs));
+		setSelectedKeyframeId(pasted.id);
+	}, [currentTimeMs, onAnnotationPositionKeyframesChange, selectedAnnotation, totalMs]);
 
 	const handleKeyframeMove = useCallback(
 		(id: string, newTime: number) => {
-			setKeyframes((prev) =>
-				prev.map((kf) =>
-					kf.id === id ? { ...kf, time: Math.max(0, Math.min(newTime, totalMs)) } : kf,
-				),
+			if (!selectedAnnotation || !onAnnotationPositionKeyframesChange) return;
+			onAnnotationPositionKeyframesChange(
+				selectedAnnotation.id,
+				(selectedAnnotation.positionKeyframes ?? [])
+					.map((frame) =>
+						frame.id === id
+							? { ...frame, timeMs: Math.max(0, Math.min(newTime, totalMs)) }
+							: frame,
+					)
+					.sort((left, right) => left.timeMs - right.timeMs),
 			);
 		},
-		[totalMs],
+		[onAnnotationPositionKeyframesChange, selectedAnnotation, totalMs],
 	);
 
 	const deleteSelectedZoom = useCallback(() => {
@@ -224,6 +277,8 @@ export function useTimelineSelection({
 		activateSelectAllZooms,
 		addKeyframe,
 		deleteSelectedKeyframe,
+		copySelectedKeyframe,
+		pasteKeyframe,
 		handleKeyframeMove,
 		deleteSelectedZoom,
 		deleteSelectedClip,

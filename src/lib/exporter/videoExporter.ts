@@ -88,6 +88,14 @@ interface VideoExporterConfig extends ExportConfig {
 	cursorClickBounce?: number;
 	cursorClickBounceDuration?: number;
 	cursorSway?: number;
+	cursorCalloutEnabled?: boolean;
+	cursorCalloutText?: string;
+	cursorCalloutBackground?: string;
+	cursorCalloutTextColor?: string;
+	cursorCalloutScale?: number;
+	cursorCalloutGradientEnabled?: boolean;
+	cursorCalloutGradientColors?: string[];
+	cursorCalloutGradientGlow?: number;
 	zoomSmoothness?: number;
 	audioRegions?: AudioRegion[];
 	clipRegions?: ClipRegion[];
@@ -264,6 +272,14 @@ export class VideoExporter {
 				cursorClickBounce: this.config.cursorClickBounce,
 				cursorClickBounceDuration: this.config.cursorClickBounceDuration,
 				cursorSway: this.config.cursorSway,
+				cursorCalloutEnabled: this.config.cursorCalloutEnabled,
+				cursorCalloutText: this.config.cursorCalloutText,
+				cursorCalloutBackground: this.config.cursorCalloutBackground,
+				cursorCalloutTextColor: this.config.cursorCalloutTextColor,
+				cursorCalloutScale: this.config.cursorCalloutScale,
+				cursorCalloutGradientEnabled: this.config.cursorCalloutGradientEnabled,
+				cursorCalloutGradientColors: this.config.cursorCalloutGradientColors,
+				cursorCalloutGradientGlow: this.config.cursorCalloutGradientGlow,
 				zoomSmoothness: this.config.zoomSmoothness,
 			});
 			await this.renderer.initialize();

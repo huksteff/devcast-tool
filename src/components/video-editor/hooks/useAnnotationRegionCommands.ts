@@ -1,14 +1,17 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
 import {
+	type AnnotationPositionKeyframe,
 	type AnnotationRegion,
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
 	DEFAULT_ANNOTATION_STYLE,
 	DEFAULT_DRAWING_DATA,
 	DEFAULT_FIGURE_DATA,
+	DEFAULT_CLICK_HIGHLIGHT_DATA,
 	type FigureData,
 	type DrawingData,
+	type ClickHighlightData,
 	type AnnotationStages,
 	DEFAULT_ANNOTATION_STAGES,
 } from "../types";
@@ -127,6 +130,13 @@ export function useAnnotationRegionCommands({
 						if (!region.drawingData) {
 							updated.drawingData = { ...DEFAULT_DRAWING_DATA, points: [] };
 						}
+					} else if (type === "click") {
+						updated.content = "";
+						if (!region.clickData)
+							updated.clickData = { ...DEFAULT_CLICK_HIGHLIGHT_DATA };
+					} else if (type === "cursor-callout") {
+						updated.content = "";
+						if (!region.calloutEvent) updated.calloutEvent = { action: "enable" };
 					}
 					return updated;
 				}),
@@ -168,13 +178,16 @@ export function useAnnotationRegionCommands({
 					.filter((candidate) => (candidate.trackIndex ?? 0) === (region.trackIndex ?? 0))
 					.reduce((latest, candidate) => Math.max(latest, candidate.endMs), region.endMs);
 				const startMs = lastEnd + 100;
-				return [...current, {
-					...structuredClone(region),
-					id,
-					startMs,
-					endMs: startMs + duration,
-					zIndex: nextAnnotationZIndexRef.current++,
-				}];
+				return [
+					...current,
+					{
+						...structuredClone(region),
+						id,
+						startMs,
+						endMs: startMs + duration,
+						zIndex: nextAnnotationZIndexRef.current++,
+					},
+				];
 			});
 			onSelectAnnotation(id);
 		},
@@ -186,14 +199,22 @@ export function useAnnotationRegionCommands({
 	);
 	const handleAnnotationStagesChange = useCallback(
 		(id: string, stages: Partial<AnnotationStages>) => {
-			setAnnotationRegions((current) => current.map((region) => {
-				if (region.id !== id) return region;
-				const duration = Math.max(1, region.endMs - region.startMs);
-				const next = { ...DEFAULT_ANNOTATION_STAGES, ...region.stages, ...stages };
-				next.inDurationMs = Math.max(0, Math.min(duration, Math.round(next.inDurationMs)));
-				next.outDurationMs = Math.max(0, Math.min(duration - next.inDurationMs, Math.round(next.outDurationMs)));
-				return { ...region, stages: next };
-			}));
+			setAnnotationRegions((current) =>
+				current.map((region) => {
+					if (region.id !== id) return region;
+					const duration = Math.max(1, region.endMs - region.startMs);
+					const next = { ...DEFAULT_ANNOTATION_STAGES, ...region.stages, ...stages };
+					next.inDurationMs = Math.max(
+						0,
+						Math.min(duration, Math.round(next.inDurationMs)),
+					);
+					next.outDurationMs = Math.max(
+						0,
+						Math.min(duration - next.inDurationMs, Math.round(next.outDurationMs)),
+					);
+					return { ...region, stages: next };
+				}),
+			);
 		},
 		[setAnnotationRegions],
 	);
@@ -207,6 +228,20 @@ export function useAnnotationRegionCommands({
 	);
 	const handleAnnotationPositionChange = useCallback(
 		(id: string, position: { x: number; y: number }) => updateRegion(id, { position }),
+		[updateRegion],
+	);
+	const handleAnnotationClickDataChange = useCallback(
+		(id: string, clickData: ClickHighlightData) => updateRegion(id, { clickData }),
+		[updateRegion],
+	);
+	const handleAnnotationCalloutEventChange = useCallback(
+		(id: string, calloutEvent: NonNullable<AnnotationRegion["calloutEvent"]>) =>
+			updateRegion(id, { calloutEvent }),
+		[updateRegion],
+	);
+	const handleAnnotationPositionKeyframesChange = useCallback(
+		(id: string, positionKeyframes: AnnotationPositionKeyframe[]) =>
+			updateRegion(id, { positionKeyframes }),
 		[updateRegion],
 	);
 	const handleAnnotationSizeChange = useCallback(
@@ -224,10 +259,13 @@ export function useAnnotationRegionCommands({
 		handleAnnotationStyleChange,
 		handleAnnotationFigureDataChange,
 		handleAnnotationDrawingDataChange,
+		handleAnnotationClickDataChange,
+		handleAnnotationCalloutEventChange,
 		handleAnnotationStagesChange,
 		handleAnnotationBlurIntensityChange,
 		handleAnnotationBlurColorChange,
 		handleAnnotationPositionChange,
+		handleAnnotationPositionKeyframesChange,
 		handleAnnotationSizeChange,
 	};
 }

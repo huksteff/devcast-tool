@@ -31,6 +31,7 @@ private:
     std::atomic<bool> capturing_{false};
     std::atomic<bool> paused_{false};
     HANDLE outputFile_ = INVALID_HANDLE_VALUE;
+    HANDLE captureEvent_ = nullptr;
     DWORD totalDataBytes_ = 0;
 
     IMMDeviceEnumerator* enumerator_ = nullptr;

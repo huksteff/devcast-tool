@@ -142,6 +142,14 @@ interface VideoExporterConfig extends ExportConfig {
 	cursorClickBounce?: number;
 	cursorClickBounceDuration?: number;
 	cursorSway?: number;
+	cursorCalloutEnabled?: boolean;
+	cursorCalloutText?: string;
+	cursorCalloutBackground?: string;
+	cursorCalloutTextColor?: string;
+	cursorCalloutScale?: number;
+	cursorCalloutGradientEnabled?: boolean;
+	cursorCalloutGradientColors?: string[];
+	cursorCalloutGradientGlow?: number;
 	zoomSmoothness?: number;
 	zoomClassicMode?: boolean;
 	audioRegions?: AudioRegion[];
@@ -656,6 +664,14 @@ export class ModernVideoExporter {
 					cursorClickBounce: this.config.cursorClickBounce,
 					cursorClickBounceDuration: this.config.cursorClickBounceDuration,
 					cursorSway: this.config.cursorSway,
+					cursorCalloutEnabled: this.config.cursorCalloutEnabled,
+					cursorCalloutText: this.config.cursorCalloutText,
+					cursorCalloutBackground: this.config.cursorCalloutBackground,
+					cursorCalloutTextColor: this.config.cursorCalloutTextColor,
+					cursorCalloutScale: this.config.cursorCalloutScale,
+					cursorCalloutGradientEnabled: this.config.cursorCalloutGradientEnabled,
+					cursorCalloutGradientColors: this.config.cursorCalloutGradientColors,
+					cursorCalloutGradientGlow: this.config.cursorCalloutGradientGlow,
 					zoomSmoothness: this.config.zoomSmoothness,
 					zoomClassicMode: this.config.zoomClassicMode,
 				});
@@ -1719,6 +1735,12 @@ export class ModernVideoExporter {
 		}
 		if (hasCursorClickEffect) {
 			reasons.push("unsupported-cursor-click-effect");
+		}
+		if (
+			this.config.cursorCalloutEnabled &&
+			(this.config.cursorCalloutText ?? "").trim().length > 0
+		) {
+			reasons.push("unsupported-cursor-callout");
 		}
 
 		const hasZoomRegions = (this.config.zoomRegions ?? []).length > 0;

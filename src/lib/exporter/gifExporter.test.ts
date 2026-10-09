@@ -286,6 +286,39 @@ describe("GIF renderer config", () => {
 			cursorClickEffectDurationMs: 720,
 		});
 	});
+
+	it("forwards the cursor-attached label into the frame renderer config", () => {
+		const config = buildGifFrameRendererConfig(
+			{
+				videoUrl: "file:///recording.mp4",
+				width: 1920,
+				height: 1080,
+				frameRate: 30,
+				loop: true,
+				sizePreset: "original",
+				wallpaper: "#101010",
+				zoomRegions: [],
+				showShadow: false,
+				shadowIntensity: 0,
+				backgroundBlur: 0,
+				cropRegion: { x: 0, y: 0, width: 1, height: 1 },
+				cursorCalloutEnabled: true,
+				cursorCalloutText: "Mari",
+				cursorCalloutBackground: "#20B9C5",
+				cursorCalloutTextColor: "#FFFFFF",
+				cursorCalloutScale: 1.25,
+			} as never,
+			{ width: 1920, height: 1080 },
+		);
+
+		expect(config).toMatchObject({
+			cursorCalloutEnabled: true,
+			cursorCalloutText: "Mari",
+			cursorCalloutBackground: "#20B9C5",
+			cursorCalloutTextColor: "#FFFFFF",
+			cursorCalloutScale: 1.25,
+		});
+	});
 });
 
 /**

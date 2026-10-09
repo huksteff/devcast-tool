@@ -180,7 +180,10 @@ export class AudioTimelineProcessor extends AudioProcessorBase {
 				}
 				const source = ctx.createBufferSource();
 				const gainNode = ctx.createGain();
-				gainNode.gain.value = Math.max(0, Math.min(2, gain));
+				// Keep the export path in sync with the editor's 0–10× source boost.
+				// Clamping here to 2× silently discarded most of the selected boost even
+				// though preview and the routing plan both accepted values up to 10×.
+				gainNode.gain.value = Math.max(0, Math.min(10, gain));
 
 				const sourceOffsetSec =
 					effectiveBufferStartSec +

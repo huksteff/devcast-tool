@@ -15,6 +15,7 @@ type Handlers = Pick<
 	| "onSelectAnnotation"
 	| "onAnnotationPositionChange"
 	| "onAnnotationSizeChange"
+	| "onAnnotationTransformChange"
 	| "onAnnotationDrawingChange"
 >;
 
@@ -127,6 +128,14 @@ export function EditorVideoPreview({
 			cursorClickBounce={appearance.cursorClickBounce}
 			cursorClickBounceDuration={appearance.cursorClickBounceDuration}
 			cursorSway={appearance.cursorSway}
+			cursorCalloutEnabled={appearance.cursorCalloutEnabled}
+			cursorCalloutText={appearance.cursorCalloutText}
+			cursorCalloutBackground={appearance.cursorCalloutBackground}
+			cursorCalloutTextColor={appearance.cursorCalloutTextColor}
+			cursorCalloutScale={appearance.cursorCalloutScale}
+			cursorCalloutGradientEnabled={appearance.cursorCalloutGradientEnabled}
+			cursorCalloutGradientColors={appearance.cursorCalloutGradientColors}
+			cursorCalloutGradientGlow={appearance.cursorCalloutGradientGlow}
 			volume={audio.shouldMutePreviewVideo || audio.isCurrentClipMuted ? 0 : previewVolume}
 			audioGain={audio.embeddedSourcePreviewGain}
 			suspendRendering={suspendRendering}

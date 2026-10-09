@@ -5,24 +5,24 @@
   "helpers": {
     "wgc-capture": {
       "binaryName": "wgc-capture.exe",
-      "binarySha256": "e2a4ead34bc9956b29d38915a640d5304dc9aea9d44de802f8f95eb2f4ef0de0",
+      "binarySha256": "4a20694bbd066a6e610b722266fb5960df98c07bbc4e324877577f1370a02828",
       "sourceDir": "electron/native/wgc-capture",
-      "sourceFingerprint": "39d6b534efdf1c48aa72ac777a2a7f39affc4f6eaa15fca1f80023a6591f9b4b",
-      "updatedAt": "2026-10-07T11:03:49.569Z"
+      "sourceFingerprint": "2d28c237f465ef7578c5154e705a59d6e72e4c92f003bef295fe79832b098775",
+      "updatedAt": "2026-10-08T15:56:27.728Z"
     },
     "cursor-monitor": {
       "binaryName": "cursor-monitor.exe",
       "binarySha256": "63a56700adcd05ecf8e67ba67fb521b818f18976df38547037aadb2b0f79beef",
       "sourceDir": "electron/native/cursor-monitor",
       "sourceFingerprint": "45bb72e4039e061a354af87317d7c42ec3d2118369b3f4379046ff497b701e72",
-      "updatedAt": "2026-10-07T11:03:53.686Z"
+      "updatedAt": "2026-10-08T15:56:32.295Z"
     },
     "devcast-gpu-export": {
       "binaryName": "devcast-gpu-export.exe",
       "binarySha256": "332b2ac7efc19faa5c0e989ad5b2493dfb9258567544fb0e715bdc1851638aea",
       "sourceDir": "electron/native/gpu-export-probe",
       "sourceFingerprint": "d9a6170371bb70b94f774a029e0cd7eafa2e9ddf3392c2e11ddf9077d179563b",
-      "updatedAt": "2026-10-07T11:03:51.424Z"
+      "updatedAt": "2026-10-08T15:56:30.125Z"
     },
     "devcast-nvidia-cuda-compositor": {
       "binaryName": "devcast-nvidia-cuda-compositor.exe",

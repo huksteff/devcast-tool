@@ -1,6 +1,6 @@
 import { Plus } from "@phosphor-icons/react";
 import type { Span } from "dnd-timeline";
-import { forwardRef, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { type CSSProperties, forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import type {
 	SourceAudioTrackMeta,
 	SourceAudioTrackSettings,
@@ -10,6 +10,7 @@ import { useShortcuts } from "@/contexts/ShortcutsContext";
 import { fromFileUrl } from "../projectPersistence";
 import type {
 	AnnotationRegion,
+	AnnotationPositionKeyframe,
 	AudioRegion,
 	CaptionCue,
 	ClipRegion,
@@ -19,7 +20,6 @@ import type {
 	ZoomFocus,
 	ZoomRegion,
 } from "../types";
-import KeyframeMarkers from "./components/markers/KeyframeMarkers";
 import TimelineCanvas from "./components/viewport/TimelineCanvas";
 import TimelineWrapper from "./components/wrapper/TimelineWrapper";
 import { calculateTimelineScale } from "./core/time";
@@ -62,6 +62,7 @@ export interface TimelineEditorProps {
 	onAnnotationAdded?: (span: Span, trackIndex?: number) => void;
 	onAnnotationSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAnnotationDelete?: (id: string) => void;
+	onAnnotationPositionKeyframesChange?: (id: string, keyframes: AnnotationPositionKeyframe[]) => void;
 	selectedAnnotationId?: string | null;
 	onSelectAnnotation?: (id: string | null) => void;
 	speedRegions?: SpeedRegion[];
@@ -147,6 +148,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onAnnotationAdded,
 			onAnnotationSpanChange,
 			onAnnotationDelete,
+			onAnnotationPositionKeyframesChange,
 			selectedAnnotationId,
 			onSelectAnnotation,
 			speedRegions = [],
@@ -208,6 +210,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		const { setRange, clampedRange, handleTimelineWheel, panTimelineRange } = useTimelineRange({
 			totalMs,
 			timelineContainerRef,
+			resetKey: videoSourcePath ?? videoPath ?? null,
 		});
 
 		const viewportDragRef = useRef<{ pointerId: number; offsetPx: number } | null>(null);
@@ -412,6 +415,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onAnnotationAdded,
 			onAnnotationSpanChange,
 			onAnnotationDelete,
+			onAnnotationPositionKeyframesChange,
 			selectedAnnotationId,
 			onSelectAnnotation,
 			speedRegions,
@@ -518,14 +522,6 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							});
 						}}
 					>
-						<KeyframeMarkers
-							keyframes={keyframes}
-							selectedKeyframeId={selectedKeyframeId}
-							setSelectedKeyframeId={setSelectedKeyframeId}
-							onKeyframeMove={handleKeyframeMove}
-							videoDurationMs={totalMs}
-							timelineRef={timelineContainerRef}
-						/>
 						<TimelineCanvas
 							videoPath={videoPath}
 							items={timelineItems}
@@ -555,6 +551,9 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							selectAllBlocksActive={selectAllBlocksActive}
 							onClearBlockSelection={clearSelectedBlocks}
 							keyframes={keyframes}
+							selectedKeyframeId={selectedKeyframeId}
+							onSelectKeyframe={setSelectedKeyframeId}
+							onMoveKeyframe={handleKeyframeMove}
 							sourceAudioTracks={sourceAudioTracks}
 							getSourceAudioTrackSettingsForClip={getSourceAudioTrackSettingsForClip}
 							showSourceAudioTrack={showSourceAudioTrack}

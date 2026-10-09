@@ -1,4 +1,4 @@
-import { Assets, BlurFilter, Container, Graphics, Sprite, Texture } from "pixi.js";
+import { Assets, BlurFilter, Container, FillGradient, Graphics, Sprite, Text, Texture } from "pixi.js";
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import minimalCursorUrl from "@/assets/cursors/custom/minimal-cursor.svg";
 import win11ConceptCursorUrl from "@/assets/cursors/custom/win11-concept.svg";
@@ -110,6 +110,15 @@ export interface CursorRenderConfig {
 	sway: number;
 	/** Cursor visual style. */
 	style: CursorStyle;
+	/** A compact text bubble that follows the rendered pointer. */
+	calloutEnabled: boolean;
+	calloutText: string;
+	calloutBackground: string;
+	calloutTextColor: string;
+	calloutScale: number;
+	calloutGradientEnabled: boolean;
+	calloutGradientColors: string[];
+	calloutGradientGlow: number;
 }
 
 const MIN_CURSOR_VIEWPORT_SCALE = 0;
@@ -129,6 +138,10 @@ const CURSOR_SHADOW_PADDING = 12;
 const MIN_RASTERIZED_CURSOR_HEIGHT = 512;
 const NATIVE_CURSOR_ATLAS_DRAW_HEIGHT = 256;
 const NATIVE_CURSOR_ATLAS_PADDING = 2;
+
+function normalizeHexColor(value: string, fallback: string): string {
+	return /^#[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : fallback;
+}
 
 export const DEFAULT_CURSOR_CONFIG: CursorRenderConfig = {
 	dotRadius: 28,
@@ -152,6 +165,14 @@ export const DEFAULT_CURSOR_CONFIG: CursorRenderConfig = {
 	clickEffectDurationMs: DEFAULT_CURSOR_CLICK_EFFECT_DURATION_MS,
 	sway: 0,
 	style: DEFAULT_CURSOR_STYLE,
+	calloutEnabled: false,
+	calloutText: "",
+	calloutBackground: "#14B8C4",
+	calloutTextColor: "#FFFFFF",
+	calloutScale: 1,
+	calloutGradientEnabled: false,
+	calloutGradientColors: ["#14B8C4", "#A855F7"],
+	calloutGradientGlow: 14,
 };
 let cursorAssetsPromise: Promise<void> | null = null;
 let cursorPackAssetsPromise: Promise<void> | null = null;
@@ -1146,6 +1167,8 @@ export class SmoothedCursorState {
 export class PixiCursorOverlay {
 	public readonly container: Container;
 	private clickRingGraphics: Graphics;
+	private cursorCalloutGraphics: Graphics;
+	private cursorCalloutText: Text;
 	private customCursorShadowSprite: Sprite;
 	private customCursorShadowFilter: BlurFilter;
 	private customCursorSprite: Sprite;
@@ -1176,6 +1199,18 @@ export class PixiCursorOverlay {
 		this.container.label = "cursor-overlay";
 
 		this.clickRingGraphics = new Graphics();
+		this.cursorCalloutGraphics = new Graphics();
+		this.cursorCalloutGraphics.label = "cursor-callout-bubble";
+		this.cursorCalloutText = new Text({
+			text: "",
+			style: {
+				fill: "#FFFFFF",
+				fontFamily: "Arial, sans-serif",
+				fontSize: 28,
+				fontWeight: "600",
+			},
+		});
+		this.cursorCalloutText.label = "cursor-callout-text";
 		const initialCustomAsset = getCursorStyleAsset("figma");
 		this.customCursorShadowSprite = new Sprite(initialCustomAsset.texture);
 		this.customCursorShadowSprite.anchor.set(
@@ -1231,6 +1266,8 @@ export class PixiCursorOverlay {
 			...Object.values(this.cursorShadowSprites),
 			this.customCursorSprite,
 			...Object.values(this.cursorSprites),
+			this.cursorCalloutGraphics,
+			this.cursorCalloutText,
 		);
 		this.setMotionBlur(this.config.motionBlur);
 		this.setStyle(this.config.style);
@@ -1299,6 +1336,28 @@ export class PixiCursorOverlay {
 		this.config.sway = clamp(sway, 0, 2);
 	}
 
+	setCallout(
+		enabled: boolean,
+		text: string,
+		background: string,
+		textColor: string,
+		scale: number,
+		gradientEnabled = false,
+		gradientColors: string[] = [],
+		gradientGlow = 14,
+	) {
+		this.config.calloutEnabled = enabled;
+		this.config.calloutText = text.slice(0, 80);
+		this.config.calloutBackground = normalizeHexColor(background, "#14B8C4");
+		this.config.calloutTextColor = normalizeHexColor(textColor, "#FFFFFF");
+		this.config.calloutScale = clamp(scale, 0.5, 2);
+		this.config.calloutGradientEnabled = gradientEnabled;
+		this.config.calloutGradientColors = gradientColors
+			.filter((color) => /^#[0-9a-f]{6}$/i.test(color))
+			.slice(0, 4);
+		this.config.calloutGradientGlow = clamp(gradientGlow, 0, 40);
+	}
+
 	setStyle(style: CursorStyle) {
 		this.config.style = style;
 		if (isStatefulCursorStyle(style)) {
@@ -1354,6 +1413,7 @@ export class PixiCursorOverlay {
 			this.container.visible = false;
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
+			this.hideCallout();
 			this.lastRenderedPoint = null;
 			this.lastRenderedTimeMs = null;
 			this.swayRotation = 0;
@@ -1375,6 +1435,7 @@ export class PixiCursorOverlay {
 			this.container.visible = false;
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
+			this.hideCallout();
 			return;
 		}
 
@@ -1411,6 +1472,7 @@ export class PixiCursorOverlay {
 			this.container.visible = false;
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
+			this.hideCallout();
 			this.customCursorShadowSprite.visible = false;
 			this.customCursorSprite.visible = false;
 			for (const shadowSprite of Object.values(this.cursorShadowSprites)) {
@@ -1559,8 +1621,66 @@ export class PixiCursorOverlay {
 		}
 
 		this.applyCursorMotionBlur(px, py, timeMs, shouldFreezeCursorMotion);
+		this.drawCallout(px, py, scaledH, shouldShowCursorSprite, timeMs);
 		this.lastRenderedPoint = shouldShowCursorSprite ? { px, py } : null;
 		this.lastRenderedTimeMs = timeMs;
+	}
+
+	private hideCallout() {
+		this.cursorCalloutGraphics.visible = false;
+		this.cursorCalloutText.visible = false;
+	}
+
+	private drawCallout(px: number, py: number, cursorHeight: number, visible: boolean, timeMs: number) {
+		const text = this.config.calloutText.trim();
+		if (!visible || !this.config.calloutEnabled || text.length === 0) {
+			this.hideCallout();
+			return;
+		}
+
+		const scale = this.config.calloutScale;
+		const fontSize = Math.max(16, cursorHeight * 0.72 * scale);
+		const horizontalPadding = Math.max(10, fontSize * 0.55);
+		const verticalPadding = Math.max(7, fontSize * 0.32);
+		this.cursorCalloutText.text = text;
+		this.cursorCalloutText.style.fontSize = fontSize;
+		this.cursorCalloutText.style.fill = this.config.calloutTextColor;
+		const width = this.cursorCalloutText.width + horizontalPadding * 2;
+		const height = this.cursorCalloutText.height + verticalPadding * 2;
+		const x = px + cursorHeight * 0.6;
+		const y = py + cursorHeight * 0.54;
+		const colors = this.config.calloutGradientEnabled && this.config.calloutGradientColors.length >= 2
+			? this.config.calloutGradientColors
+			: [this.config.calloutBackground];
+		const rotation = Math.floor((Math.max(0, timeMs) / 2400) * colors.length) % colors.length;
+		const cycled = [...colors.slice(rotation), ...colors.slice(0, rotation)];
+		this.cursorCalloutGraphics.clear().roundRect(x, y, width, height, height / 2);
+		if (cycled.length > 1) {
+			this.cursorCalloutGraphics.fill({
+				fill: new FillGradient({
+					type: "linear",
+					start: { x: 0, y: 0.5 },
+					end: { x: 1, y: 0.5 },
+					colorStops: cycled.map((color, index) => ({ offset: index / (cycled.length - 1), color })),
+				}),
+				alpha: 0.96,
+			});
+		} else {
+			this.cursorCalloutGraphics.fill(cycled[0], 0.96);
+		}
+		if (this.config.calloutGradientEnabled && this.config.calloutGradientGlow > 0) {
+			this.cursorCalloutGraphics
+				.roundRect(x, y, width, height, height / 2)
+				.stroke({ width: this.config.calloutGradientGlow * 0.42, color: cycled[0], alpha: 0.22 });
+			this.cursorCalloutGraphics.filters = [];
+			this.cursorCalloutGraphics.alpha = 1;
+		} else {
+			this.cursorCalloutGraphics.filters = [];
+			this.cursorCalloutGraphics.alpha = 1;
+		}
+		this.cursorCalloutText.position.set(x + horizontalPadding, y + verticalPadding);
+		this.cursorCalloutGraphics.visible = true;
+		this.cursorCalloutText.visible = true;
 	}
 
 	private updateCursorSway(px: number, py: number, timeMs: number, freeze: boolean) {

@@ -2,6 +2,7 @@ import { Application, BlurFilter, Container, Graphics, Rectangle, Sprite, Textur
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import { ZoomBlurFilter } from "pixi-filters/zoom-blur";
 import { buildActiveCaptionLayout } from "@/components/video-editor/captionLayout";
+import { resolveAnnotationTransformAtTime } from "@/components/video-editor/annotationKeyframes";
 import {
 	CAPTION_FONT_WEIGHT,
 	CAPTION_LINE_HEIGHT,
@@ -28,7 +29,9 @@ import type {
 } from "@/components/video-editor/types";
 import {
 	DEFAULT_WEBCAM_ROUNDNESS,
+	getAnnotationStageState,
 	getDefaultCaptionFontFamily,
+	resolveCursorCalloutState,
 } from "@/components/video-editor/types";
 import { DEFAULT_FOCUS } from "@/components/video-editor/videoPlayback/constants";
 import {
@@ -53,7 +56,10 @@ import {
 } from "@/components/video-editor/videoPlayback/motionSmoothing";
 import { getSceneEffectMetrics } from "@/components/video-editor/videoPlayback/sceneEffects";
 import { resolveSceneZoomTarget } from "@/components/video-editor/videoPlayback/sceneMotion";
-import { getWebcamMediaTargetTimeSeconds, isWebcamVisibleAtSourceTime } from "@/components/video-editor/videoPlayback/webcamSync";
+import {
+	getWebcamMediaTargetTimeSeconds,
+	isWebcamVisibleAtSourceTime,
+} from "@/components/video-editor/videoPlayback/webcamSync";
 import {
 	applyZoomTransform,
 	computeZoomTransform,
@@ -85,6 +91,7 @@ import {
 	preloadAnnotationAssets,
 	renderAnnotations,
 	renderAnnotationToCanvas,
+	getAnnotationContentScale,
 } from "./annotationRenderer";
 import { ForwardFrameSource } from "./forwardFrameSource";
 import { resolveMediaElementSource } from "./localMediaSource";
@@ -150,6 +157,14 @@ interface FrameRenderConfig {
 	cursorClickBounce?: number;
 	cursorClickBounceDuration?: number;
 	cursorSway?: number;
+	cursorCalloutEnabled?: boolean;
+	cursorCalloutText?: string;
+	cursorCalloutBackground?: string;
+	cursorCalloutTextColor?: string;
+	cursorCalloutScale?: number;
+	cursorCalloutGradientEnabled?: boolean;
+	cursorCalloutGradientColors?: string[];
+	cursorCalloutGradientGlow?: number;
 	zoomSmoothness?: number;
 	zoomClassicMode?: boolean;
 	nativeReadbackMode?: "pixels" | "canvas";
@@ -218,6 +233,8 @@ interface AnnotationSpriteEntry {
 	annotation: AnnotationRegion;
 	sprite: Sprite;
 	texture: Texture;
+	baseWidth: number;
+	baseHeight: number;
 }
 
 interface ExportCompositeCanvasState {
@@ -580,6 +597,14 @@ export class FrameRenderer {
 					this.config.cursorClickBounceDuration ??
 					DEFAULT_CURSOR_CONFIG.clickBounceDuration,
 				sway: this.config.cursorSway ?? DEFAULT_CURSOR_CONFIG.sway,
+				calloutEnabled: this.config.cursorCalloutEnabled ?? false,
+				calloutText: this.config.cursorCalloutText ?? "",
+				calloutBackground: this.config.cursorCalloutBackground ?? "#14B8C4",
+				calloutTextColor: this.config.cursorCalloutTextColor ?? "#FFFFFF",
+				calloutScale: this.config.cursorCalloutScale ?? 1,
+				calloutGradientEnabled: this.config.cursorCalloutGradientEnabled ?? false,
+				calloutGradientColors: this.config.cursorCalloutGradientColors ?? ["#14B8C4", "#A855F7"],
+				calloutGradientGlow: this.config.cursorCalloutGradientGlow ?? 14,
 			});
 			this.cursorContainer.addChild(this.cursorOverlay.container);
 		}
@@ -869,6 +894,16 @@ export class FrameRenderer {
 		fallbackWidth: number,
 		fallbackHeight: number,
 	): Promise<CanvasImageSource | VideoFrame> {
+		// The main scene changes every output frame. Feeding a fresh ImageBitmap
+		// directly to Pixi/WebGPU and closing the previous bitmap on the next
+		// iteration can race the asynchronous texture upload, especially for HIGH
+		// resolution exports. A missed upload makes the masked video transparent
+		// for that frame, exposing the wallpaper as a white/black flash. Keep one
+		// persistent canvas resource and update its pixels synchronously instead.
+		if (kind === "scene" && this.rendererBackend === "webgpu") {
+			return this.stageVideoFrameOnCanvas(frame, kind, fallbackWidth, fallbackHeight);
+		}
+
 		if (this.rendererBackend !== "webgpu" || typeof createImageBitmap !== "function") {
 			return this.stageVideoFrameForTexture(frame, kind, fallbackWidth, fallbackHeight);
 		}
@@ -1419,12 +1454,17 @@ export class FrameRenderer {
 		return (this.config.width / previewWidth + this.config.height / previewHeight) / 2;
 	}
 
-	private hasActiveBlurAnnotations(timeMs: number): boolean {
+	private needsCanvasAnnotationComposition(timeMs: number): boolean {
 		return (this.config.annotationRegions ?? []).some(
 			(annotation) =>
-				annotation.type === "blur" &&
 				timeMs >= annotation.startMs &&
-				timeMs <= annotation.endMs,
+				timeMs <= annotation.endMs &&
+				(annotation.type === "blur" ||
+					// Click highlights are procedural: their bloom and particles evolve every
+					// frame, so compose them on canvas instead of freezing a Pixi texture.
+					annotation.type === "click" ||
+					annotation.stages?.inEnabled === true ||
+					annotation.stages?.outEnabled === true),
 		);
 	}
 
@@ -1549,7 +1589,7 @@ export class FrameRenderer {
 				annotation,
 				width,
 				height,
-				this.annotationScaleFactor,
+				getAnnotationContentScale(annotationRect.width),
 				this.annotationAssets ?? undefined,
 			);
 			if (!canvas) {
@@ -1558,18 +1598,42 @@ export class FrameRenderer {
 
 			const texture = Texture.from(canvas);
 			const sprite = new Sprite(texture);
-			sprite.position.set(x, y);
+			sprite.anchor.set(0.5);
+			sprite.position.set(x + width / 2, y + height / 2);
 			sprite.visible = false;
 			this.annotationContainer.addChild(sprite);
-			this.annotationSprites.push({ annotation, sprite, texture });
+			this.annotationSprites.push({ annotation, sprite, texture, baseWidth: width, baseHeight: height });
 		}
 	}
 
 	private updateAnnotationLayer(currentTimeMs: number): void {
 		for (const entry of this.annotationSprites) {
-			entry.sprite.visible =
+			const visible =
 				currentTimeMs >= entry.annotation.startMs &&
 				currentTimeMs <= entry.annotation.endMs;
+			entry.sprite.visible = visible;
+			if (!visible) continue;
+			const stage = getAnnotationStageState(entry.annotation, currentTimeMs);
+			const annotationRect = this.layoutCache?.maskRect ?? {
+				x: 0,
+				y: 0,
+				width: this.config.width,
+				height: this.config.height,
+			};
+			const transform = resolveAnnotationTransformAtTime(entry.annotation, currentTimeMs);
+			const { position, size } = transform;
+			const width = (size.width / 100) * annotationRect.width;
+			const height = (size.height / 100) * annotationRect.height;
+			entry.sprite.position.set(
+				annotationRect.x + (position.x / 100) * annotationRect.width + width / 2,
+				annotationRect.y + (position.y / 100) * annotationRect.height + height / 2,
+			);
+			entry.sprite.alpha = stage.alpha;
+			entry.sprite.scale.set(
+				stage.scale * (width / Math.max(1, entry.baseWidth)),
+				stage.scale * (height / Math.max(1, entry.baseHeight)),
+			);
+			entry.sprite.rotation = (stage.rotate * Math.PI) / 180;
 		}
 	}
 
@@ -2728,7 +2792,12 @@ export class FrameRenderer {
 
 	private updateWebcamOverlay(referenceTimeSeconds = this.currentVideoTime): void {
 		const webcam = this.config.webcam;
-		if (!webcam?.enabled || !isWebcamVisibleAtSourceTime(webcam, referenceTimeSeconds) || !this.webcamRootContainer || !this.webcamMaskGraphics) {
+		if (
+			!webcam?.enabled ||
+			!isWebcamVisibleAtSourceTime(webcam, referenceTimeSeconds) ||
+			!this.webcamRootContainer ||
+			!this.webcamMaskGraphics
+		) {
 			if (this.webcamRootContainer) {
 				this.webcamRootContainer.visible = false;
 			}
@@ -2921,6 +2990,11 @@ export class FrameRenderer {
 		const cursorTimeMs = cursorTimestamp / 1000;
 
 		if (this.cursorOverlay) {
+			const callout = resolveCursorCalloutState(this.config.annotationRegions, cursorTimeMs, {
+				enabled: this.config.cursorCalloutEnabled ?? false,
+				text: this.config.cursorCalloutText ?? "",
+			});
+			this.cursorOverlay.setCallout(callout.enabled, callout.text, this.config.cursorCalloutBackground ?? "#14B8C4", this.config.cursorCalloutTextColor ?? "#FFFFFF", this.config.cursorCalloutScale ?? 1, this.config.cursorCalloutGradientEnabled ?? false, this.config.cursorCalloutGradientColors ?? ["#14B8C4", "#A855F7"], this.config.cursorCalloutGradientGlow ?? 14);
 			this.cursorOverlay.update(
 				this.config.cursorTelemetry ?? [],
 				cursorTimeMs,
@@ -2961,7 +3035,7 @@ export class FrameRenderer {
 	}
 
 	private async renderOutput(timeMs: number): Promise<void> {
-		if (this.hasActiveBlurAnnotations(timeMs)) {
+		if (this.needsCanvasAnnotationComposition(timeMs)) {
 			const annotationContainerVisible = this.annotationContainer?.visible ?? true;
 			const captionContainerVisible = this.captionContainer?.visible ?? true;
 

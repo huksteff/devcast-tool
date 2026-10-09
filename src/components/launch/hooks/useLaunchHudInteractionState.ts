@@ -2,17 +2,47 @@ import { type MouseEvent, type RefObject, useCallback, useEffect, useRef } from 
 
 export function useLaunchHudInteractionState({
 	openId,
+	hudContentRef,
+	hudBarRef,
 	isHudDraggingRef,
 	isWebcamPreviewDraggingRef,
 	webcamPreviewDragStartRef,
 }: {
 	openId: string | null;
+	hudContentRef: RefObject<HTMLDivElement | null>;
+	hudBarRef: RefObject<HTMLDivElement | null>;
 	isHudDraggingRef: RefObject<boolean>;
 	isWebcamPreviewDraggingRef: RefObject<boolean>;
 	webcamPreviewDragStartRef: RefObject<unknown>;
 }) {
 	const isMouseOverHudRef = useRef(false);
 	const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const lastBoundsRef = useRef("");
+
+	useEffect(() => {
+		const publishInteractiveBounds = () => {
+			const nodes = [
+				hudContentRef.current,
+				hudBarRef.current,
+				...Array.from(
+					document.querySelectorAll<HTMLElement>("[data-hud-interactive], .pointer-events-auto"),
+				),
+			].filter((node): node is HTMLElement => Boolean(node));
+			const bounds = nodes
+				.map((node) => node.getBoundingClientRect())
+				.filter((rect) => rect.width > 0 && rect.height > 0)
+				.map(({ left, top, right, bottom }) => ({ left, top, right, bottom }));
+			const serialized = JSON.stringify(bounds);
+			if (serialized !== lastBoundsRef.current) {
+				lastBoundsRef.current = serialized;
+				window.electronAPI?.hudOverlaySetInteractiveBounds?.(bounds);
+			}
+		};
+
+		publishInteractiveBounds();
+		const interval = window.setInterval(publishInteractiveBounds, 80);
+		return () => window.clearInterval(interval);
+	}, [hudBarRef, hudContentRef, openId]);
 
 	useEffect(() => {
 		if (openId !== null) {

@@ -86,6 +86,14 @@ interface GifExporterConfig {
 	cursorClickBounce?: number;
 	cursorClickBounceDuration?: number;
 	cursorSway?: number;
+	cursorCalloutEnabled?: boolean;
+	cursorCalloutText?: string;
+	cursorCalloutBackground?: string;
+	cursorCalloutTextColor?: string;
+	cursorCalloutScale?: number;
+	cursorCalloutGradientEnabled?: boolean;
+	cursorCalloutGradientColors?: string[];
+	cursorCalloutGradientGlow?: number;
 	previewWidth?: number;
 	previewHeight?: number;
 	maxDecodeQueue?: number;
@@ -190,6 +198,14 @@ export function buildGifFrameRendererConfig(
 		cursorClickBounce: config.cursorClickBounce,
 		cursorClickBounceDuration: config.cursorClickBounceDuration,
 		cursorSway: config.cursorSway,
+		cursorCalloutEnabled: config.cursorCalloutEnabled,
+		cursorCalloutText: config.cursorCalloutText,
+		cursorCalloutBackground: config.cursorCalloutBackground,
+		cursorCalloutTextColor: config.cursorCalloutTextColor,
+		cursorCalloutScale: config.cursorCalloutScale,
+		cursorCalloutGradientEnabled: config.cursorCalloutGradientEnabled,
+		cursorCalloutGradientColors: config.cursorCalloutGradientColors,
+		cursorCalloutGradientGlow: config.cursorCalloutGradientGlow,
 	};
 }
 

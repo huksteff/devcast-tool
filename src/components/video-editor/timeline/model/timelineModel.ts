@@ -28,10 +28,15 @@ export function getAnnotationLabel(region: AnnotationRegion): string {
 			arrow: "Arrow",
 			rectangle: "Rectangle",
 			ellipse: "Ellipse",
+			circle: "Circle",
 			line: "Line",
 			highlight: "Highlight",
 		} as const;
 		return figureLabels[region.figureData?.kind ?? "arrow"];
+	}
+	if (region.type === "cursor-callout") {
+		const action = region.calloutEvent?.action ?? "enable";
+		return action === "enable" ? "Callout on" : action === "disable" ? "Callout off" : `Callout: ${region.content.trim() || "Text"}`;
 	}
 	return region.type === "drawing" ? "Drawing" : region.type === "blur" ? "Blur" : "Image";
 }

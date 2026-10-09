@@ -166,6 +166,14 @@ export function useProjectLifecycle(input: Input) {
 		appearance.setCursorClickBounce(editor.cursorClickBounce);
 		appearance.setCursorClickBounceDuration(editor.cursorClickBounceDuration);
 		appearance.setCursorSway(editor.cursorSway);
+		appearance.setCursorCalloutEnabled(editor.cursorCalloutEnabled);
+		appearance.setCursorCalloutText(editor.cursorCalloutText);
+		appearance.setCursorCalloutBackground(editor.cursorCalloutBackground);
+		appearance.setCursorCalloutTextColor(editor.cursorCalloutTextColor);
+		appearance.setCursorCalloutScale(editor.cursorCalloutScale);
+		appearance.setCursorCalloutGradientEnabled(editor.cursorCalloutGradientEnabled);
+		appearance.setCursorCalloutGradientColors(editor.cursorCalloutGradientColors);
+		appearance.setCursorCalloutGradientGlow(editor.cursorCalloutGradientGlow);
 		appearance.setBorderRadius(editor.borderRadius);
 		appearance.setPadding(editor.padding);
 		appearance.setCropRegion(editor.cropRegion);

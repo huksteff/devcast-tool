@@ -4,6 +4,7 @@ import {
 	CaretDown,
 	Check,
 	Crop,
+	Diamond,
 	MagicWand,
 	MagnifyingGlassPlus,
 	Pause,
@@ -17,7 +18,7 @@ import {
 	SpeakerX,
 	TextT,
 } from "@phosphor-icons/react";
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import { type Dispatch, type RefObject, type SetStateAction, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -29,6 +30,7 @@ import {
 import type { useI18n } from "@/contexts/I18nContext";
 import { ASPECT_RATIOS, type AspectRatio, getAspectRatioLabel } from "@/utils/aspectRatioUtils";
 import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
+import { upsertAnnotationPositionKeyframe } from "../annotationKeyframes";
 import type { CaptionEditTarget } from "../captionEditing";
 import type { useAnnotationRegionCommands } from "../hooks/useAnnotationRegionCommands";
 import type { useEditorPlaybackControls } from "../hooks/useEditorPlaybackControls";
@@ -86,6 +88,7 @@ function formatTime(seconds: number) {
 }
 
 export function EditorPreviewPanel(props: Props) {
+	const [keyframeMode, setKeyframeMode] = useState(false);
 	const {
 		t,
 		videoPath,
@@ -221,10 +224,45 @@ export function EditorPreviewPanel(props: Props) {
 										onZoomFocusChange: zoomCommands.handleZoomFocusChange,
 										onEditAutoCaption: handleSaveAutoCaptionEdit,
 										onSelectAnnotation: handleSelectAnnotation,
-										onAnnotationPositionChange:
-											annotationCommands.handleAnnotationPositionChange,
+									onAnnotationPositionChange: (id, position) => {
+										if (!keyframeMode) {
+											annotationCommands.handleAnnotationPositionChange(id, position);
+											return;
+										}
+										const annotation = timeline.annotationRegions.find(
+											(region) => region.id === id,
+										);
+										if (!annotation) return;
+										annotationCommands.handleAnnotationPositionKeyframesChange(
+											id,
+											upsertAnnotationPositionKeyframe(
+												annotation.positionKeyframes,
+												projection.timelinePlayheadTime * 1000,
+												position,
+												annotation.size,
+											),
+										);
+									},
 									onAnnotationSizeChange:
 											annotationCommands.handleAnnotationSizeChange,
+									onAnnotationTransformChange: (id, transform) => {
+										if (!keyframeMode) {
+											annotationCommands.handleAnnotationPositionChange(id, transform.position);
+											annotationCommands.handleAnnotationSizeChange(id, transform.size);
+											return;
+										}
+										const annotation = timeline.annotationRegions.find((region) => region.id === id);
+										if (!annotation) return;
+										annotationCommands.handleAnnotationPositionKeyframesChange(
+											id,
+											upsertAnnotationPositionKeyframe(
+												annotation.positionKeyframes,
+												projection.timelinePlayheadTime * 1000,
+												transform.position,
+												transform.size,
+											),
+										);
+									},
 									onAnnotationDrawingChange:
 											annotationCommands.handleAnnotationDrawingDataChange,
 									}}
@@ -297,6 +335,37 @@ export function EditorPreviewPanel(props: Props) {
 						title={t("timeline.zoom.suggestZooms")}
 					>
 						<MagicWand className="h-4 w-4" />
+					</Button>
+					<Button
+						onClick={() => {
+							setKeyframeMode((active) => {
+								const next = !active;
+								if (next && timeline.selectedAnnotationId) {
+									const annotation = timeline.annotationRegions.find(
+										(region) => region.id === timeline.selectedAnnotationId,
+									);
+									if (annotation) {
+										annotationCommands.handleAnnotationPositionKeyframesChange(
+											annotation.id,
+											upsertAnnotationPositionKeyframe(
+												annotation.positionKeyframes,
+												projection.timelinePlayheadTime * 1000,
+												annotation.position,
+												annotation.size,
+											),
+										);
+									}
+								}
+								return next;
+							});
+						}}
+						variant="ghost"
+						size="icon"
+						className={`h-9 w-9 ${keyframeMode ? "bg-primary/20 text-primary" : ""}`}
+						title={keyframeMode ? "Disable position keyframes" : "Enable position keyframes"}
+						aria-pressed={keyframeMode}
+					>
+						<Diamond className="h-4 w-4" weight={keyframeMode ? "fill" : "regular"} />
 					</Button>
 					<Button
 						onClick={() => timelineRef.current?.splitClip()}

@@ -72,6 +72,14 @@ export function useVideoEditorPresets({
 			cursorClickBounce: appearance.cursorClickBounce,
 			cursorClickBounceDuration: appearance.cursorClickBounceDuration,
 			cursorSway: appearance.cursorSway,
+			cursorCalloutEnabled: appearance.cursorCalloutEnabled,
+			cursorCalloutText: appearance.cursorCalloutText,
+			cursorCalloutBackground: appearance.cursorCalloutBackground,
+			cursorCalloutTextColor: appearance.cursorCalloutTextColor,
+			cursorCalloutScale: appearance.cursorCalloutScale,
+			cursorCalloutGradientEnabled: appearance.cursorCalloutGradientEnabled,
+			cursorCalloutGradientColors: appearance.cursorCalloutGradientColors,
+			cursorCalloutGradientGlow: appearance.cursorCalloutGradientGlow,
 			borderRadius: appearance.borderRadius,
 			borderRadiusUnit: "percent",
 			padding: { ...appearance.padding },
@@ -138,6 +146,14 @@ export function useVideoEditorPresets({
 			appearance.setCursorClickBounce(snapshot.cursorClickBounce);
 			appearance.setCursorClickBounceDuration(snapshot.cursorClickBounceDuration);
 			appearance.setCursorSway(snapshot.cursorSway);
+			appearance.setCursorCalloutEnabled(snapshot.cursorCalloutEnabled);
+			appearance.setCursorCalloutText(snapshot.cursorCalloutText);
+			appearance.setCursorCalloutBackground(snapshot.cursorCalloutBackground);
+			appearance.setCursorCalloutTextColor(snapshot.cursorCalloutTextColor);
+			appearance.setCursorCalloutScale(snapshot.cursorCalloutScale);
+			appearance.setCursorCalloutGradientEnabled(snapshot.cursorCalloutGradientEnabled);
+			appearance.setCursorCalloutGradientColors(snapshot.cursorCalloutGradientColors);
+			appearance.setCursorCalloutGradientGlow(snapshot.cursorCalloutGradientGlow);
 			appearance.setBorderRadius(snapshot.borderRadius);
 			appearance.setPadding({ ...snapshot.padding });
 			appearance.setCropRegion({ ...snapshot.cropRegion });

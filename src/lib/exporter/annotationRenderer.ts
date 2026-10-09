@@ -1,13 +1,21 @@
 import {
 	type AnnotationRegion,
 	type ArrowDirection,
+	BASE_PREVIEW_WIDTH,
 	BLUR_ANNOTATION_STRENGTH,
 	getAnnotationStageState,
 	getVisibleDrawingStrokes,
+	getAnimatedGradientColors,
+	DEFAULT_CLICK_HIGHLIGHT_DATA,
 } from "@/components/video-editor/types";
+import { resolveAnnotationTransformAtTime } from "@/components/video-editor/annotationKeyframes";
 
 export interface AnnotationRenderAssets {
 	imageCache: Map<string, HTMLImageElement>;
+}
+
+export function getAnnotationContentScale(width: number): number {
+	return Math.max(0.01, width / BASE_PREVIEW_WIDTH);
 }
 
 interface AnnotationSceneTransform {
@@ -209,15 +217,41 @@ function renderFigure(
 	width: number,
 	height: number,
 	scaleFactor: number,
+	currentTimeMs: number,
 ) {
 	const figure = annotation.figureData;
 	if (!figure) return;
 	if ((figure.kind ?? "arrow") === "arrow") {
-		renderArrow(ctx, figure.arrowDirection, figure.color, figure.strokeWidth, x, y, width, height, scaleFactor);
+		renderArrow(
+			ctx,
+			figure.arrowDirection,
+			figure.color,
+			figure.strokeWidth,
+			x,
+			y,
+			width,
+			height,
+			scaleFactor,
+		);
 		return;
 	}
 	ctx.save();
-	ctx.strokeStyle = figure.color;
+	const gradientColors = getAnimatedGradientColors(figure.gradient, currentTimeMs, figure.color);
+	const strokeGradient =
+		gradientColors.length > 1
+			? (() => {
+					const gradient = ctx.createLinearGradient(x, y, x + width, y);
+					gradientColors.forEach((color, index) =>
+						gradient.addColorStop(index / (gradientColors.length - 1), color),
+					);
+					return gradient;
+				})()
+			: figure.color;
+	ctx.strokeStyle = strokeGradient;
+	if (figure.gradient?.enabled) {
+		ctx.shadowColor = gradientColors[0];
+		ctx.shadowBlur = Math.max(0, figure.gradient.glow || 0) * scaleFactor;
+	}
 	ctx.lineWidth = Math.max(1, figure.strokeWidth * scaleFactor);
 	ctx.lineCap = "round";
 	ctx.lineJoin = "round";
@@ -225,11 +259,24 @@ function renderFigure(
 	const kind = figure.kind;
 	if (kind === "highlight") {
 		ctx.globalAlpha = 0.28;
-		ctx.fillStyle = figure.color;
+		ctx.fillStyle = strokeGradient;
 		ctx.fillRect(x, y, width, height);
 	} else if (kind === "ellipse") {
 		ctx.beginPath();
-		ctx.ellipse(x + width / 2, y + height / 2, Math.max(0, width / 2 - inset), Math.max(0, height / 2 - inset), 0, 0, Math.PI * 2);
+		ctx.ellipse(
+			x + width / 2,
+			y + height / 2,
+			Math.max(0, width / 2 - inset),
+			Math.max(0, height / 2 - inset),
+			0,
+			0,
+			Math.PI * 2,
+		);
+		ctx.stroke();
+	} else if (kind === "circle") {
+		const radius = Math.max(0, Math.min(width, height) / 2 - inset);
+		ctx.beginPath();
+		ctx.arc(x + width / 2, y + height / 2, radius, 0, Math.PI * 2);
 		ctx.stroke();
 	} else if (kind === "line") {
 		ctx.beginPath();
@@ -237,7 +284,12 @@ function renderFigure(
 		ctx.lineTo(x + width - inset, y + inset);
 		ctx.stroke();
 	} else {
-		ctx.strokeRect(x + inset, y + inset, Math.max(0, width - inset * 2), Math.max(0, height - inset * 2));
+		ctx.strokeRect(
+			x + inset,
+			y + inset,
+			Math.max(0, width - inset * 2),
+			Math.max(0, height - inset * 2),
+		);
 	}
 	ctx.restore();
 }
@@ -251,13 +303,27 @@ function renderDrawing(
 	height: number,
 	scaleFactor: number,
 	progress: number = 1,
+	currentTimeMs: number = 0,
 ) {
 	const drawing = annotation.drawingData;
 	if (!drawing) return;
 	const strokes = getVisibleDrawingStrokes(drawing, progress);
 	if (!strokes.some((stroke) => stroke.length > 0)) return;
 	ctx.save();
-	ctx.strokeStyle = drawing.color;
+	const gradientColors = getAnimatedGradientColors(
+		drawing.gradient,
+		currentTimeMs,
+		drawing.color,
+	);
+	if (gradientColors.length > 1) {
+		const gradient = ctx.createLinearGradient(x, y, x + width, y);
+		gradientColors.forEach((color, index) =>
+			gradient.addColorStop(index / (gradientColors.length - 1), color),
+		);
+		ctx.strokeStyle = gradient;
+		ctx.shadowColor = gradientColors[0];
+		ctx.shadowBlur = Math.max(0, drawing.gradient?.glow || 0) * scaleFactor;
+	} else ctx.strokeStyle = drawing.color;
 	ctx.lineWidth = Math.max(1, drawing.strokeWidth * scaleFactor);
 	ctx.lineCap = "round";
 	ctx.lineJoin = "round";
@@ -271,9 +337,90 @@ function renderDrawing(
 			else ctx.lineTo(px, py);
 		});
 		if (stroke.length === 1) {
-			ctx.lineTo(x + (stroke[0].x / 100) * width + 0.01, y + (stroke[0].y / 100) * height + 0.01);
+			ctx.lineTo(
+				x + (stroke[0].x / 100) * width + 0.01,
+				y + (stroke[0].y / 100) * height + 0.01,
+			);
 		}
 		ctx.stroke();
+	}
+	if (
+		drawing.showEraserInDrawOut &&
+		annotation.stages?.outEnabled &&
+		annotation.stages.outTransition === "draw-out" &&
+		progress < 1
+	) {
+		const lastStroke = strokes[strokes.length - 1];
+		const point = lastStroke?.[lastStroke.length - 1];
+		if (point) {
+			const radius = Math.max(2, ((drawing.eraserSize ?? 12) * scaleFactor) / 2);
+			ctx.strokeStyle = "#FFFFFF";
+			ctx.lineWidth = Math.max(1, scaleFactor * 2);
+			ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+			ctx.beginPath();
+			ctx.arc(x + (point.x / 100) * width, y + (point.y / 100) * height, radius, 0, Math.PI * 2);
+			ctx.fill();
+			ctx.stroke();
+		}
+	}
+	ctx.restore();
+}
+
+function renderClickHighlight(
+	ctx: CanvasRenderingContext2D,
+	annotation: AnnotationRegion,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	currentTimeMs: number,
+	scaleFactor: number,
+) {
+	const data = { ...DEFAULT_CLICK_HIGHLIGHT_DATA, ...annotation.clickData };
+	const age = Math.max(0, currentTimeMs - annotation.startMs);
+	const progress = Math.min(1, age / Math.max(1, data.durationMs));
+	if (progress <= 0) return;
+	const fade = (1 - progress) ** 1.35;
+	const centerX = x + width / 2;
+	const centerY = y + height / 2;
+	const targetRadius = Math.min(data.radius * scaleFactor, Math.min(width, height) * 0.48);
+	const expand = 1 - (1 - progress) ** 3;
+	const radius = targetRadius * expand;
+	const colorWithAlpha = (color: string, alpha: number) => {
+		const normalized = color.replace("#", "");
+		if (/^[0-9a-fA-F]{6}$/.test(normalized)) {
+			const value = Number.parseInt(normalized, 16);
+			return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+		}
+		return color;
+	};
+	ctx.save();
+	ctx.globalAlpha *= fade;
+	// A radial bloom intentionally has no hard outline. This makes it read as a
+	// light flash rather than a second circular annotation.
+	const glow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+	glow.addColorStop(0, colorWithAlpha(data.color, 0.62));
+	glow.addColorStop(0.42, colorWithAlpha(data.color, 0.2));
+	glow.addColorStop(1, colorWithAlpha(data.color, 0));
+	ctx.fillStyle = glow;
+	ctx.beginPath();
+	ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+	ctx.fill();
+	ctx.globalAlpha = fade;
+	for (let index = 0; index < data.particleCount; index++) {
+		const angle = index * 2.399963229728653;
+		const distribution = Math.sqrt((index + 0.5) / Math.max(1, data.particleCount));
+		const distance = targetRadius * distribution * (0.82 + expand * 0.18);
+		ctx.fillStyle = data.color;
+		ctx.beginPath();
+		ctx.arc(
+			centerX + Math.cos(angle) * distance,
+			centerY + Math.sin(angle) * distance,
+			Math.max(1, targetRadius * (0.018 + (index % 4) * 0.005)) * expand,
+			0,
+			Math.PI * 2,
+		);
+		ctx.fill();
 	}
 	ctx.restore();
 }
@@ -457,26 +604,34 @@ export async function renderAnnotations(
 		width: canvasWidth,
 		height: canvasHeight,
 	};
+	const contentScaleFactor = coordinateRect
+		? getAnnotationContentScale(annotationRect.width)
+		: scaleFactor;
 
 	for (const annotation of sortedAnnotations) {
+		const transform = resolveAnnotationTransformAtTime(annotation, currentTimeMs);
+		const { position, size } = transform;
 		const stage = getAnnotationStageState(annotation, currentTimeMs);
 		ctx.save();
 		ctx.globalAlpha = stage.alpha;
 		const rect = transformAnnotationRect(
 			{
-				x: annotationRect.x + (annotation.position.x / 100) * annotationRect.width,
-				y: annotationRect.y + (annotation.position.y / 100) * annotationRect.height,
-				width: (annotation.size.width / 100) * annotationRect.width,
-				height: (annotation.size.height / 100) * annotationRect.height,
+				x: annotationRect.x + (position.x / 100) * annotationRect.width,
+				y: annotationRect.y + (position.y / 100) * annotationRect.height,
+				width: (size.width / 100) * annotationRect.width,
+				height: (size.height / 100) * annotationRect.height,
 			},
 			sceneTransform,
 		);
 		const { x, y, width, height } = rect;
-		ctx.translate(x + width / 2, y + height / 2 + stage.translateY);
+		const effectiveScaleFactor = contentScaleFactor * (sceneTransform?.scale ?? 1);
+		ctx.translate(
+			x + width / 2 + stage.translateX * effectiveScaleFactor,
+			y + height / 2 + stage.translateY * effectiveScaleFactor,
+		);
 		ctx.scale(stage.scale, stage.scale);
 		ctx.rotate((stage.rotate * Math.PI) / 180);
 		ctx.translate(-(x + width / 2), -(y + height / 2));
-		const effectiveScaleFactor = scaleFactor * (sceneTransform?.scale ?? 1);
 
 		switch (annotation.type) {
 			case "text":
@@ -488,7 +643,10 @@ export async function renderAnnotations(
 					width,
 					height,
 					effectiveScaleFactor,
-					annotation.content.slice(0, Math.ceil(annotation.content.length * stage.textProgress)),
+					annotation.content.slice(
+						0,
+						Math.ceil(annotation.content.length * stage.textProgress),
+					),
 				);
 				break;
 
@@ -497,11 +655,43 @@ export async function renderAnnotations(
 				break;
 
 			case "figure":
-				renderFigure(ctx, annotation, x, y, width, height, effectiveScaleFactor);
+				renderFigure(
+					ctx,
+					annotation,
+					x,
+					y,
+					width,
+					height,
+					effectiveScaleFactor,
+					currentTimeMs,
+				);
 				break;
 
 			case "drawing":
-				renderDrawing(ctx, annotation, x, y, width, height, effectiveScaleFactor, stage.drawingProgress);
+				renderDrawing(
+					ctx,
+					annotation,
+					x,
+					y,
+					width,
+					height,
+					effectiveScaleFactor,
+					stage.drawingProgress,
+					currentTimeMs,
+				);
+				break;
+
+			case "click":
+				renderClickHighlight(
+					ctx,
+					annotation,
+					x,
+					y,
+					width,
+					height,
+					currentTimeMs,
+					effectiveScaleFactor,
+				);
 				break;
 
 			case "blur": {
@@ -585,12 +775,44 @@ export async function renderAnnotationToCanvas(
 				return null;
 			}
 
-			renderFigure(ctx, annotation, 0, 0, canvasWidth, canvasHeight, scaleFactor);
+			renderFigure(
+				ctx,
+				annotation,
+				0,
+				0,
+				canvasWidth,
+				canvasHeight,
+				scaleFactor,
+				annotation.startMs,
+			);
 			break;
 		case "drawing":
-			renderDrawing(ctx, annotation, 0, 0, canvasWidth, canvasHeight, scaleFactor);
+			renderDrawing(
+				ctx,
+				annotation,
+				0,
+				0,
+				canvasWidth,
+				canvasHeight,
+				scaleFactor,
+				1,
+				annotation.startMs,
+			);
+			break;
+		case "click":
+			renderClickHighlight(
+				ctx,
+				annotation,
+				0,
+				0,
+				canvasWidth,
+				canvasHeight,
+				annotation.startMs,
+				scaleFactor,
+			);
 			break;
 		case "blur":
+		case "cursor-callout":
 			// Blur annotations must sample already-rendered scene pixels,
 			// so they cannot be rasterized as standalone sprites.
 			return null;

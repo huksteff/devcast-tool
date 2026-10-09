@@ -262,6 +262,9 @@ export function EditorTimelinePanel(props: Props) {
 				onAnnotationAdded={annotationCommands.handleAnnotationAdded}
 				onAnnotationSpanChange={annotationCommands.handleAnnotationSpanChange}
 				onAnnotationDelete={annotationCommands.handleAnnotationDelete}
+				onAnnotationPositionKeyframesChange={
+					annotationCommands.handleAnnotationPositionKeyframesChange
+				}
 				selectedAnnotationId={timeline.selectedAnnotationId}
 				onSelectAnnotation={handleSelectAnnotation}
 				showSourceAudioTrack={timeline.clipRegions.some((clip) => clip.showSourceAudio)}

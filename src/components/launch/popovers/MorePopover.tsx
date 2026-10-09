@@ -36,7 +36,6 @@ export function MorePopover({
 	onOpenProjectBrowser,
 	showDevUpdatePreview,
 	onPreviewUpdateUi,
-	appVersion,
 }: {
 	trigger: ReactElement;
 	supportsHudCaptureProtection: boolean;
@@ -47,7 +46,6 @@ export function MorePopover({
 	onOpenProjectBrowser: () => void;
 	showDevUpdatePreview: boolean;
 	onPreviewUpdateUi: () => void;
-	appVersion: string | null;
 }) {
 	const t = useScopedT("launch");
 	const { locale, setLocale } = useI18n();
@@ -166,20 +164,6 @@ export function MorePopover({
 					{LOCALE_LABELS[code] ?? code}
 				</DropdownItem>
 			))}
-			{appVersion && (
-				<div
-					style={{
-						marginTop: 8,
-						padding: "4px 12px",
-						fontSize: 11,
-						color: "var(--launch-text-muted)",
-						textAlign: "center",
-						userSelect: "text",
-					}}
-				>
-					v{appVersion}
-				</div>
-			)}
 		</HudPopover>
 	);
 }

@@ -110,7 +110,6 @@ function LaunchWindowContent() {
 	const {
 		hudOverlayMousePassthroughSupported,
 		platform,
-		appVersion,
 		hideHudFromCapture,
 		chooseRecordingsDirectory,
 		toggleHudCaptureProtection,
@@ -180,6 +179,8 @@ function LaunchWindowContent() {
 	const { handleHudMouseEnter, handleHudMouseLeave, beginInteractiveHudAction } =
 		useLaunchHudInteractionState({
 			openId,
+			hudContentRef,
+			hudBarRef,
 			isHudDraggingRef,
 			isWebcamPreviewDraggingRef,
 			webcamPreviewDragStartRef,
@@ -405,7 +406,6 @@ function LaunchWindowContent() {
 						console.warn("Failed to preview update toast:", error);
 					});
 				}}
-				appVersion={appVersion}
 				trigger={
 					<Button variant="ghost" size="icon" iconSize="lg" title={t("recording.more")}>
 						<DotsThreeVerticalIcon size={18} />

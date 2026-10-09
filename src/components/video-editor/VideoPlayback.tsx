@@ -80,6 +80,7 @@ import {
 	findClipAtTimelineTime,
 	getDefaultCaptionFontFamily,
 	mapTimelineTimeToSourceTime,
+	resolveCursorCalloutState,
 	type Padding,
 	type WebcamOverlaySettings,
 	type ZoomDepth,
@@ -258,6 +259,10 @@ interface VideoPlaybackProps {
 	onSelectAnnotation?: (id: string | null) => void;
 	onAnnotationPositionChange?: (id: string, position: { x: number; y: number }) => void;
 	onAnnotationSizeChange?: (id: string, size: { width: number; height: number }) => void;
+	onAnnotationTransformChange?: (
+		id: string,
+		transform: { position: { x: number; y: number }; size: { width: number; height: number } },
+	) => void;
 	onAnnotationDrawingChange?: (id: string, drawing: import("./types").DrawingData) => void;
 	cursorTelemetry?: CursorTelemetryPoint[];
 	showCursor?: boolean;
@@ -283,6 +288,14 @@ interface VideoPlaybackProps {
 	cursorClickBounce?: number;
 	cursorClickBounceDuration?: number;
 	cursorSway?: number;
+	cursorCalloutEnabled?: boolean;
+	cursorCalloutText?: string;
+	cursorCalloutBackground?: string;
+	cursorCalloutTextColor?: string;
+	cursorCalloutScale?: number;
+	cursorCalloutGradientEnabled?: boolean;
+	cursorCalloutGradientColors?: string[];
+	cursorCalloutGradientGlow?: number;
 	volume?: number;
 	/** Additional source-audio gain; may exceed 1. */
 	audioGain?: number;
@@ -346,6 +359,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			onSelectAnnotation,
 			onAnnotationPositionChange,
 			onAnnotationSizeChange,
+			onAnnotationTransformChange,
 			onAnnotationDrawingChange,
 			cursorTelemetry = [],
 			showCursor = false,
@@ -371,6 +385,14 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			cursorClickBounce = DEFAULT_CURSOR_CLICK_BOUNCE,
 			cursorClickBounceDuration = DEFAULT_CURSOR_CLICK_BOUNCE_DURATION,
 			cursorSway = DEFAULT_CURSOR_SWAY,
+			cursorCalloutEnabled = false,
+			cursorCalloutText = "",
+			cursorCalloutBackground = "#14B8C4",
+			cursorCalloutTextColor = "#FFFFFF",
+			cursorCalloutScale = 1,
+			cursorCalloutGradientEnabled = false,
+			cursorCalloutGradientColors = ["#14B8C4", "#A855F7"],
+			cursorCalloutGradientGlow = 14,
 			volume = 1,
 			audioGain = 1,
 			suspendRendering = false,
@@ -1841,6 +1863,14 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 						clickBounce: cursorClickBounceRef.current,
 						clickBounceDuration: cursorClickBounceDurationRef.current,
 						sway: cursorSwayRef.current,
+						calloutEnabled: cursorCalloutEnabled,
+						calloutText: cursorCalloutText,
+						calloutBackground: cursorCalloutBackground,
+						calloutTextColor: cursorCalloutTextColor,
+						calloutScale: cursorCalloutScale,
+						calloutGradientEnabled: cursorCalloutGradientEnabled,
+						calloutGradientColors: cursorCalloutGradientColors,
+						calloutGradientGlow: cursorCalloutGradientGlow,
 					});
 					cursorOverlayRef.current = cursorOverlay;
 					cursorOverlay.setFilterResolution(
@@ -2165,6 +2195,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				const timeMs = currentTimeRef.current;
 				const cursorOverlay = cursorOverlayRef.current;
 				if (cursorOverlay) {
+					const callout = resolveCursorCalloutState(annotationRegions, timeMs, {
+						enabled: cursorCalloutEnabled,
+						text: cursorCalloutText,
+					});
+					cursorOverlay.setCallout(callout.enabled, callout.text, cursorCalloutBackground, cursorCalloutTextColor, cursorCalloutScale, cursorCalloutGradientEnabled, cursorCalloutGradientColors, cursorCalloutGradientGlow);
 					cursorOverlay.update(
 						cursorTelemetryRef.current,
 						timeMs,
@@ -2213,6 +2248,13 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			overlay.setClickBounce(cursorClickBounce);
 			overlay.setClickBounceDuration(cursorClickBounceDuration);
 			overlay.setSway(cursorSway);
+			overlay.setCallout(
+				cursorCalloutEnabled,
+				cursorCalloutText,
+				cursorCalloutBackground,
+				cursorCalloutTextColor,
+				cursorCalloutScale,
+			);
 
 			void (async () => {
 				try {
@@ -2252,6 +2294,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			cursorClickBounce,
 			cursorClickBounceDuration,
 			cursorSway,
+			cursorCalloutEnabled,
+			cursorCalloutText,
+			cursorCalloutBackground,
+			cursorCalloutTextColor,
+			cursorCalloutScale,
 		]);
 
 		const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
@@ -2831,6 +2878,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											}
 											onSizeChange={(id, size) =>
 												onAnnotationSizeChange?.(id, size)
+											}
+											onTransformChange={(id, transform) =>
+												onAnnotationTransformChange?.(id, transform)
 											}
 											onDrawingChange={(id, drawing) =>
 												onAnnotationDrawingChange?.(id, drawing)

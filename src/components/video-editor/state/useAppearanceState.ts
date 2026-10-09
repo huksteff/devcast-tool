@@ -107,6 +107,18 @@ export function useAppearanceState(preferences: EditorPreferences) {
 		preferences.cursorClickBounceDuration,
 	);
 	const [cursorSway, setCursorSway] = useState(preferences.cursorSway);
+	const [cursorCalloutEnabled, setCursorCalloutEnabled] = useState(preferences.cursorCalloutEnabled);
+	const [cursorCalloutText, setCursorCalloutText] = useState(preferences.cursorCalloutText);
+	const [cursorCalloutBackground, setCursorCalloutBackground] = useState(
+		preferences.cursorCalloutBackground,
+	);
+	const [cursorCalloutTextColor, setCursorCalloutTextColor] = useState(
+		preferences.cursorCalloutTextColor,
+	);
+	const [cursorCalloutScale, setCursorCalloutScale] = useState(preferences.cursorCalloutScale);
+	const [cursorCalloutGradientEnabled, setCursorCalloutGradientEnabled] = useState(preferences.cursorCalloutGradientEnabled);
+	const [cursorCalloutGradientColors, setCursorCalloutGradientColors] = useState(preferences.cursorCalloutGradientColors);
+	const [cursorCalloutGradientGlow, setCursorCalloutGradientGlow] = useState(preferences.cursorCalloutGradientGlow);
 	const [borderRadius, setBorderRadius] = useState(preferences.borderRadius);
 	const [padding, setPadding] = useState(preferences.padding);
 	const [cropRegion, setCropRegion] = useState<CropRegion>(DEFAULT_CROP_REGION);
@@ -190,6 +202,22 @@ export function useAppearanceState(preferences: EditorPreferences) {
 		setCursorClickBounceDuration,
 		cursorSway,
 		setCursorSway,
+		cursorCalloutEnabled,
+		setCursorCalloutEnabled,
+		cursorCalloutText,
+		setCursorCalloutText,
+		cursorCalloutBackground,
+		setCursorCalloutBackground,
+		cursorCalloutTextColor,
+		setCursorCalloutTextColor,
+		cursorCalloutScale,
+		setCursorCalloutScale,
+		cursorCalloutGradientEnabled,
+		setCursorCalloutGradientEnabled,
+		cursorCalloutGradientColors,
+		setCursorCalloutGradientColors,
+		cursorCalloutGradientGlow,
+		setCursorCalloutGradientGlow,
 		borderRadius,
 		setBorderRadius,
 		padding,

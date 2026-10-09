@@ -67,6 +67,24 @@ describe("normalizeProjectEditor", () => {
 		expect(normalizeProjectEditor({ borderRadius: 75 }).borderRadius).toBe(50);
 	});
 
+	it("persists and sanitizes the cursor-attached label", () => {
+		const editor = normalizeProjectEditor({
+			cursorCalloutEnabled: true,
+			cursorCalloutText: "Mari",
+			cursorCalloutBackground: "#20B9C5",
+			cursorCalloutTextColor: "#fff",
+			cursorCalloutScale: 3,
+		});
+
+		expect(editor).toMatchObject({
+			cursorCalloutEnabled: true,
+			cursorCalloutText: "Mari",
+			cursorCalloutBackground: "#20B9C5",
+			cursorCalloutTextColor: "#FFFFFF",
+			cursorCalloutScale: 2,
+		});
+	});
+
 	it("converts legacy 1080p-relative radius pixels to percentages", () => {
 		expect(legacyBorderRadiusPixelsToPercent(54)).toBe(5);
 	});

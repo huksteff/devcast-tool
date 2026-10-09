@@ -46,6 +46,14 @@ type PersistedEditorControls = Pick<
 	| "cursorClickBounce"
 	| "cursorClickBounceDuration"
 	| "cursorSway"
+	| "cursorCalloutEnabled"
+	| "cursorCalloutText"
+	| "cursorCalloutBackground"
+	| "cursorCalloutTextColor"
+	| "cursorCalloutScale"
+	| "cursorCalloutGradientEnabled"
+	| "cursorCalloutGradientColors"
+	| "cursorCalloutGradientGlow"
 	| "borderRadius"
 	| "padding"
 	| "webcam"
@@ -134,6 +142,14 @@ export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
 	cursorClickBounce: DEFAULT_EDITOR_CONTROLS.cursorClickBounce,
 	cursorClickBounceDuration: DEFAULT_EDITOR_CONTROLS.cursorClickBounceDuration,
 	cursorSway: DEFAULT_EDITOR_CONTROLS.cursorSway,
+	cursorCalloutEnabled: DEFAULT_EDITOR_CONTROLS.cursorCalloutEnabled,
+	cursorCalloutText: DEFAULT_EDITOR_CONTROLS.cursorCalloutText,
+	cursorCalloutBackground: DEFAULT_EDITOR_CONTROLS.cursorCalloutBackground,
+	cursorCalloutTextColor: DEFAULT_EDITOR_CONTROLS.cursorCalloutTextColor,
+	cursorCalloutScale: DEFAULT_EDITOR_CONTROLS.cursorCalloutScale,
+	cursorCalloutGradientEnabled: DEFAULT_EDITOR_CONTROLS.cursorCalloutGradientEnabled,
+	cursorCalloutGradientColors: DEFAULT_EDITOR_CONTROLS.cursorCalloutGradientColors,
+	cursorCalloutGradientGlow: DEFAULT_EDITOR_CONTROLS.cursorCalloutGradientGlow,
 	borderRadius: DEFAULT_EDITOR_CONTROLS.borderRadius,
 	borderRadiusUnit: "percent",
 	padding: DEFAULT_EDITOR_CONTROLS.padding,
@@ -344,6 +360,16 @@ function normalizeEditorControls(
 		cursorClickBounceDuration:
 			sanitizedRaw.cursorClickBounceDuration ?? fallback.cursorClickBounceDuration,
 		cursorSway: sanitizedRaw.cursorSway ?? fallback.cursorSway,
+		cursorCalloutEnabled: sanitizedRaw.cursorCalloutEnabled ?? fallback.cursorCalloutEnabled,
+		cursorCalloutText: sanitizedRaw.cursorCalloutText ?? fallback.cursorCalloutText,
+		cursorCalloutBackground:
+			sanitizedRaw.cursorCalloutBackground ?? fallback.cursorCalloutBackground,
+		cursorCalloutTextColor:
+			sanitizedRaw.cursorCalloutTextColor ?? fallback.cursorCalloutTextColor,
+		cursorCalloutScale: sanitizedRaw.cursorCalloutScale ?? fallback.cursorCalloutScale,
+		cursorCalloutGradientEnabled: sanitizedRaw.cursorCalloutGradientEnabled ?? fallback.cursorCalloutGradientEnabled,
+		cursorCalloutGradientColors: sanitizedRaw.cursorCalloutGradientColors ?? fallback.cursorCalloutGradientColors,
+		cursorCalloutGradientGlow: sanitizedRaw.cursorCalloutGradientGlow ?? fallback.cursorCalloutGradientGlow,
 		borderRadius: sanitizedRaw.borderRadius ?? fallback.borderRadius,
 		padding: sanitizedRaw.padding ?? fallback.padding,
 		webcam: sanitizedRaw.webcam ?? fallback.webcam,
@@ -405,6 +431,14 @@ function normalizeEditorControls(
 		cursorClickBounce: normalized.cursorClickBounce,
 		cursorClickBounceDuration: normalized.cursorClickBounceDuration,
 		cursorSway: normalized.cursorSway,
+		cursorCalloutEnabled: normalized.cursorCalloutEnabled,
+		cursorCalloutText: normalized.cursorCalloutText,
+		cursorCalloutBackground: normalized.cursorCalloutBackground,
+		cursorCalloutTextColor: normalized.cursorCalloutTextColor,
+		cursorCalloutScale: normalized.cursorCalloutScale,
+		cursorCalloutGradientEnabled: normalized.cursorCalloutGradientEnabled,
+		cursorCalloutGradientColors: normalized.cursorCalloutGradientColors,
+		cursorCalloutGradientGlow: normalized.cursorCalloutGradientGlow,
 		borderRadius: normalized.borderRadius,
 		padding: normalized.padding,
 		webcam: normalized.webcam,

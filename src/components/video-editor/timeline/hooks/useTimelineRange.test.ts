@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveTimelineWheelPanDeltaPx } from "./useTimelineRange";
+import { preserveTimelineRange, resolveTimelineWheelPanDeltaPx } from "./useTimelineRange";
 
 describe("resolveTimelineWheelPanDeltaPx", () => {
 	it("uses trackpad horizontal wheel movement for timeline panning", () => {
@@ -53,5 +53,28 @@ describe("resolveTimelineWheelPanDeltaPx", () => {
 				canScrollVertically: false,
 			}),
 		).toBe(20);
+	});
+});
+
+describe("preserveTimelineRange", () => {
+	it("initializes normally when video metadata arrives after an empty state", () => {
+		expect(preserveTimelineRange({ start: 0, end: 0 }, 10_000)).toEqual({
+			start: 0,
+			end: 10_000,
+		});
+	});
+
+	it("keeps the zoom and viewport after an item edit", () => {
+		expect(preserveTimelineRange({ start: 2_000, end: 5_000 }, 10_000)).toEqual({
+			start: 2_000,
+			end: 5_000,
+		});
+	});
+
+	it("clamps the viewport without expanding it when duration shrinks", () => {
+		expect(preserveTimelineRange({ start: 8_000, end: 10_000 }, 9_000)).toEqual({
+			start: 7_000,
+			end: 9_000,
+		});
 	});
 });

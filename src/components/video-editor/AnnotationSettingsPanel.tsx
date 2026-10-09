@@ -11,9 +11,10 @@ import {
 	TextItalic as Italic,
 	BoundingBox as SquareDashed,
 	PencilSimple as Pencil,
-	Copy,
-	Scissors,
+	Eraser,
 	Trash as Trash2,
+	Circle,
+	ChatText,
 	TextT as Type,
 	TextUnderline as Underline,
 	UploadSimple as Upload,
@@ -46,6 +47,9 @@ import {
 	ArrowDirection,
 	DrawingData,
 	FigureData,
+	ClickHighlightData,
+	DEFAULT_ANNOTATION_GRADIENT,
+	DEFAULT_CLICK_HIGHLIGHT_DATA,
 	DEFAULT_ANNOTATION_STAGES,
 } from "./types";
 
@@ -58,14 +62,16 @@ interface AnnotationSettingsPanelProps {
 	onDrawingDataChange?: (drawingData: DrawingData) => void;
 	onBlurIntensityChange?: (intensity: number) => void;
 	onBlurColorChange?: (color: string) => void;
+	onClickDataChange?: (data: ClickHighlightData) => void;
+	onCalloutEventChange?: (data: NonNullable<AnnotationRegion["calloutEvent"]>) => void;
 	onStagesChange?: (stages: Partial<AnnotationStages>) => void;
-	onDelete: () => void;
-	onDuplicate?: () => void;
-	onCut?: () => void;
 }
 
 export const FONT_FAMILY_VALUES = [
-	{ value: "system-ui, -apple-system, sans-serif", labelKey: "fontStyles.classic" },
+	{
+		value: "system-ui, -apple-system, sans-serif",
+		labelKey: "fontStyles.classic",
+	},
 	{ value: "Georgia, serif", labelKey: "fontStyles.editor" },
 	{ value: "Impact, Arial Black, sans-serif", labelKey: "fontStyles.strong" },
 	{ value: "Courier New, monospace", labelKey: "fontStyles.typewriter" },
@@ -86,10 +92,9 @@ export function AnnotationSettingsPanel({
 	onDrawingDataChange,
 	onBlurIntensityChange,
 	onBlurColorChange,
+	onClickDataChange,
+	onCalloutEventChange,
 	onStagesChange,
-	onDelete,
-	onDuplicate,
-	onCut,
 }: AnnotationSettingsPanelProps) {
 	const t = useScopedT("editor");
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -172,7 +177,7 @@ export function AnnotationSettingsPanel({
 							aria-label="Annotation type"
 							value={annotation.type}
 							onValueChange={(value) => onTypeChange(value as AnnotationType)}
-							className="grid grid-cols-5 gap-2"
+							className="grid grid-cols-7 gap-2"
 						>
 							<ChoiceItem
 								value="text"
@@ -226,6 +231,17 @@ export function AnnotationSettingsPanel({
 							>
 								<Pencil className="w-4 h-4" />
 							</ChoiceItem>
+							<ChoiceItem
+								value="click"
+								aria-label={t("annotations.clickHighlight", "Click highlight")}
+								title={t("annotations.clickHighlight", "Click highlight")}
+								className="aspect-square min-w-0 justify-center p-0"
+							>
+								<Circle className="w-4 h-4" />
+							</ChoiceItem>
+							<ChoiceItem value="cursor-callout" aria-label={t("annotations.cursorCallout", "Cursor label event")} title={t("annotations.cursorCallout", "Cursor label event")} className="aspect-square min-w-0 justify-center p-0">
+								<ChatText className="w-4 h-4" />
+							</ChoiceItem>
 						</ChoiceGroup>
 
 						{/* A timeline annotation has three visual phases. Durations move its two
@@ -233,56 +249,146 @@ export function AnnotationSettingsPanel({
 						<div className="rounded-lg border border-foreground/10 bg-foreground/[0.025] p-3 space-y-3">
 							<div className="flex items-center justify-between">
 								<div>
-									<div className="text-sm font-medium">{t("annotations.animationStages", "Animation stages")}</div>
-									<div className="text-xs text-muted-foreground">{t("annotations.stageFlow", "In → Wait → Out")}</div>
+									<div className="text-sm font-medium">
+										{t("annotations.animationStages", "Animation stages")}
+									</div>
+									<div className="text-xs text-muted-foreground">
+										{t("annotations.stageFlow", "In → Wait → Out")}
+									</div>
 								</div>
-								<div className="text-xs text-muted-foreground">{Math.round(stageDurationLimit)} ms</div>
+								<div className="text-xs text-muted-foreground">
+									{Math.round(stageDurationLimit)} ms
+								</div>
 							</div>
 							{(["in", "out"] as const).map((phase) => {
 								const enabledKey = phase === "in" ? "inEnabled" : "outEnabled";
-								const durationKey = phase === "in" ? "inDurationMs" : "outDurationMs";
-								const transitionKey = phase === "in" ? "inTransition" : "outTransition";
-								const otherDuration = phase === "in" ? stages.outDurationMs : stages.inDurationMs;
+								const durationKey =
+									phase === "in" ? "inDurationMs" : "outDurationMs";
+								const transitionKey =
+									phase === "in" ? "inTransition" : "outTransition";
+								const otherDuration =
+									phase === "in" ? stages.outDurationMs : stages.inDurationMs;
 								const enabled = stages[enabledKey];
-								return <div key={phase} className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-center">
-									<ToggleButton isSelected={enabled} onClick={() => onStagesChange?.({ [enabledKey]: !enabled })} className="h-8 px-2 text-xs">
-										{phase === "in" ? t("annotations.stageIn", "In") : t("annotations.stageOut", "Out")}
-									</ToggleButton>
-									<Select value={stages[transitionKey]} onValueChange={(value) => onStagesChange?.({ [transitionKey]: value as AnnotationTransition })}>
-										<SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-									<SelectContent>
-										{([
-											"none",
-											"fade",
-											"pop",
-											"slide-up",
-											"slide-down",
-											...(annotation.type === "text" ? ["bounce", "zoom", "swing", "typewriter"] : []),
-											...(annotation.type === "drawing"
-												? [phase === "in" ? "draw-in" : "draw-out"]
-												: []),
-										] as AnnotationTransition[]).map((effect) => (
-											<SelectItem key={effect} value={effect}>
-												{effect === "draw-in"
-													? t("annotations.animationDrawIn", "Draw In")
-													: effect === "draw-out"
-														? t("annotations.animationDrawOut", "Draw Out")
-														: effect === "typewriter"
-															? t("annotations.animationTypewriter", "Typewriter")
-														: effect}
-											</SelectItem>
-										))}
-									</SelectContent>
-									</Select>
-									<div className="col-span-2 flex items-center gap-3">
-										<Slider aria-label={`${phase} duration`} value={[stages[durationKey]]} onValueChange={([value]) => onStagesChange?.({ [durationKey]: Math.min(value, Math.max(0, stageDurationLimit - otherDuration)) })} min={0} max={Math.max(0, stageDurationLimit - otherDuration)} step={10} className="flex-1" />
-										<span className="w-14 text-right text-xs tabular-nums text-muted-foreground">{Math.round(stages[durationKey])} ms</span>
+								return (
+									<div
+										key={phase}
+										className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-center"
+									>
+										<ToggleButton
+											isSelected={enabled}
+											onClick={() =>
+												onStagesChange?.({ [enabledKey]: !enabled })
+											}
+											className="h-8 px-2 text-xs"
+										>
+											{phase === "in"
+												? t("annotations.stageIn", "In")
+												: t("annotations.stageOut", "Out")}
+										</ToggleButton>
+										<Select
+											value={stages[transitionKey]}
+											onValueChange={(value) =>
+												onStagesChange?.({
+													[transitionKey]: value as AnnotationTransition,
+												})
+											}
+										>
+											<SelectTrigger className="h-8 text-xs">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												{(
+													[
+														"none",
+														"fade",
+														"pop",
+														"slide-up",
+														"slide-down",
+														"slide-left",
+														"slide-right",
+														...(annotation.type === "text"
+															? [
+																	"bounce",
+																	"zoom",
+																	"swing",
+																	"typewriter",
+																]
+															: []),
+														...(annotation.type === "drawing"
+															? [
+																	phase === "in"
+																		? "draw-in"
+																		: "draw-out",
+																]
+															: []),
+													] as AnnotationTransition[]
+												).map((effect) => (
+													<SelectItem key={effect} value={effect}>
+														{effect === "draw-in"
+															? t(
+																	"annotations.animationDrawIn",
+																	"Draw In",
+																)
+															: effect === "draw-out"
+																? t(
+																		"annotations.animationDrawOut",
+																		"Draw Out",
+																	)
+																: effect === "typewriter"
+																	? t(
+																			"annotations.animationTypewriter",
+																			"Typewriter",
+																		)
+																	: effect}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<div className="col-span-2 flex items-center gap-3">
+											<Slider
+												aria-label={`${phase} duration`}
+												value={[stages[durationKey]]}
+												onValueChange={([value]) =>
+													onStagesChange?.({
+														[durationKey]: Math.min(
+															value,
+															Math.max(
+																0,
+																stageDurationLimit - otherDuration,
+															),
+														),
+													})
+												}
+												min={0}
+												max={Math.max(
+													0,
+													stageDurationLimit - otherDuration,
+												)}
+												step={10}
+												className="flex-1"
+											/>
+											<span className="w-14 text-right text-xs tabular-nums text-muted-foreground">
+												{Math.round(stages[durationKey])} ms
+											</span>
+										</div>
 									</div>
-								</div>;
+								);
 							})}
 						</div>
 
 						{/* Text Content */}
+						{annotation.type === "cursor-callout" && (
+							<div className="space-y-3">
+								<div className="text-sm font-medium">{t("annotations.cursorCallout", "Cursor label event")}</div>
+								<ChoiceGroup aria-label={t("annotations.cursorCalloutAction", "Action")} value={annotation.calloutEvent?.action ?? "enable"} onValueChange={(action) => onCalloutEventChange?.({ action: action as "enable" | "disable" | "text" })} className="grid grid-cols-3 gap-2">
+									<ChoiceItem value="enable">{t("annotations.calloutEnable", "Enable")}</ChoiceItem>
+									<ChoiceItem value="text">{t("annotations.calloutText", "Text")}</ChoiceItem>
+									<ChoiceItem value="disable">{t("annotations.calloutDisable", "Disable")}</ChoiceItem>
+								</ChoiceGroup>
+								{(annotation.calloutEvent?.action ?? "enable") === "text" && <TextArea value={annotation.content} onChange={(event) => onContentChange(event.target.value.slice(0, 80))} placeholder={t("annotations.calloutTextPlaceholder", "Label text")} />}
+								<p className="text-xs text-muted-foreground">{t("annotations.calloutEventHint", "The event duration controls the typewriter animation.")}</p>
+							</div>
+						)}
 						{annotation.type === "text" && (
 							<div className="space-y-4">
 								<div>
@@ -535,12 +641,15 @@ export function AnnotationSettingsPanel({
 												colors={colorPalette}
 												compact
 												onClear={() =>
-														onStyleChange({
-															backgroundColor: "transparent",
-														})
-													}
-													clearLabel={t("annotations.transparent", "Transparent")}
-												/>
+													onStyleChange({
+														backgroundColor: "transparent",
+													})
+												}
+												clearLabel={t(
+													"annotations.transparent",
+													"Transparent",
+												)}
+											/>
 										</div>
 									</div>
 								</div>
@@ -586,23 +695,35 @@ export function AnnotationSettingsPanel({
 						{annotation.type === "figure" && (
 							<div className="space-y-4">
 								<div>
-											<label className="text-sm font-medium text-foreground mb-3 block">
+									<label className="text-sm font-medium text-foreground mb-3 block">
 										{t("annotations.shape", "Shape")}
 									</label>
 									<ChoiceGroup
 										value={annotation.figureData?.kind ?? "arrow"}
-										onValueChange={(kind) => onFigureDataChange?.({
-											...annotation.figureData!,
-											kind: kind as NonNullable<FigureData["kind"]>,
-										})}
-										className="grid grid-cols-5 gap-2"
+										onValueChange={(kind) =>
+											onFigureDataChange?.({
+												...annotation.figureData!,
+												kind: kind as NonNullable<FigureData["kind"]>,
+											})
+										}
+										className="grid grid-cols-3 gap-2"
 										aria-label={t("annotations.shape", "Shape")}
 									>
-										{["arrow", "rectangle", "ellipse", "line", "highlight"].map((kind) => (
-											<ChoiceItem key={kind} value={kind} className="min-w-0 px-1 text-[10px] capitalize">
-												{kind === "rectangle" ? "Rect" : kind}
-											</ChoiceItem>
-										))}
+										{["arrow", "rectangle", "ellipse", "circle", "line", "highlight"].map(
+											(kind) => (
+												<ChoiceItem
+													key={kind}
+													value={kind}
+													className="min-w-0 px-1 text-[10px] capitalize"
+												>
+													{kind === "rectangle"
+														? "Rect"
+														: kind === "circle"
+															? t("annotations.circle", "Circle")
+															: kind}
+												</ChoiceItem>
+											),
+										)}
 									</ChoiceGroup>
 								</div>
 								<div>
@@ -703,6 +824,75 @@ export function AnnotationSettingsPanel({
 										compact
 									/>
 								</div>
+								<div className="space-y-3 rounded-lg border border-foreground/10 p-3">
+									<ToggleButton
+										isSelected={Boolean(
+											annotation.figureData?.gradient?.enabled,
+										)}
+										onClick={() =>
+											onFigureDataChange?.({
+												...annotation.figureData!,
+												gradient: {
+													...DEFAULT_ANNOTATION_GRADIENT,
+													...annotation.figureData?.gradient,
+													enabled:
+														!annotation.figureData?.gradient?.enabled,
+												},
+											})
+										}
+										className="h-9 w-full text-xs"
+									>
+										{t("annotations.animatedGradient", "Animated gradient")}
+									</ToggleButton>
+									{annotation.figureData?.gradient?.enabled && (
+										<>
+											<div>
+												<label className="mb-1 block text-xs text-muted-foreground">{t("annotations.gradientColorCount", "Gradient colors")}</label>
+												<Slider value={[Math.min(4, Math.max(2, annotation.figureData.gradient.colors.length))]} min={2} max={4} step={1} onValueChange={([count]) => {
+													const colors = [...annotation.figureData!.gradient!.colors];
+													while (colors.length < count) colors.push(colors[colors.length - 1] ?? "#A855F7");
+													onFigureDataChange?.({ ...annotation.figureData!, gradient: { ...DEFAULT_ANNOTATION_GRADIENT, ...annotation.figureData!.gradient!, colors: colors.slice(0, count) } });
+												}} />
+											</div>
+											<div className="grid grid-cols-2 gap-2">
+											{(
+												annotation.figureData.gradient.colors ??
+												DEFAULT_ANNOTATION_GRADIENT.colors
+											)
+												.slice(0, 4)
+												.map((color, index) => (
+													<ColorControl
+														key={index}
+														value={color}
+														label={`${t("annotations.gradientColor", "Gradient color")} ${index + 1}`}
+														compact
+														onChange={(nextColor) => {
+															const colors = [
+																...(annotation.figureData?.gradient
+																	?.colors ??
+																	DEFAULT_ANNOTATION_GRADIENT.colors),
+															];
+															colors[index] = nextColor;
+															onFigureDataChange?.({
+																...annotation.figureData!,
+																gradient: {
+																	...DEFAULT_ANNOTATION_GRADIENT,
+																	...annotation.figureData
+																		?.gradient,
+																	colors,
+																},
+															});
+														}}
+													/>
+												))}
+											</div>
+											<div>
+												<label className="mb-1 block text-xs text-muted-foreground">{t("annotations.gradientGlow", "Glow strength")}</label>
+												<Slider value={[annotation.figureData.gradient.glow ?? DEFAULT_ANNOTATION_GRADIENT.glow]} min={0} max={40} step={1} onValueChange={([glow]) => onFigureDataChange?.({ ...annotation.figureData!, gradient: { ...DEFAULT_ANNOTATION_GRADIENT, ...annotation.figureData!.gradient!, glow } })} />
+											</div>
+										</>
+									)}
+								</div>
 							</div>
 						)}
 
@@ -771,30 +961,297 @@ export function AnnotationSettingsPanel({
 						{annotation.type === "drawing" && (
 							<div className="space-y-4">
 								<p className="rounded-md bg-foreground/5 p-3 text-xs text-muted-foreground">
-									{t("annotations.drawHint", "Drag with the left mouse button to add strokes. Right-click clears the drawing.")}
+									{t(
+										"annotations.drawHint",
+										"Draw with the left mouse button. Hold Shift for a straight line. Right-drag moves the drawing area.",
+									)}
 								</p>
+								<div className="grid grid-cols-3 gap-2">
+									<ToggleButton
+										isSelected={
+											(annotation.drawingData?.tool ?? "pencil") === "pencil"
+										}
+										onClick={() =>
+											onDrawingDataChange?.({
+												...annotation.drawingData!,
+												points: annotation.drawingData?.points ?? [],
+												color: annotation.drawingData?.color ?? "#2563EB",
+												strokeWidth:
+													annotation.drawingData?.strokeWidth ?? 4,
+												tool: "pencil",
+											})
+										}
+										className="h-9 gap-1 text-xs"
+									>
+										<Pencil className="h-4 w-4" />{" "}
+										{t("annotations.pencil", "Pencil")}
+									</ToggleButton>
+									<ToggleButton
+										isSelected={annotation.drawingData?.tool === "eraser"}
+										onClick={() =>
+											onDrawingDataChange?.({
+												...annotation.drawingData!,
+												points: annotation.drawingData?.points ?? [],
+												color: annotation.drawingData?.color ?? "#2563EB",
+												strokeWidth:
+													annotation.drawingData?.strokeWidth ?? 4,
+												tool: "eraser",
+											})
+										}
+										className="h-9 gap-1 text-xs"
+									>
+										<Eraser className="h-4 w-4" />{" "}
+										{t("annotations.eraser", "Eraser")}
+									</ToggleButton>
+									<Button
+										variant="secondary"
+										size="sm"
+										onClick={() =>
+											onDrawingDataChange?.({
+												...annotation.drawingData!,
+												points: [],
+												strokes: [],
+												color: annotation.drawingData?.color ?? "#2563EB",
+												strokeWidth:
+													annotation.drawingData?.strokeWidth ?? 4,
+											})
+										}
+										title={t("annotations.clearDrawing", "Clear drawing")}
+									>
+										<Trash2 className="h-4 w-4" />
+									</Button>
+								</div>
+								{annotation.stages?.outEnabled &&
+									annotation.stages.outTransition === "draw-out" && (
+										<ToggleButton
+											isSelected={Boolean(
+												annotation.drawingData?.showEraserInDrawOut,
+											)}
+											onClick={() =>
+												onDrawingDataChange?.({
+													...annotation.drawingData!,
+													points: annotation.drawingData?.points ?? [],
+													color: annotation.drawingData?.color ?? "#2563EB",
+													strokeWidth: annotation.drawingData?.strokeWidth ?? 4,
+													showEraserInDrawOut:
+														!annotation.drawingData?.showEraserInDrawOut,
+												})
+											}
+											className="h-9 w-full text-xs"
+										>
+											{t("annotations.showEraserInDrawOut", "Show eraser in Draw Out")}
+										</ToggleButton>
+									)}
 								<div>
-									<label className="text-sm font-medium text-foreground mb-2 block">{t("annotations.brushWidth", "Brush width")}</label>
-									<Slider value={[annotation.drawingData?.strokeWidth ?? 4]} min={1} max={24} step={1}
-										onValueChange={([strokeWidth]) => onDrawingDataChange?.({
-											points: annotation.drawingData?.points ?? [],
-											strokes: annotation.drawingData?.strokes,
-											color: annotation.drawingData?.color ?? "#2563EB",
-											strokeWidth,
-										})} />
+									<label className="text-sm font-medium text-foreground mb-2 block">
+										{t("annotations.brushWidth", "Brush width")}
+									</label>
+									<Slider
+										value={[annotation.drawingData?.strokeWidth ?? 4]}
+										min={1}
+										max={24}
+										step={1}
+										onValueChange={([strokeWidth]) =>
+											onDrawingDataChange?.({
+												points: annotation.drawingData?.points ?? [],
+												strokes: annotation.drawingData?.strokes,
+												color: annotation.drawingData?.color ?? "#2563EB",
+												strokeWidth,
+											})
+										}
+									/>
+								</div>
+								<div>
+									<label className="text-sm font-medium text-foreground mb-2 block">
+										{t("annotations.eraserSize", "Eraser size")}
+									</label>
+									<Slider
+										value={[annotation.drawingData?.eraserSize ?? 12]}
+										min={4}
+										max={48}
+										step={1}
+										onValueChange={([eraserSize]) =>
+											onDrawingDataChange?.({
+												...annotation.drawingData!,
+												points: annotation.drawingData?.points ?? [],
+												color: annotation.drawingData?.color ?? "#2563EB",
+												strokeWidth:
+													annotation.drawingData?.strokeWidth ?? 4,
+												eraserSize,
+											})
+										}
+									/>
 								</div>
 								<ColorControl
 									label={t("annotations.brushColor", "Brush color")}
 									value={annotation.drawingData?.color ?? "#2563EB"}
 									colors={colorPalette}
 									compact
-										onChange={(color) => onDrawingDataChange?.({
-										points: annotation.drawingData?.points ?? [],
-										strokes: annotation.drawingData?.strokes,
-										strokeWidth: annotation.drawingData?.strokeWidth ?? 4,
-										color,
-									})}
+									onChange={(color) =>
+										onDrawingDataChange?.({
+											points: annotation.drawingData?.points ?? [],
+											strokes: annotation.drawingData?.strokes,
+											strokeWidth: annotation.drawingData?.strokeWidth ?? 4,
+											color,
+										})
+									}
 								/>
+								<div className="space-y-3 rounded-lg border border-foreground/10 p-3">
+									<ToggleButton
+										isSelected={Boolean(
+											annotation.drawingData?.gradient?.enabled,
+										)}
+										onClick={() =>
+											onDrawingDataChange?.({
+												...annotation.drawingData!,
+												points: annotation.drawingData?.points ?? [],
+												color: annotation.drawingData?.color ?? "#2563EB",
+												strokeWidth:
+													annotation.drawingData?.strokeWidth ?? 4,
+												gradient: {
+													...DEFAULT_ANNOTATION_GRADIENT,
+													...annotation.drawingData?.gradient,
+													enabled:
+														!annotation.drawingData?.gradient?.enabled,
+												},
+											})
+										}
+										className="h-9 w-full text-xs"
+									>
+										{t("annotations.animatedGradient", "Animated gradient")}
+									</ToggleButton>
+									{annotation.drawingData?.gradient?.enabled && (
+										<>
+											<div>
+												<label className="mb-1 block text-xs text-muted-foreground">{t("annotations.gradientColorCount", "Gradient colors")}</label>
+												<Slider value={[Math.min(4, Math.max(2, annotation.drawingData.gradient.colors.length))]} min={2} max={4} step={1} onValueChange={([count]) => {
+													const colors = [...annotation.drawingData!.gradient!.colors];
+													while (colors.length < count) colors.push(colors[colors.length - 1] ?? "#A855F7");
+													onDrawingDataChange?.({ ...annotation.drawingData!, points: annotation.drawingData?.points ?? [], color: annotation.drawingData?.color ?? "#2563EB", strokeWidth: annotation.drawingData?.strokeWidth ?? 4, gradient: { ...DEFAULT_ANNOTATION_GRADIENT, ...annotation.drawingData!.gradient!, colors: colors.slice(0, count) } });
+												}} />
+											</div>
+											<div className="grid grid-cols-2 gap-2">
+											{(
+												annotation.drawingData.gradient.colors ??
+												DEFAULT_ANNOTATION_GRADIENT.colors
+											)
+												.slice(0, 4)
+												.map((color, index) => (
+													<ColorControl
+														key={index}
+														value={color}
+														label={`${t("annotations.gradientColor", "Gradient color")} ${index + 1}`}
+														compact
+														onChange={(nextColor) => {
+															const colors = [
+																...(annotation.drawingData?.gradient
+																	?.colors ??
+																	DEFAULT_ANNOTATION_GRADIENT.colors),
+															];
+															colors[index] = nextColor;
+															onDrawingDataChange?.({
+																...annotation.drawingData!,
+																points:
+																	annotation.drawingData
+																		?.points ?? [],
+																color:
+																	annotation.drawingData?.color ??
+																	"#2563EB",
+																strokeWidth:
+																	annotation.drawingData
+																		?.strokeWidth ?? 4,
+																gradient: {
+																	...DEFAULT_ANNOTATION_GRADIENT,
+																	...annotation.drawingData
+																		?.gradient,
+																	colors,
+																},
+															});
+														}}
+													/>
+												))}
+											</div>
+											<div>
+												<label className="mb-1 block text-xs text-muted-foreground">{t("annotations.gradientGlow", "Glow strength")}</label>
+												<Slider value={[annotation.drawingData.gradient.glow ?? DEFAULT_ANNOTATION_GRADIENT.glow]} min={0} max={40} step={1} onValueChange={([glow]) => onDrawingDataChange?.({ ...annotation.drawingData!, points: annotation.drawingData?.points ?? [], color: annotation.drawingData?.color ?? "#2563EB", strokeWidth: annotation.drawingData?.strokeWidth ?? 4, gradient: { ...DEFAULT_ANNOTATION_GRADIENT, ...annotation.drawingData!.gradient!, glow } })} />
+											</div>
+										</>
+									)}
+								</div>
+							</div>
+						)}
+
+						{annotation.type === "click" && (
+							<div className="space-y-4">
+								<p className="rounded-md bg-foreground/5 p-3 text-xs text-muted-foreground">
+									{t(
+										"annotations.clickHighlightHint",
+										"A timed highlight: particles expand slightly, stop, then fade out.",
+									)}
+								</p>
+								<ColorControl
+									label={t("annotations.clickColor", "Circle color")}
+									value={
+										annotation.clickData?.color ??
+										DEFAULT_CLICK_HIGHLIGHT_DATA.color
+									}
+									colors={colorPalette}
+									compact
+									onChange={(color) =>
+										onClickDataChange?.({
+											...DEFAULT_CLICK_HIGHLIGHT_DATA,
+											...annotation.clickData,
+											color,
+										})
+									}
+								/>
+								<div>
+									<label className="text-sm font-medium">
+										{t("annotations.particleCount", "Particles")}:{" "}
+										{annotation.clickData?.particleCount ??
+											DEFAULT_CLICK_HIGHLIGHT_DATA.particleCount}
+									</label>
+									<Slider
+										value={[
+											annotation.clickData?.particleCount ??
+												DEFAULT_CLICK_HIGHLIGHT_DATA.particleCount,
+										]}
+										min={0}
+										max={60}
+										step={1}
+										onValueChange={([particleCount]) =>
+											onClickDataChange?.({
+												...DEFAULT_CLICK_HIGHLIGHT_DATA,
+												...annotation.clickData,
+												particleCount,
+											})
+										}
+									/>
+								</div>
+								<div>
+									<label className="text-sm font-medium">
+										{t("annotations.clickSize", "Size")}:{" "}
+										{annotation.clickData?.radius ??
+											DEFAULT_CLICK_HIGHLIGHT_DATA.radius}
+										px
+									</label>
+									<Slider
+										value={[
+											annotation.clickData?.radius ??
+												DEFAULT_CLICK_HIGHLIGHT_DATA.radius,
+										]}
+										min={20}
+										max={300}
+										step={1}
+										onValueChange={([radius]) =>
+											onClickDataChange?.({
+												...DEFAULT_CLICK_HIGHLIGHT_DATA,
+												...annotation.clickData,
+												radius,
+											})
+										}
+									/>
+								</div>
 							</div>
 						)}
 					</div>
@@ -813,25 +1270,6 @@ export function AnnotationSettingsPanel({
 						</ul>
 					</details>
 				</div>
-			</div>
-			<div className="shrink-0 px-5 py-4 space-y-2">
-				<div className="grid grid-cols-2 gap-2">
-					<Button onClick={onDuplicate} disabled={!onDuplicate} variant="secondary" size="sm" title="Duplicate annotation" aria-label="Duplicate annotation">
-						<Copy className="w-4 h-4" />
-					</Button>
-					<Button onClick={onCut} disabled={!onCut} variant="secondary" size="sm" title="Cut annotation" aria-label="Cut annotation">
-						<Scissors className="w-4 h-4" />
-					</Button>
-				</div>
-				<Button
-					onClick={onDelete}
-					variant="destructive-soft"
-					size="sm"
-					className="w-full gap-2"
-				>
-					<Trash2 className="w-4 h-4" />
-					{t("annotations.deleteAnnotation")}
-				</Button>
 			</div>
 		</Card>
 	);

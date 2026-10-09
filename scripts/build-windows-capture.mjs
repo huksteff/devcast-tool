@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -25,6 +25,45 @@ const bundledDir = path.join(
 const bundledExePath = path.join(bundledDir, "wgc-capture.exe");
 const helperId = "wgc-capture";
 const generatorArch = process.arch === "arm64" ? "ARM64" : "x64";
+const COPY_ATTEMPTS = 12;
+const COPY_RETRY_DELAY_MS = 250;
+
+function waitForCopyRetry() {
+	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, COPY_RETRY_DELAY_MS);
+}
+
+function stageBundledHelper(sourcePath, destinationPath) {
+	try {
+		if (existsSync(destinationPath) && readFileSync(sourcePath).equals(readFileSync(destinationPath))) {
+			return;
+		}
+	} catch {
+		// A lock can also prevent reading the existing helper. Retry the replacement below.
+	}
+
+	let lastError;
+	for (let attempt = 1; attempt <= COPY_ATTEMPTS; attempt += 1) {
+		try {
+			copyFileSync(sourcePath, destinationPath);
+			return;
+		} catch (error) {
+			lastError = error;
+			const retryable =
+				error &&
+				typeof error === "object" &&
+				["UNKNOWN", "EBUSY", "EPERM"].includes(error.code);
+			if (!retryable || attempt === COPY_ATTEMPTS) break;
+			console.warn(
+				`[build-windows-capture] Bundled helper is temporarily locked; retrying ${attempt}/${COPY_ATTEMPTS}...`,
+			);
+			waitForCopyRetry();
+		}
+	}
+
+	throw new Error(
+		`Could not replace ${destinationPath}. Close any running DevCast or wgc-capture.exe, then retry. ${lastError?.message ?? ""}`,
+	);
+}
 
 if (process.platform !== "win32") {
 	console.log(
@@ -158,7 +197,7 @@ const exePath = path.join(buildDir, "Release", "wgc-capture.exe");
 if (existsSync(exePath)) {
 	console.log(`[build-windows-capture] Built successfully: ${exePath}`);
 	mkdirSync(bundledDir, { recursive: true });
-	copyFileSync(exePath, bundledExePath);
+	stageBundledHelper(exePath, bundledExePath);
 	console.log(`[build-windows-capture] Staged bundled helper: ${bundledExePath}`);
 	const manifestPath = updateNativeHelperManifest({
 		projectRoot,

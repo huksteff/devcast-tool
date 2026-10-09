@@ -143,7 +143,10 @@ const GRADIENTS = [
 	"linear-gradient(to right, #0acffe 0%, #495aff 100%)",
 ];
 
-const CAPTION_ANIMATION_OPTIONS: Array<{ value: AutoCaptionAnimation; label: string }> = [
+const CAPTION_ANIMATION_OPTIONS: Array<{
+	value: AutoCaptionAnimation;
+	label: string;
+}> = [
 	{ value: "none", label: "Off" },
 	{ value: "fade", label: "Fade" },
 	{ value: "rise", label: "Rise" },
@@ -521,6 +524,22 @@ interface SettingsPanelProps {
 	onCursorClickBounceDurationChange?: (duration: number) => void;
 	cursorSway?: number;
 	onCursorSwayChange?: (amount: number) => void;
+	cursorCalloutEnabled?: boolean;
+	onCursorCalloutEnabledChange?: (enabled: boolean) => void;
+	cursorCalloutText?: string;
+	onCursorCalloutTextChange?: (text: string) => void;
+	cursorCalloutBackground?: string;
+	onCursorCalloutBackgroundChange?: (color: string) => void;
+	cursorCalloutTextColor?: string;
+	onCursorCalloutTextColorChange?: (color: string) => void;
+	cursorCalloutScale?: number;
+	onCursorCalloutScaleChange?: (scale: number) => void;
+	cursorCalloutGradientEnabled?: boolean;
+	onCursorCalloutGradientEnabledChange?: (enabled: boolean) => void;
+	cursorCalloutGradientColors?: string[];
+	onCursorCalloutGradientColorsChange?: (colors: string[]) => void;
+	cursorCalloutGradientGlow?: number;
+	onCursorCalloutGradientGlowChange?: (glow: number) => void;
 	borderRadius?: number;
 	onBorderRadiusChange?: (radius: number) => void;
 	webcam?: WebcamOverlaySettings;
@@ -545,6 +564,8 @@ interface SettingsPanelProps {
 	onAnnotationDrawingDataChange?: (id: string, drawingData: DrawingData) => void;
 	onAnnotationBlurIntensityChange?: (id: string, intensity: number) => void;
 	onAnnotationBlurColorChange?: (id: string, color: string) => void;
+	onAnnotationClickDataChange?: (id: string, data: import("./types").ClickHighlightData) => void;
+	onAnnotationCalloutEventChange?: (id: string, data: NonNullable<AnnotationRegion["calloutEvent"]>) => void;
 	onAnnotationStagesChange?: (
 		id: string,
 		stages: Partial<import("./types").AnnotationStages>,
@@ -883,7 +904,10 @@ function CursorStylePreview({
 				alt=""
 				className="object-contain"
 				draggable={false}
-				style={{ width: `${resolvedPreviewSize}px`, height: `${resolvedPreviewSize}px` }}
+				style={{
+					width: `${resolvedPreviewSize}px`,
+					height: `${resolvedPreviewSize}px`,
+				}}
 			/>
 		</div>
 	);
@@ -976,6 +1000,22 @@ export function SettingsPanel({
 	onCursorClickBounceDurationChange,
 	cursorSway = DEFAULT_CURSOR_SWAY,
 	onCursorSwayChange,
+	cursorCalloutEnabled = false,
+	onCursorCalloutEnabledChange,
+	cursorCalloutText = "",
+	onCursorCalloutTextChange,
+	cursorCalloutBackground = "#14B8C4",
+	onCursorCalloutBackgroundChange,
+	cursorCalloutTextColor = "#FFFFFF",
+	onCursorCalloutTextColorChange,
+	cursorCalloutScale = 1,
+	onCursorCalloutScaleChange,
+	cursorCalloutGradientEnabled = false,
+	onCursorCalloutGradientEnabledChange,
+	cursorCalloutGradientColors = ["#14B8C4", "#A855F7"],
+	onCursorCalloutGradientColorsChange,
+	cursorCalloutGradientGlow = 14,
+	onCursorCalloutGradientGlowChange,
 	borderRadius = getDefaultBorderRadiusPercent(),
 	onBorderRadiusChange,
 	webcam,
@@ -1000,9 +1040,10 @@ export function SettingsPanel({
 	onAnnotationDrawingDataChange,
 	onAnnotationBlurIntensityChange,
 	onAnnotationBlurColorChange,
+	onAnnotationClickDataChange,
+	onAnnotationCalloutEventChange,
 	onAnnotationStagesChange,
 	onAnnotationDelete,
-	onAnnotationDuplicate,
 	autoCaptions = [],
 	autoCaptionSettings = DEFAULT_AUTO_CAPTION_SETTINGS,
 	whisperModelPath,
@@ -1329,7 +1370,13 @@ export function SettingsPanel({
 				padding,
 			};
 			onAspectRatioChange?.("native");
-			onPaddingChange?.({ top: 0, bottom: 0, left: 0, right: 0, linked: padding.linked });
+			onPaddingChange?.({
+				top: 0,
+				bottom: 0,
+				left: 0,
+				right: 0,
+				linked: padding.linked,
+			});
 			return;
 		}
 
@@ -1509,6 +1556,14 @@ export function SettingsPanel({
 		onCursorClickBounceChange?.(initialEditorPreferences.cursorClickBounce);
 		onCursorClickBounceDurationChange?.(initialEditorPreferences.cursorClickBounceDuration);
 		onCursorSwayChange?.(initialEditorPreferences.cursorSway);
+		onCursorCalloutEnabledChange?.(initialEditorPreferences.cursorCalloutEnabled);
+		onCursorCalloutTextChange?.(initialEditorPreferences.cursorCalloutText);
+		onCursorCalloutBackgroundChange?.(initialEditorPreferences.cursorCalloutBackground);
+		onCursorCalloutTextColorChange?.(initialEditorPreferences.cursorCalloutTextColor);
+		onCursorCalloutScaleChange?.(initialEditorPreferences.cursorCalloutScale);
+		onCursorCalloutGradientEnabledChange?.(initialEditorPreferences.cursorCalloutGradientEnabled);
+		onCursorCalloutGradientColorsChange?.(initialEditorPreferences.cursorCalloutGradientColors);
+		onCursorCalloutGradientGlowChange?.(initialEditorPreferences.cursorCalloutGradientGlow);
 	};
 
 	const activeMotionPresetId = useMemo(() => {
@@ -1712,7 +1767,11 @@ export function SettingsPanel({
 								label: tSettings("background.video", "Video"),
 								icon: VideoCamera,
 							},
-							{ value: "color", label: tSettings("background.color"), icon: Palette },
+							{
+								value: "color",
+								label: tSettings("background.color"),
+								icon: Palette,
+							},
 							{
 								value: "gradient",
 								label: tSettings("background.gradient"),
@@ -1897,18 +1956,17 @@ export function SettingsPanel({
 						? (color) => onAnnotationBlurColorChange(selectedAnnotation.id, color)
 						: undefined
 				}
+				onClickDataChange={
+					onAnnotationClickDataChange
+						? (data) => onAnnotationClickDataChange(selectedAnnotation.id, data)
+						: undefined
+				}
+				onCalloutEventChange={onAnnotationCalloutEventChange ? (data) => onAnnotationCalloutEventChange(selectedAnnotation.id, data) : undefined}
 				onStagesChange={
 					onAnnotationStagesChange
 						? (stages) => onAnnotationStagesChange(selectedAnnotation.id, stages)
 						: undefined
 				}
-				onDelete={() => onAnnotationDelete(selectedAnnotation.id)}
-				onDuplicate={
-					onAnnotationDuplicate
-						? () => onAnnotationDuplicate(selectedAnnotation)
-						: undefined
-				}
-				onCut={() => onAnnotationDelete(selectedAnnotation.id)}
 			/>
 		);
 	}
@@ -2028,15 +2086,6 @@ export function SettingsPanel({
 						</div>
 					)}
 				</div>
-				<SliderControl
-					label={tSettings("audio.gain", "Boost")}
-					value={selectedAudioGain ?? 1}
-					min={0}
-					max={10}
-					step={0.05}
-					onChange={(v) => onAudioGainChange?.(v)}
-					formatValue={(v) => `${v.toFixed(2)}×`}
-				/>
 				<div className="flex items-center justify-between py-2">
 					<span className="text-xs text-muted-foreground">
 						{tSettings("effects.removeBackground")}
@@ -2957,17 +3006,6 @@ export function SettingsPanel({
 										}
 										formatValue={(volume) => `${Math.round(volume * 100)}%`}
 									/>
-									<SliderControl
-										label={tSettings("audio.gain", "Boost")}
-										value={settings.gain ?? 1}
-										min={0}
-										max={10}
-										step={0.05}
-										onChange={(gain) =>
-											onSourceAudioTrackGainChange?.(track.id, gain)
-										}
-										formatValue={(gain) => `${gain.toFixed(2)}×`}
-									/>
 									<label className="flex items-center justify-between py-1 text-xs text-muted-foreground">
 										<span>{tSettings("audio.normalize", "Normalize")}</span>
 										<Switch
@@ -3157,6 +3195,40 @@ export function SettingsPanel({
 								onChange={(v) => onCursorSizeChange?.(v)}
 								formatValue={(v) => `${v.toFixed(2)}×`}
 							/>
+							<div className="grid gap-2 rounded-lg border border-foreground/10 p-3">
+								<label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+									<span>{tSettings("effects.cursorCallout", "Cursor label")}</span>
+									<Switch checked={cursorCalloutEnabled} onCheckedChange={onCursorCalloutEnabledChange} />
+								</label>
+								{cursorCalloutEnabled ? <>
+									<input
+										value={cursorCalloutText}
+										onChange={(event) => onCursorCalloutTextChange?.(event.target.value.slice(0, 80))}
+										placeholder={tSettings("effects.cursorCalloutText", "Label text")}
+										className="h-8 rounded-md border border-foreground/15 bg-background px-2 text-xs"
+									/>
+									<div className="grid grid-cols-2 gap-2">
+										<ColorControl label={tSettings("effects.cursorCalloutColor", "Bubble color")} value={cursorCalloutBackground} onChange={(value) => onCursorCalloutBackgroundChange?.(value)} />
+										<ColorControl label={tSettings("effects.cursorCalloutTextColor", "Text color")} value={cursorCalloutTextColor} onChange={(value) => onCursorCalloutTextColorChange?.(value)} />
+									</div>
+									<SliderControl label={tSettings("effects.cursorCalloutSize", "Label size")} value={cursorCalloutScale} min={0.5} max={2} step={0.05} onChange={(value) => onCursorCalloutScaleChange?.(value)} formatValue={(value) => `${value.toFixed(2)}×`} />
+									<label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+										<span>{tSettings("effects.cursorCalloutGradient", "Animated gradient")}</span>
+										<Switch checked={cursorCalloutGradientEnabled} onCheckedChange={onCursorCalloutGradientEnabledChange} />
+									</label>
+									{cursorCalloutGradientEnabled ? <div className="grid gap-2 rounded-md bg-foreground/5 p-2">
+										<SliderControl label={tSettings("effects.gradientColorCount", "Gradient colors")} value={cursorCalloutGradientColors.length} min={2} max={4} step={1} onChange={(count) => {
+											const next = [...cursorCalloutGradientColors];
+											while (next.length < count) next.push(next[next.length - 1] ?? "#A855F7");
+											onCursorCalloutGradientColorsChange?.(next.slice(0, count));
+										}} formatValue={(count) => String(count)} />
+										<div className="grid grid-cols-2 gap-2">
+											{cursorCalloutGradientColors.map((color, index) => <ColorControl key={index} label={`${tSettings("effects.gradientColor", "Gradient color")} ${index + 1}`} value={color} onChange={(value) => { const next = [...cursorCalloutGradientColors]; next[index] = value; onCursorCalloutGradientColorsChange?.(next); }} />)}
+										</div>
+										<SliderControl label={tSettings("effects.gradientGlow", "Glow strength")} value={cursorCalloutGradientGlow} min={0} max={40} step={1} onChange={(value) => onCursorCalloutGradientGlowChange?.(value)} formatValue={(value) => String(value)} />
+									</div> : null}
+								</> : null}
+							</div>
 							<CursorClickEffectCards
 								title={tSettings(
 									"effects.cursorClickEffects.title",
