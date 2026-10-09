@@ -223,9 +223,6 @@ interface Window {
 		sendTimelineWindowMessage: (message: unknown) => void;
 		onTimelineWindowMessage: (callback: (message: unknown) => void) => () => void;
 		hudOverlaySetIgnoreMouse: (ignore: boolean) => void;
-		hudOverlaySetInteractiveBounds: (
-			bounds: Array<{ left: number; top: number; right: number; bottom: number }>,
-		) => void;
 		hudOverlaySetSourceSelectionActive: (active: boolean) => void;
 		hudOverlayDrag: (phase: "start" | "move" | "end", screenX: number, screenY: number) => void;
 		hudOverlayHide: () => void;

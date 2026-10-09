@@ -179,8 +179,7 @@ function LaunchWindowContent() {
 	const { handleHudMouseEnter, handleHudMouseLeave, beginInteractiveHudAction } =
 		useLaunchHudInteractionState({
 			openId,
-			hudContentRef,
-			hudBarRef,
+			mousePassthroughSupported: hudOverlayMousePassthroughSupported === true,
 			isHudDraggingRef,
 			isWebcamPreviewDraggingRef,
 			webcamPreviewDragStartRef,

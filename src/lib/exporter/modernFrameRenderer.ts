@@ -2990,7 +2990,7 @@ export class FrameRenderer {
 		const cursorTimeMs = cursorTimestamp / 1000;
 
 		if (this.cursorOverlay) {
-			const callout = resolveCursorCalloutState(this.config.annotationRegions, cursorTimeMs, {
+			const callout = resolveCursorCalloutState(this.config.annotationRegions, timeMs, {
 				enabled: this.config.cursorCalloutEnabled ?? false,
 				text: this.config.cursorCalloutText ?? "",
 			});

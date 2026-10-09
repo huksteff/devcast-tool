@@ -83,6 +83,37 @@ export const FONT_FAMILY_VALUES = [
 
 export const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 96, 128];
 
+type FigureKind = NonNullable<FigureData["kind"]>;
+
+function FigureKindPreview({ kind }: { kind: FigureKind }) {
+	return (
+		<svg
+			aria-hidden="true"
+			viewBox="0 0 48 28"
+			className="h-7 w-12 overflow-visible"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2.4"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
+			{kind === "arrow" && (
+				<>
+					<path d="M7 14h31" />
+					<path d="m30 6 8 8-8 8" />
+				</>
+			)}
+			{kind === "rectangle" && <rect x="7" y="5" width="34" height="18" rx="1.5" />}
+			{kind === "ellipse" && <ellipse cx="24" cy="14" rx="18" ry="9" />}
+			{kind === "circle" && <circle cx="24" cy="14" r="10" />}
+			{kind === "line" && <path d="M7 21 41 7" />}
+			{kind === "highlight" && (
+				<path d="M7 14h34" strokeWidth="9" strokeOpacity="0.55" />
+			)}
+		</svg>
+	);
+}
+
 export function AnnotationSettingsPanel({
 	annotation,
 	onContentChange,
@@ -709,24 +740,38 @@ export function AnnotationSettingsPanel({
 										className="grid grid-cols-3 gap-2"
 										aria-label={t("annotations.shape", "Shape")}
 									>
-										{["arrow", "rectangle", "ellipse", "circle", "line", "highlight"].map(
-											(kind) => (
-												<ChoiceItem
-													key={kind}
-													value={kind}
-													className="min-w-0 px-1 text-[10px] capitalize"
-												>
-													{kind === "rectangle"
-														? "Rect"
-														: kind === "circle"
-															? t("annotations.circle", "Circle")
-															: kind}
-												</ChoiceItem>
-											),
-										)}
+									{(
+										["arrow", "rectangle", "ellipse", "circle", "line", "highlight"] as FigureKind[]
+									).map((kind) => {
+										const label =
+											kind === "rectangle"
+												? t("annotations.rectangle", "Rectangle")
+												: kind === "ellipse"
+													? t("annotations.ellipse", "Ellipse")
+													: kind === "circle"
+														? t("annotations.circle", "Circle")
+														: kind === "highlight"
+															? t("annotations.highlight", "Highlight")
+															: kind === "line"
+																? t("annotations.line", "Line")
+																: t("annotations.arrow", "Arrow");
+										return (
+											<ChoiceItem
+												key={kind}
+												value={kind}
+												aria-label={label}
+												title={label}
+												className="h-12 min-w-0 px-1"
+											>
+												<FigureKindPreview kind={kind} />
+												<span className="sr-only">{label}</span>
+											</ChoiceItem>
+										);
+									})}
 									</ChoiceGroup>
 								</div>
-								<div>
+								{(annotation.figureData?.kind ?? "arrow") === "arrow" && (
+									<div>
 									<label className="text-sm font-medium text-foreground mb-3 block">
 										{t("annotations.arrowDirection")}
 									</label>
@@ -780,7 +825,8 @@ export function AnnotationSettingsPanel({
 											);
 										})}
 									</div>
-								</div>
+									</div>
+								)}
 
 								<div>
 									<label className="text-sm font-medium text-foreground mb-2 block">

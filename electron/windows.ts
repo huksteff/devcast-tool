@@ -6,7 +6,9 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import { supportsHudCaptureProtection } from "../src/lib/hudCaptureProtection";
 import { USER_DATA_PATH } from "./appPaths";
 import {
+	getHudOverlayWindowShape,
 	getHudOverlayWindowBounds,
+	getStableHudOverlayWindowBounds,
 	resizeHudOverlayFallbackBounds,
 	shouldExpandHudOverlayFallback,
 } from "./hudOverlayBounds";
@@ -35,9 +37,6 @@ let hudOverlayFallbackExpanded = false;
 let hudOverlayIgnoringMouse = true;
 let hudOverlaySourceSelectionActive = false;
 let hudOverlayMouseReassertTimer: NodeJS.Timeout | null = null;
-let hudOverlayInteractiveBounds: Array<{ left: number; top: number; right: number; bottom: number }> =
-	[];
-let hudOverlayMouseWatchTimer: NodeJS.Timeout | null = null;
 let hudOverlayRecordingActive = false;
 let hudOverlayWebcamPreviewVisible = false;
 let countdownWindow: BrowserWindow | null = null;
@@ -123,7 +122,10 @@ function getEditorWindowQuery(): Record<string, string> {
 }
 
 export function isHudOverlayMousePassthroughSupported(): boolean {
-	return process.platform !== "linux";
+	// macOS provides reliable forwarded pointer events for transparent overlays.
+	// Windows does not: WS_EX_TRANSPARENT can remain stuck after activation
+	// changes. Use the compact/expanded real-window HUD there instead.
+	return process.platform === "darwin";
 }
 
 function loadHudOverlayCaptureProtectionSetting(): boolean {
@@ -209,6 +211,10 @@ function getHudOverlayDisplay() {
 
 function getHudOverlayBounds() {
 	const { workArea } = getHudOverlayDisplay();
+	if (usesStableHudOverlayShape()) {
+		return getStableHudOverlayWindowBounds(workArea);
+	}
+
 	const fallbackExpanded = shouldExpandHudOverlayFallback({
 		fallbackExpanded: hudOverlayFallbackExpanded,
 		recordingActive: hudOverlayRecordingActive,
@@ -221,11 +227,44 @@ function getHudOverlayBounds() {
 	);
 }
 
+function usesStableHudOverlayShape(): boolean {
+	return process.platform === "win32" && !isHudOverlayMousePassthroughSupported();
+}
+
+function isSameBounds(
+	left: { x: number; y: number; width: number; height: number },
+	right: { x: number; y: number; width: number; height: number },
+): boolean {
+	return (
+		left.x === right.x &&
+		left.y === right.y &&
+		left.width === right.width &&
+		left.height === right.height
+	);
+}
+
+function applyHudOverlayShape(target = hudOverlayWindow): void {
+	if (!usesStableHudOverlayShape() || !target || target.isDestroyed()) {
+		return;
+	}
+
+	const expanded = shouldExpandHudOverlayFallback({
+		fallbackExpanded: hudOverlayFallbackExpanded,
+		recordingActive: hudOverlayRecordingActive,
+		webcamPreviewVisible: hudOverlayWebcamPreviewVisible,
+	});
+	target.setShape(getHudOverlayWindowShape(target.getBounds(), expanded));
+}
+
 function applyHudOverlayBounds() {
 	if (!hudOverlayWindow || hudOverlayWindow.isDestroyed()) {
 		return;
 	}
-	hudOverlayWindow.setBounds(getHudOverlayBounds(), false);
+	const nextBounds = getHudOverlayBounds();
+	if (!isSameBounds(hudOverlayWindow.getBounds(), nextBounds)) {
+		hudOverlayWindow.setBounds(nextBounds, false);
+	}
+	applyHudOverlayShape();
 
 	positionUpdateToastWindow();
 	if (!hudOverlayWindow.isVisible()) {
@@ -286,6 +325,15 @@ function setHudOverlayFallbackExpanded(expanded: boolean) {
 	) {
 		return;
 	}
+	if (usesStableHudOverlayShape()) {
+		// Do not resize the transparent Windows BrowserWindow when a popover
+		// opens. Changing only the native input/paint region avoids the DWM flash.
+		applyHudOverlayShape();
+		if (hudOverlayWindow.isVisible()) {
+			hudOverlayWindow.moveTop();
+		}
+		return;
+	}
 
 	const { workArea } = getHudOverlayDisplay();
 	const nextBounds = resizeHudOverlayFallbackBounds(
@@ -320,13 +368,13 @@ function setHudOverlayMousePassthrough(ignore: boolean) {
 
 	if (!isHudOverlayMousePassthroughSupported()) {
 		if (process.platform !== "linux") {
-			setHudOverlayFallbackExpanded(!ignore);
+			setHudOverlayFallbackExpanded(!hudOverlayIgnoringMouse);
 		}
 		hudOverlayWindow.setIgnoreMouseEvents(false);
 		return;
 	}
 
-	if (ignore) {
+	if (hudOverlayIgnoringMouse) {
 		hudOverlayWindow.setIgnoreMouseEvents(true, { forward: true });
 		return;
 	}
@@ -338,66 +386,16 @@ ipcMain.on("hud-overlay-set-ignore-mouse", (_event, ignore: boolean) => {
 	setHudOverlayMousePassthrough(Boolean(ignore));
 });
 
-ipcMain.on(
-	"hud-overlay-set-interactive-bounds",
-	(_event, bounds: Array<{ left?: unknown; top?: unknown; right?: unknown; bottom?: unknown }>) => {
-		if (!Array.isArray(bounds)) return;
-		hudOverlayInteractiveBounds = bounds.flatMap((bound) => {
-			const { left, top, right, bottom } = bound;
-			if (
-				typeof left !== "number" ||
-				typeof top !== "number" ||
-				typeof right !== "number" ||
-				typeof bottom !== "number" ||
-				!Number.isFinite(left) ||
-				!Number.isFinite(top) ||
-				!Number.isFinite(right) ||
-				!Number.isFinite(bottom) ||
-				right <= left ||
-				bottom <= top
-			) {
-				return [];
-			}
-			return [{ left, top, right, bottom }];
-		});
-	},
-);
-
-function refreshHudMousePassthroughFromCursor(): void {
-	if (
-		process.platform !== "win32" ||
-		!isHudOverlayMousePassthroughSupported() ||
-		hudOverlaySourceSelectionActive ||
-		hudOverlayInteractiveBounds.length === 0
-	) {
-		return;
-	}
-
-	const hud = getHudOverlayWindow();
-	if (!hud || !hud.isVisible()) return;
-	const cursor = getScreen().getCursorScreenPoint();
-	const { x, y } = hud.getBounds();
-	const interactive = hudOverlayInteractiveBounds.some(
-		(bound) =>
-			cursor.x >= x + bound.left &&
-			cursor.x <= x + bound.right &&
-			cursor.y >= y + bound.top &&
-			cursor.y <= y + bound.bottom,
-	);
-	if (interactive === hudOverlayIgnoringMouse) {
-		setHudOverlayMousePassthrough(!interactive);
-	}
-}
-
 ipcMain.on("hud-overlay-set-source-selection-active", (_event, active: boolean) => {
 	hudOverlaySourceSelectionActive = Boolean(active);
 	if (hudOverlaySourceSelectionActive) {
 		hudOverlayFallbackExpanded = false;
 		applyHudOverlayBounds();
+		setHudOverlayMousePassthrough(true);
 		return;
 	}
 
-	setHudOverlayMousePassthrough(hudOverlayIgnoringMouse);
+	setHudOverlayMousePassthrough(true);
 });
 
 // Keep compatibility with existing drag IPC/state.
@@ -542,6 +540,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 			backgroundThrottling: false,
 		},
 	});
+	applyHudOverlayShape(win);
 	// Keep the recording controls and webcam above normal and full-screen apps.
 	// Transparent regions remain click-through via setIgnoreMouseEvents().
 	win.setAlwaysOnTop(true, "screen-saver");
@@ -594,35 +593,12 @@ export function createHudOverlayWindow(): BrowserWindow {
 	});
 
 	if (isHudOverlayMousePassthroughSupported()) {
-		if (hudOverlayRecordingActive) {
-			hudOverlayIgnoringMouse = false;
-			win.setIgnoreMouseEvents(false);
-		} else {
-			hudOverlayIgnoringMouse = true;
-			win.setIgnoreMouseEvents(true, { forward: true });
-		}
+		// Keep the HUD interactive from its first frame. On Windows this avoids
+		// depending on a future forwarded hover event to restore input.
+		hudOverlayIgnoringMouse = false;
+		win.setIgnoreMouseEvents(false);
 	}
 
-	// On Windows 11+, focus changes (e.g. showing a native notification) can break
-	// setIgnoreMouseEvents forwarding on a transparent always-on-top window, making
-	// it permanently click-through without hover detection.  Re-initialise the
-	// pass-through-with-forwarding state whenever the window gains focus by toggling
-	// the flag off then back on so the native WS_EX_TRANSPARENT flag is fully reset.
-	if (process.platform === "win32" && isHudOverlayMousePassthroughSupported()) {
-		win.on("focus", () => {
-			if (!win.isDestroyed()) {
-				win.setIgnoreMouseEvents(false);
-				setTimeout(() => {
-					if (!win.isDestroyed()) {
-						setHudOverlayMousePassthrough(hudOverlayIgnoringMouse);
-					}
-				}, 50);
-			}
-		});
-		// Forwarded events can stop arriving after Windows recreates the transparent
-		// overlay's input region. Native cursor/bounds polling is a recovery path.
-		hudOverlayMouseWatchTimer = setInterval(refreshHudMousePassthroughFromCursor, 80);
-	}
 
 	win.webContents.on("did-finish-load", () => {
 		console.log(`[PERF:MAIN] HUD Window: did-finish-load in ${Date.now() - perfStart}ms`);
@@ -695,11 +671,6 @@ export function createHudOverlayWindow(): BrowserWindow {
 		screen.removeListener("display-metrics-changed", handleDisplayMetricsChanged);
 		if (hudOverlayWindow === win) {
 			hudOverlayWindow = null;
-			hudOverlayInteractiveBounds = [];
-			if (hudOverlayMouseWatchTimer) {
-				clearInterval(hudOverlayMouseWatchTimer);
-				hudOverlayMouseWatchTimer = null;
-			}
 		}
 	});
 
@@ -751,7 +722,8 @@ export function createTimelineWindow(): BrowserWindow {
 		if (timelineWindow === win) {
 			timelineWindow = null;
 			for (const editor of getTimelineEditorWindows()) {
-				if (!editor.isDestroyed()) editor.webContents.send("timeline-window:message", { type: "window-closed" });
+				if (!editor.isDestroyed())
+					editor.webContents.send("timeline-window:message", { type: "window-closed" });
 			}
 		}
 	});

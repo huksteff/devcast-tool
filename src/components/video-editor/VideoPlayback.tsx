@@ -538,6 +538,17 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		const cursorClickBounceRef = useRef(cursorClickBounce);
 		const cursorClickBounceDurationRef = useRef(cursorClickBounceDuration);
 		const cursorSwayRef = useRef(cursorSway);
+		const annotationRegionsRef = useRef(annotationRegions);
+		const cursorCalloutConfigRef = useRef({
+			enabled: cursorCalloutEnabled,
+			text: cursorCalloutText,
+			background: cursorCalloutBackground,
+			textColor: cursorCalloutTextColor,
+			scale: cursorCalloutScale,
+			gradientEnabled: cursorCalloutGradientEnabled,
+			gradientColors: cursorCalloutGradientColors,
+			gradientGlow: cursorCalloutGradientGlow,
+		});
 		const zoomMotionBlurRef = useRef(zoomMotionBlur);
 		const zoomMotionBlurTuningRef = useRef(zoomMotionBlurTuning);
 
@@ -557,6 +568,32 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				shouldSnapPausedFrameRef.current = true;
 			}
 		}, []);
+
+		useEffect(() => {
+			annotationRegionsRef.current = annotationRegions;
+			cursorCalloutConfigRef.current = {
+				enabled: cursorCalloutEnabled,
+				text: cursorCalloutText,
+				background: cursorCalloutBackground,
+				textColor: cursorCalloutTextColor,
+				scale: cursorCalloutScale,
+				gradientEnabled: cursorCalloutGradientEnabled,
+				gradientColors: cursorCalloutGradientColors,
+				gradientGlow: cursorCalloutGradientGlow,
+			};
+			requestPausedFrameRefresh();
+		}, [
+			annotationRegions,
+			cursorCalloutEnabled,
+			cursorCalloutText,
+			cursorCalloutBackground,
+			cursorCalloutTextColor,
+			cursorCalloutScale,
+			cursorCalloutGradientEnabled,
+			cursorCalloutGradientColors,
+			cursorCalloutGradientGlow,
+			requestPausedFrameRefresh,
+		]);
 
 		const initializePixiRenderer = useCallback(
 			async (container: HTMLDivElement): Promise<Application> => {
@@ -2195,11 +2232,25 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				const timeMs = currentTimeRef.current;
 				const cursorOverlay = cursorOverlayRef.current;
 				if (cursorOverlay) {
-					const callout = resolveCursorCalloutState(annotationRegions, timeMs, {
-						enabled: cursorCalloutEnabled,
-						text: cursorCalloutText,
-					});
-					cursorOverlay.setCallout(callout.enabled, callout.text, cursorCalloutBackground, cursorCalloutTextColor, cursorCalloutScale, cursorCalloutGradientEnabled, cursorCalloutGradientColors, cursorCalloutGradientGlow);
+					const calloutConfig = cursorCalloutConfigRef.current;
+					const callout = resolveCursorCalloutState(
+						annotationRegionsRef.current,
+						timelineTimeRef.current * 1000,
+						{
+							enabled: calloutConfig.enabled,
+							text: calloutConfig.text,
+						},
+					);
+					cursorOverlay.setCallout(
+						callout.enabled,
+						callout.text,
+						calloutConfig.background,
+						calloutConfig.textColor,
+						calloutConfig.scale,
+						calloutConfig.gradientEnabled,
+						calloutConfig.gradientColors,
+						calloutConfig.gradientGlow,
+					);
 					cursorOverlay.update(
 						cursorTelemetryRef.current,
 						timeMs,
@@ -2254,6 +2305,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				cursorCalloutBackground,
 				cursorCalloutTextColor,
 				cursorCalloutScale,
+				cursorCalloutGradientEnabled,
+				cursorCalloutGradientColors,
+				cursorCalloutGradientGlow,
 			);
 
 			void (async () => {
@@ -2299,6 +2353,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			cursorCalloutBackground,
 			cursorCalloutTextColor,
 			cursorCalloutScale,
+			cursorCalloutGradientEnabled,
+			cursorCalloutGradientColors,
+			cursorCalloutGradientGlow,
 		]);
 
 		const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {

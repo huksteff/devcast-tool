@@ -38,6 +38,45 @@ export function getHudOverlayWindowBounds(
 	};
 }
 
+/**
+ * Windows transparent windows visibly flash when their native bounds change.
+ * Keep one expanded backing window there and clip its native shape instead.
+ */
+export function getStableHudOverlayWindowBounds(
+	workArea: HudOverlayWorkArea,
+): HudOverlayWorkArea {
+	return getHudOverlayWindowBounds(workArea, false, true);
+}
+
+export function getHudOverlayWindowShape(
+	windowBounds: Pick<HudOverlayWorkArea, "width" | "height">,
+	expanded: boolean,
+): HudOverlayWorkArea[] {
+	if (expanded) {
+		return [
+			{
+				x: 0,
+				y: 0,
+				width: windowBounds.width,
+				height: windowBounds.height,
+			},
+		];
+	}
+
+	const compactHeight = Math.min(
+		windowBounds.height,
+		NON_PASSTHROUGH_HUD_COMPACT_HEIGHT_DIP,
+	);
+	return [
+		{
+			x: 0,
+			y: windowBounds.height - compactHeight,
+			width: windowBounds.width,
+			height: compactHeight,
+		},
+	];
+}
+
 export function shouldExpandHudOverlayFallback({
 	fallbackExpanded,
 	recordingActive,

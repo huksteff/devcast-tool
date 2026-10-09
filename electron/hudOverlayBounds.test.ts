@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	getHudOverlayWindowShape,
 	getHudOverlayWindowBounds,
+	getStableHudOverlayWindowBounds,
 	resizeHudOverlayFallbackBounds,
 	shouldExpandHudOverlayFallback,
 } from "./hudOverlayBounds";
@@ -73,6 +75,36 @@ describe("getHudOverlayWindowBounds", () => {
 			width: 640,
 			height: 420,
 		});
+	});
+});
+
+describe("stable Windows HUD geometry", () => {
+	it("keeps expanded native bounds while the HUD is compact", () => {
+		expect(
+			getStableHudOverlayWindowBounds({
+				x: 120,
+				y: 40,
+				width: 1920,
+				height: 1040,
+			}),
+		).toEqual({
+			x: 650,
+			y: 540,
+			width: 860,
+			height: 540,
+		});
+	});
+
+	it("clips a compact HUD to the bottom of the stable window", () => {
+		expect(getHudOverlayWindowShape({ width: 860, height: 540 }, false)).toEqual([
+			{ x: 0, y: 380, width: 860, height: 160 },
+		]);
+	});
+
+	it("uses the whole stable window while a popover is open", () => {
+		expect(getHudOverlayWindowShape({ width: 860, height: 540 }, true)).toEqual([
+			{ x: 0, y: 0, width: 860, height: 540 },
+		]);
 	});
 });
 
