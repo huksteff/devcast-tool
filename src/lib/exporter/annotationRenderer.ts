@@ -8,7 +8,8 @@ import {
 	getAnimatedGradientColors,
 	DEFAULT_CLICK_HIGHLIGHT_DATA,
 } from "@/components/video-editor/types";
-import { resolveAnnotationTransformAtTime } from "@/components/video-editor/annotationKeyframes";
+import { resolveAnnotationAtTime, resolveAnnotationTransformAtTime } from "@/components/video-editor/annotationKeyframes";
+import { compareAnnotationLayerOrder } from "@/components/video-editor/annotationLayerOrder";
 
 export interface AnnotationRenderAssets {
 	imageCache: Map<string, HTMLImageElement>;
@@ -155,8 +156,10 @@ function parseSvgPath(
 function renderArrow(
 	ctx: CanvasRenderingContext2D,
 	direction: ArrowDirection,
-	color: string,
+	colors: string[],
 	strokeWidth: number,
+	opacity: number,
+	glow: number,
 	x: number,
 	y: number,
 	width: number,
@@ -179,13 +182,20 @@ function renderArrow(
 	const offsetY = padding + (availableHeight - 100 * scale) / 2;
 
 	ctx.translate(offsetX, offsetY);
+	ctx.globalAlpha *= opacity;
 
-	ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
-	ctx.shadowBlur = 8 * scale;
+	ctx.shadowColor = glow > 0 ? colors[Math.floor(colors.length / 2)] : "rgba(0, 0, 0, 0.3)";
+	ctx.shadowBlur = glow > 0 ? glow * _scaleFactor * 1.5 : 8 * scale;
 	ctx.shadowOffsetX = 0;
-	ctx.shadowOffsetY = 4 * scale;
+	ctx.shadowOffsetY = glow > 0 ? 0 : 4 * scale;
 
-	ctx.strokeStyle = color;
+	if (colors.length > 1) {
+		const gradient = ctx.createLinearGradient(0, 0, 100 * scale, 0);
+		colors.forEach((color, index) => gradient.addColorStop(index / (colors.length - 1), color));
+		ctx.strokeStyle = gradient;
+	} else {
+		ctx.strokeStyle = colors[0];
+	}
 	ctx.lineWidth = strokeWidth * scale;
 	ctx.lineCap = "round";
 	ctx.lineJoin = "round";
@@ -221,12 +231,25 @@ function renderFigure(
 ) {
 	const figure = annotation.figureData;
 	if (!figure) return;
+	const kind = figure.kind ?? "arrow";
+	const opacity = Math.max(0, Math.min(1, figure.opacity ?? (kind === "highlight" ? 0.28 : 1)));
+	const fillEnabled = figure.fillEnabled ?? kind === "highlight";
+	const outlineEnabled = figure.outlineEnabled ?? kind !== "highlight";
+	const fillGradient = figure.fillGradient ?? (kind === "highlight" ? figure.gradient : undefined);
+	const gradientColors = getAnimatedGradientColors(figure.gradient, currentTimeMs, figure.color);
+	const fillColors = getAnimatedGradientColors(fillGradient, currentTimeMs, figure.fillColor ?? figure.color);
+	const glow = Math.max(
+		outlineEnabled && figure.gradient?.enabled ? figure.gradient.glow : 0,
+		fillEnabled && fillGradient?.enabled ? fillGradient.glow : 0,
+	);
 	if ((figure.kind ?? "arrow") === "arrow") {
 		renderArrow(
 			ctx,
 			figure.arrowDirection,
-			figure.color,
+			gradientColors,
 			figure.strokeWidth,
+			opacity,
+			glow,
 			x,
 			y,
 			width,
@@ -236,8 +259,8 @@ function renderFigure(
 		return;
 	}
 	ctx.save();
-	const gradientColors = getAnimatedGradientColors(figure.gradient, currentTimeMs, figure.color);
-	const strokeGradient =
+	ctx.globalAlpha *= opacity;
+	const strokePaint =
 		gradientColors.length > 1
 			? (() => {
 					const gradient = ctx.createLinearGradient(x, y, x + width, y);
@@ -247,20 +270,28 @@ function renderFigure(
 					return gradient;
 				})()
 			: figure.color;
-	ctx.strokeStyle = strokeGradient;
-	if (figure.gradient?.enabled) {
-		ctx.shadowColor = gradientColors[0];
-		ctx.shadowBlur = Math.max(0, figure.gradient.glow || 0) * scaleFactor;
+	const fillPaint = fillColors.length > 1
+		? (() => {
+			const gradient = ctx.createLinearGradient(x, y, x + width, y);
+			fillColors.forEach((color, index) => gradient.addColorStop(index / (fillColors.length - 1), color));
+			return gradient;
+		})()
+		: fillColors[0];
+	ctx.strokeStyle = strokePaint;
+	ctx.fillStyle = fillPaint;
+	if (glow > 0) {
+		ctx.shadowColor = fillEnabled && fillGradient?.enabled
+			? fillColors[Math.floor(fillColors.length / 2)]
+			: gradientColors[Math.floor(gradientColors.length / 2)];
+		ctx.shadowBlur = glow * scaleFactor * 1.5;
 	}
 	ctx.lineWidth = Math.max(1, figure.strokeWidth * scaleFactor);
 	ctx.lineCap = "round";
 	ctx.lineJoin = "round";
 	const inset = ctx.lineWidth / 2;
-	const kind = figure.kind;
 	if (kind === "highlight") {
-		ctx.globalAlpha = 0.28;
-		ctx.fillStyle = strokeGradient;
-		ctx.fillRect(x, y, width, height);
+		if (fillEnabled) ctx.fillRect(x, y, width, height);
+		if (outlineEnabled) ctx.strokeRect(x + inset, y + inset, Math.max(0, width - inset * 2), Math.max(0, height - inset * 2));
 	} else if (kind === "ellipse") {
 		ctx.beginPath();
 		ctx.ellipse(
@@ -272,24 +303,26 @@ function renderFigure(
 			0,
 			Math.PI * 2,
 		);
-		ctx.stroke();
+		if (fillEnabled) ctx.fill();
+		if (outlineEnabled) ctx.stroke();
 	} else if (kind === "circle") {
 		const radius = Math.max(0, Math.min(width, height) / 2 - inset);
 		ctx.beginPath();
 		ctx.arc(x + width / 2, y + height / 2, radius, 0, Math.PI * 2);
-		ctx.stroke();
+		if (fillEnabled) ctx.fill();
+		if (outlineEnabled) ctx.stroke();
 	} else if (kind === "line") {
 		ctx.beginPath();
 		ctx.moveTo(x + inset, y + height - inset);
 		ctx.lineTo(x + width - inset, y + inset);
-		ctx.stroke();
+		if (outlineEnabled) ctx.stroke();
 	} else {
-		ctx.strokeRect(
-			x + inset,
-			y + inset,
-			Math.max(0, width - inset * 2),
-			Math.max(0, height - inset * 2),
-		);
+		const rectX = x + inset;
+		const rectY = y + inset;
+		const rectWidth = Math.max(0, width - inset * 2);
+		const rectHeight = Math.max(0, height - inset * 2);
+		if (fillEnabled) ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
+		if (outlineEnabled) ctx.strokeRect(rectX, rectY, rectWidth, rectHeight);
 	}
 	ctx.restore();
 }
@@ -597,7 +630,7 @@ export async function renderAnnotations(
 		(ann) => currentTimeMs >= ann.startMs && currentTimeMs <= ann.endMs,
 	);
 
-	const sortedAnnotations = [...activeAnnotations].sort((a, b) => a.zIndex - b.zIndex);
+	const sortedAnnotations = [...activeAnnotations].sort(compareAnnotationLayerOrder);
 	const annotationRect = coordinateRect ?? {
 		x: 0,
 		y: 0,
@@ -608,7 +641,8 @@ export async function renderAnnotations(
 		? getAnnotationContentScale(annotationRect.width)
 		: scaleFactor;
 
-	for (const annotation of sortedAnnotations) {
+	for (const sourceAnnotation of sortedAnnotations) {
+		const annotation = resolveAnnotationAtTime(sourceAnnotation, currentTimeMs);
 		const transform = resolveAnnotationTransformAtTime(annotation, currentTimeMs);
 		const { position, size } = transform;
 		const stage = getAnnotationStageState(annotation, currentTimeMs);

@@ -155,6 +155,8 @@ export interface ProjectEditorState {
 	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
 	audioRegions: AudioRegion[];
+	audioTrackCount?: number;
+	audioTrackMix?: import("./audio/audioTrackMix").AudioTrackMix;
 	autoCaptions: CaptionCue[];
 	autoCaptionSettings: AutoCaptionSettings;
 	webcam: WebcamOverlaySettings;
@@ -531,7 +533,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						showSourceAudio:
 							typeof region.showSourceAudio === "boolean"
 								? region.showSourceAudio
-								: false,
+								: true,
 					};
 				})
 		: [];
@@ -656,6 +658,10 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 													height: Math.max(1, frame.size.height),
 												}
 											: undefined,
+									properties:
+										frame.properties && typeof frame.properties === "object"
+											? structuredClone(frame.properties)
+											: undefined,
 								}))
 									.sort((left, right) => left.timeMs - right.timeMs)
 							: undefined,
@@ -743,7 +749,18 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 								: undefined,
 						calloutEvent:
 							region.calloutEvent && typeof region.calloutEvent === "object"
-								? { action: region.calloutEvent.action === "enable" || region.calloutEvent.action === "disable" || region.calloutEvent.action === "text" ? region.calloutEvent.action : "enable" }
+								? {
+										action: region.calloutEvent.action === "enable" || region.calloutEvent.action === "disable" || region.calloutEvent.action === "text" ? region.calloutEvent.action : "enable",
+										...(region.calloutEvent.style && typeof region.calloutEvent.style === "object"
+											? { style: {
+												...(typeof region.calloutEvent.style.background === "string" ? { background: region.calloutEvent.style.background } : {}),
+												...(typeof region.calloutEvent.style.textColor === "string" ? { textColor: region.calloutEvent.style.textColor } : {}),
+												...(isFiniteNumber(region.calloutEvent.style.scale) ? { scale: clamp(region.calloutEvent.style.scale, 0.5, 2) } : {}),
+												...(typeof region.calloutEvent.style.gradientEnabled === "boolean" ? { gradientEnabled: region.calloutEvent.style.gradientEnabled } : {}),
+												...(Array.isArray(region.calloutEvent.style.gradientColors) ? { gradientColors: region.calloutEvent.style.gradientColors.filter((color) => typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color)).slice(0, 4) } : {}),
+												...(isFiniteNumber(region.calloutEvent.style.gradientGlow) ? { gradientGlow: clamp(region.calloutEvent.style.gradientGlow, 0, 40) } : {}),
+											} } : {}),
+									}
 								: undefined,
 						stages: (() => {
 							if (!region.stages || typeof region.stages !== "object")
@@ -1178,6 +1195,19 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		audioRegions: sequenceChanged
 			? rippleRegionAnchors(normalizedAudioRegions, normalizedClipRegions, sequenceClips)
 			: normalizedAudioRegions,
+		audioTrackCount: Math.max(
+			1,
+			isFiniteNumber(editor.audioTrackCount) ? Math.min(32, Math.floor(editor.audioTrackCount)) : 1,
+			...normalizedAudioRegions.map((region) => (region.trackIndex ?? 0) + 1),
+		),
+		audioTrackMix: Object.fromEntries(
+			Object.entries(editor.audioTrackMix ?? {})
+				.filter(([index, setting]) => Number.isInteger(Number(index)) && Number(index) >= 0 && setting && typeof setting === "object")
+				.map(([index, setting]) => [index, {
+					volume: isFiniteNumber(setting.volume) ? clamp(setting.volume, 0, 1) : 1,
+					gain: isFiniteNumber(setting.gain) ? clamp(setting.gain, 0, 10) : 1,
+				}]),
+		),
 		autoCaptions: normalizedAutoCaptions,
 		autoCaptionSettings: normalizedAutoCaptionSettings,
 		webcam: {

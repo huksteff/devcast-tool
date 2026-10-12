@@ -48,6 +48,7 @@ export interface TimelineRenderItem {
 	muted?: boolean;
 	annotationStages?: AnnotationStages;
 	annotationType?: AnnotationType;
+	annotationKeyframes?: { id: string; time: number; changes?: string[] }[];
 	variant: "zoom" | "trim" | "clip" | "annotation" | "speed" | "audio" | "caption";
 }
 

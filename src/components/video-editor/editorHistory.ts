@@ -13,6 +13,8 @@ export type EditorHistorySnapshot = {
 	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
 	audioRegions: AudioRegion[];
+	audioTrackCount: number;
+	audioTrackMix?: import("./audio/audioTrackMix").AudioTrackMix;
 	autoCaptions: CaptionCue[];
 	selectedZoomId: string | null;
 	selectedClipId: string | null;

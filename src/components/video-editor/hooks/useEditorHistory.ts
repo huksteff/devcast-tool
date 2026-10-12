@@ -44,6 +44,10 @@ export function useEditorHistory({
 		setSpeedRegions,
 		setAnnotationRegions,
 		setAudioRegions,
+		setAudioTrackCount,
+		audioTrackCount,
+		audioTrackMix,
+		setAudioTrackMix,
 		setAutoCaptions,
 		setSelectedZoomId,
 		setSelectedClipId,
@@ -69,6 +73,8 @@ export function useEditorHistory({
 			speedRegions,
 			annotationRegions,
 			audioRegions,
+			audioTrackCount,
+			audioTrackMix,
 			autoCaptions,
 			selectedZoomId,
 			selectedClipId,
@@ -81,6 +87,8 @@ export function useEditorHistory({
 			speedRegions,
 			annotationRegions,
 			audioRegions,
+			audioTrackCount,
+			audioTrackMix,
 			autoCaptions,
 			selectedZoomId,
 			selectedClipId,
@@ -97,6 +105,8 @@ export function useEditorHistory({
 			setSpeedRegions(cloned.speedRegions);
 			setAnnotationRegions(cloned.annotationRegions);
 			setAudioRegions(cloned.audioRegions);
+			setAudioTrackCount(cloned.audioTrackCount ?? 1);
+			setAudioTrackMix(cloned.audioTrackMix ?? {});
 			setAutoCaptions(cloned.autoCaptions);
 			setSelectedZoomId(cloned.selectedZoomId);
 			setSelectedClipId(cloned.selectedClipId);
@@ -128,6 +138,8 @@ export function useEditorHistory({
 			setSpeedRegions,
 			setAnnotationRegions,
 			setAudioRegions,
+			setAudioTrackCount,
+			setAudioTrackMix,
 			setAutoCaptions,
 			setSelectedZoomId,
 			setSelectedClipId,

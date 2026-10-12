@@ -157,6 +157,11 @@ describe("normalizeProjectEditor", () => {
 });
 
 describe("loaded clip sequence migration", () => {
+	it("preserves empty audio lanes and derives lanes used by imported sounds", () => {
+		expect(normalizeProjectEditor({ audioTrackCount: 3, audioRegions: [] }).audioTrackCount).toBe(3);
+		expect(normalizeProjectEditor({ audioRegions: [{ id: "sound", startMs: 0, endMs: 100, audioPath: "a.wav", volume: 1, trackIndex: 4 }] }).audioTrackCount).toBe(5);
+		expect(normalizeProjectEditor({ audioTrackMix: { 1: { volume: 0.4, gain: 2 } } }).audioTrackMix?.[1]).toEqual({ volume: 0.4, gain: 2 });
+	});
 	const saved = {
 		clipRegions: [
 			{ id: "a", startMs: 0, endMs: 2000, speed: 1 },
@@ -202,6 +207,7 @@ describe("loaded clip sequence migration", () => {
 			zoomRegions: value.zoomRegions,
 			annotationRegions: value.annotationRegions,
 			audioRegions: value.audioRegions,
+			audioTrackCount: value.audioTrackCount ?? 1,
 			speedRegions: value.speedRegions,
 			autoCaptions: value.autoCaptions,
 			selectedZoomId: null,
@@ -241,6 +247,55 @@ it("reopens persisted local media URLs using the current server port", async () 
 });
 
 describe("annotations across the canvas and imported webcam ranges", () => {
+	it("preserves figure fill, opacity and outline settings", () => {
+		const figureData = {
+			kind: "rectangle", arrowDirection: "right", color: "#2563EB", strokeWidth: 4,
+			opacity: 0.55, fillEnabled: true, fillColor: "#ff0000", outlineEnabled: false,
+			fillGradient: { enabled: true, colors: ["#ff0000", "#0000ff"], cycleDurationMs: 2400, glow: 24 },
+		};
+		const editor = normalizeProjectEditor({ annotationRegions: [{
+			id: "figure", startMs: 0, endMs: 1000, type: "figure", figureData,
+		}] as never });
+		expect(editor.annotationRegions[0].figureData).toMatchObject(figureData);
+	});
+
+	it("preserves cursor callout event colors, size and animated gradient", () => {
+		const editor = normalizeProjectEditor({ annotationRegions: [{
+			id: "callout", startMs: 0, endMs: 1000, type: "cursor-callout",
+			calloutEvent: { action: "text", style: { background: "#ff0000", textColor: "#ffffff", scale: 1.2, gradientEnabled: true, gradientColors: ["#ff0000", "#0000ff"], gradientGlow: 18 } },
+		}] as never });
+		expect(editor.annotationRegions[0].calloutEvent?.style).toEqual({ background: "#ff0000", textColor: "#ffffff", scale: 1.2, gradientEnabled: true, gradientColors: ["#ff0000", "#0000ff"], gradientGlow: 18 });
+	});
+
+	it("preserves animated annotation settings when a project is reopened", () => {
+		const editor = normalizeProjectEditor({
+			annotationRegions: [{
+				id: "animated",
+				startMs: 1000,
+				endMs: 4000,
+				type: "text",
+				position: { x: 50, y: 50 },
+				size: { width: 30, height: 20 },
+				positionKeyframes: [{
+					id: "style-key",
+					timeMs: 2500,
+					position: { x: 50, y: 50 },
+					properties: {
+						type: "text",
+						content: "After",
+						style: { color: "#ffffff", fontSize: 40 },
+					},
+				}],
+			}] as never,
+		});
+		expect(editor.annotationRegions[0].positionKeyframes?.[0].properties).toMatchObject({
+			content: "After",
+			style: { color: "#ffffff", fontSize: 40 },
+		});
+		expect(normalizeProjectEditor(editor).annotationRegions[0].positionKeyframes?.[0].properties)
+			.toEqual(editor.annotationRegions[0].positionKeyframes?.[0].properties);
+	});
+
 	it("preserves annotations outside the recording rectangle and webcam visibility when a project is reopened", () => {
 		const editor = normalizeProjectEditor({
 			annotationRegions: [

@@ -32,6 +32,8 @@ import {
 } from "@/lib/wallpapers";
 import { type AspectRatio, formatAspectRatioForCSS } from "@/utils/aspectRatioUtils";
 import { AnnotationOverlay } from "./AnnotationOverlay";
+import { compareAnnotationLayerOrder } from "./annotationLayerOrder";
+import { resolveAnnotationAtTime } from "./annotationKeyframes";
 import { type CaptionEditTarget, normalizeCaptionEditText } from "./captionEditing";
 import { buildActiveCaptionLayout } from "./captionLayout";
 import {
@@ -2233,9 +2235,10 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				const cursorOverlay = cursorOverlayRef.current;
 				if (cursorOverlay) {
 					const calloutConfig = cursorCalloutConfigRef.current;
+					const calloutTimeMs = timelineTimeRef.current * 1000;
 					const callout = resolveCursorCalloutState(
-						annotationRegionsRef.current,
-						timelineTimeRef.current * 1000,
+						annotationRegionsRef.current.map((region) => resolveAnnotationAtTime(region, calloutTimeMs)),
+						calloutTimeMs,
 						{
 							enabled: calloutConfig.enabled,
 							text: calloutConfig.text,
@@ -2244,12 +2247,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					cursorOverlay.setCallout(
 						callout.enabled,
 						callout.text,
-						calloutConfig.background,
-						calloutConfig.textColor,
-						calloutConfig.scale,
-						calloutConfig.gradientEnabled,
-						calloutConfig.gradientColors,
-						calloutConfig.gradientGlow,
+						callout.style?.background ?? calloutConfig.background,
+						callout.style?.textColor ?? calloutConfig.textColor,
+						callout.style?.scale ?? calloutConfig.scale,
+						callout.style?.gradientEnabled ?? calloutConfig.gradientEnabled,
+						callout.style?.gradientColors ?? calloutConfig.gradientColors,
+						callout.style?.gradientGlow ?? calloutConfig.gradientGlow,
 					);
 					cursorOverlay.update(
 						cursorTelemetryRef.current,
@@ -2880,9 +2883,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 											isAnnotationActiveAtTime(annotation, timeMs),
 									);
 
-									const sorted = [...filtered].sort(
-										(a, b) => a.zIndex - b.zIndex,
-									);
+									const sorted = [...filtered].sort(compareAnnotationLayerOrder);
 
 									const handleAnnotationClick = (clickedId: string) => {
 										if (!onSelectAnnotation) return;
@@ -2901,7 +2902,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 										}
 									};
 
-									return sorted.map((annotation) => (
+									return sorted.map((annotation, layerIndex) => (
 										<AnnotationOverlay
 											key={annotation.id}
 											annotation={annotation}
@@ -2943,8 +2944,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 												onAnnotationDrawingChange?.(id, drawing)
 											}
 											onClick={handleAnnotationClick}
-											zIndex={annotation.zIndex}
-											isSelectedBoost={annotation.id === selectedAnnotationId}
+											zIndex={layerIndex}
 											currentTimeMs={timeMs}
 										/>
 									));

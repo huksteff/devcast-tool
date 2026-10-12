@@ -472,7 +472,14 @@ export interface FigureData {
 	arrowDirection: ArrowDirection;
 	color: string;
 	strokeWidth: number;
-	/** A left-to-right animated, glowing multi-colour stroke. */
+	/** Overall opacity; highlights retain their historical 28% default. */
+	opacity?: number;
+	/** Closed shapes can have independent fill and outline controls. */
+	fillEnabled?: boolean;
+	fillColor?: string;
+	fillGradient?: AnnotationGradient;
+	outlineEnabled?: boolean;
+	/** A left-to-right animated, glowing multi-colour outline. */
 	gradient?: AnnotationGradient;
 }
 
@@ -509,11 +516,22 @@ export interface ClickHighlightData {
 /** A zero-content timeline event controlling the cursor label. */
 export interface CursorCalloutEventData {
 	action: "enable" | "disable" | "text";
+	style?: Partial<CursorCalloutStyle>;
+}
+
+export interface CursorCalloutStyle {
+	background: string;
+	textColor: string;
+	scale: number;
+	gradientEnabled: boolean;
+	gradientColors: string[];
+	gradientGlow: number;
 }
 
 export interface ResolvedCursorCalloutState {
 	enabled: boolean;
 	text: string;
+	style?: Partial<CursorCalloutStyle>;
 }
 
 /**
@@ -532,18 +550,25 @@ export function resolveCursorCalloutState(
 		.filter((annotation) => annotation.type === "cursor-callout" && annotation.startMs <= timeMs)
 		.sort((left, right) => left.startMs - right.startMs || left.id.localeCompare(right.id));
 	for (const event of events) {
+		if (event.calloutEvent?.style) {
+			state.style = { ...state.style, ...event.calloutEvent.style };
+		}
 		const action = event.calloutEvent?.action ?? "text";
 		const duration = Math.max(1, event.endMs - event.startMs);
 		const progress = Math.max(0, Math.min(1, (timeMs - event.startMs) / duration));
 		if (action === "enable") {
-			state = { enabled: true, text: "" };
+			state = { ...state, enabled: true, text: fallback.text };
 		} else if (action === "text" && state.enabled) {
-			const target = event.content.slice(0, 80);
-			state.text = target.slice(0, Math.round(target.length * progress));
+			const target = (event.content.trim() || fallback.text.trim() || "Text").slice(0, 80);
+			// Hold the previous label at the boundary. An empty frame here makes
+			// consecutive text events visibly flash while scrubbing or playing.
+			state.text = progress <= 0
+				? state.text
+				: target.slice(0, Math.max(1, Math.round(target.length * progress)));
 			if (progress >= 1) state.text = target;
 		} else if (action === "disable" && state.enabled) {
 			state.text = state.text.slice(0, Math.round(state.text.length * (1 - progress)));
-			if (progress >= 1) state = { enabled: false, text: "" };
+			if (progress >= 1) state = { ...state, enabled: false, text: "" };
 		}
 	}
 	return state;
@@ -850,7 +875,27 @@ export interface AnnotationPositionKeyframe {
 	position: AnnotationPosition;
 	/** Optional for projects saved before transform keyframes supported size. */
 	size?: AnnotationSize;
+	/** Editor settings captured at this instant. Older transform-only keys omit this. */
+	properties?: AnnotationKeyframeProperties;
 }
+
+export type KeyframeEditMode = "off" | "auto" | "manual";
+
+export type AnnotationKeyframeProperties = Pick<
+	AnnotationRegion,
+	| "type"
+	| "content"
+	| "textContent"
+	| "imageContent"
+	| "style"
+	| "figureData"
+	| "drawingData"
+	| "clickData"
+	| "calloutEvent"
+	| "stages"
+	| "blurIntensity"
+	| "blurColor"
+>;
 
 export interface AnnotationTextStyle {
 	color: string;
@@ -932,10 +977,7 @@ export const DEFAULT_DRAWING_DATA: DrawingData = {
 	eraserSize: 12,
 };
 
-/**
- * Colour stops for the shared neon style. The offset advances through the
- * supplied colours, but the gradient direction is always left-to-right.
- */
+/** Continuously sample a cyclic palette into left-to-right gradient stops. */
 export function getAnimatedGradientColors(
 	gradient: AnnotationGradient | undefined,
 	timeMs: number,
@@ -948,10 +990,19 @@ export function getAnimatedGradientColors(
 		250,
 		gradient.cycleDurationMs || DEFAULT_ANNOTATION_GRADIENT.cycleDurationMs,
 	);
-	const offset = Math.floor(
-		((((timeMs % duration) + duration) % duration) / duration) * colors.length,
-	);
-	return [...colors.slice(offset), ...colors.slice(0, offset)];
+	const phase = (((timeMs % duration) + duration) % duration) / duration;
+	const stops = 9;
+	return Array.from({ length: stops }, (_, stop) => {
+		const palettePosition = ((phase + stop / (stops - 1)) % 1) * colors.length;
+		const index = Math.floor(palettePosition);
+		const blend = palettePosition - index;
+		const left = Number.parseInt(colors[index].slice(1), 16);
+		const right = Number.parseInt(colors[(index + 1) % colors.length].slice(1), 16);
+		const channels = [16, 8, 0].map((shift) =>
+			Math.round(((left >> shift) & 255) * (1 - blend) + ((right >> shift) & 255) * blend),
+		);
+		return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+	});
 }
 
 /** Erase a circular area while preserving the remaining stroke fragments. */

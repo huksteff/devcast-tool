@@ -1,4 +1,5 @@
 import { formatClipSpeedLabel } from "../../clipSpeedChange";
+import { describeAnnotationKeyframeChanges } from "../../keyframeChanges";
 import type {
 	AnnotationRegion,
 	AudioRegion,
@@ -91,15 +92,19 @@ export function buildTimelineItems(params: {
 		};
 	});
 
-	const annotations: TimelineRenderItem[] = annotationRegions.map((region) => ({
-		id: region.id,
-		rowId: getAnnotationTrackRowId(region.trackIndex ?? 0),
-		span: { start: region.startMs, end: region.endMs },
-		label: getAnnotationLabel(region),
-		annotationStages: region.stages,
-		annotationType: region.type,
-		variant: "annotation",
-	}));
+	const annotations: TimelineRenderItem[] = annotationRegions.map((region) => {
+		const changes = describeAnnotationKeyframeChanges(region);
+		return {
+			id: region.id,
+			rowId: getAnnotationTrackRowId(region.trackIndex ?? 0),
+			span: { start: region.startMs, end: region.endMs },
+			label: getAnnotationLabel(region),
+			annotationKeyframes: region.positionKeyframes?.map((frame) => ({ id: frame.id, time: frame.timeMs, changes: changes.get(frame.id) ?? [] })),
+			annotationStages: region.stages,
+			annotationType: region.type,
+			variant: "annotation",
+		};
+	});
 
 	const audios: TimelineRenderItem[] = audioRegions.map((region) => ({
 		id: region.id,

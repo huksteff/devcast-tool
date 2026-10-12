@@ -1,7 +1,28 @@
-import { useEffect, useState } from "react";
-import TimelineEditor from "./TimelineEditor";
-import { Play, Pause, SkipBack, SkipForward } from "@phosphor-icons/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import TimelineEditor, { type TimelineEditorHandle } from "./TimelineEditor";
+import {
+	CaretDown,
+	Diamond,
+	Eye,
+	EyeSlash,
+	MagicWand,
+	MagnifyingGlassPlus,
+	Play,
+	Pause,
+	Plus,
+	Scissors,
+	SkipBack,
+	SkipForward,
+	TextT,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useI18n } from "@/contexts/I18nContext";
 import {
 	type TimelineWindowAction,
 	type TimelineWindowMessage,
@@ -10,6 +31,9 @@ import {
 
 export default function TimelineWindow() {
 	const [snapshot, setSnapshot] = useState<TimelineWindowSnapshot | null>(null);
+	const timelineRef = useRef<TimelineEditorHandle | null>(null);
+	const copiedKeyframeRef = useRef(false);
+	const { t } = useI18n();
 
 	useEffect(() => {
 		const unsubscribe = window.electronAPI.onTimelineWindowMessage((message) => {
@@ -22,12 +46,13 @@ export default function TimelineWindow() {
 		};
 	}, []);
 
-	const send = (action: TimelineWindowAction) => {
+	const send = useCallback((action: TimelineWindowAction) => {
 		window.electronAPI.sendTimelineWindowMessage({ type: "action", action });
-	};
+	}, []);
+	const hasSnapshot = snapshot !== null;
 	useEffect(() => {
-		if (snapshot) window.electronAPI.sendTimelineWindowMessage({ type: "window-ready" });
-	}, [Boolean(snapshot)]);
+		if (hasSnapshot) window.electronAPI.sendTimelineWindowMessage({ type: "window-ready" });
+	}, [hasSnapshot]);
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) return;
@@ -36,6 +61,16 @@ export default function TimelineWindow() {
 			const key = event.key.toLowerCase();
 			if (key !== "c" && key !== "x" && key !== "v") return;
 			event.preventDefault();
+			if (key === "c" && snapshot?.selectedKeyframeId) {
+				copiedKeyframeRef.current = true;
+				send({ type: "copy-keyframe" });
+				return;
+			}
+			if (key === "v" && copiedKeyframeRef.current) {
+				send({ type: "paste-keyframe" });
+				return;
+			}
+			if (key === "c" || key === "x") copiedKeyframeRef.current = false;
 			send({
 				type: "clipboard",
 				operation: key === "c" ? "copy" : key === "x" ? "cut" : "paste",
@@ -43,7 +78,7 @@ export default function TimelineWindow() {
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, []);
+	}, [send, snapshot?.selectedKeyframeId]);
 
 	if (!snapshot) {
 		return (
@@ -97,8 +132,155 @@ export default function TimelineWindow() {
 				</div>
 				<div aria-hidden="true" />
 			</div>
+			<div
+				className="flex shrink-0 items-center gap-1 overflow-x-auto pb-2"
+				role="toolbar"
+				aria-label="Timeline tools"
+			>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button variant="ghost" size="sm" className="h-9 shrink-0 gap-2 px-3">
+							<Plus className="h-3.5 w-3.5" />
+							<span>{t("editor.toolbar.addLayer")}</span>
+							<CaretDown className="h-3 w-3" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="start">
+						<DropdownMenuItem
+							onClick={() => {
+								const nextTrack = snapshot.annotationRegions.reduce(
+									(max, region) => Math.max(max, (region.trackIndex ?? 0) + 1),
+									0,
+								);
+								timelineRef.current?.addAnnotation(nextTrack);
+							}}
+						>
+							{t("timeline.annotation.label")}
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={() => {
+								send({ type: "audio-track-added" });
+							}}
+						>
+							Add audio track
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => void timelineRef.current?.addAudio(snapshot.audioTrackCount - 1)}>
+							Add sound file
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="h-9 shrink-0"
+					disabled={!snapshot.selectedKeyframeId}
+					title="Copy selected keyframe"
+					onClick={() => { copiedKeyframeRef.current = true; send({ type: "copy-keyframe" }); }}
+				>Copy keyframe</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="h-9 shrink-0"
+					title="Paste keyframe at playhead"
+					onClick={() => send({ type: "paste-keyframe" })}
+				>Paste keyframe</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-9 w-9 shrink-0"
+					title={t("timeline.zoom.addZoom")}
+					aria-label={t("timeline.zoom.addZoom")}
+					onClick={() => timelineRef.current?.addZoom()}
+				>
+					<MagnifyingGlassPlus className="h-4 w-4" />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-9 w-9 shrink-0"
+					title={t("timeline.zoom.suggestZooms")}
+					aria-label={t("timeline.zoom.suggestZooms")}
+					onClick={() => timelineRef.current?.suggestZooms()}
+				>
+					<MagicWand className="h-4 w-4" />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className={`h-9 w-9 shrink-0 ${snapshot.keyframeMode !== "off" ? "bg-primary/20 text-primary" : ""}`}
+					title={
+						snapshot.keyframeMode === "auto"
+							? "Disable automatic keyframes"
+							: "Enable automatic keyframes"
+					}
+					aria-label={
+						snapshot.keyframeMode === "auto"
+							? "Disable automatic keyframes"
+							: "Enable automatic keyframes"
+					}
+					aria-pressed={snapshot.keyframeMode === "auto"}
+					onClick={() => send({ type: "toggle-keyframe-mode" })}
+				>
+					<Diamond
+						className="h-4 w-4"
+						weight={snapshot.keyframeMode === "auto" ? "fill" : "regular"}
+					/>
+				</Button>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button variant="ghost" size="icon" className="h-9 w-5 shrink-0" title="Keyframe editing mode" aria-label="Keyframe editing mode">
+							<CaretDown className="h-3 w-3" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="start">
+						<DropdownMenuItem onClick={() => send({ type: "set-keyframe-mode", mode: "auto" })}>Automatic keyframes</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => send({ type: "set-keyframe-mode", mode: "manual" })}>Manual keyframes (I)</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => send({ type: "set-keyframe-mode", mode: "off" })}>Keyframe editing off</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+				<Button
+					variant="ghost"
+					size="icon"
+					className={`h-9 w-9 shrink-0 ${snapshot.showKeyframes ? "bg-primary/20 text-primary" : ""}`}
+					title={snapshot.showKeyframes ? "Hide keyframes" : "Show keyframes"}
+					aria-label={snapshot.showKeyframes ? "Hide keyframes" : "Show keyframes"}
+					aria-pressed={snapshot.showKeyframes}
+					onClick={() => send({ type: "toggle-keyframe-visibility" })}
+				>
+					{snapshot.showKeyframes ? <Eye className="h-4 w-4" /> : <EyeSlash className="h-4 w-4" />}
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-9 w-9 shrink-0"
+					title={t("editor.toolbar.splitClip")}
+					aria-label={t("editor.toolbar.splitClip")}
+					onClick={() => timelineRef.current?.splitClip()}
+				>
+					<Scissors className="h-4 w-4" />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-9 w-9 shrink-0"
+					title={
+						snapshot.isGeneratingCaptions
+							? t("settings.captions.generating", "Generating...")
+							: t("settings.captions.generateFull", "Generate Captions")
+					}
+					aria-label={t("settings.captions.generateFull", "Generate Captions")}
+					disabled={!snapshot.canGenerateAutoCaptions || snapshot.isGeneratingCaptions}
+					onClick={() => send({ type: "generate-captions" })}
+				>
+					<TextT className="h-4 w-4" />
+				</Button>
+			</div>
 			<div className="flex min-h-0 flex-1 flex-col">
 				<TimelineEditor
+					ref={timelineRef}
+					showAllAnnotationKeyframes={snapshot.showKeyframes}
+					selectedKeyframeId={snapshot.selectedKeyframeId}
+					onSelectKeyframe={(id) => send({ type: "select-keyframe", id })}
 					rowScale={snapshot.rowScale}
 					onRowScaleChange={(value) => send({ type: "row-scale", value })}
 					videoDuration={snapshot.videoDuration}
@@ -127,6 +309,8 @@ export default function TimelineWindow() {
 					selectedClipId={snapshot.selectedClipId}
 					onSelectClip={(id) => send({ type: "select-clip", id })}
 					audioRegions={snapshot.audioRegions}
+					audioTrackCount={snapshot.audioTrackCount}
+					onAddAudioTrack={() => send({ type: "audio-track-added" })}
 					onAudioAdded={(span, audioPath, trackIndex) =>
 						send({ type: "audio-added", span, audioPath, trackIndex })
 					}
@@ -154,6 +338,9 @@ export default function TimelineWindow() {
 						send({ type: "annotation-span-change", id, span, trackIndex })
 					}
 					onAnnotationDelete={(id) => send({ type: "annotation-delete", id })}
+					onAnnotationPositionKeyframesChange={(id, keyframes) =>
+						send({ type: "annotation-position-keyframes-change", id, keyframes })
+					}
 					selectedAnnotationId={snapshot.selectedAnnotationId}
 					onSelectAnnotation={(id) => send({ type: "select-annotation", id })}
 					showSourceAudioTrack={snapshot.showSourceAudioTrack}

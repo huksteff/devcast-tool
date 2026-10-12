@@ -94,7 +94,7 @@ describe("timeline model", () => {
 
 	it("builds all variant labels for annotation and audio", () => {
 		expect(getAnnotationLabel({ ...BASE_ANNOTATION, type: "text", content: "   " })).toBe(
-			"Empty text",
+			"Text",
 		);
 		expect(
 			getAnnotationLabel({
@@ -107,7 +107,7 @@ describe("timeline model", () => {
 			"Image",
 		);
 		expect(getAnnotationLabel({ ...BASE_ANNOTATION, type: "figure", content: "x" })).toBe(
-			"Annotation",
+			"Arrow",
 		);
 
 		expect(

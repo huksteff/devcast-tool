@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Rnd } from "react-rnd";
 import { cn } from "@/lib/utils";
-import { resolveAnnotationTransformAtTime } from "./annotationKeyframes";
+import { resolveAnnotationAtTime, resolveAnnotationTransformAtTime } from "./annotationKeyframes";
 import { getArrowComponent } from "./ArrowSvgs";
 import {
 	type AnnotationRegion,
@@ -45,7 +45,6 @@ interface AnnotationOverlayProps {
 	onDrawingChange?: (id: string, drawing: DrawingData) => void;
 	onClick: (id: string) => void;
 	zIndex: number;
-	isSelectedBoost: boolean; // Boost z-index when selected for easy editing
 	currentTimeMs?: number;
 }
 
@@ -59,7 +58,7 @@ function positivePercent(value: number) {
 
 /** Render an annotation in preview space with editor drag and resize controls. */
 export function AnnotationOverlay({
-	annotation,
+	annotation: sourceAnnotation,
 	isSelected,
 	containerWidth,
 	containerHeight,
@@ -72,9 +71,9 @@ export function AnnotationOverlay({
 	onDrawingChange,
 	onClick,
 	zIndex,
-	isSelectedBoost,
-	currentTimeMs = annotation.startMs,
+	currentTimeMs = sourceAnnotation.startMs,
 }: AnnotationOverlayProps) {
+	const annotation = resolveAnnotationAtTime(sourceAnnotation, currentTimeMs);
 	const safeRecordingRect =
 		recordingRect.width > 0 && recordingRect.height > 0
 			? recordingRect
@@ -93,6 +92,7 @@ export function AnnotationOverlay({
 	const blurScaleFactor = sizeScale * sceneTransform.scale;
 	const stage = getAnnotationStageState(annotation, currentTimeMs);
 	const gradientId = `annotation-gradient-${annotation.id}`;
+	const fillGradientId = `${gradientId}-fill`;
 
 	const isDraggingRef = useRef(false);
 	const drawingRef = useRef<DrawingData | null>(null);
@@ -210,7 +210,7 @@ export function AnnotationOverlay({
 					</div>
 				);
 
-			case "figure":
+			case "figure": {
 				if (!annotation.figureData) {
 					return (
 						<div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
@@ -225,33 +225,50 @@ export function AnnotationOverlay({
 				);
 				const figureColor =
 					figureColors.length > 1 ? `url(#${gradientId})` : figureColors[0];
-				const gradientDefinition =
-					figureColors.length > 1 ? (
+				const kind = annotation.figureData.kind ?? "arrow";
+				const fillEnabled = annotation.figureData.fillEnabled ?? kind === "highlight";
+				const outlineEnabled = annotation.figureData.outlineEnabled ?? kind !== "highlight";
+				const opacity = Math.max(0, Math.min(1, annotation.figureData.opacity ?? (kind === "highlight" ? 0.28 : 1)));
+				const fillGradient = annotation.figureData.fillGradient ?? (kind === "highlight" ? annotation.figureData.gradient : undefined);
+				const fillColors = getAnimatedGradientColors(
+					fillGradient,
+					currentTimeMs,
+					annotation.figureData.fillColor ?? annotation.figureData.color,
+				);
+				const fillColor = fillColors.length > 1 ? `url(#${fillGradientId})` : fillColors[0];
+				const glow = Math.max(
+					outlineEnabled && annotation.figureData.gradient?.enabled ? annotation.figureData.gradient.glow : 0,
+					fillEnabled && fillGradient?.enabled ? fillGradient.glow : 0,
+				);
+				const glowColor = fillEnabled && fillGradient?.enabled
+					? fillColors[Math.floor(fillColors.length / 2)]
+					: figureColors[Math.floor(figureColors.length / 2)];
+				const glowStyle = glow > 0
+					? { filter: `drop-shadow(0 0 ${Math.max(2, glow * sizeScale * 0.6)}px ${glowColor}) drop-shadow(0 0 ${Math.max(4, glow * sizeScale * 1.35)}px ${glowColor})`, overflow: "visible" as const }
+					: { overflow: "visible" as const };
+				const gradientDefinition = (
 						<defs>
-							<linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-								{figureColors.map((color, index) => (
-									<stop
-										key={`${color}-${index}`}
-										offset={`${(index / (figureColors.length - 1)) * 100}%`}
-										stopColor={color}
-									/>
-								))}
-							</linearGradient>
+							{figureColors.length > 1 && <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+								{figureColors.map((color, index) => <stop key={index} offset={`${(index / (figureColors.length - 1)) * 100}%`} stopColor={color} />)}
+							</linearGradient>}
+							{fillColors.length > 1 && <linearGradient id={fillGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+								{fillColors.map((color, index) => <stop key={index} offset={`${(index / (fillColors.length - 1)) * 100}%`} stopColor={color} />)}
+							</linearGradient>}
 						</defs>
-					) : null;
-				if ((annotation.figureData.kind ?? "arrow") !== "arrow") {
-					const kind = annotation.figureData.kind ?? "rectangle";
+					);
+				if (kind !== "arrow") {
 					const common = {
-						stroke: figureColor,
+						stroke: outlineEnabled ? figureColor : "none",
 						strokeWidth: annotation.figureData.strokeWidth,
 						vectorEffect: "non-scaling-stroke" as const,
-						fill: "none",
+						fill: fillEnabled ? fillColor : "none",
 					};
 					return (
 						<svg
 							className="h-full w-full"
 							viewBox="0 0 100 100"
 							preserveAspectRatio={kind === "circle" ? "xMidYMid meet" : "none"}
+							style={{ ...glowStyle, opacity }}
 						>
 							{gradientDefinition}
 							{kind === "ellipse" && (
@@ -268,14 +285,7 @@ export function AnnotationOverlay({
 									strokeLinecap="round"
 								/>
 							)}
-							{kind === "highlight" && (
-								<rect
-									width="100"
-									height="100"
-									fill={annotation.figureData.color}
-									opacity="0.28"
-								/>
-							)}
+							{kind === "highlight" && <rect width="100" height="100" {...common} />}
 							{kind === "rectangle" && (
 								<rect x="3" y="3" width="94" height="94" {...common} />
 							)}
@@ -286,24 +296,19 @@ export function AnnotationOverlay({
 				return (
 					<div
 						className="w-full h-full flex items-center justify-center"
-						style={{ padding: `${8 * sizeScale}px` }}
+						style={{ padding: `${8 * sizeScale}px`, opacity, ...glowStyle }}
 					>
 						<svg className="absolute h-0 w-0">
 							<defs>
-								<linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-									{figureColors.map((color, index) => (
-										<stop
-											key={`${color}-${index}`}
-											offset={`${(index / (figureColors.length - 1)) * 100}%`}
-											stopColor={color}
-										/>
-									))}
-								</linearGradient>
+								{figureColors.length > 1 && <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+									{figureColors.map((color, index) => <stop key={index} offset={`${(index / (figureColors.length - 1)) * 100}%`} stopColor={color} />)}
+								</linearGradient>}
 							</defs>
 						</svg>
 						{renderArrow()}
 					</div>
 				);
+			}
 
 			case "blur": {
 				const currentBlurStrength = annotation.blurIntensity ?? BLUR_ANNOTATION_STRENGTH;
@@ -441,7 +446,7 @@ export function AnnotationOverlay({
 										pointerId: event.pointerId,
 										clientX: event.clientX,
 										clientY: event.clientY,
-										position: { ...annotation.position },
+										position: { ...resolvedPosition },
 									};
 									event.currentTarget.setPointerCapture(event.pointerId);
 									return;
@@ -664,6 +669,15 @@ export function AnnotationOverlay({
 			onDragStart={() => {
 				isDraggingRef.current = true;
 			}}
+			onDrag={(_event, data) => {
+				const next = screenRectToRecordingPercent({
+					x: data.x,
+					y: data.y,
+					width,
+					height,
+				});
+				onPositionChange(annotation.id, next.position);
+			}}
 			onDragStop={(_e, d) => {
 				const next = screenRectToRecordingPercent({
 					x: d.x,
@@ -677,6 +691,20 @@ export function AnnotationOverlay({
 				setTimeout(() => {
 					isDraggingRef.current = false;
 				}, 100);
+			}}
+			onResize={(_event, _direction, ref, _delta, position) => {
+				const next = screenRectToRecordingPercent({
+					x: position.x,
+					y: position.y,
+					width: ref.offsetWidth,
+					height: ref.offsetHeight,
+				});
+				if (onTransformChange) {
+					onTransformChange(annotation.id, next);
+				} else {
+					onPositionChange(annotation.id, next.position);
+					onSizeChange(annotation.id, next.size);
+				}
 			}}
 			onResizeStop={(_e, _direction, ref, _delta, position) => {
 				const next = screenRectToRecordingPercent({
@@ -702,7 +730,7 @@ export function AnnotationOverlay({
 				isSelected && "ring-2 ring-[#2563EB] ring-offset-2 ring-offset-transparent",
 			)}
 			style={{
-				zIndex: isSelectedBoost ? zIndex + 1000 : zIndex, // Boost selected annotation to ensure it's on top
+				zIndex,
 				pointerEvents: "auto",
 				border: isSelected ? "2px solid rgba(37, 99, 235, 0.8)" : "none",
 				backgroundColor: isSelected ? "rgba(37, 99, 235, 0.1)" : "transparent",

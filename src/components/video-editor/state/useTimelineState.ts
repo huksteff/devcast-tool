@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AudioTrackMix } from "../audio/audioTrackMix";
 import type { SourceAudioTrackSettings } from "../audio/audioTypes";
 import type {
 	AnnotationRegion,
@@ -25,6 +26,8 @@ export function useTimelineState() {
 	const [annotationRegions, setAnnotationRegions] = useState<AnnotationRegion[]>([]);
 	const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 	const [audioRegions, setAudioRegions] = useState<AudioRegion[]>([]);
+	const [audioTrackCount, setAudioTrackCount] = useState(1);
+	const [audioTrackMix, setAudioTrackMix] = useState<AudioTrackMix>({});
 	const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
 	const [selectedCaptionId, setSelectedCaptionId] = useState<string | null>(null);
 	const [sourceAudioTrackSettingsByClip, setSourceAudioTrackSettingsByClip] = useState<
@@ -62,6 +65,10 @@ export function useTimelineState() {
 		setSelectedAnnotationId,
 		audioRegions,
 		setAudioRegions,
+		audioTrackCount,
+		setAudioTrackCount,
+		audioTrackMix,
+		setAudioTrackMix,
 		selectedAudioId,
 		setSelectedAudioId,
 		selectedCaptionId,

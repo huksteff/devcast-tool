@@ -1,9 +1,10 @@
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { toast } from "@/components/ui/toast";
 import type { useI18n } from "@/contexts/I18nContext";
 import type { useShortcuts } from "@/contexts/ShortcutsContext";
 import { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
+import { applyAudioTrackMix } from "../audio/audioTrackMix";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useTimelineState } from "../state/useTimelineState";
 import type { TimelineEditorHandle } from "../timeline/TimelineEditor";
@@ -84,11 +85,12 @@ export function useTimelineEditingController(input: Input) {
 		autoFullTrackIdRef: input.autoFullTrackClipIdRef,
 		autoFullTrackEndRef: input.autoFullTrackClipEndMsRef,
 	});
+	const mixedAudioRegions = useMemo(() => applyAudioTrackMix(timeline.audioRegions, timeline.audioTrackMix), [timeline.audioRegions, timeline.audioTrackMix]);
 	const audio = useVideoEditorAudio({
 		currentSourcePath: input.currentSourcePath,
 		selectedClipId: timeline.selectedClipId,
 		clipRegions: timeline.clipRegions,
-		audioRegions: timeline.audioRegions,
+		audioRegions: mixedAudioRegions,
 		sourceAudioTrackSettingsByClip: timeline.sourceAudioTrackSettingsByClip,
 		setSourceAudioTrackSettingsByClip: timeline.setSourceAudioTrackSettingsByClip,
 		defaultSourceAudioTrackSettings: timeline.defaultSourceAudioTrackSettings,

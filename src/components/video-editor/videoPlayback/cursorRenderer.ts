@@ -1463,12 +1463,13 @@ export class PixiCursorOverlay {
 				? viewport.y + projectedClickSample.cy * viewport.height
 				: viewport.y + projectedTarget.cy * viewport.height;
 		const shouldShowCursorSprite = visible && projectedTarget.visible;
+		const shouldShowCallout = this.config.calloutEnabled && this.config.calloutText.trim().length > 0 && projectedTarget.visible;
 		const shouldDrawClickEffect =
 			this.config.clickEffect !== "none" &&
 			clickProgress > 0 &&
 			Boolean(projectedClickSample?.visible);
 
-		if (!shouldShowCursorSprite && !shouldDrawClickEffect) {
+		if (!shouldShowCursorSprite && !shouldDrawClickEffect && !shouldShowCallout) {
 			this.container.visible = false;
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
@@ -1621,7 +1622,7 @@ export class PixiCursorOverlay {
 		}
 
 		this.applyCursorMotionBlur(px, py, timeMs, shouldFreezeCursorMotion);
-		this.drawCallout(px, py, scaledH, shouldShowCursorSprite, timeMs);
+		this.drawCallout(px, py, scaledH, shouldShowCallout, timeMs);
 		this.lastRenderedPoint = shouldShowCursorSprite ? { px, py } : null;
 		this.lastRenderedTimeMs = timeMs;
 	}

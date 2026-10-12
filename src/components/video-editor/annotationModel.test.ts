@@ -88,24 +88,46 @@ describe("annotation model", () => {
 			...annotation("slide-left"), id, startMs, endMs, type: "cursor-callout", content, calloutEvent: { action },
 		});
 		const events = [event("on", 0, 100, "enable"), event("one", 100, 300, "text", "Hello"), event("off", 300, 500, "disable")];
-		expect(resolveCursorCalloutState(events, 50, { enabled: false, text: "fallback" })).toEqual({ enabled: true, text: "" });
+		expect(resolveCursorCalloutState(events, 50, { enabled: false, text: "fallback" })).toEqual({ enabled: true, text: "fallback" });
 		expect(resolveCursorCalloutState(events, 200, { enabled: false, text: "fallback" })).toEqual({ enabled: true, text: "Hel" });
 		expect(resolveCursorCalloutState(events, 400, { enabled: false, text: "fallback" })).toEqual({ enabled: true, text: "Hel" });
 		expect(resolveCursorCalloutState(events, 500, { enabled: false, text: "fallback" })).toEqual({ enabled: false, text: "" });
+		expect(resolveCursorCalloutState(events, 50, { enabled: false, text: "Base" })).toEqual({ enabled: true, text: "Base" });
+		expect(resolveCursorCalloutState([
+			event("on", 0, 100, "enable"), event("empty", 100, 300, "text"),
+		], 200, { enabled: false, text: "" })).toEqual({ enabled: true, text: "Te" });
 	});
 
-	it("cycles the shared gradient while retaining its left-to-right colour order", () => {
+	it("keeps the previous label visible at a text change and carries event style forward", () => {
+		const base = annotation("slide-left");
+		const events: AnnotationRegion[] = [
+			{ ...base, id: "on", type: "cursor-callout", startMs: 0, endMs: 100, calloutEvent: { action: "enable", style: { background: "#FF0000", gradientEnabled: true, gradientColors: ["#FF0000", "#0000FF"] } } },
+			{ ...base, id: "first", type: "cursor-callout", startMs: 100, endMs: 300, content: "Hello", calloutEvent: { action: "text" } },
+			{ ...base, id: "second", type: "cursor-callout", startMs: 300, endMs: 500, content: "World", calloutEvent: { action: "text", style: { textColor: "#00FF00" } } },
+		];
+		expect(resolveCursorCalloutState(events, 300, { enabled: false, text: "" })).toEqual({
+			enabled: true, text: "Hello",
+			style: { background: "#FF0000", gradientEnabled: true, gradientColors: ["#FF0000", "#0000FF"], textColor: "#00FF00" },
+		});
+		expect(resolveCursorCalloutState(events, 301, { enabled: false, text: "" }).text).toBe("W");
+	});
+
+	it("interpolates gradient colors continuously and closes the cycle without a jump", () => {
 		const gradient = {
 			enabled: true,
 			colors: ["#FF0000", "#00FF00", "#0000FF"],
 			cycleDurationMs: 300,
 			glow: 12,
 		};
-		expect(getAnimatedGradientColors(gradient, 0, "#FFFFFF")).toEqual(gradient.colors);
-		expect(getAnimatedGradientColors(gradient, 110, "#FFFFFF")).toEqual([
-			"#00FF00",
-			"#0000FF",
-			"#FF0000",
-		]);
+		const first = getAnimatedGradientColors(gradient, 0, "#FFFFFF");
+		expect(first).toHaveLength(9);
+		expect(first[0]).toBe("#ff0000");
+		expect(first[8]).toBe(first[0]);
+		expect(getAnimatedGradientColors(gradient, 300, "#FFFFFF")).toEqual(first);
+		expect(getAnimatedGradientColors(gradient, 100, "#FFFFFF")[0]).toBe("#00ff00");
+		expect(getAnimatedGradientColors(gradient, 101, "#FFFFFF")[0]).not.toBe("#0000ff");
+		const twoColors = { ...gradient, colors: ["#FF0000", "#0000FF"] };
+		expect(getAnimatedGradientColors(twoColors, 75, "#FFFFFF")[0]).toBe("#800080");
+		expect(getAnimatedGradientColors(twoColors, 299, "#FFFFFF")[0]).not.toBe("#0000ff");
 	});
 });

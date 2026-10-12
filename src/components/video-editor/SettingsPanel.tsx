@@ -460,6 +460,10 @@ interface SettingsPanelProps {
 	onAudioGainChange?: (gain: number) => void;
 	onAudioNormalizeChange?: (normalize: boolean) => void;
 	onAudioDelete?: (id: string) => void;
+	audioTrackCount?: number;
+	audioTrackMix?: import("./audio/audioTrackMix").AudioTrackMix;
+	onAudioTrackVolumeChange?: (index: number, volume: number) => void;
+	onAudioTrackGainChange?: (index: number, gain: number) => void;
 	shadowIntensity?: number;
 	onShadowChange?: (intensity: number) => void;
 	backgroundBlur?: number;
@@ -948,6 +952,10 @@ export function SettingsPanel({
 	onAudioGainChange,
 	onAudioNormalizeChange,
 	onAudioDelete,
+	audioTrackCount = 1,
+	audioTrackMix = {},
+	onAudioTrackVolumeChange,
+	onAudioTrackGainChange,
 	shadowIntensity = 0.67,
 	onShadowChange,
 	backgroundBlur = 0,
@@ -2896,43 +2904,24 @@ export function SettingsPanel({
 						onCheckedChange={(v) => onAudioNormalizeChange?.(v)}
 					/>
 				</div>
-				{!selectedAudioId && (
-					<div className="flex flex-col gap-3 border-t border-separator pt-3">
-						<SectionLabel>
-							{tSettings("audio.systemSounds", "System sounds")}
-						</SectionLabel>
-						<SliderControl
-							label={tSettings("audio.volume", "Volume")}
-							value={selectedClipSourceAudioTrackSettings.system?.volume ?? 1}
-							min={0}
-							max={1}
-							step={0.01}
-							onChange={(value) => onSourceAudioTrackVolumeChange?.("system", value)}
-							formatValue={(value) => `${Math.round(value * 100)}%`}
-						/>
-						<SliderControl
-							label={tSettings("audio.gain", "Boost")}
-							value={selectedClipSourceAudioTrackSettings.system?.gain ?? 1}
-							min={0}
-							max={10}
-							step={0.05}
-							onChange={(value) => onSourceAudioTrackGainChange?.("system", value)}
-							formatValue={(value) => `${value.toFixed(2)}×`}
-						/>
-						<label className="flex items-center justify-between py-1 text-xs text-muted-foreground">
-							<span>{tSettings("audio.normalize", "Normalize")}</span>
-							<Switch
-								checked={
-									selectedClipSourceAudioTrackSettings.system?.normalize ?? false
-								}
-								onCheckedChange={(value) =>
-									onSourceAudioTrackNormalizeChange?.("system", value)
-								}
-								aria-label={tSettings("audio.systemSounds", "System sounds")}
-							/>
-						</label>
+				<div className="flex flex-col gap-3 border-t border-separator pt-3">
+					<SectionLabel>Audio tracks</SectionLabel>
+					{Array.from({ length: audioTrackCount }, (_, index) => (
+						<div key={index} className="flex flex-col gap-2 border-b border-separator pb-3">
+							<span className="text-xs font-medium">Audio {index + 1}</span>
+							<SliderControl label={`Audio ${index + 1}: ${tSettings("audio.volume", "Volume")}`} value={audioTrackMix[index]?.volume ?? 1} min={0} max={1} step={0.01} onChange={(value) => onAudioTrackVolumeChange?.(index, value)} formatValue={(value) => `${Math.round(value * 100)}%`} />
+							<SliderControl label={`Audio ${index + 1}: ${tSettings("audio.gain", "Boost")}`} value={audioTrackMix[index]?.gain ?? 1} min={0} max={10} step={0.05} onChange={(value) => onAudioTrackGainChange?.(index, value)} formatValue={(value) => `${value.toFixed(2)}×`} />
+						</div>
+					))}
+				</div>
+				{!selectedAudioId && sourceAudioTrackMeta.filter((track) => track.id !== "mixed").map((track) => (
+					<div key={track.id} className="flex flex-col gap-3 border-t border-separator pt-3">
+						<SectionLabel>{track.label}</SectionLabel>
+						<SliderControl label={tSettings("audio.volume", "Volume")} value={selectedClipSourceAudioTrackSettings[track.id]?.volume ?? 1} min={0} max={1} step={0.01} onChange={(value) => onSourceAudioTrackVolumeChange?.(track.id, value)} formatValue={(value) => `${Math.round(value * 100)}%`} />
+						<SliderControl label={tSettings("audio.gain", "Boost")} value={selectedClipSourceAudioTrackSettings[track.id]?.gain ?? 1} min={0} max={10} step={0.05} onChange={(value) => onSourceAudioTrackGainChange?.(track.id, value)} formatValue={(value) => `${value.toFixed(2)}×`} />
+						<label className="flex items-center justify-between py-1 text-xs text-muted-foreground"><span>{tSettings("audio.normalize", "Normalize")}</span><Switch checked={selectedClipSourceAudioTrackSettings[track.id]?.normalize ?? false} onCheckedChange={(value) => onSourceAudioTrackNormalizeChange?.(track.id, value)} aria-label={`${track.label}: ${tSettings("audio.normalize", "Normalize")}`} /></label>
 					</div>
-				)}
+				))}
 			</section>
 		);
 
@@ -3005,6 +2994,15 @@ export function SettingsPanel({
 											onSourceAudioTrackVolumeChange?.(track.id, volume)
 										}
 										formatValue={(volume) => `${Math.round(volume * 100)}%`}
+									/>
+									<SliderControl
+										label={`${track.label}: ${tSettings("audio.gain", "Boost")}`}
+										value={settings.gain ?? 1}
+										min={0}
+										max={10}
+										step={0.05}
+										onChange={(gain) => onSourceAudioTrackGainChange?.(track.id, gain)}
+										formatValue={(gain) => `${gain.toFixed(2)}×`}
 									/>
 									<label className="flex items-center justify-between py-1 text-xs text-muted-foreground">
 										<span>{tSettings("audio.normalize", "Normalize")}</span>

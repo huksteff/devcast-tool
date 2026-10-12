@@ -7,6 +7,7 @@ import { calculateMp4ExportDimensions, capMp4ShareDimensions } from "../exportDi
 import { resolveMp4ExportRouting } from "../mp4ExportRouting";
 import { resolveMp4ExportSettings } from "../mp4ExportSettings";
 import { createSmokeExportProgressSampler } from "../smokeExportProgress";
+import { applyAudioTrackMix } from "../audio/audioTrackMix";
 import { buildExportRenderOptions } from "./buildExportRenderOptions";
 import {
 	type PendingExportSave,
@@ -51,7 +52,8 @@ export function useExportRunner(input: ExportRunnerInput) {
 				remountPreview,
 			} = inputRef.current;
 			const { shadowIntensity, padding } = appearance;
-			const { audioRegions, clipRegions, selectedClipId } = timeline;
+			const { clipRegions, selectedClipId } = timeline;
+			const audioRegions = applyAudioTrackMix(timeline.audioRegions, timeline.audioTrackMix);
 			const {
 				exportQuality,
 				exportEncodingMode,

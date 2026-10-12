@@ -49,6 +49,7 @@ import {
 	FigureData,
 	ClickHighlightData,
 	DEFAULT_ANNOTATION_GRADIENT,
+	DEFAULT_CURSOR_CALLOUT_GRADIENT,
 	DEFAULT_CLICK_HIGHLIGHT_DATA,
 	DEFAULT_ANNOTATION_STAGES,
 } from "./types";
@@ -132,6 +133,11 @@ export function AnnotationSettingsPanel({
 	const [customFonts, setCustomFonts] = useState<CustomFont[]>([]);
 	const stages = { ...DEFAULT_ANNOTATION_STAGES, ...annotation.stages };
 	const stageDurationLimit = Math.max(0, annotation.endMs - annotation.startMs);
+	const figureKind = annotation.figureData?.kind ?? "arrow";
+	const figureSupportsFill = figureKind !== "arrow" && figureKind !== "line";
+	const figureFillEnabled = annotation.figureData?.fillEnabled ?? figureKind === "highlight";
+	const figureOutlineEnabled = annotation.figureData?.outlineEnabled ?? figureKind !== "highlight";
+	const figureFillGradient = annotation.figureData?.fillGradient ?? (figureKind === "highlight" ? annotation.figureData?.gradient : undefined);
 
 	const fontFamilies = useMemo(
 		() => FONT_FAMILY_VALUES.map((f) => ({ value: f.value, label: t(f.labelKey) })),
@@ -411,12 +417,43 @@ export function AnnotationSettingsPanel({
 						{annotation.type === "cursor-callout" && (
 							<div className="space-y-3">
 								<div className="text-sm font-medium">{t("annotations.cursorCallout", "Cursor label event")}</div>
-								<ChoiceGroup aria-label={t("annotations.cursorCalloutAction", "Action")} value={annotation.calloutEvent?.action ?? "enable"} onValueChange={(action) => onCalloutEventChange?.({ action: action as "enable" | "disable" | "text" })} className="grid grid-cols-3 gap-2">
+								<ChoiceGroup aria-label={t("annotations.cursorCalloutAction", "Action")} value={annotation.calloutEvent?.action ?? "enable"} onValueChange={(action) => onCalloutEventChange?.({ ...annotation.calloutEvent, action: action as "enable" | "disable" | "text" })} className="grid grid-cols-3 gap-2">
 									<ChoiceItem value="enable">{t("annotations.calloutEnable", "Enable")}</ChoiceItem>
 									<ChoiceItem value="text">{t("annotations.calloutText", "Text")}</ChoiceItem>
 									<ChoiceItem value="disable">{t("annotations.calloutDisable", "Disable")}</ChoiceItem>
 								</ChoiceGroup>
 								{(annotation.calloutEvent?.action ?? "enable") === "text" && <TextArea value={annotation.content} onChange={(event) => onContentChange(event.target.value.slice(0, 80))} placeholder={t("annotations.calloutTextPlaceholder", "Label text")} />}
+								<div className="space-y-3 rounded-lg border border-foreground/10 p-3">
+									<div className="text-xs font-medium">{t("annotations.calloutStyle", "Label style")}</div>
+									<div className="grid grid-cols-2 gap-2">
+										<ColorControl value={annotation.calloutEvent?.style?.background ?? "#14B8C4"} label={t("annotations.calloutBackground", "Background")} colors={colorPalette} compact onChange={(background) => onCalloutEventChange?.({ action: annotation.calloutEvent?.action ?? "enable", style: { ...annotation.calloutEvent?.style, background } })} />
+										<ColorControl value={annotation.calloutEvent?.style?.textColor ?? "#FFFFFF"} label={t("annotations.calloutTextColor", "Text color")} colors={colorPalette} compact onChange={(textColor) => onCalloutEventChange?.({ action: annotation.calloutEvent?.action ?? "enable", style: { ...annotation.calloutEvent?.style, textColor } })} />
+									</div>
+									<label className="block text-xs text-muted-foreground">{t("annotations.calloutScale", "Label size")}: {Math.round((annotation.calloutEvent?.style?.scale ?? 1) * 100)}%</label>
+									<Slider value={[annotation.calloutEvent?.style?.scale ?? 1]} min={0.5} max={2} step={0.05} onValueChange={([scale]) => onCalloutEventChange?.({ action: annotation.calloutEvent?.action ?? "enable", style: { ...annotation.calloutEvent?.style, scale } })} />
+									<ToggleButton isSelected={Boolean(annotation.calloutEvent?.style?.gradientEnabled)} onClick={() => onCalloutEventChange?.({ action: annotation.calloutEvent?.action ?? "enable", style: { ...annotation.calloutEvent?.style, gradientEnabled: !annotation.calloutEvent?.style?.gradientEnabled, gradientColors: annotation.calloutEvent?.style?.gradientColors ?? [...DEFAULT_CURSOR_CALLOUT_GRADIENT.colors], gradientGlow: annotation.calloutEvent?.style?.gradientGlow ?? DEFAULT_CURSOR_CALLOUT_GRADIENT.glow } })} className="h-9 w-full text-xs">
+										{t("annotations.animatedGradient", "Animated gradient")}
+									</ToggleButton>
+									{annotation.calloutEvent?.style?.gradientEnabled && (
+										<>
+											<label className="block text-xs text-muted-foreground">{t("annotations.gradientColorCount", "Gradient colors")}</label>
+											<Slider value={[annotation.calloutEvent.style.gradientColors?.length ?? 2]} min={2} max={4} step={1} onValueChange={([count]) => {
+												const colors = [...(annotation.calloutEvent?.style?.gradientColors ?? DEFAULT_CURSOR_CALLOUT_GRADIENT.colors)];
+												while (colors.length < count) colors.push(colors[colors.length - 1] ?? "#A855F7");
+												onCalloutEventChange?.({ action: annotation.calloutEvent?.action ?? "enable", style: { ...annotation.calloutEvent?.style, gradientColors: colors.slice(0, count) } });
+											}} />
+											<div className="grid grid-cols-2 gap-2">
+												{(annotation.calloutEvent.style.gradientColors ?? DEFAULT_CURSOR_CALLOUT_GRADIENT.colors).map((color, index) => <ColorControl key={index} value={color} label={`${t("annotations.gradientColor", "Gradient color")} ${index + 1}`} colors={colorPalette} compact onChange={(nextColor) => {
+													const colors = [...(annotation.calloutEvent?.style?.gradientColors ?? DEFAULT_CURSOR_CALLOUT_GRADIENT.colors)];
+													colors[index] = nextColor;
+													onCalloutEventChange?.({ action: annotation.calloutEvent?.action ?? "enable", style: { ...annotation.calloutEvent?.style, gradientColors: colors } });
+												}} />)}
+											</div>
+											<label className="block text-xs text-muted-foreground">{t("annotations.gradientGlow", "Glow strength")}</label>
+											<Slider value={[annotation.calloutEvent.style.gradientGlow ?? DEFAULT_CURSOR_CALLOUT_GRADIENT.glow]} min={0} max={40} step={1} onValueChange={([gradientGlow]) => onCalloutEventChange?.({ action: annotation.calloutEvent?.action ?? "enable", style: { ...annotation.calloutEvent?.style, gradientGlow } })} />
+										</>
+									)}
+								</div>
 								<p className="text-xs text-muted-foreground">{t("annotations.calloutEventHint", "The event duration controls the typewriter animation.")}</p>
 							</div>
 						)}
@@ -770,6 +807,38 @@ export function AnnotationSettingsPanel({
 									})}
 									</ChoiceGroup>
 								</div>
+								<div>
+									<label className="mb-2 block text-sm font-medium">{t("annotations.figureOpacity", "Opacity")}: {Math.round((annotation.figureData?.opacity ?? (figureKind === "highlight" ? 0.28 : 1)) * 100)}%</label>
+									<Slider aria-label={t("annotations.figureOpacity", "Opacity")} value={[annotation.figureData?.opacity ?? (figureKind === "highlight" ? 0.28 : 1)]} min={0} max={1} step={0.01} onValueChange={([opacity]) => onFigureDataChange?.({ ...annotation.figureData!, opacity })} />
+								</div>
+								{figureSupportsFill && (
+									<div className="space-y-3 rounded-lg border border-foreground/10 p-3">
+										<ToggleButton isSelected={figureFillEnabled} onClick={() => onFigureDataChange?.({ ...annotation.figureData!, fillEnabled: !figureFillEnabled })} className="h-9 w-full text-xs">{t("annotations.figureFill", "Fill")}</ToggleButton>
+										{figureFillEnabled && <>
+											<ColorControl value={annotation.figureData?.fillColor ?? annotation.figureData?.color ?? "#2563EB"} label={t("annotations.fillColor", "Fill color")} colors={colorPalette} compact onChange={(fillColor) => onFigureDataChange?.({ ...annotation.figureData!, fillColor })} />
+											<ChoiceGroup aria-label={t("annotations.fillMode", "Fill mode")} value={figureFillGradient?.enabled ? "gradient" : "solid"} onValueChange={(mode) => onFigureDataChange?.({ ...annotation.figureData!, fillEnabled: true, fillGradient: { ...DEFAULT_ANNOTATION_GRADIENT, ...figureFillGradient, enabled: mode === "gradient" } })} className="grid grid-cols-2 gap-2">
+												<ChoiceItem value="solid">{t("annotations.solidFill", "Solid")}</ChoiceItem>
+												<ChoiceItem value="gradient">{t("annotations.gradientFill", "Animated gradient")}</ChoiceItem>
+											</ChoiceGroup>
+											{figureFillGradient?.enabled && <>
+												<label className="block text-xs text-muted-foreground">{t("annotations.gradientColorCount", "Gradient colors")}</label>
+												<Slider value={[Math.min(4, Math.max(2, figureFillGradient.colors.length))]} min={2} max={4} step={1} onValueChange={([count]) => {
+													const colors = [...figureFillGradient.colors];
+													while (colors.length < count) colors.push(colors[colors.length - 1] ?? "#A855F7");
+													onFigureDataChange?.({ ...annotation.figureData!, fillGradient: { ...DEFAULT_ANNOTATION_GRADIENT, ...figureFillGradient, colors: colors.slice(0, count) } });
+												}} />
+												<div className="grid grid-cols-2 gap-2">{figureFillGradient.colors.slice(0, 4).map((color, index) => <ColorControl key={index} value={color} label={`${t("annotations.gradientColor", "Gradient color")} ${index + 1}`} colors={colorPalette} compact onChange={(nextColor) => {
+													const colors = [...figureFillGradient.colors];
+													colors[index] = nextColor;
+												onFigureDataChange?.({ ...annotation.figureData!, fillGradient: { ...DEFAULT_ANNOTATION_GRADIENT, ...figureFillGradient, colors } });
+												}} />)}</div>
+												<label className="block text-xs text-muted-foreground">{t("annotations.gradientGlow", "Glow strength")}</label>
+												<Slider value={[figureFillGradient.glow]} min={0} max={40} step={1} onValueChange={([glow]) => onFigureDataChange?.({ ...annotation.figureData!, fillGradient: { ...DEFAULT_ANNOTATION_GRADIENT, ...figureFillGradient, glow } })} />
+											</>}
+										</>}
+									</div>
+								)}
+								{figureSupportsFill && <ToggleButton isSelected={figureOutlineEnabled} onClick={() => onFigureDataChange?.({ ...annotation.figureData!, outlineEnabled: !figureOutlineEnabled })} className="h-9 w-full text-xs">{t("annotations.figureOutline", "Outline")}</ToggleButton>}
 								{(annotation.figureData?.kind ?? "arrow") === "arrow" && (
 									<div>
 									<label className="text-sm font-medium text-foreground mb-3 block">
@@ -828,6 +897,7 @@ export function AnnotationSettingsPanel({
 									</div>
 								)}
 
+								{(!figureSupportsFill || figureOutlineEnabled) && <>
 								<div>
 									<label className="text-sm font-medium text-foreground mb-2 block">
 										{t("annotations.strokeWidth", undefined, {
@@ -855,11 +925,11 @@ export function AnnotationSettingsPanel({
 
 								<div>
 									<label className="text-sm font-medium text-foreground mb-2 block">
-										{t("annotations.arrowColor")}
+										{t("annotations.outlineColor", "Outline color")}
 									</label>
 									<ColorControl
 										value={annotation.figureData?.color || "#2563EB"}
-										label={t("annotations.arrowColor")}
+										label={t("annotations.outlineColor", "Outline color")}
 										onChange={(color) =>
 											onFigureDataChange?.({
 												...annotation.figureData!,
@@ -888,7 +958,7 @@ export function AnnotationSettingsPanel({
 										}
 										className="h-9 w-full text-xs"
 									>
-										{t("annotations.animatedGradient", "Animated gradient")}
+										{t("annotations.outlineGradient", "Animated outline gradient")}
 									</ToggleButton>
 									{annotation.figureData?.gradient?.enabled && (
 										<>
@@ -939,6 +1009,7 @@ export function AnnotationSettingsPanel({
 										</>
 									)}
 								</div>
+								</>}
 							</div>
 						)}
 

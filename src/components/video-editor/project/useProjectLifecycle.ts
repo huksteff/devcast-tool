@@ -188,6 +188,8 @@ export function useProjectLifecycle(input: Input) {
 		timeline.setSpeedRegions(editor.speedRegions);
 		timeline.setAnnotationRegions(editor.annotationRegions);
 		timeline.setAudioRegions(editor.audioRegions);
+		timeline.setAudioTrackCount(editor.audioTrackCount ?? 1);
+		timeline.setAudioTrackMix(editor.audioTrackMix ?? {});
 		timeline.setSourceAudioTrackSettingsByClip(editor.sourceAudioTrackSettingsByClip ?? {});
 		timeline.setDefaultSourceAudioTrackSettings(editor.defaultSourceAudioTrackSettings ?? {});
 		timeline.setAutoCaptions(editor.autoCaptions);
@@ -349,6 +351,8 @@ export function useProjectLifecycle(input: Input) {
 		timeline.setSpeedRegions([]);
 		timeline.setAnnotationRegions([]);
 		timeline.setAudioRegions([]);
+		timeline.setAudioTrackCount(1);
+		timeline.setAudioTrackMix({});
 		timeline.setCursorTelemetry([]);
 		timeline.setCursorTelemetrySourcePath(null);
 		timeline.setSourceAudioTrackSettingsByClip({});

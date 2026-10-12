@@ -1,12 +1,20 @@
 import { expect, test } from "@playwright/test";
 import { installDesktopBridge } from "./bridge";
 
+test.use({ channel: process.env.DEVCAST_UI_BROWSER_CHANNEL === "chrome" ? "chrome" : undefined });
+
 test("zoom hover, adaptive lanes, clip edges, volume and playhead", async ({ page }) => {
 	test.setTimeout(90000);
 	await installDesktopBridge(page, "filmstrip.mp4");
 	await page.goto("/?windowType=editor");
 	const clip = page.locator('[data-variant="clip"]');
 	await expect(clip.locator("img").first()).toBeVisible({ timeout: 20000 });
+	await page.getByRole("radio", { name: "Audio" }).click();
+	await expect(page.getByText("Audio tracks")).toBeVisible();
+	const trackVolume = page.getByRole("slider", { name: "Audio 1: Volume" });
+	await trackVolume.focus();
+	await page.keyboard.press("ArrowDown");
+	await expect(trackVolume).toHaveValue("0.99");
 	const scroll = page.getByTestId("timeline-scroll");
 	const zoomRow = page.locator('[data-timeline-row="row-zoom"]');
 	const clipRow = page.locator('[data-timeline-row="row-clip"]');
@@ -16,7 +24,7 @@ test("zoom hover, adaptive lanes, clip edges, volume and playhead", async ({ pag
 			await scroll.evaluate((el) => el.scrollHeight - el.clientHeight),
 		).toBeLessThanOrEqual(1);
 	}
-	expect((await zoomRow.boundingBox())!.height).toBe((await clipRow.boundingBox())!.height);
+	expect((await zoomRow.boundingBox())!.height).toBeLessThan((await clipRow.boundingBox())!.height);
 	await zoomRow.hover({ position: { x: 250, y: 25 } });
 	await expect(page.getByTestId("timeline-add-preview")).toBeVisible();
 	await zoomRow.click({ position: { x: 250, y: 25 } });
@@ -28,7 +36,7 @@ test("zoom hover, adaptive lanes, clip edges, volume and playhead", async ({ pag
 	await page.keyboard.press("a");
 	const annotation = page.locator('[data-variant="annotation"]');
 	await expect(annotation).toHaveCount(1);
-	expect((await zoomRow.boundingBox())!.height).toBe(normalHeight / 2);
+	expect((await zoomRow.boundingBox())!.height).toBe(normalHeight);
 	const annotationBox = (await annotation.boundingBox())!;
 	const zoomBox = (await zoomRow.boundingBox())!;
 	const scrollBox = (await scroll.boundingBox())!;
@@ -84,9 +92,9 @@ test("zoom hover, adaptive lanes, clip edges, volume and playhead", async ({ pag
 	await page.screenshot({ path: "test-results/timeline-redesign.png", animations: "disabled" });
 	await page.mouse.move(600, 200);
 	await expect(cap).toHaveCSS("width", "16px");
-	// Removing the third lane restores full zoom height.
+	// The permanently visible audio lane keeps zoom compact after annotation deletion.
 	await annotation.click();
-	await page.getByRole("button", { name: "Delete Annotation", exact: true }).click();
+	await page.keyboard.press("Delete");
 	await expect(annotation).toHaveCount(0);
 	expect((await zoomRow.boundingBox())!.height).toBe(normalHeight);
 });

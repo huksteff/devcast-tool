@@ -76,6 +76,14 @@ export function useTimelineKeyboardShortcuts({
 			) {
 				return;
 			}
+			if (
+				(!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.code === "KeyI") ||
+				matchesShortcut(e, keyShortcuts.addKeyframe, isMac)
+			) {
+				e.preventDefault();
+				addKeyframe();
+				return;
+			}
 
 			// Selection survives inspector focus; deletion follows the selected block.
 			if (
@@ -137,7 +145,6 @@ export function useTimelineKeyboardShortcuts({
 				return;
 			}
 
-			if (matchesShortcut(e, keyShortcuts.addKeyframe, isMac)) addKeyframe();
 			if (matchesShortcut(e, keyShortcuts.addZoom, isMac)) handleAddZoom();
 			if (matchesShortcut(e, keyShortcuts.splitClip, isMac)) handleSplitClip();
 			if (matchesShortcut(e, keyShortcuts.addAnnotation, isMac)) {

@@ -54,11 +54,13 @@ import { getTimelineEdgePanDelta } from "../../core/edgePan";
 
 const HINT_CLIP = "Press C to split clip";
 const HINT_ANNOTATION = "Press A to add annotation";
-const HINT_AUDIO = "Click music icon to add audio";
 
 interface TimelineCanvasProps {
 	videoPath?: string | null;
 	items: TimelineRenderItem[];
+	audioTrackCount?: number;
+	onAddAudioTrack?: () => void;
+	onAddAudioFile?: (trackIndex: number) => void;
 	videoDurationMs: number;
 	currentTimeMs: number;
 	onSeek?: (time: number) => void;
@@ -85,6 +87,7 @@ interface TimelineCanvasProps {
 	selectAllBlocksActive?: boolean;
 	onClearBlockSelection?: () => void;
 	keyframes?: { id: string; time: number }[];
+	showAllAnnotationKeyframes?: boolean;
 	selectedKeyframeId?: string | null;
 	onSelectKeyframe?: (id: string) => void;
 	onMoveKeyframe?: (id: string, time: number) => void;
@@ -420,6 +423,9 @@ function useTimelineHover({
 }
 
 interface TimelineCanvasRowsProps {
+	audioTrackCount?: number;
+	onAddAudioTrack?: () => void;
+	onAddAudioFile?: (trackIndex: number) => void;
 	videoPath?: string | null;
 	items: TimelineRenderItem[];
 	videoDurationMs: number;
@@ -428,6 +434,7 @@ interface TimelineCanvasRowsProps {
 	selectedClipId?: string | null;
 	selectedAnnotationId?: string | null;
 	keyframes?: { id: string; time: number }[];
+	showAllAnnotationKeyframes?: boolean;
 	selectedKeyframeId?: string | null;
 	onSelectKeyframe?: (id: string) => void;
 	onMoveKeyframe?: (id: string, time: number) => void;
@@ -517,6 +524,7 @@ interface AnnotationTimelineRowProps {
 	isDragging: boolean;
 	selectedAnnotationId?: string | null;
 	keyframes?: { id: string; time: number }[];
+	showAllAnnotationKeyframes?: boolean;
 	selectedKeyframeId?: string | null;
 	onSelectKeyframe?: (id: string) => void;
 	onMoveKeyframe?: (id: string, time: number) => void;
@@ -539,6 +547,7 @@ function AnnotationTimelineRow({
 	isDragging,
 	selectedAnnotationId,
 	keyframes = [],
+	showAllAnnotationKeyframes,
 	selectedKeyframeId,
 	onSelectKeyframe,
 	onMoveKeyframe,
@@ -620,7 +629,7 @@ function AnnotationTimelineRow({
 					onSelectId={onSelectAnnotation}
 					annotationStages={item.annotationStages}
 					annotationType={item.annotationType}
-					annotationKeyframes={item.id === selectedAnnotationId ? keyframes : []}
+					annotationKeyframes={showAllAnnotationKeyframes === true ? item.annotationKeyframes : showAllAnnotationKeyframes === false ? [] : item.id === selectedAnnotationId ? keyframes : []}
 					selectedKeyframeId={selectedKeyframeId}
 					onSelectKeyframe={onSelectKeyframe}
 					onMoveKeyframe={onMoveKeyframe}
@@ -636,12 +645,16 @@ function AnnotationTimelineRow({
 const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	videoPath,
 	items,
+	audioTrackCount = 1,
+	onAddAudioTrack,
+	onAddAudioFile,
 	videoDurationMs,
 	selectAllBlocksActive,
 	selectedZoomId,
 	selectedClipId,
 	selectedAnnotationId,
 	keyframes,
+	showAllAnnotationKeyframes,
 	selectedKeyframeId,
 	onSelectKeyframe,
 	onMoveKeyframe,
@@ -736,12 +749,10 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 			rowId: getAnnotationTrackRowId(nextAnnotationTrackIndex),
 			items: [],
 		});
-		const audioRowsSorted = Array.from(audioBuckets.entries())
-			.sort(([left], [right]) => left - right)
-			.map(([trackIndex, rowItems]) => ({
-				rowId: getAudioTrackRowId(trackIndex),
-				items: rowItems,
-			}));
+		const audioRowsSorted = Array.from({ length: Math.max(audioTrackCount, ...Array.from(audioBuckets.keys(), (index) => index + 1)) }, (_, trackIndex) => ({
+			rowId: getAudioTrackRowId(trackIndex),
+			items: audioBuckets.get(trackIndex) ?? [],
+		}));
 
 		return {
 			clipItems: nextClipItems,
@@ -750,7 +761,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 			annotationRows: annotationRowsSorted,
 			audioRows: audioRowsSorted,
 		};
-	}, [items]);
+	}, [items, audioTrackCount]);
 
 	const { clips } = useTimelinePresentation();
 	const clipPresentation = useMemo(
@@ -922,10 +933,10 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 				})}
 			</Row>
 			{showSourceAudioTrack &&
-				sourceAudioTracks.map((track) => (
-					<Row key={track.id} id={`${SOURCE_AUDIO_ROW_ID}-${track.id}`}>
+					sourceAudioTracks.map((track) => (
+						<Row key={track.id} id={`${SOURCE_AUDIO_ROW_ID}-${track.id}`} label={track.label}>
 						{clipItems
-							.filter((item) => item.showSourceAudio)
+							.filter((item) => item.showSourceAudio !== false)
 							.map((item) => {
 								const settings = getSourceAudioTrackSettingsForClip?.(item.id)?.[
 									track.id
@@ -1036,6 +1047,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 					isDragging={isDragging}
 					selectedAnnotationId={selectedAnnotationId}
 					keyframes={keyframes}
+					showAllAnnotationKeyframes={showAllAnnotationKeyframes}
 					selectedKeyframeId={selectedKeyframeId}
 					onSelectKeyframe={onSelectKeyframe}
 					onMoveKeyframe={onMoveKeyframe}
@@ -1049,9 +1061,10 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 				<Row
 					key={rowId}
 					id={rowId}
+					label={`Audio ${index + 1}`}
 					isEmpty={rowItems.length === 0}
-					hint={index === 0 ? HINT_AUDIO : undefined}
 				>
+					{rowItems.length === 0 && <button type="button" className="absolute z-30 left-20 top-1/2 -translate-y-1/2 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-primary/20 hover:text-primary" onClick={(event) => { event.stopPropagation(); onAddAudioFile?.(index); }}>+ Add sound</button>}
 					{rowItems.map((item) => (
 						<AudioItemWithWaveform
 							key={item.id}
@@ -1064,6 +1077,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 					))}
 				</Row>
 			))}
+			{onAddAudioTrack && <Row id={getAudioTrackRowId(audioRows.length)} isEmpty><button type="button" className="absolute z-30 left-20 top-1/2 -translate-y-1/2 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-primary/20 hover:text-primary" onClick={(event) => { event.stopPropagation(); onAddAudioTrack(); }}>+ Add audio track</button></Row>}
 		</>
 	);
 });
@@ -1071,6 +1085,9 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 export default function TimelineCanvas({
 	videoPath,
 	items,
+	audioTrackCount = 1,
+	onAddAudioTrack,
+	onAddAudioFile,
 	videoDurationMs,
 	currentTimeMs,
 	onSeek,
@@ -1097,6 +1114,7 @@ export default function TimelineCanvas({
 	selectAllBlocksActive = false,
 	onClearBlockSelection,
 	keyframes = [],
+	showAllAnnotationKeyframes,
 	selectedKeyframeId,
 	onSelectKeyframe,
 	onMoveKeyframe,
@@ -1318,8 +1336,8 @@ export default function TimelineCanvas({
 		}
 		const sourceAudioRows = showSourceAudioTrack ? sourceAudioTracks.length : 0;
 		// The annotation renderer always keeps one spare drop/add lane.
-		return 2 + sourceAudioRows + annotationRowIds.size + 1 + audioRowIds.size;
-	}, [items, showSourceAudioTrack, sourceAudioTracks.length]);
+		return 2 + sourceAudioRows + annotationRowIds.size + 1 + Math.max(audioTrackCount, audioRowIds.size) + (onAddAudioTrack ? 1 : 0);
+	}, [items, showSourceAudioTrack, sourceAudioTracks.length, audioTrackCount, onAddAudioTrack]);
 	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
 	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
 	const sideProperty = direction === "rtl" ? "right" : "left";
@@ -1433,12 +1451,16 @@ export default function TimelineCanvas({
 				<TimelineCanvasRows
 					videoPath={videoPath}
 					items={items}
+					audioTrackCount={audioTrackCount}
+					onAddAudioTrack={onAddAudioTrack}
+					onAddAudioFile={onAddAudioFile}
 					videoDurationMs={videoDurationMs}
 					selectAllBlocksActive={selectAllBlocksActive}
 					selectedZoomId={selectedZoomId}
 					selectedClipId={selectedClipId}
 					selectedAnnotationId={selectedAnnotationId}
 					keyframes={keyframes}
+					showAllAnnotationKeyframes={showAllAnnotationKeyframes}
 					selectedKeyframeId={selectedKeyframeId}
 					onSelectKeyframe={onSelectKeyframe}
 					onMoveKeyframe={onMoveKeyframe}

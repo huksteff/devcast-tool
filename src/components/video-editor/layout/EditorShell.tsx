@@ -28,6 +28,15 @@ import { EditorHeader } from "./EditorHeader";
 import { EditorPreviewPanel } from "./EditorPreviewPanel";
 import { EditorSidebar } from "./EditorSidebar";
 import { EditorTimelinePanel } from "./EditorTimelinePanel";
+import { resolveAnnotationAtTime } from "../annotationKeyframes";
+import {
+	DEFAULT_ANNOTATION_STAGES,
+	DEFAULT_CLICK_HIGHLIGHT_DATA,
+	DEFAULT_DRAWING_DATA,
+	DEFAULT_FIGURE_DATA,
+	type AnnotationRegion,
+	type KeyframeEditMode,
+} from "../types";
 
 type Props = {
 	t: ReturnType<typeof useI18n>["t"];
@@ -53,6 +62,9 @@ type Props = {
 };
 
 export function EditorShell(props: Props) {
+	const [keyframeMode, setKeyframeMode] = useState<KeyframeEditMode>("off");
+	const [showKeyframes, setShowKeyframes] = useState(true);
+	const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
 	const [signInOpen, setSignInOpen] = useState(false);
 	const [signInReason, setSignInReason] = useState<SignInReason>("account");
 	const [shareRequestNonce, setShareRequestNonce] = useState(0);
@@ -130,6 +142,98 @@ export function EditorShell(props: Props) {
 		handleSelectAnnotation,
 		handleAutoSuggestZoomsConsumed,
 	} = editing;
+	const toggleKeyframeMode = useCallback(() => {
+		setKeyframeMode((mode) => mode === "auto" ? "off" : "auto");
+	}, []);
+	useEffect(() => {
+		if (
+			selectedKeyframeId &&
+			!timeline.annotationRegions.some(
+				(region) =>
+					region.id === timeline.selectedAnnotationId &&
+					region.positionKeyframes?.some((frame) => frame.id === selectedKeyframeId),
+			)
+		) setSelectedKeyframeId(null);
+	}, [selectedKeyframeId, timeline.annotationRegions, timeline.selectedAnnotationId]);
+	const annotationAtPlayhead = (id: string): AnnotationRegion | undefined => {
+		const region = timeline.annotationRegions.find((item) => item.id === id);
+		return region ? resolveAnnotationAtTime(region, projection.timelinePlayheadTime * 1000) : undefined;
+	};
+	const inspectorAnnotationRegions = timeline.annotationRegions.map((region) =>
+		resolveAnnotationAtTime(region, projection.timelinePlayheadTime * 1000),
+	);
+	const selectedRegion = timeline.annotationRegions.find((region) => region.id === timeline.selectedAnnotationId);
+	const editCurrentKeyframe = keyframeMode === "auto" || (
+		selectedRegion?.positionKeyframes?.some(
+			(frame) => Math.abs(frame.timeMs - Math.round(projection.timelinePlayheadTime * 1000)) < 1,
+		) === true
+	);
+	const keyframedSettingsPanelProps: ComponentProps<typeof SettingsPanel> = !editCurrentKeyframe
+		? { ...settingsPanelProps, annotationRegions: inspectorAnnotationRegions }
+		: {
+				...settingsPanelProps,
+				annotationRegions: inspectorAnnotationRegions,
+				onAnnotationContentChange: (id, content) => {
+					const region = annotationAtPlayhead(id);
+					annotationCommands.handleAnnotationKeyframedPropertiesChange(
+						id,
+						projection.timelinePlayheadTime * 1000,
+						{
+							content,
+							...(region?.type === "text" ? { textContent: content } : {}),
+							...(region?.type === "image" ? { imageContent: content } : {}),
+						},
+					);
+				},
+				onAnnotationTypeChange: (id, type) => {
+					const region = annotationAtPlayhead(id);
+					if (!region) return;
+					annotationCommands.handleAnnotationKeyframedPropertiesChange(
+						id,
+						projection.timelinePlayheadTime * 1000,
+						{
+							type,
+							content: type === "text" ? region.textContent || "Enter text..." : type === "image" ? region.imageContent || "" : "",
+							...(type === "figure" ? { figureData: region.figureData ?? { ...DEFAULT_FIGURE_DATA } } : {}),
+							...(type === "drawing" ? { drawingData: region.drawingData ?? { ...DEFAULT_DRAWING_DATA, points: [] } } : {}),
+							...(type === "click" ? { clickData: region.clickData ?? { ...DEFAULT_CLICK_HIGHLIGHT_DATA } } : {}),
+							...(type === "blur" ? { blurIntensity: region.blurIntensity ?? 20 } : {}),
+							...(type === "cursor-callout" ? { calloutEvent: region.calloutEvent ?? { action: "enable" } } : {}),
+						},
+					);
+				},
+				onAnnotationStyleChange: (id, style) => {
+					const region = annotationAtPlayhead(id);
+					if (region) annotationCommands.handleAnnotationKeyframedPropertiesChange(id, projection.timelinePlayheadTime * 1000, { style: { ...region.style, ...style } });
+				},
+				onAnnotationFigureDataChange: (id, figureData) =>
+					annotationCommands.handleAnnotationKeyframedPropertiesChange(id, projection.timelinePlayheadTime * 1000, { figureData }),
+				onAnnotationDrawingDataChange: (id, drawingData) =>
+					annotationCommands.handleAnnotationKeyframedPropertiesChange(id, projection.timelinePlayheadTime * 1000, { drawingData }),
+				onAnnotationBlurIntensityChange: (id, blurIntensity) =>
+					annotationCommands.handleAnnotationKeyframedPropertiesChange(id, projection.timelinePlayheadTime * 1000, { blurIntensity }),
+				onAnnotationBlurColorChange: (id, blurColor) =>
+					annotationCommands.handleAnnotationKeyframedPropertiesChange(id, projection.timelinePlayheadTime * 1000, { blurColor }),
+				onAnnotationClickDataChange: (id, clickData) =>
+					annotationCommands.handleAnnotationKeyframedPropertiesChange(id, projection.timelinePlayheadTime * 1000, { clickData }),
+				onAnnotationCalloutEventChange: (id, calloutEvent) => {
+					const region = annotationAtPlayhead(id);
+					annotationCommands.handleAnnotationKeyframedPropertiesChange(
+						id,
+						projection.timelinePlayheadTime * 1000,
+						{ calloutEvent, ...(calloutEvent.action === "text" && !region?.content.trim() ? { content: "Text" } : {}) },
+					);
+				},
+				onAnnotationStagesChange: (id, stages) => {
+					const region = annotationAtPlayhead(id);
+					if (!region) return;
+					const duration = Math.max(1, region.endMs - region.startMs);
+					const next = { ...DEFAULT_ANNOTATION_STAGES, ...region.stages, ...stages };
+					next.inDurationMs = Math.max(0, Math.min(duration, Math.round(next.inDurationMs)));
+					next.outDurationMs = Math.max(0, Math.min(duration - next.inDurationMs, Math.round(next.outDurationMs)));
+					annotationCommands.handleAnnotationKeyframedPropertiesChange(id, projection.timelinePlayheadTime * 1000, { stages: next });
+				},
+			};
 	const { dialogActions, status: exportStatus, exportMessage } = exportController;
 	const editorDialogs = (
 		<EditorDialogs
@@ -309,7 +413,7 @@ export function EditorShell(props: Props) {
 							timeline.setSelectedCaptionId(null);
 							ui.setActiveEffectSection(section);
 						}}
-						settingsPanelProps={settingsPanelProps}
+						settingsPanelProps={keyframedSettingsPanelProps}
 						onPlayPauseShortcut={editing.playback.togglePlayPause}
 					/>
 					<EditorPreviewPanel
@@ -333,6 +437,11 @@ export function EditorShell(props: Props) {
 						playback={playback}
 						zoomCommands={zoomCommands}
 						annotationCommands={annotationCommands}
+						keyframeMode={keyframeMode}
+						onToggleKeyframeMode={toggleKeyframeMode}
+						onSetKeyframeMode={setKeyframeMode}
+						showKeyframes={showKeyframes}
+						onToggleKeyframeVisibility={() => setShowKeyframes((visible) => !visible)}
 						effectiveCursorTelemetry={cursor.effectiveCursorTelemetry}
 						effectiveShowCursor={effectiveShowCursor}
 						isCropped={ui.isCropped}
@@ -364,6 +473,16 @@ export function EditorShell(props: Props) {
 					audioCommands={audioCommands}
 					captionCommands={captionCommands}
 					annotationCommands={annotationCommands}
+					keyframeMode={keyframeMode}
+					onToggleKeyframeMode={toggleKeyframeMode}
+					onSetKeyframeMode={setKeyframeMode}
+					showKeyframes={showKeyframes}
+					onToggleKeyframeVisibility={() => setShowKeyframes((visible) => !visible)}
+					selectedKeyframeId={selectedKeyframeId}
+					onSelectKeyframe={setSelectedKeyframeId}
+					onGenerateAutoCaptions={autoCaption.handleGenerateAutoCaptions}
+					canGenerateAutoCaptions={Boolean(settingsPanelProps.whisperModelPath)}
+					isGeneratingCaptions={Boolean(settingsPanelProps.isGeneratingCaptions)}
 					videoPath={project.videoPath}
 					videoSourcePath={project.videoSourcePath}
 					cursorTelemetrySourcePath={timeline.cursorTelemetrySourcePath}

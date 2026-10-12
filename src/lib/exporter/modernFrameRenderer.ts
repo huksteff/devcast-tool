@@ -2,7 +2,7 @@ import { Application, BlurFilter, Container, Graphics, Rectangle, Sprite, Textur
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import { ZoomBlurFilter } from "pixi-filters/zoom-blur";
 import { buildActiveCaptionLayout } from "@/components/video-editor/captionLayout";
-import { resolveAnnotationTransformAtTime } from "@/components/video-editor/annotationKeyframes";
+import { resolveAnnotationAtTime, resolveAnnotationTransformAtTime } from "@/components/video-editor/annotationKeyframes";
 import {
 	CAPTION_FONT_WEIGHT,
 	CAPTION_LINE_HEIGHT,
@@ -1460,6 +1460,7 @@ export class FrameRenderer {
 				timeMs >= annotation.startMs &&
 				timeMs <= annotation.endMs &&
 				(annotation.type === "blur" ||
+					annotation.positionKeyframes?.some((frame) => frame.properties) === true ||
 					// Click highlights are procedural: their bloom and particles evolve every
 					// frame, so compose them on canvas instead of freezing a Pixi texture.
 					annotation.type === "click" ||
@@ -2990,11 +2991,11 @@ export class FrameRenderer {
 		const cursorTimeMs = cursorTimestamp / 1000;
 
 		if (this.cursorOverlay) {
-			const callout = resolveCursorCalloutState(this.config.annotationRegions, timeMs, {
+			const callout = resolveCursorCalloutState(this.config.annotationRegions?.map((region) => resolveAnnotationAtTime(region, timeMs)), timeMs, {
 				enabled: this.config.cursorCalloutEnabled ?? false,
 				text: this.config.cursorCalloutText ?? "",
 			});
-			this.cursorOverlay.setCallout(callout.enabled, callout.text, this.config.cursorCalloutBackground ?? "#14B8C4", this.config.cursorCalloutTextColor ?? "#FFFFFF", this.config.cursorCalloutScale ?? 1, this.config.cursorCalloutGradientEnabled ?? false, this.config.cursorCalloutGradientColors ?? ["#14B8C4", "#A855F7"], this.config.cursorCalloutGradientGlow ?? 14);
+			this.cursorOverlay.setCallout(callout.enabled, callout.text, callout.style?.background ?? this.config.cursorCalloutBackground ?? "#14B8C4", callout.style?.textColor ?? this.config.cursorCalloutTextColor ?? "#FFFFFF", callout.style?.scale ?? this.config.cursorCalloutScale ?? 1, callout.style?.gradientEnabled ?? this.config.cursorCalloutGradientEnabled ?? false, callout.style?.gradientColors ?? this.config.cursorCalloutGradientColors ?? ["#14B8C4", "#A855F7"], callout.style?.gradientGlow ?? this.config.cursorCalloutGradientGlow ?? 14);
 			this.cursorOverlay.update(
 				this.config.cursorTelemetry ?? [],
 				cursorTimeMs,

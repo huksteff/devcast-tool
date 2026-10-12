@@ -1,7 +1,13 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
 import {
+	applyManualAnnotationProperties,
+	applyManualAnnotationTransform,
+	type AnnotationTransform,
+} from "../annotationKeyframes";
+import {
 	type AnnotationPositionKeyframe,
+	type AnnotationKeyframeProperties,
 	type AnnotationRegion,
 	DEFAULT_ANNOTATION_POSITION,
 	DEFAULT_ANNOTATION_SIZE,
@@ -236,13 +242,47 @@ export function useAnnotationRegionCommands({
 	);
 	const handleAnnotationCalloutEventChange = useCallback(
 		(id: string, calloutEvent: NonNullable<AnnotationRegion["calloutEvent"]>) =>
-			updateRegion(id, { calloutEvent }),
-		[updateRegion],
+			setAnnotationRegions((current) => current.map((region) =>
+				region.id === id
+					? {
+						...region,
+						calloutEvent,
+						content: calloutEvent.action === "text" && !region.content.trim()
+							? "Text"
+							: region.content,
+					}
+					: region,
+			)),
+		[setAnnotationRegions],
 	);
 	const handleAnnotationPositionKeyframesChange = useCallback(
 		(id: string, positionKeyframes: AnnotationPositionKeyframe[]) =>
 			updateRegion(id, { positionKeyframes }),
 		[updateRegion],
+	);
+	const handleAnnotationKeyframedTransformChange = useCallback(
+		(id: string, timeMs: number, change: Partial<AnnotationTransform>) => {
+			setAnnotationRegions((current) =>
+				current.map((region) =>
+					region.id === id
+						? applyManualAnnotationTransform(region, timeMs, change)
+						: region,
+				),
+			);
+		},
+		[setAnnotationRegions],
+	);
+	const handleAnnotationKeyframedPropertiesChange = useCallback(
+		(id: string, timeMs: number, change: Partial<AnnotationKeyframeProperties>) => {
+			setAnnotationRegions((current) =>
+				current.map((region) =>
+					region.id === id
+						? applyManualAnnotationProperties(region, timeMs, change)
+						: region,
+				),
+			);
+		},
+		[setAnnotationRegions],
 	);
 	const handleAnnotationSizeChange = useCallback(
 		(id: string, size: { width: number; height: number }) => updateRegion(id, { size }),
@@ -266,6 +306,8 @@ export function useAnnotationRegionCommands({
 		handleAnnotationBlurColorChange,
 		handleAnnotationPositionChange,
 		handleAnnotationPositionKeyframesChange,
+		handleAnnotationKeyframedTransformChange,
+		handleAnnotationKeyframedPropertiesChange,
 		handleAnnotationSizeChange,
 	};
 }

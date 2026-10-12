@@ -10,7 +10,9 @@ export async function installDesktopBridge(page: Page, videoFixture = "preview.m
 			display_id: "1",
 		};
 		Object.assign(window, {
-			electronAPI: {
+				electronAPI: {
+					sendTimelineWindowMessage: () => undefined,
+					onTimelineWindowMessage: subscribe,
 				getAppSetting: () => null,
 				setAppSetting: () => true,
 				getExperimentalUpdatesEnabled: async () => false,

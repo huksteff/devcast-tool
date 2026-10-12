@@ -9,6 +9,7 @@ import type { useEditorPlaybackControls } from "../hooks/useEditorPlaybackContro
 import type { useTimelineProjection } from "../hooks/useTimelineProjection";
 import type { useZoomRegionCommands } from "../hooks/useZoomRegionCommands";
 import type { useTimelineState } from "../state/useTimelineState";
+import type { KeyframeEditMode } from "../types";
 import TimelineEditor, { type TimelineEditorHandle } from "../timeline/TimelineEditor";
 import {
 	type TimelineWindowAction,
@@ -28,6 +29,16 @@ type Props = {
 	audioCommands: ReturnType<typeof useAudioRegionCommands>;
 	captionCommands: ReturnType<typeof useCaptionCommands>;
 	annotationCommands: ReturnType<typeof useAnnotationRegionCommands>;
+	keyframeMode: KeyframeEditMode;
+	onToggleKeyframeMode: () => void;
+	onSetKeyframeMode: (mode: KeyframeEditMode) => void;
+	showKeyframes: boolean;
+	onToggleKeyframeVisibility: () => void;
+	selectedKeyframeId: string | null;
+	onSelectKeyframe: (id: string | null) => void;
+	onGenerateAutoCaptions: () => void;
+	canGenerateAutoCaptions: boolean;
+	isGeneratingCaptions: boolean;
 	videoPath: string | null;
 	videoSourcePath: string | null;
 	cursorTelemetrySourcePath: string | null;
@@ -62,6 +73,16 @@ export function EditorTimelinePanel(props: Props) {
 		audioCommands,
 		captionCommands,
 		annotationCommands,
+		keyframeMode,
+		onToggleKeyframeMode,
+		onSetKeyframeMode,
+		showKeyframes,
+		onToggleKeyframeVisibility,
+		selectedKeyframeId,
+		onSelectKeyframe,
+		onGenerateAutoCaptions,
+		canGenerateAutoCaptions,
+		isGeneratingCaptions,
 		videoPath,
 		videoSourcePath,
 		cursorTelemetrySourcePath,
@@ -88,6 +109,11 @@ export function EditorTimelinePanel(props: Props) {
 
 	const snapshot: TimelineWindowSnapshot = {
 		isPlaying: props.isPlaying,
+		keyframeMode,
+		showKeyframes,
+		selectedKeyframeId,
+		canGenerateAutoCaptions,
+		isGeneratingCaptions,
 		rowScale,
 		videoDuration: projection.timelineDuration,
 		currentTime,
@@ -104,6 +130,7 @@ export function EditorTimelinePanel(props: Props) {
 		clipRegions: timeline.clipRegions,
 		selectedClipId: timeline.selectedClipId,
 		audioRegions: timeline.audioRegions,
+		audioTrackCount: timeline.audioTrackCount,
 		selectedAudioId: timeline.selectedAudioId,
 		captionRegions: projection.effectiveCaptionRegions,
 		selectedCaptionId,
@@ -111,7 +138,7 @@ export function EditorTimelinePanel(props: Props) {
 		captionQuickAddEnabled: timeline.autoCaptionSettings.timelineQuickAdd,
 		annotationRegions: timeline.annotationRegions,
 		selectedAnnotationId: timeline.selectedAnnotationId,
-		showSourceAudioTrack: timeline.clipRegions.some((clip) => clip.showSourceAudio),
+		showSourceAudioTrack: true,
 		sourceAudioResourceVersion: timeline.sourceAudioFallbackRefreshKey,
 		sourceAudioTrackSettings: audio.activeSourceAudioTrackSettings,
 	};
@@ -143,6 +170,18 @@ export function EditorTimelinePanel(props: Props) {
 				case "skip-back": playback.handlePreviewSkipBack(); break;
 				case "skip-forward": playback.handlePreviewSkipForward(); break;
 				case "row-scale": setRowScale(Math.max(0.5, Math.min(3, action.value))); break;
+				case "toggle-keyframe-mode": onToggleKeyframeMode(); break;
+				case "set-keyframe-mode": onSetKeyframeMode(action.mode); break;
+				case "toggle-keyframe-visibility": onToggleKeyframeVisibility(); break;
+				case "select-keyframe": {
+					onSelectKeyframe(action.id);
+					const frame = timeline.annotationRegions.flatMap((region) => region.positionKeyframes ?? []).find((item) => item.id === action.id);
+					if (frame) playback.handleTimelineSeek(frame.timeMs / 1000);
+					break;
+				}
+				case "copy-keyframe": timelineRef.current?.copyKeyframe(); break;
+				case "paste-keyframe": timelineRef.current?.pasteKeyframe(); break;
+				case "generate-captions": if (canGenerateAutoCaptions && !isGeneratingCaptions) onGenerateAutoCaptions(); break;
 				case "seek": playback.handleTimelineSeek(action.time); break;
 				case "auto-suggest-consumed": handleAutoSuggestZoomsConsumed(); break;
 				case "zoom-added": zoomCommands.handleZoomAdded(action.span); break;
@@ -157,6 +196,7 @@ export function EditorTimelinePanel(props: Props) {
 				case "audio-added": audioCommands.handleAudioAdded(action.span, action.audioPath, action.trackIndex); break;
 				case "audio-span-change": audioCommands.handleAudioSpanChange(action.id, action.span, action.trackIndex); break;
 				case "audio-delete": audioCommands.handleAudioDelete(action.id); break;
+				case "audio-track-added": timeline.setAudioTrackCount((count) => Math.min(32, Math.max(count, ...timeline.audioRegions.map((region) => (region.trackIndex ?? 0) + 1)) + 1)); break;
 				case "select-audio": audioCommands.handleSelectAudio(action.id); break;
 				case "caption-span-change": {
 					const fragment = projection.effectiveCaptionRegions.find((cue) => cue.id === action.id);
@@ -178,6 +218,7 @@ export function EditorTimelinePanel(props: Props) {
 				case "annotation-added": annotationCommands.handleAnnotationAdded(action.span, action.trackIndex); break;
 				case "annotation-span-change": annotationCommands.handleAnnotationSpanChange(action.id, action.span, action.trackIndex); break;
 				case "annotation-delete": annotationCommands.handleAnnotationDelete(action.id); break;
+				case "annotation-position-keyframes-change": annotationCommands.handleAnnotationPositionKeyframesChange(action.id, action.keyframes); break;
 				case "select-annotation": handleSelectAnnotation(action.id); break;
 			}
 		};
@@ -196,6 +237,9 @@ export function EditorTimelinePanel(props: Props) {
 
 	const timelineEditor = (
 		<TimelineEditor
+				showAllAnnotationKeyframes={showKeyframes}
+				selectedKeyframeId={selectedKeyframeId}
+				onSelectKeyframe={onSelectKeyframe}
 				rowScale={rowScale}
 				onRowScaleChange={setRowScale}
 				ref={timelineRef}
@@ -225,6 +269,8 @@ export function EditorTimelinePanel(props: Props) {
 				selectedClipId={timeline.selectedClipId}
 				onSelectClip={clipCommands.handleSelectClip}
 				audioRegions={timeline.audioRegions}
+				audioTrackCount={timeline.audioTrackCount}
+				onAddAudioTrack={() => timeline.setAudioTrackCount((count) => Math.min(32, Math.max(count, ...timeline.audioRegions.map((region) => (region.trackIndex ?? 0) + 1)) + 1))}
 				onAudioAdded={audioCommands.handleAudioAdded}
 				onAudioSpanChange={audioCommands.handleAudioSpanChange}
 				onAudioDelete={audioCommands.handleAudioDelete}
@@ -267,7 +313,7 @@ export function EditorTimelinePanel(props: Props) {
 				}
 				selectedAnnotationId={timeline.selectedAnnotationId}
 				onSelectAnnotation={handleSelectAnnotation}
-				showSourceAudioTrack={timeline.clipRegions.some((clip) => clip.showSourceAudio)}
+				showSourceAudioTrack
 				sourceAudioResourceVersion={timeline.sourceAudioFallbackRefreshKey}
 				sourceAudioTrackSettings={audio.activeSourceAudioTrackSettings}
 				getSourceAudioTrackSettingsForClip={audio.getSourceAudioTrackSettingsForClip}

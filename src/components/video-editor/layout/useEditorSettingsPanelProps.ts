@@ -131,6 +131,10 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 			: (normalize) =>
 					audio.onSelectedClipSourceAudioTrackNormalizeChange("mixed", normalize),
 		onAudioDelete: audioCommands.handleAudioDelete,
+		audioTrackCount: Math.max(timeline.audioTrackCount, ...timeline.audioRegions.map((region) => (region.trackIndex ?? 0) + 1)),
+		audioTrackMix: timeline.audioTrackMix,
+		onAudioTrackVolumeChange: (index, volume) => timeline.setAudioTrackMix((mix) => ({ ...mix, [index]: { volume, gain: mix[index]?.gain ?? 1 } })),
+		onAudioTrackGainChange: (index, gain) => timeline.setAudioTrackMix((mix) => ({ ...mix, [index]: { volume: mix[index]?.volume ?? 1, gain } })),
 		shadowIntensity: appearance.shadowIntensity,
 		onShadowChange: appearance.setShadowIntensity,
 		backgroundBlur: appearance.backgroundBlur,

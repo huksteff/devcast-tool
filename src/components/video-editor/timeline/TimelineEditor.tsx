@@ -33,6 +33,9 @@ import {
 } from "./sourceAudioTracks";
 
 export interface TimelineEditorProps {
+	showAllAnnotationKeyframes?: boolean;
+	selectedKeyframeId?: string | null;
+	onSelectKeyframe?: (id: string | null) => void;
 	rowScale?: number;
 	onRowScaleChange?: (value: number) => void;
 	videoDuration: number;
@@ -68,6 +71,8 @@ export interface TimelineEditorProps {
 	speedRegions?: SpeedRegion[];
 	onSpeedSpanChange?: (id: string, span: Span) => void;
 	audioRegions?: AudioRegion[];
+	audioTrackCount?: number;
+	onAddAudioTrack?: () => void;
 	onAudioAdded?: (span: Span, audioPath: string, trackIndex?: number) => void;
 	onAudioSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAudioDelete?: (id: string) => void;
@@ -113,12 +118,17 @@ export interface TimelineEditorHandle {
 	splitClip: () => void;
 	addAnnotation: (trackIndex?: number) => void;
 	addAudio: (trackIndex?: number) => Promise<void>;
+	copyKeyframe: () => void;
+	pasteKeyframe: () => void;
 	keyframes: { id: string; time: number }[];
 }
 
 const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 	function TimelineEditor(
 		{
+			showAllAnnotationKeyframes,
+			selectedKeyframeId: sharedSelectedKeyframeId,
+			onSelectKeyframe,
 			rowScale = 1,
 			onRowScaleChange,
 			videoDuration,
@@ -154,6 +164,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			speedRegions = [],
 			onSpeedSpanChange,
 			audioRegions = [],
+			audioTrackCount = 1,
+			onAddAudioTrack,
 			onAudioAdded,
 			onAudioSpanChange,
 			onAudioDelete,
@@ -170,7 +182,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			videoPath,
 			videoSourcePath,
 			cursorTelemetrySourcePath,
-			showSourceAudioTrack = false,
+			showSourceAudioTrack = true,
 			sourceAudioResourceVersion = 0,
 			onSourceAudioAvailabilityChange,
 			sourceAudioTrackSettings = {},
@@ -362,6 +374,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		}, [onSourceAudioAvailabilityChange, sourceAudioTracks.length]);
 
 		const {
+			handleAddAudio,
 			keyframes,
 			selectedKeyframeId,
 			setSelectedKeyframeId,
@@ -416,6 +429,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onAnnotationSpanChange,
 			onAnnotationDelete,
 			onAnnotationPositionKeyframesChange,
+			selectedKeyframeId: sharedSelectedKeyframeId,
+			onSelectKeyframe,
 			selectedAnnotationId,
 			onSelectAnnotation,
 			speedRegions,
@@ -525,6 +540,9 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 						<TimelineCanvas
 							videoPath={videoPath}
 							items={timelineItems}
+							audioTrackCount={audioTrackCount}
+							onAddAudioTrack={onAddAudioTrack}
+							onAddAudioFile={(trackIndex) => void handleAddAudio(trackIndex)}
 							videoDurationMs={totalMs}
 							currentTimeMs={currentTimeMs}
 							onSeek={onSeek}
@@ -551,8 +569,13 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							selectAllBlocksActive={selectAllBlocksActive}
 							onClearBlockSelection={clearSelectedBlocks}
 							keyframes={keyframes}
+							showAllAnnotationKeyframes={showAllAnnotationKeyframes}
 							selectedKeyframeId={selectedKeyframeId}
-							onSelectKeyframe={setSelectedKeyframeId}
+							onSelectKeyframe={(id) => {
+								setSelectedKeyframeId(id);
+								const frame = keyframes.find((item) => item.id === id);
+								if (frame) onSeek?.(frame.time / 1000);
+							}}
 							onMoveKeyframe={handleKeyframeMove}
 							sourceAudioTracks={sourceAudioTracks}
 							getSourceAudioTrackSettingsForClip={getSourceAudioTrackSettingsForClip}

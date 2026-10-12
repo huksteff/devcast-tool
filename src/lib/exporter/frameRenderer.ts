@@ -1,6 +1,7 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import { ZoomBlurFilter } from "pixi-filters/zoom-blur";
+import { resolveAnnotationAtTime } from "@/components/video-editor/annotationKeyframes";
 import type {
 	AnnotationRegion,
 	AutoCaptionSettings,
@@ -1473,11 +1474,11 @@ export class FrameRenderer {
 		const cursorTimeMs = cursorTimestamp / 1000;
 
 		if (this.cursorOverlay) {
-			const callout = resolveCursorCalloutState(this.config.annotationRegions, timeMs, {
+			const callout = resolveCursorCalloutState(this.config.annotationRegions?.map((region) => resolveAnnotationAtTime(region, timeMs)), timeMs, {
 				enabled: this.config.cursorCalloutEnabled ?? false,
 				text: this.config.cursorCalloutText ?? "",
 			});
-			this.cursorOverlay.setCallout(callout.enabled, callout.text, this.config.cursorCalloutBackground ?? "#14B8C4", this.config.cursorCalloutTextColor ?? "#FFFFFF", this.config.cursorCalloutScale ?? 1, this.config.cursorCalloutGradientEnabled ?? false, this.config.cursorCalloutGradientColors ?? ["#14B8C4", "#A855F7"], this.config.cursorCalloutGradientGlow ?? 14);
+			this.cursorOverlay.setCallout(callout.enabled, callout.text, callout.style?.background ?? this.config.cursorCalloutBackground ?? "#14B8C4", callout.style?.textColor ?? this.config.cursorCalloutTextColor ?? "#FFFFFF", callout.style?.scale ?? this.config.cursorCalloutScale ?? 1, callout.style?.gradientEnabled ?? this.config.cursorCalloutGradientEnabled ?? false, callout.style?.gradientColors ?? this.config.cursorCalloutGradientColors ?? ["#14B8C4", "#A855F7"], callout.style?.gradientGlow ?? this.config.cursorCalloutGradientGlow ?? 14);
 			this.cursorOverlay.update(
 				this.config.cursorTelemetry ?? [],
 				cursorTimeMs,

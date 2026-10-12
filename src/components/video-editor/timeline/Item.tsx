@@ -63,7 +63,7 @@ interface ItemProps {
 	loadingLabel?: string;
 	annotationStages?: AnnotationStages;
 	annotationType?: AnnotationType;
-	annotationKeyframes?: { id: string; time: number }[];
+	annotationKeyframes?: { id: string; time: number; changes?: string[] }[];
 	selectedKeyframeId?: string | null;
 	onSelectKeyframe?: (id: string) => void;
 	onMoveKeyframe?: (id: string, time: number) => void;
@@ -345,7 +345,7 @@ export default function Item({
 						"timeline-block w-full flex items-center justify-center gap-1.5 relative",
 						isSelected && glassStyles.selected,
 						embedded && glassStyles.embeddedCaption,
-						isClip ? "overflow-visible" : "overflow-hidden",
+						isClip || variant === "annotation" ? "overflow-visible" : "overflow-hidden",
 					)}
 					style={{
 						height: "85%",
@@ -426,7 +426,44 @@ export default function Item({
 						)}
 					{variant === "annotation" && annotationKeyframes.map((keyframe) => {
 						const percent = Math.max(0, Math.min(100, ((keyframe.time - span.start) / Math.max(1, span.end - span.start)) * 100));
-						return <button key={keyframe.id} type="button" className="absolute z-30 h-3 w-3 -translate-x-1/2 rotate-45 cursor-grab active:cursor-grabbing border border-black/60 bg-cyan-300 shadow-[0_0_6px_rgba(34,211,238,.9)]" style={{ left: `${percent}%`, top: "50%", marginTop: "-6px", opacity: keyframe.id === selectedKeyframeId ? 1 : 0.75 }} onPointerDown={(event) => { event.stopPropagation(); onSelectKeyframe?.(keyframe.id); const block = event.currentTarget.parentElement; if (!block) return; const move = (moveEvent: PointerEvent) => { const rect = block.getBoundingClientRect(); const progress = Math.max(0, Math.min(1, (moveEvent.clientX - rect.left) / Math.max(1, rect.width))); onMoveKeyframe?.(keyframe.id, span.start + progress * (span.end - span.start)); }; const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }} title={`Keyframe @ ${Math.round(keyframe.time)}ms (drag to move)`} />;
+						return (
+							<button
+								key={keyframe.id}
+								type="button"
+								className="group/keyframe absolute z-30 h-3 w-3 -translate-x-1/2 cursor-grab active:cursor-grabbing"
+								style={{ left: `${percent}%`, top: "50%", marginTop: "-6px", opacity: keyframe.id === selectedKeyframeId ? 1 : 0.75 }}
+								onPointerDown={(event) => {
+									event.stopPropagation();
+									if (!isSelected) {
+										onSelectId?.(id);
+										onSelectKeyframe?.(keyframe.id);
+										return;
+									}
+									onSelectKeyframe?.(keyframe.id);
+									const block = event.currentTarget.parentElement;
+									if (!block) return;
+									const move = (moveEvent: PointerEvent) => {
+										const rect = block.getBoundingClientRect();
+										const progress = Math.max(0, Math.min(1, (moveEvent.clientX - rect.left) / Math.max(1, rect.width)));
+										onMoveKeyframe?.(keyframe.id, span.start + progress * (span.end - span.start));
+									};
+									const up = () => {
+										window.removeEventListener("pointermove", move);
+										window.removeEventListener("pointerup", up);
+									};
+									window.addEventListener("pointermove", move);
+									window.addEventListener("pointerup", up);
+								}}
+								onClick={(event) => event.stopPropagation()}
+								title={`Keyframe @ ${Math.round(keyframe.time)}ms (drag to move)`}
+							>
+								<span className="block h-3 w-3 rotate-45 border border-black/60 bg-cyan-300 shadow-[0_0_6px_rgba(34,211,238,.9)]" />
+								<span className="pointer-events-none absolute bottom-5 left-1/2 z-50 hidden min-w-48 max-w-72 -translate-x-1/2 rounded-md border border-foreground/20 bg-editor-bg px-2 py-1.5 text-left text-[11px] text-foreground shadow-xl group-hover/keyframe:block">
+									<strong className="block pb-1">Keyframe {Math.round(keyframe.time)} ms</strong>
+									{(keyframe.changes ?? []).map((change) => <span key={change} className="block whitespace-nowrap">{change}</span>)}
+								</span>
+							</button>
+						);
 					})}
 					{/* Muted overlay for source audio track items */}
 					{isAudio && muted && (

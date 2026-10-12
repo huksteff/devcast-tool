@@ -102,10 +102,6 @@ const KeyframeMarkers: React.FC<KeyframeMarkersProps> = ({
 							setSelectedKeyframeId(kf.id);
 							setDragCandidate({ id: kf.id, clientX: e.clientX, clientY: e.clientY });
 						}}
-						onClick={(e) => {
-							e.stopPropagation();
-							setSelectedKeyframeId(kf.id);
-						}}
 						onContextMenu={(e) => {
 							e.preventDefault();
 							e.stopPropagation();

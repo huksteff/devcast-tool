@@ -76,7 +76,7 @@ export const DEFAULT_SHORTCUTS: ShortcutsConfig = {
 	addZoom: { key: "z" },
 	splitClip: { key: "c" },
 	addAnnotation: { key: "a" },
-	addKeyframe: { key: "f" },
+	addKeyframe: { key: "i" },
 	deleteSelected: { key: "d", ctrl: true },
 	playPause: { key: " " },
 };

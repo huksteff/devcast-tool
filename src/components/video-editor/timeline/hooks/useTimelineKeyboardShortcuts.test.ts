@@ -135,3 +135,10 @@ it("keeps creation and select-all shortcuts scoped to the timeline", () => {
 	expect(params.handleAddZoom).not.toHaveBeenCalled();
 	expect(params.activateSelectAllZooms).not.toHaveBeenCalled();
 });
+it("adds a manual keyframe with I even when the timeline is not focused", () => {
+	const { press, params } = setup();
+	expect(press({ key: "i", code: "KeyI" }).preventDefault).toHaveBeenCalledOnce();
+	expect(params.addKeyframe).toHaveBeenCalledOnce();
+	press({ key: "i", code: "KeyI", target: new Input() });
+	expect(params.addKeyframe).toHaveBeenCalledOnce();
+});
