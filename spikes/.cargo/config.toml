@@ -1,0 +1,4 @@
+# Пути к локальным нативным зависимостям (.deps/ в корне репозитория, не в git).
+[env]
+FFMPEG_DIR = { value = "../.deps/ffmpeg", relative = true }
+LIBCLANG_PATH = { value = "../.deps/libclang", relative = true }

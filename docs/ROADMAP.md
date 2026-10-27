@@ -7,7 +7,7 @@
 |---|---|---|---|
 | 0. Подготовка | [roadmap/00-prep.md](roadmap/00-prep.md) | 16 | Репозиторий, проверки, CI, выжимки v1, эталоны |
 | 1. Пробы | [roadmap/01-spikes.md](roadmap/01-spikes.md) | 14 | Риски сняты, выбор подтверждён или заменён |
-| 2. Ядро и CLI | [roadmap/02-core.md](roadmap/02-core.md) | 24 | Модель, команды, история, проект, CLI без рендера |
+| 2. Ядро и CLI | [roadmap/02-core.md](roadmap/02-core.md) | 25 | Модель, команды, история, проект, CLI без рендера |
 | 3. Запись (Windows) | [roadmap/03-capture.md](roadmap/03-capture.md) | 16 | `devcast record` пишет экран, звук, курсор и клавиши |
 | 4. Медиа и анализ | [roadmap/04-media.md](roadmap/04-media.md) | 18 | Декодирование, звук, тишина, транскрипт, автозумы |
 | 5. Рендер и экспорт | [roadmap/05-render.md](roadmap/05-render.md) | 41 | Все эффекты, кадры, MP4 и GIF из CLI |
