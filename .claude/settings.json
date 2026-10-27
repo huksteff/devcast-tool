@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo check:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo nextest:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo xtask:*)",
+      "Bash(cargo run:*)",
+      "Bash(cargo metadata:*)",
+      "Bash(cargo tree:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cargo xtask hook-stop",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
+}

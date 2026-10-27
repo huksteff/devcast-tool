@@ -2,6 +2,7 @@
 
 mod changed;
 mod deps;
+mod hook;
 mod limits;
 mod metadata;
 mod run;
@@ -18,7 +19,10 @@ const USAGE: &str = "\
   verify [--full] [--include-ignored]
       Проверки перед «готово»: fmt, clippy, длина файлов, зависимости, пометки о недоделках, тесты.
       Без --full тесты идут только для крейтов с незакоммиченными правками
-      и для крейтов, которые от них зависят. --include-ignored добавляет долгие тесты.";
+      и для крейтов, которые от них зависят. --include-ignored добавляет долгие тесты.
+  hook-stop
+      Stop-хук Claude Code (.claude/settings.json): если менялся код и verify красный,
+      не даёт сессии закончиться и передаёт отчёт агенту.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -35,6 +39,7 @@ fn main() -> ExitCode {
             }
             Err(message) => usage_error(&message),
         },
+        "hook-stop" => hook::stop(),
         "help" | "--help" | "-h" => {
             println!("{USAGE}");
             ExitCode::SUCCESS

@@ -15,8 +15,20 @@ const GLOBAL_FILES: [&str; 4] = [
 
 /// Packages touched by uncommitted (incl. untracked) changes plus all packages depending on them.
 pub fn packages(workspace: &Workspace) -> Result<BTreeSet<String>, String> {
+    Ok(affected(workspace, &uncommitted_paths()?))
+}
+
+/// Paths (relative to the repository root) with uncommitted changes, untracked files included.
+pub fn uncommitted_paths() -> Result<Vec<String>, String> {
     let status = run::git(&["status", "--porcelain", "--untracked-files=all", "-z"])?;
-    Ok(affected(workspace, &changed_paths(&status)))
+    Ok(changed_paths(&status))
+}
+
+/// True if any path is Rust code or build configuration, i.e. something `verify` checks.
+pub fn touches_code(paths: &[String]) -> bool {
+    paths
+        .iter()
+        .any(|path| path.ends_with(".rs") || path.ends_with("Cargo.toml") || is_global(path))
 }
 
 /// Paths from `git status --porcelain -z` output (both sides of renames and copies).
@@ -128,6 +140,15 @@ mod tests {
     #[test]
     fn docs_change_affects_nothing() {
         assert!(affected(&workspace(), &["docs/SCOPE.md".to_owned()]).is_empty());
+    }
+
+    #[test]
+    fn only_code_and_build_files_count_as_code() {
+        let docs = vec!["docs/SCOPE.md".to_owned(), "README.md".to_owned()];
+        assert!(!touches_code(&docs));
+        assert!(touches_code(&["fx/zoom/src/lib.rs".to_owned()]));
+        assert!(touches_code(&["crates/core/Cargo.toml".to_owned()]));
+        assert!(touches_code(&[".cargo/config.toml".to_owned()]));
     }
 
     #[test]

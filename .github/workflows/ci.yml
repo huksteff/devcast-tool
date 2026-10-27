@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  # Ночной прогон с долгими тестами (#[ignore]). GitHub запускает расписание только на ветке по умолчанию.
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+
+      # Ставит версию из rust-toolchain.toml.
+      - name: Rust toolchain
+        run: rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: verify
+        if: github.event_name != 'schedule'
+        run: cargo xtask verify --full
+
+      - name: verify (с долгими тестами)
+        if: github.event_name == 'schedule'
+        run: cargo xtask verify --full --include-ignored
