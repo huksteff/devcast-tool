@@ -11,7 +11,7 @@
 
 ## Как тестировать
 
-- `cargo nextest run -p xtask` — правила (deps, limits, todo, changed, hook) покрыты юнит-тестами.
+- `cargo nextest run -p xtask` — правила (deps, limits, todo, features, changed, hook) покрыты юнит-тестами.
 - Живая проверка: внести нарушение каждого вида и убедиться, что `cargo xtask verify` его ловит и подсказывает исправление.
 
 ## Куда не лезть

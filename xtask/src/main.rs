@@ -2,6 +2,7 @@
 
 mod changed;
 mod deps;
+mod features;
 mod hook;
 mod limits;
 mod metadata;
