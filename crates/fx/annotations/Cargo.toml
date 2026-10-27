@@ -1,0 +1,11 @@
+[package]
+name = "dc-fx-annotations"
+description = "Shared annotation model: tracks, layers, rotation, animations, keyframes, guides."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

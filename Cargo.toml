@@ -1,0 +1,27 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "crates/fx/*", "xtask"]
+# crates/fx — только папка для крейтов эффектов, сама по себе не крейт
+exclude = ["crates/fx"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[workspace.lints.rust]
+# unsafe разрешён только в capture и encode через #![allow(unsafe_code, reason = "...")]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+# порог задан в clippy.toml (80 строк)
+too_many_lines = "deny"
+# каждый #[allow] обязан объяснять причину: #[allow(lint, reason = "...")]
+allow_attributes_without_reason = "deny"

@@ -1,0 +1,11 @@
+[package]
+name = "dc-encode"
+description = "Live encoding while recording, MP4 and GIF export, encoder self-test, export queue."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

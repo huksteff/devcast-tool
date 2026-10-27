@@ -1,0 +1,11 @@
+[package]
+name = "dc-project"
+description = "Project folder: project/session/history files, lock, atomic writes, schema versions, app defaults."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

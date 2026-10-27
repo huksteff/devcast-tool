@@ -7,7 +7,7 @@
   - лицензия AGPL-3.0, `.gitignore`;
   - Git LFS для `fixtures/`;
   - README в одну строку со ссылкой на `docs/`.
-- [ ] **0.2** Cargo workspace:
+- [x] **0.2** Cargo workspace:
   - пустые крейты по карте из ARCHITECTURE.md;
   - общие линты на уровне workspace (`unwrap_used`, `expect_used`, `todo`, `dbg_macro` — запрет);
   - `rust-toolchain.toml` с пином версии;

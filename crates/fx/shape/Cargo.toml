@@ -1,0 +1,11 @@
+[package]
+name = "dc-fx-shape"
+description = "Shape annotations: arrow, rectangle, ellipse, circle, line, highlight."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

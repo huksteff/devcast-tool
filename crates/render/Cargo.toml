@@ -1,0 +1,11 @@
+[package]
+name = "dc-render"
+description = "wgpu compositor: video, SDF shapes, blur and glow, text, sprites, strokes, motion blur, offscreen."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
