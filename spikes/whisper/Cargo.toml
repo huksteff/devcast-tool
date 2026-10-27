@@ -1,0 +1,9 @@
+[package]
+name = "spike-whisper"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+whisper-rs = "0.16"
+hound = "3"
