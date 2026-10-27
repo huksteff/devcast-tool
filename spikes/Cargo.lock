@@ -2104,6 +2104,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "spike-windows"
+version = "0.0.0"
+dependencies = [
+ "eframe",
+]
+
+[[package]]
 name = "spirv"
 version = "0.4.0+sdk-1.4.341.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
