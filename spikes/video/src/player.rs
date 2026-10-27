@@ -266,7 +266,8 @@ pub fn run(file: String, hw: bool, seconds: f64) -> Result<(), Box<dyn std::erro
         viewport: egui::ViewportBuilder::default()
             .with_title("spike-video")
             .with_inner_size([960.0, 540.0])
-            .with_position([-1880.0, 200.0]),
+            .with_position([-1880.0, 200.0])
+            .with_always_on_top(),
         ..Default::default()
     };
     eframe::run_native(
