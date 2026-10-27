@@ -2,7 +2,7 @@
 # не входит в основной и не проверяется xtask. Выводы переносятся в docs/decisions/.
 [workspace]
 resolver = "3"
-members = ["hud", "windows", "video", "render", "text"]
+members = ["hud", "windows", "video", "render", "text", "export"]
 
 [workspace.package]
 edition = "2024"
