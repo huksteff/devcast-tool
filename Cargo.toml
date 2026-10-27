@@ -1,8 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "crates/fx/*", "xtask"]
-# crates/fx — только папка для крейтов эффектов, сама по себе не крейт
-exclude = ["crates/fx"]
+members = ["crates/*", "fx/*", "xtask"]
 
 [workspace.package]
 version = "0.1.0"

@@ -14,8 +14,8 @@
   - `.cargo/config.toml` с линкером rust-lld на Windows.
 
   Проверка: `cargo check` проходит на чистой машине.
-- [ ] **0.3** `xtask verify`, первая часть: fmt, clippy с `-D warnings`, nextest только для изменённых крейтов (по git diff) с выводом одних ошибок.
-- [ ] **0.4** `xtask verify`, вторая часть:
+- [x] **0.3** `xtask verify`, первая часть: fmt, clippy с `-D warnings`, nextest только для изменённых крейтов (по git diff) с выводом одних ошибок.
+- [x] **0.4** `xtask verify`, вторая часть:
   - лимиты: файл ≤ 400 строк, функция ≤ 80;
   - правила зависимостей по `cargo metadata`;
   - запрет TODO.
