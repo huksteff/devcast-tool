@@ -95,7 +95,7 @@ struct Frame {
 }
 
 const REGION_DOWN: f32 = 4.0;
-const GLOW_DOWN: u32 = 4;
+const GLOW_DOWN: u32 = 2;
 
 impl Frame {
     fn new(gpu: &Gpu, w: u32, h: u32) -> Self {
