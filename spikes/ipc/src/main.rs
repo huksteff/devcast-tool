@@ -138,7 +138,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 viewport: egui::ViewportBuilder::default()
                     .with_title("spike-ipc")
                     .with_inner_size([420.0, 120.0])
-                    .with_position([-1700.0, 300.0]),
+                    .with_position([-1700.0, 300.0])
+                    .with_always_on_top(),
                 ..Default::default()
             };
             eframe::run_native(
