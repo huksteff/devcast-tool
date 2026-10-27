@@ -817,6 +817,9 @@ export function reassertHudOverlayMousePassthrough(): void {
 	if (!hud) {
 		return;
 	}
+	// Native modal dialogs may leave the non-activating sibling HUD disabled.
+	// Mouse flags and its input shape cannot make a disabled HWND clickable.
+	hud.setEnabled(true);
 	if (!isHudOverlayMousePassthroughSupported()) {
 		// Windows uses a shaped input region. Reapply it after sibling windows
 		// close too; the forwarded-mouse recovery below never runs on Windows.
@@ -828,6 +831,7 @@ export function reassertHudOverlayMousePassthrough(): void {
 		hudOverlayMouseReassertTimer = setTimeout(() => {
 			hudOverlayMouseReassertTimer = null;
 			if (hud.isDestroyed()) return;
+			hud.setEnabled(true);
 			hud.setIgnoreMouseEvents(false);
 			applyHudOverlayShape(hud);
 		}, 50);

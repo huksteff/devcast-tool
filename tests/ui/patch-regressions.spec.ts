@@ -8,6 +8,8 @@ test("manual zoom area resizes continuously and retains its size after deselecti
 	await expect(page.locator('[data-variant="clip"]')).toHaveAttribute("data-end-ms", "6000", { timeout: 20000 });
 	await page.getByRole("button", { name: "Add Zoom (Z)", exact: true }).click();
 	await page.locator('[data-variant="zoom"]').click();
+	await expect(page.getByRole("grid", { name: "Zoom level", exact: true })).toHaveCount(0);
+	await expect(page.getByText("Amount", { exact: true })).toHaveCount(0);
 	await page.getByRole("row", { name: "Manual", exact: true }).click();
 	const area = page.getByTestId("zoom-focus-area");
 	await expect(area).toBeVisible();

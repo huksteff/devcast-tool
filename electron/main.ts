@@ -213,14 +213,16 @@ function closeEditorWindowToHud(window: BrowserWindow | null) {
 		return;
 	}
 
-	// The HUD renderer normally remains hidden while the editor is open so
-	// recording finalization can continue. Restore that HUD before destroying
-	// the editor, keeping DevCast in its ready-to-record state on the taskbar.
-	window.hide();
-	if (mainWindow === window) {
-		mainWindow = null;
-	}
-	createWindow();
+	// A native close dialog can leave its sibling HWND disabled until the
+	// editor has been destroyed. Restore the HUD after all closed listeners
+	// (including editor-mode notification) and native modal teardown finish.
+	window.once("closed", () => {
+		setImmediate(() => {
+			if (isAppQuitting) return;
+			createWindow();
+			reassertHudOverlayMouseState();
+		});
+	});
 	closeEditorWindowBypassingUnsavedPrompt(window);
 }
 

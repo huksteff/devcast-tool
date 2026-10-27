@@ -43,17 +43,38 @@ try {
   for (let cycle = 0; cycle < 3; cycle++) {
     await hud.evaluate(() => window.electronAPI.switchToEditor());
     await expect.poll(() => app.windows().filter(w => w.url().includes('windowType=editor')).length).toBe(1);
-    await app.evaluate(({ BrowserWindow }) => {
+    const discard = cycle === 1;
+    await app.evaluate(({ BrowserWindow, dialog, ipcMain }, { discard, nativeDiscard }) => {
       const editor = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('windowType=editor'));
       const overlay = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('hud-overlay'));
       overlay.__inputRecovery = { ignores: [], shapes: 0 };
-      editor.close();
-    });
+      const originalDialog = dialog.showMessageBoxSync;
+      overlay.__discardDialogs = 0;
+      ipcMain.emit('set-has-unsaved-changes', { sender: editor.webContents }, discard);
+      dialog.showMessageBoxSync = (_owner, options) => {
+        if (!options.buttons?.includes('Discard & Close')) throw new Error('Unexpected close dialog');
+        overlay.__discardDialogs++;
+        if (nativeDiscard) {
+          const choice = originalDialog(_owner, options);
+          overlay.__nativeDiscardChoice = choice;
+          return choice;
+        }
+        // Reproduce the disabled sibling HWND left by a native modal.
+        overlay.setEnabled(false);
+        return 1;
+      };
+      try { editor.close(); } finally { dialog.showMessageBoxSync = originalDialog; }
+    }, { discard, nativeDiscard: process.argv.includes('--native-discard') });
     await expect.poll(() => app.evaluate(({ BrowserWindow }) => {
       const overlay = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('hud-overlay'));
-      return { interactive: overlay.__inputRecovery.ignores.at(-1) === false, shaped: overlay.__inputRecovery.shapes > 0 };
-    })).toEqual({ interactive: true, shaped: true });
+      return { interactive: overlay.__inputRecovery.ignores.at(-1) === false, shaped: overlay.__inputRecovery.shapes > 0, enabled: overlay.isEnabled(), visible: overlay.isVisible() };
+    })).toEqual({ interactive: true, shaped: true, enabled: true, visible: true });
+    if (discard) expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('hud-overlay')).__discardDialogs)).toBe(1);
   }
+  if (process.argv.includes('--native-discard')) expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.webContents.getURL().includes('hud-overlay')).__nativeDiscardChoice)).toBe(1);
+  // Closing a native dialog can return focus to an external desktop app.
+  // Establish a foreground target before testing that HUD clicks preserve it.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => w.getTitle() === 'HUD focus test target').focus());
   const source = await hud.evaluate(() => window.electronAPI.getSelectedSource());
   await hud.getByRole('button', { name: source.name, exact: true }).click();
   await expect.poll(() => hud.locator('.source-selector-item').count(), { timeout: 15000 }).toBeGreaterThan(0);
@@ -62,7 +83,7 @@ try {
   await expect.poll(() => hud.evaluate(() => window.electronAPI.getSelectedSource())).toHaveProperty('sourceType', 'screen');
   await expect.poll(checkFocus).toEqual({ focusable: false, focused: false, target: 'HUD focus test target' });
   expect(errors).toEqual([]);
-  console.log('PASS: HUD input restored after 3 editor close cycles; non-activating; source menu opens and selects; foreground target preserved; no renderer errors');
+  console.log('PASS: HUD restored after clean and Discard & Close paths, including disabled modal state; source selection works; no renderer errors');
 } catch (error) {
   console.log('Renderer errors:', errors);
   if (app) console.log('Preload diagnostics:', await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter(w => w.webContents.getURL().includes('hud-overlay')).map(w => ({ error: w.__preloadError, preferences: w.webContents.getLastWebPreferences() }))));

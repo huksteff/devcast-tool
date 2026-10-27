@@ -603,15 +603,6 @@ interface SettingsPanelProps {
 	onOpenNativeCaptureUnavailableModal?: () => void;
 }
 
-const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
-	{ depth: 1, label: "1.25×" },
-	{ depth: 2, label: "1.5×" },
-	{ depth: 3, label: "1.8×" },
-	{ depth: 4, label: "2.2×" },
-	{ depth: 5, label: "3.5×" },
-	{ depth: 6, label: "5×" },
-];
-
 const WEBCAM_POSITION_PRESETS: Array<{
 	preset: Exclude<WebcamPositionPreset, "custom">;
 	label: string;
@@ -924,9 +915,6 @@ export function SettingsPanel({
 	activeEffectSection: activeEffectSectionProp,
 	selected,
 	onWallpaperChange,
-	selectedZoomDepth,
-	selectedZoomScale,
-	onZoomDepthChange,
 	selectedZoomId,
 	selectedZoomMode,
 	onZoomModeChange,
@@ -2804,22 +2792,6 @@ export function SettingsPanel({
 										)}
 							</p>
 						</div>
-						<SectionLabel>{tSettings("zoom.amount", "Amount")}</SectionLabel>
-						<ChoiceGroup
-							aria-label="Zoom level"
-							value={selectedZoomScale === undefined ? String(selectedZoomDepth) : undefined}
-							onValueChange={(value) =>
-								onZoomDepthChange?.(Number(value) as ZoomDepth)
-							}
-							className="grid grid-cols-3 gap-2"
-						>
-							{ZOOM_DEPTH_OPTIONS.map((option) => (
-								<ChoiceItem key={option.depth} value={String(option.depth)}>
-									{option.label}
-								</ChoiceItem>
-							))}
-						</ChoiceGroup>
-						{selectedZoomScale !== undefined && <p className="text-xs text-muted-foreground">{selectedZoomScale.toFixed(2)}×</p>}
 					</>
 				)}
 				{advanced && (
