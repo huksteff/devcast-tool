@@ -61,12 +61,14 @@ export function useAutoCaptionController({
 	syncActiveVideoSource,
 }: UseAutoCaptionControllerParams) {
 	const captionGenerationInFlightRef = useRef(false);
+	const modelStatusVersionRef = useRef(0);
 	const [captionGenerationProgress, setCaptionGenerationProgress] = useState(0);
 	const activeSourceRef = useRef({ videoSourcePath, videoPath });
 	activeSourceRef.current = { videoSourcePath, videoPath };
 
 	useEffect(() => {
 		const unsubscribe = window.electronAPI.onWhisperSmallModelDownloadProgress((state) => {
+			modelStatusVersionRef.current++;
 			setWhisperModelDownloadStatus(state.status);
 			setWhisperModelDownloadProgress(state.progress);
 			if (state.status === "downloaded") {
@@ -74,12 +76,15 @@ export function useAutoCaptionController({
 				setWhisperModelPath((current) => current ?? state.path ?? null);
 			} else if (state.status === "idle") {
 				setDownloadedWhisperModelPath(null);
+				setWhisperModelPath((current) => current === state.path ? null : current);
 			} else if (state.status === "error" && state.error) {
 				toast.error(state.error);
 			}
 		});
 
+		const statusVersion = modelStatusVersionRef.current;
 		void window.electronAPI.getWhisperSmallModelStatus().then((result) => {
+			if (modelStatusVersionRef.current !== statusVersion) return;
 			if (!result.success) return;
 			if (result.exists && result.path) {
 				setDownloadedWhisperModelPath(result.path);
@@ -88,6 +93,7 @@ export function useAutoCaptionController({
 				setWhisperModelDownloadProgress(100);
 			} else {
 				setDownloadedWhisperModelPath(null);
+				setWhisperModelPath((current) => current === result.path ? null : current);
 				setWhisperModelDownloadStatus("idle");
 				setWhisperModelDownloadProgress(0);
 			}
@@ -110,6 +116,7 @@ export function useAutoCaptionController({
 
 	const handleDownloadWhisperSmallModel = useCallback(async () => {
 		if (whisperModelDownloadStatus === "downloading") return;
+		modelStatusVersionRef.current++;
 		setWhisperModelDownloadStatus("downloading");
 		setWhisperModelDownloadProgress(0);
 		const result = await window.electronAPI.downloadWhisperSmallModel();
@@ -121,6 +128,8 @@ export function useAutoCaptionController({
 		if (result.path) {
 			setDownloadedWhisperModelPath(result.path);
 			setWhisperModelPath(result.path);
+			setWhisperModelDownloadStatus("downloaded");
+			setWhisperModelDownloadProgress(100);
 		}
 	}, [
 		setDownloadedWhisperModelPath,
@@ -138,12 +147,14 @@ export function useAutoCaptionController({
 	}, [setWhisperModelPath]);
 
 	const handleDeleteWhisperSmallModel = useCallback(async () => {
+		modelStatusVersionRef.current++;
 		const result = await window.electronAPI.deleteWhisperSmallModel();
 		if (!result.success) {
 			toast.error(result.error || "Failed to delete Whisper small model");
 			return;
 		}
-		setWhisperModelPath((current) => (current === downloadedWhisperModelPath ? null : current));
+		setWhisperModelPath((current) =>
+			current === downloadedWhisperModelPath || current === result.path ? null : current);
 		setDownloadedWhisperModelPath(null);
 		setWhisperModelDownloadStatus("idle");
 		setWhisperModelDownloadProgress(0);
@@ -205,6 +216,12 @@ export function useAutoCaptionController({
 			}
 			if (!result.success || !result.cues) {
 				const errorMessage = result.error ? getErrorMessage(result.error) : result.message;
+				if (/ENOENT.*(?:ggml|\.bin)|Whisper model.*(?:missing|not found)/i.test(errorMessage || "")) {
+					setWhisperModelPath(null);
+					setDownloadedWhisperModelPath(null);
+					setWhisperModelDownloadStatus("idle");
+					setWhisperModelDownloadProgress(0);
+				}
 				toast.error(errorMessage || "Failed to generate captions");
 				return;
 			}
@@ -227,6 +244,10 @@ export function useAutoCaptionController({
 		isGeneratingCaptions,
 		setAutoCaptionSettings,
 		setAutoCaptions,
+		setWhisperModelPath,
+		setDownloadedWhisperModelPath,
+		setWhisperModelDownloadStatus,
+		setWhisperModelDownloadProgress,
 		setIsGeneratingCaptions,
 		setVideoPath,
 		setVideoSourcePath,

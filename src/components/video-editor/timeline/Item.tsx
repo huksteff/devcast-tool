@@ -14,7 +14,8 @@ import {
 } from "@phosphor-icons/react";
 import type { GetSpanFromDragEvent, GetSpanFromResizeEvent, Span } from "dnd-timeline";
 import { useItem, useTimelineContext } from "dnd-timeline";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatClipSpeedLabel } from "../clipSpeedChange";
@@ -51,6 +52,7 @@ interface ItemProps {
 	onDoubleClick?: () => void;
 	onSelectId?: (id: string) => void;
 	zoomDepth?: number;
+	zoomScale?: number;
 	zoomMode?: "auto" | "manual";
 	speedValue?: number;
 	waveformPeaks?: AudioPeaksData | null;
@@ -96,6 +98,7 @@ export default function Item({
 	onDoubleClick,
 	onSelectId,
 	zoomDepth = 1,
+	zoomScale,
 	zoomMode = "auto",
 	speedValue,
 	waveformPeaks = null,
@@ -122,6 +125,7 @@ export default function Item({
 		? getRegionDisplaySpan(span, clipPresentation)
 		: (suppliedDisplaySpan ?? span);
 	const nodeRef = useRef<HTMLDivElement | null>(null);
+	const [hoveredKeyframe, setHoveredKeyframe] = useState<{ id: string; x: number; y: number } | null>(null);
 	const targets = useMemo(
 		() => [
 			...new Set(
@@ -455,13 +459,19 @@ export default function Item({
 									window.addEventListener("pointerup", up);
 								}}
 								onClick={(event) => event.stopPropagation()}
-								title={`Keyframe @ ${Math.round(keyframe.time)}ms (drag to move)`}
+								onMouseEnter={(event) => {
+									const rect = event.currentTarget.getBoundingClientRect();
+									setHoveredKeyframe({ id: keyframe.id, x: rect.left + rect.width / 2, y: rect.top });
+								}}
+								onMouseLeave={() => setHoveredKeyframe(null)}
+								onFocus={(event) => {
+									const rect = event.currentTarget.getBoundingClientRect();
+									setHoveredKeyframe({ id: keyframe.id, x: rect.left + rect.width / 2, y: rect.top });
+								}}
+								onBlur={() => setHoveredKeyframe(null)}
+								aria-label={`Keyframe @ ${Math.round(keyframe.time)}ms (drag to move)`}
 							>
 								<span className="block h-3 w-3 rotate-45 border border-black/60 bg-cyan-300 shadow-[0_0_6px_rgba(34,211,238,.9)]" />
-								<span className="pointer-events-none absolute bottom-5 left-1/2 z-50 hidden min-w-48 max-w-72 -translate-x-1/2 rounded-md border border-foreground/20 bg-editor-bg px-2 py-1.5 text-left text-[11px] text-foreground shadow-xl group-hover/keyframe:block">
-									<strong className="block pb-1">Keyframe {Math.round(keyframe.time)} ms</strong>
-									{(keyframe.changes ?? []).map((change) => <span key={change} className="block whitespace-nowrap">{change}</span>)}
-								</span>
 							</button>
 						);
 					})}
@@ -474,7 +484,7 @@ export default function Item({
 					{/* Normal-speed clips show only the filmstrip and resize handles. */}
 					{(!isClip || clipSpeedLabel) && (
 						<div
-							title={`${isZoom ? `${ZOOM_LABELS[zoomDepth]} ${zoomMode === "manual" ? "Manual" : "Auto"}` : typeof children === "string" ? children : "Clip"} · ${timeLabel}`}
+							title={`${isZoom ? `${zoomScale?.toFixed(2) ?? ZOOM_LABELS[zoomDepth]}${zoomScale === undefined ? "" : "×"} ${zoomMode === "manual" ? "Manual" : "Auto"}` : typeof children === "string" ? children : "Clip"} · ${timeLabel}`}
 							className={cn(
 								"relative z-10 flex max-w-full items-center justify-center gap-1 px-1 text-[11px] font-medium text-black/70 dark:text-white/90 select-none overflow-hidden",
 								isClip &&
@@ -492,7 +502,7 @@ export default function Item({
 										className="zoom-icon size-3 shrink-0"
 									/>
 									<span className="zoom-value whitespace-nowrap">
-										{ZOOM_LABELS[zoomDepth] || `${zoomDepth}×`}
+										{zoomScale === undefined ? ZOOM_LABELS[zoomDepth] || `${zoomDepth}×` : `${zoomScale.toFixed(2)}×`}
 										<span className="zoom-mode font-normal">
 											{zoomMode === "manual" ? "Manual" : "Auto"}
 										</span>
@@ -525,6 +535,20 @@ export default function Item({
 					)}
 				</div>
 			</div>
+			{hoveredKeyframe && (() => {
+				const frame = annotationKeyframes.find((item) => item.id === hoveredKeyframe.id);
+				if (!frame) return null;
+				const width = Math.min(320, window.innerWidth - 16);
+				const below = hoveredKeyframe.y < 180;
+				const availableHeight = below ? window.innerHeight - hoveredKeyframe.y - 30 : hoveredKeyframe.y - 20;
+				return createPortal(
+					<div role="tooltip" className="pointer-events-none fixed z-[9999] overflow-y-auto rounded-md border border-foreground/20 bg-editor-bg px-2.5 py-2 text-left text-[11px] text-foreground shadow-xl" style={{ width, left: Math.max(8, Math.min(window.innerWidth - width - 8, hoveredKeyframe.x - width / 2)), maxHeight: Math.max(40, Math.min(320, availableHeight)), ...(below ? { top: hoveredKeyframe.y + 22 } : { bottom: window.innerHeight - hoveredKeyframe.y + 10 }) }}>
+						<strong className="block pb-1">Keyframe {Math.round(frame.time)} ms</strong>
+						{(frame.changes ?? []).map((change, index) => <span key={`${index}-${change}`} className="block break-words">{change}</span>)}
+					</div>,
+					document.body,
+				);
+			})()}
 		</div>
 	);
 }

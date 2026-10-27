@@ -4,6 +4,8 @@ import {
 	type EditorPreset,
 	type EditorPresetSnapshot,
 	saveEditorPresets,
+	rememberSelectedEditorPreset,
+	loadSelectedEditorPreset,
 	serializeEditorPresetSnapshot,
 } from "../editorPreferences";
 
@@ -72,6 +74,7 @@ export function useEditorPresets({
 			const preset = editorPresets.find((item) => item.id === presetId);
 			if (!preset) return;
 			setActivePresetId(preset.id);
+			rememberSelectedEditorPreset(preset.id);
 			applySnapshot(preset.snapshot);
 			toast.success(
 				t("editor.presets.toasts.applied", 'Applied preset "{{name}}"', {
@@ -124,6 +127,7 @@ export function useEditorPresets({
 			}
 			setEditorPresets(nextPresets);
 			setActivePresetId(nextPreset.id);
+			rememberSelectedEditorPreset(nextPreset.id);
 			toast.success(
 				t("editor.presets.toasts.saved", 'Saved preset "{{name}}"', {
 					name: normalizedName,
@@ -139,6 +143,7 @@ export function useEditorPresets({
 			const preset = editorPresets.find((item) => item.id === presetId);
 			if (!preset) return;
 			const nextPresets = editorPresets.filter((item) => item.id !== presetId);
+			const wasSelected = loadSelectedEditorPreset()?.id === presetId;
 			if (!saveEditorPresets(nextPresets)) {
 				toast.error(
 					t(
@@ -149,6 +154,7 @@ export function useEditorPresets({
 				return;
 			}
 			setEditorPresets(nextPresets);
+			if (wasSelected) rememberSelectedEditorPreset(null);
 			if (preset.id === activePresetId) setActivePresetId(null);
 			toast.success(
 				t("editor.presets.toasts.deleted", 'Deleted preset "{{name}}"', {

@@ -118,7 +118,6 @@ export function EditorPreviewPanel(props: Props) {
 		annotationCommands,
 		keyframeMode,
 		onToggleKeyframeMode,
-		onSetKeyframeMode,
 		showKeyframes,
 		onToggleKeyframeVisibility,
 		effectiveCursorTelemetry,
@@ -332,25 +331,11 @@ export function EditorPreviewPanel(props: Props) {
 							>
 								Add audio track
 							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => void timelineRef.current?.addAudio(timeline.audioTrackCount - 1)}>
+							<DropdownMenuItem onClick={() => void timelineRef.current?.addAudio(Math.max(0, timeline.audioTrackCount - 1))}>
 								Add sound file
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="h-9"
-						title="Copy selected keyframe"
-						onClick={() => timelineRef.current?.copyKeyframe()}
-					>Copy keyframe</Button>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="h-9"
-						title="Paste keyframe at playhead"
-						onClick={() => timelineRef.current?.pasteKeyframe()}
-					>Paste keyframe</Button>
 					<Button
 						onClick={() => timelineRef.current?.addZoom()}
 						variant="ghost"
@@ -373,30 +358,19 @@ export function EditorPreviewPanel(props: Props) {
 						onClick={onToggleKeyframeMode}
 						variant="ghost"
 						size="icon"
-						className={`h-9 w-9 ${keyframeMode !== "off" ? "bg-primary/20 text-primary" : ""}`}
-						title={keyframeMode === "auto" ? "Disable automatic keyframes" : "Enable automatic keyframes"}
+						className={`h-9 w-9 ${keyframeMode === "auto" ? "bg-primary/20 text-primary" : ""}`}
+						title={keyframeMode === "auto" ? "Automatic keyframes on — click to turn off; I adds a keyframe manually" : "Automatic keyframes off — click to turn on; I adds a keyframe manually"}
+						aria-label={keyframeMode === "auto" ? "Disable automatic keyframes" : "Enable automatic keyframes"}
 						aria-pressed={keyframeMode === "auto"}
 					>
 						<Diamond className="h-4 w-4" weight={keyframeMode === "auto" ? "fill" : "regular"} />
 					</Button>
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="icon" className="h-9 w-5" title="Keyframe editing mode" aria-label="Keyframe editing mode">
-								<CaretDown className="h-3 w-3" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="start">
-							<DropdownMenuItem onClick={() => onSetKeyframeMode("auto")}>Automatic keyframes</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => onSetKeyframeMode("manual")}>Manual keyframes (I)</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => onSetKeyframeMode("off")}>Keyframe editing off</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
 					<Button
 						onClick={onToggleKeyframeVisibility}
 						variant="ghost"
 						size="icon"
 						className={`h-9 w-9 ${showKeyframes ? "bg-primary/20 text-primary" : ""}`}
-						title={showKeyframes ? "Hide keyframes" : "Show keyframes"}
+						title={showKeyframes ? "Keyframes visible — click to hide markers" : "Keyframes hidden — click to show markers"}
 						aria-label={showKeyframes ? "Hide keyframes" : "Show keyframes"}
 						aria-pressed={showKeyframes}
 					>

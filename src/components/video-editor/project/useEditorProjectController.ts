@@ -19,8 +19,10 @@ import { useProjectLifecycle } from "./useProjectLifecycle";
 import { useProjectOpenActions } from "./useProjectOpenActions";
 import { useProjectSaveActions } from "./useProjectSaveActions";
 import { useProjectSnapshotModel } from "./useProjectSnapshotModel";
+import { useEditingSessionAutosave } from "./useEditingSessionAutosave";
 
 type Input = {
+	applyNewVideoPreset: () => void;
 	t: ReturnType<typeof useI18n>["t"];
 	project: ReturnType<typeof useProjectState>;
 	appearance: ReturnType<typeof useAppearanceState>;
@@ -139,8 +141,10 @@ export function useEditorProjectController(input: Input) {
 			),
 		[lifecycle.currentProjectSnapshot, input.project.lastSavedSnapshot],
 	);
+	const flushEditingSession = useEditingSessionAutosave(lifecycle.currentProjectSnapshot, input.project.currentProjectPath, input.project.loading || !input.clipInitializedRef.current);
 
 	useInitialEditorSource({
+		applyNewVideoPreset: input.applyNewVideoPreset,
 		project: input.project,
 		appearance: input.appearance,
 		timeline: input.timeline,
@@ -198,6 +202,8 @@ export function useEditorProjectController(input: Input) {
 		remountPreview: input.remountPreview,
 	});
 	const openActions = useProjectOpenActions({
+		applyNewVideoPreset: input.applyNewVideoPreset,
+		flushEditingSession,
 		project: input.project,
 		appearance: input.appearance,
 		videoPlaybackRef: input.videoPlaybackRef,

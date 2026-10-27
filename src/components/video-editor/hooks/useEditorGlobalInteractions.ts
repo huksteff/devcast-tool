@@ -74,8 +74,10 @@ export function useEditorGlobalInteractions({
 			const key = event.key.toLowerCase();
 			// `event.key` follows the keyboard layout (Ctrl+Я on Russian is KeyZ).
 			const physicalKey = event.code.toLowerCase();
+			if (primaryModifier && (key === "c" || physicalKey === "keyc") && window.getSelection?.()?.toString()) return;
 			if (
 				!editable &&
+				!(target instanceof HTMLInputElement && target.type === "range") &&
 				!event.altKey &&
 				!event.ctrlKey &&
 				!event.metaKey &&
@@ -92,6 +94,8 @@ export function useEditorGlobalInteractions({
 				(key === "c" || key === "x" || key === "v") &&
 				!editable
 			) {
+				// Keyframe copy/paste is handled by the timeline shortcut listener.
+				if ((key === "c" && timeline.selectedKeyframeId) || (key === "v" && timeline.keyframeClipboardRef.current)) return;
 				if (key === "v") {
 					if (!timelineClipboard.current) return;
 					event.preventDefault();
@@ -112,6 +116,7 @@ export function useEditorGlobalInteractions({
 					: undefined;
 				if (!annotation && !zoom) return;
 				event.preventDefault();
+				timeline.keyframeClipboardRef.current = null;
 				if (annotation) {
 					timelineClipboard.current = {
 						kind: "annotation",

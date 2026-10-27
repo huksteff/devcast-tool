@@ -42,6 +42,7 @@ export interface TimelineRenderItem {
 	audioGain?: number;
 	audioNormalize?: boolean;
 	zoomDepth?: number;
+	zoomScale?: number;
 	zoomMode?: ZoomMode;
 	speedValue?: number;
 	showSourceAudio?: boolean;

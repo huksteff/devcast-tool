@@ -14,7 +14,7 @@ import { isValidMp4FrameRate } from "@/lib/exporter/types";
 import { DEFAULT_WALLPAPER_PATH } from "@/lib/wallpapers";
 import { ASPECT_RATIOS, type AspectRatio, isCustomAspectRatio } from "@/utils/aspectRatioUtils";
 import { closeClipGaps, rippleRegionAnchors, rippleRegions } from "./clipSequence";
-import { CURSOR_MOTION_PRESETS, resolveCursorMotionPresetId } from "./cursorMotionPresets";
+import { CURSOR_MOTION_PRESETS } from "./cursorMotionPresets";
 import {
 	ADVANCED_VERTICAL_PADDING_MAX,
 	type AnnotationRegion,
@@ -449,6 +449,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						depth: [1, 2, 3, 4, 5, 6].includes(region.depth)
 							? region.depth
 							: DEFAULT_ZOOM_DEPTH,
+						...(isFiniteNumber(region.scale) ? { scale: clamp(region.scale, 1, 5) } : {}),
 						focus: {
 							cx: clamp(
 								isFiniteNumber(region.focus?.cx) ? region.focus.cx : 0.5,
@@ -1066,8 +1067,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 				.filter(Boolean)
 				.slice(0, 4)
 		: [];
-	const normalizedMotionPreset =
-		CURSOR_MOTION_PRESETS[resolveCursorMotionPresetId(normalizedMotionValues)];
+	const normalizedMotionPreset = normalizedMotionValues;
 
 	return {
 		wallpaper: typeof editor.wallpaper === "string" ? editor.wallpaper : DEFAULT_WALLPAPER_PATH,
@@ -1112,10 +1112,10 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		cameraSpringMassMultiplier: isFiniteNumber(editor.cameraSpringMassMultiplier)
 			? clamp(editor.cameraSpringMassMultiplier, 0.25, 3)
 			: 1.12,
-		zoomSmoothness: DEFAULT_ZOOM_SMOOTHNESS,
+		zoomSmoothness: isFiniteNumber(editor.zoomSmoothness) ? clamp(editor.zoomSmoothness, 0, 1) : DEFAULT_ZOOM_SMOOTHNESS,
 		zoomClassicMode:
 			typeof editor.zoomClassicMode === "boolean" ? editor.zoomClassicMode : false,
-		cursorMotionBlur: DEFAULT_CURSOR_MOTION_BLUR,
+		cursorMotionBlur: isFiniteNumber(editor.cursorMotionBlur) ? clamp(editor.cursorMotionBlur, 0, 2) : DEFAULT_CURSOR_MOTION_BLUR,
 		cursorClickBounce: normalizedMotionPreset.cursorClickBounce,
 		cursorClickBounceDuration: normalizedMotionPreset.cursorClickBounceDuration,
 		cursorSway: isFiniteNumber((editor as Partial<ProjectEditorState>).cursorSway)
@@ -1196,7 +1196,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			? rippleRegionAnchors(normalizedAudioRegions, normalizedClipRegions, sequenceClips)
 			: normalizedAudioRegions,
 		audioTrackCount: Math.max(
-			1,
+			0,
 			isFiniteNumber(editor.audioTrackCount) ? Math.min(32, Math.floor(editor.audioTrackCount)) : 1,
 			...normalizedAudioRegions.map((region) => (region.trackIndex ?? 0) + 1),
 		),

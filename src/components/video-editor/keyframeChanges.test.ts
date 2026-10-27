@@ -13,8 +13,8 @@ describe("keyframe hover summary", () => {
 			],
 		} as unknown as AnnotationRegion;
 		const summary = describeAnnotationKeyframeChanges(annotation);
-		expect(summary.get("first")).toContain("Position.x: 0 → 10");
-		expect(summary.get("second")).toContain("Size.width: 20 → 30");
-		expect(summary.get("second")).toContain("Settings.style.color: #ffffff → #ff0000");
+		expect(summary.get("first")).toContain("Position X: 0 → 10");
+		expect(summary.get("second")).toContain("Width: 20 → 30");
+		expect(summary.get("second")).toContain("Text color: #ffffff → #ff0000");
 	});
 });

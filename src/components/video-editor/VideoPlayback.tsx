@@ -85,7 +85,6 @@ import {
 	resolveCursorCalloutState,
 	type Padding,
 	type WebcamOverlaySettings,
-	type ZoomDepth,
 	type ZoomFocus,
 	type ZoomMotionBlurTuning,
 	type ZoomRegion,
@@ -103,7 +102,6 @@ import {
 	PixiCursorOverlay,
 	preloadCursorAssets,
 } from "./videoPlayback/cursorRenderer";
-import { clampFocusToStage as clampFocusToStageUtil } from "./videoPlayback/focusUtils";
 import { layoutVideoContent as layoutVideoContentUtil } from "./videoPlayback/layoutUtils";
 import { clamp01 } from "./videoPlayback/mathUtils";
 import {
@@ -114,6 +112,9 @@ import {
 	stepSpringValue,
 } from "./videoPlayback/motionSmoothing";
 import { updateOverlayIndicator } from "./videoPlayback/overlayUtils";
+import { resizeZoomArea, type ZoomCorner } from "./videoPlayback/zoomResize";
+import { getZoomScale } from "./types";
+import { clampFocusToScale } from "./videoPlayback/focusUtils";
 import { supportsPreviewPlaybackRate } from "./videoPlayback/playbackRate";
 import { PreviewVideoSource } from "./videoPlayback/previewVideoSource";
 import { usePreviewVideoReady } from "./videoPlayback/usePreviewVideoReady";
@@ -233,7 +234,7 @@ interface VideoPlaybackProps {
 	zoomRegions: ZoomRegion[];
 	selectedZoomId: string | null;
 	onSelectZoom: (id: string | null) => void;
-	onZoomFocusChange: (id: string, focus: ZoomFocus) => void;
+	onZoomFocusChange: (id: string, focus: ZoomFocus, scale?: number) => void;
 	isPlaying: boolean;
 	showShadow?: boolean;
 	shadowIntensity?: number;
@@ -441,6 +442,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			});
 
 		const overlayRef = useRef<HTMLDivElement | null>(null);
+		const zoomResizeRef = useRef<{ region: ZoomRegion; anchor: ZoomFocus; corner: ZoomCorner } | null>(null);
 		const focusIndicatorRef = useRef<HTMLDivElement | null>(null);
 		const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 		const webcamBubbleRef = useRef<HTMLDivElement | null>(null);
@@ -983,10 +985,6 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			],
 		);
 
-		const clampFocusToStage = useCallback((focus: ZoomFocus, depth: ZoomDepth) => {
-			return clampFocusToStageUtil(focus, depth, stageSizeRef.current);
-		}, []);
-
 		const updateOverlayForRegion = useCallback(
 			(region: ZoomRegion | null, focusOverride?: ZoomFocus) => {
 				const overlayEl = overlayRef.current;
@@ -1275,7 +1273,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				cx: clamp01((localX - baseMask.x) / Math.max(1, baseMask.width)),
 				cy: clamp01((localY - baseMask.y) / Math.max(1, baseMask.height)),
 			};
-			const clampedFocus = clampFocusToStage(unclampedFocus, region.depth);
+			const clampedFocus = clampFocusToScale(unclampedFocus, getZoomScale(region));
 
 			onZoomFocusChange(region.id, clampedFocus);
 			updateOverlayForRegion({ ...region, focus: clampedFocus }, clampedFocus);
@@ -1286,7 +1284,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			const regionId = selectedZoomIdRef.current;
 			if (!regionId) return;
 			const region = zoomRegionsRef.current.find((r) => r.id === regionId);
-			if (!region || region.mode !== "manual") return;
+			if (!region || region.mode === "auto") return;
 			onSelectZoom(region.id);
 			event.preventDefault();
 			isDraggingFocusRef.current = true;
@@ -1295,13 +1293,27 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		};
 
 		const handleOverlayPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+			const resize = zoomResizeRef.current;
+			if (resize && overlayRef.current) {
+				const bounds = overlayRef.current.getBoundingClientRect();
+				const mask = baseMaskRef.current;
+				const result = resizeZoomArea(resize.anchor, {
+					cx: (event.clientX - bounds.left - mask.x) / mask.width,
+					cy: (event.clientY - bounds.top - mask.y) / mask.height,
+				}, resize.corner);
+				onZoomFocusChange(resize.region.id, result.focus, result.scale);
+				updateOverlayForRegion({ ...resize.region, ...result });
+				event.preventDefault();
+				return;
+			}
 			if (!isDraggingFocusRef.current) return;
 			event.preventDefault();
 			updateFocusFromClientPoint(event.clientX, event.clientY);
 		};
 
 		const endFocusDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-			if (!isDraggingFocusRef.current) return;
+			if (!isDraggingFocusRef.current && !zoomResizeRef.current) return;
+			zoomResizeRef.current = null;
 			isDraggingFocusRef.current = false;
 			try {
 				event.currentTarget.releasePointerCapture(event.pointerId);
@@ -1315,7 +1327,7 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 		};
 
 		const handleOverlayPointerLeave = (event: React.PointerEvent<HTMLDivElement>) => {
-			endFocusDrag(event);
+			if (!event.currentTarget.hasPointerCapture(event.pointerId)) endFocusDrag(event);
 		};
 
 		useEffect(() => {
@@ -2572,13 +2584,34 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 						onPointerDown={handleOverlayPointerDown}
 						onPointerMove={handleOverlayPointerMove}
 						onPointerUp={handleOverlayPointerUp}
+						onPointerCancel={handleOverlayPointerUp}
+						onLostPointerCapture={handleOverlayPointerUp}
 						onPointerLeave={handleOverlayPointerLeave}
 					>
 						<div
 							ref={focusIndicatorRef}
+							data-testid="zoom-focus-area"
 							className="absolute rounded-md border border-[#2563EB]/80 bg-[#2563EB]/20 shadow-[0_0_0_1px_rgba(37,99,235,0.35)]"
 							style={{ display: "none", pointerEvents: "none" }}
-						/>
+						>
+							{(["nw", "ne", "sw", "se"] as const).map((corner) => (
+								<div key={corner} role="slider" aria-label={`Resize zoom ${corner}`} aria-valuemin={1} aria-valuemax={5} aria-valuenow={selectedZoom ? getZoomScale(selectedZoom) : 1}
+									className="absolute h-3 w-3 rounded-sm border border-blue-600 bg-white"
+									style={{ pointerEvents: isPlaying ? "none" : "auto", touchAction: "none", top: corner.startsWith("n") ? -6 : undefined, bottom: corner.startsWith("s") ? -6 : undefined, left: corner.endsWith("w") ? -6 : undefined, right: corner.endsWith("e") ? -6 : undefined, cursor: corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize" }}
+									onPointerDown={(event) => {
+										if (!selectedZoom || isPlaying || !overlayRef.current || !focusIndicatorRef.current) return;
+										event.preventDefault(); event.stopPropagation();
+										const indicator = focusIndicatorRef.current;
+										const mask = baseMaskRef.current;
+										zoomResizeRef.current = { region: selectedZoom, corner, anchor: {
+											cx: (indicator.offsetLeft - mask.x + (corner.endsWith("w") ? indicator.offsetWidth : 0)) / mask.width,
+											cy: (indicator.offsetTop - mask.y + (corner.startsWith("n") ? indicator.offsetHeight : 0)) / mask.height,
+										} };
+										overlayRef.current.setPointerCapture(event.pointerId);
+									}}
+								/>
+							))}
+						</div>
 						{webcam && webcamVideoPath ? (
 							<div
 								ref={webcamBubbleRef}

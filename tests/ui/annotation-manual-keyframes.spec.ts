@@ -3,6 +3,32 @@ import { installDesktopBridge } from "./bridge";
 
 test.use({ channel: process.env.DEVCAST_UI_BROWSER_CHANNEL === "chrome" ? "chrome" : undefined });
 
+test("copies and pastes a keyframe with shortcuts after seeking", async ({ page }) => {
+	page.on("dialog", (dialog) => void dialog.accept());
+	await installDesktopBridge(page);
+	await page.goto("/?windowType=editor");
+	await expect(page.getByRole("navigation", { name: "Editor tools" })).toBeVisible({ timeout: 20000 });
+	await expect.poll(() => page.locator("video").evaluateAll((videos) => videos.some((video) => (video as HTMLVideoElement).readyState >= 2))).toBe(true);
+	await page.getByRole("button", { name: "Add Layer", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Annotation", exact: true }).click();
+	await page.locator("[data-annotation-id]").first().click();
+	await page.keyboard.press("i");
+	const markers = page.locator('button[aria-label^="Keyframe @"]');
+	await expect(markers).toHaveCount(1);
+	await markers.first().click();
+	await page.keyboard.press("Meta+c");
+	for (let step = 0; step < 20; step += 1) await page.keyboard.press("ArrowRight");
+	await page.keyboard.press("Meta+v");
+	await expect(markers).toHaveCount(2);
+	await page.getByRole("button", { name: "Delete annotation track" }).click();
+	await expect(page.locator('[data-timeline-item][data-variant="annotation"]')).toHaveCount(0);
+	await page.getByRole("button", { name: "Delete Audio 1 track" }).click();
+	await expect(page.getByRole("button", { name: "Delete Audio 1 track" })).toHaveCount(0);
+	await page.getByRole("button", { name: "Add Layer", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Add audio track" }).click();
+	await expect(page.getByRole("button", { name: "Delete Audio 1 track" })).toBeVisible();
+});
+
 test("manual annotation resize survives keyframe changes and scrubbing", async ({ page }) => {
 	test.setTimeout(120000);
 	const errors: string[] = [];
@@ -20,7 +46,7 @@ test("manual annotation resize survives keyframe changes and scrubbing", async (
 	await expect(annotation).toBeVisible();
 	await annotation.click();
 	await page.keyboard.press("i");
-	await expect(page.getByTitle(/Keyframe @ .*ms/)).toHaveCount(1);
+	await expect(page.locator('button[aria-label^="Keyframe @"]')).toHaveCount(1);
 	const firstWidth = (await annotation.boundingBox())!.width;
 	const annotationBox = (await annotation.boundingBox())!;
 	const handleX = annotationBox.x + annotationBox.width;
@@ -32,7 +58,7 @@ test("manual annotation resize survives keyframe changes and scrubbing", async (
 	await expect.poll(async () => (await annotation.boundingBox())!.width).toBeGreaterThan(firstWidth + 15);
 	for (let step = 0; step < 20; step += 1) await page.keyboard.press("ArrowRight");
 	await page.keyboard.press("i");
-	await expect(page.getByTitle(/Keyframe @ .*ms/)).toHaveCount(2);
+	await expect(page.locator('button[aria-label^="Keyframe @"]')).toHaveCount(2);
 	const secondWidth = (await annotation.boundingBox())!.width;
 	const secondBox = (await annotation.boundingBox())!;
 	await page.mouse.move(secondBox.x + secondBox.width, secondBox.y + secondBox.height);
@@ -40,7 +66,7 @@ test("manual annotation resize survives keyframe changes and scrubbing", async (
 	await page.mouse.move(secondBox.x + secondBox.width + 35, secondBox.y + secondBox.height + 10, { steps: 4 });
 	await page.mouse.up();
 	await expect.poll(async () => (await annotation.boundingBox())!.width).toBeGreaterThan(secondWidth + 10);
-	const markers = page.getByTitle(/Keyframe @ .*ms/);
+	const markers = page.locator('button[aria-label^="Keyframe @"]');
 	await markers.nth(0).click();
 	await expect.poll(async () => (await annotation.boundingBox())!.width).toBeLessThan(secondWidth + 10);
 	await markers.nth(1).click();

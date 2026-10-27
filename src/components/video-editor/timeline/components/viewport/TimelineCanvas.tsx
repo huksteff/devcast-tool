@@ -60,6 +60,8 @@ interface TimelineCanvasProps {
 	items: TimelineRenderItem[];
 	audioTrackCount?: number;
 	onAddAudioTrack?: () => void;
+	onDeleteAudioTrack?: (trackIndex: number) => void;
+	onDeleteAnnotationTrack?: (trackIndex: number) => void;
 	onAddAudioFile?: (trackIndex: number) => void;
 	videoDurationMs: number;
 	currentTimeMs: number;
@@ -425,6 +427,8 @@ function useTimelineHover({
 interface TimelineCanvasRowsProps {
 	audioTrackCount?: number;
 	onAddAudioTrack?: () => void;
+	onDeleteAudioTrack?: (trackIndex: number) => void;
+	onDeleteAnnotationTrack?: (trackIndex: number) => void;
 	onAddAudioFile?: (trackIndex: number) => void;
 	videoPath?: string | null;
 	items: TimelineRenderItem[];
@@ -531,6 +535,7 @@ interface AnnotationTimelineRowProps {
 	onSelectAnnotation?: (id: string | null) => void;
 	onAddAnnotationAtMs?: (startMs: number, trackIndex: number, durationMs?: number) => void;
 	annotationQuickAddDurationMs?: number;
+	onDeleteTrack?: (trackIndex: number) => void;
 }
 
 /** A dedicated annotation lane with the same hover-to-add affordance as zoom. */
@@ -554,6 +559,7 @@ function AnnotationTimelineRow({
 	onSelectAnnotation,
 	onAddAnnotationAtMs,
 	annotationQuickAddDurationMs = 0,
+	onDeleteTrack,
 }: AnnotationTimelineRowProps) {
 	const trackIndex = getAnnotationTrackIndex(rowId);
 	const resolveQuickAddSpan = useCallback(
@@ -595,6 +601,7 @@ function AnnotationTimelineRow({
 	return (
 		<Row
 			id={rowId}
+			onDelete={items.length > 0 ? () => onDeleteTrack?.(trackIndex) : undefined}
 			isEmpty={items.length === 0}
 			hint={index === 0 ? HINT_ANNOTATION : undefined}
 			onMouseEnter={hover.onMouseEnter}
@@ -647,6 +654,8 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	items,
 	audioTrackCount = 1,
 	onAddAudioTrack,
+	onDeleteAudioTrack,
+	onDeleteAnnotationTrack,
 	onAddAudioFile,
 	videoDurationMs,
 	selectAllBlocksActive,
@@ -803,6 +812,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 				<Row
 					id={CAPTION_ROW_ID}
 					caption
+					hint="Captions · click to add"
 					isEmpty={captionItems.length === 0}
 					onMouseEnter={onCaptionRowMouseEnter}
 					onMouseMove={onCaptionRowMouseMove}
@@ -877,7 +887,6 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 								}}
 								variant="caption"
 								clipPresentation={clipPresentation}
-								embedded
 								displaySpan={displaySpan}
 							>
 								{item.label}
@@ -1024,6 +1033,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 							isSelected={selectAllBlocksActive || item.id === selectedZoomId}
 							onSelectId={onSelectZoom}
 							zoomDepth={item.zoomDepth}
+							zoomScale={item.zoomScale}
 							zoomMode={item.zoomMode}
 							variant="zoom"
 						>
@@ -1054,6 +1064,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 					onSelectAnnotation={onSelectAnnotation}
 					onAddAnnotationAtMs={onAddAnnotationAtMs}
 					annotationQuickAddDurationMs={annotationQuickAddDurationMs}
+					onDeleteTrack={onDeleteAnnotationTrack}
 				/>
 			))}
 
@@ -1062,6 +1073,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 					key={rowId}
 					id={rowId}
 					label={`Audio ${index + 1}`}
+					onDelete={onDeleteAudioTrack ? () => onDeleteAudioTrack(index) : undefined}
 					isEmpty={rowItems.length === 0}
 				>
 					{rowItems.length === 0 && <button type="button" className="absolute z-30 left-20 top-1/2 -translate-y-1/2 rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-primary/20 hover:text-primary" onClick={(event) => { event.stopPropagation(); onAddAudioFile?.(index); }}>+ Add sound</button>}
@@ -1087,6 +1099,8 @@ export default function TimelineCanvas({
 	items,
 	audioTrackCount = 1,
 	onAddAudioTrack,
+	onDeleteAudioTrack,
+	onDeleteAnnotationTrack,
 	onAddAudioFile,
 	videoDurationMs,
 	currentTimeMs,
@@ -1336,8 +1350,9 @@ export default function TimelineCanvas({
 		}
 		const sourceAudioRows = showSourceAudioTrack ? sourceAudioTracks.length : 0;
 		// The annotation renderer always keeps one spare drop/add lane.
-		return 2 + sourceAudioRows + annotationRowIds.size + 1 + Math.max(audioTrackCount, audioRowIds.size) + (onAddAudioTrack ? 1 : 0);
-	}, [items, showSourceAudioTrack, sourceAudioTracks.length, audioTrackCount, onAddAudioTrack]);
+		const captionRows = captionsEnabled || items.some((item) => item.rowId === CAPTION_ROW_ID) ? 1 : 0;
+		return 2 + captionRows + sourceAudioRows + annotationRowIds.size + 1 + Math.max(audioTrackCount, audioRowIds.size) + (onAddAudioTrack ? 1 : 0);
+	}, [items, captionsEnabled, showSourceAudioTrack, sourceAudioTracks.length, audioTrackCount, onAddAudioTrack]);
 	const timelineRowsMinHeightPx = getTimelineRowsMinHeightPx(timelineRowCount);
 	const timelineContentMinHeightPx = getTimelineContentMinHeightPx(timelineRowCount);
 	const sideProperty = direction === "rtl" ? "right" : "left";
@@ -1453,6 +1468,8 @@ export default function TimelineCanvas({
 					items={items}
 					audioTrackCount={audioTrackCount}
 					onAddAudioTrack={onAddAudioTrack}
+					onDeleteAudioTrack={onDeleteAudioTrack}
+					onDeleteAnnotationTrack={onDeleteAnnotationTrack}
 					onAddAudioFile={onAddAudioFile}
 					videoDurationMs={videoDurationMs}
 					selectAllBlocksActive={selectAllBlocksActive}

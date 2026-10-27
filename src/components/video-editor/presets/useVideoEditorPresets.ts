@@ -1,6 +1,6 @@
 import { type Dispatch, type SetStateAction, useCallback, useMemo, useState } from "react";
 import type { AspectRatio } from "@/utils/aspectRatioUtils";
-import { type EditorPresetSnapshot, loadEditorPresets } from "../editorPreferences";
+import { type EditorPresetSnapshot, loadEditorPresets, loadSelectedEditorPreset } from "../editorPreferences";
 import type { useExportSettings } from "../export/useExportSettings";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useTimelineState } from "../state/useTimelineState";
@@ -198,7 +198,12 @@ export function useVideoEditorPresets({
 		presetNameDraft,
 		setPresetNameDraft,
 	});
+	const applyNewVideoPreset = useCallback(() => {
+		const preset = loadSelectedEditorPreset();
+		if (preset) applySnapshot(preset.snapshot);
+	}, [applySnapshot]);
 	return {
+		applyNewVideoPreset,
 		editorPresets,
 		activeEditorPresetId,
 		presetPopoverOpen,

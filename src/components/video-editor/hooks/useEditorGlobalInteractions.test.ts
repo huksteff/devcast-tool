@@ -72,6 +72,18 @@ function setup(binding = DEFAULT_SHORTCUTS.playPause) {
 }
 
 describe("editor playback shortcut", () => {
+	it("preserves normal copying when error text is selected", () => {
+		const { send } = setup();
+		Object.assign(window, { getSelection: () => ({ toString: () => "Whisper model not found" }) });
+		const event = send("keydown", { key: "c", code: "KeyC", metaKey: true });
+		expect(event.preventDefault).not.toHaveBeenCalled();
+	});
+	it("leaves arrow keys to a focused slider instead of stepping video frames", () => {
+		const { send, stepFrame } = setup();
+		const event = send("keydown", { key: "ArrowRight", code: "ArrowRight", target: new Input("range") });
+		expect(stepFrame).not.toHaveBeenCalled();
+		expect(event.preventDefault).not.toHaveBeenCalled();
+	});
 	it("consumes keydown and keyup and toggles once per physical press", () => {
 		const { send, playback, startPlayback } = setup();
 		const down = send();

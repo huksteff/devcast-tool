@@ -719,7 +719,7 @@ interface Window {
 			alreadyDownloaded?: boolean;
 			error?: string;
 		}>;
-		deleteWhisperSmallModel: () => Promise<{ success: boolean; error?: string }>;
+		deleteWhisperSmallModel: () => Promise<{ success: boolean; path?: string | null; error?: string }>;
 		onWhisperSmallModelDownloadProgress: (
 			callback: (state: {
 				status: "idle" | "downloading" | "downloaded" | "error";
@@ -796,6 +796,8 @@ interface Window {
 		getLocalMediaUrl: (
 			filePath: string,
 		) => Promise<{ success: true; url: string } | { success: false }>;
+		saveEditingSession: (project: unknown, projectPath?: string | null) => { success: boolean; error?: string };
+		loadEditingSession: (video: string, projectPath?: string | null) => Promise<{ success: boolean; project?: unknown; error?: string }>;
 		saveProjectFile: (
 			projectData: unknown,
 			suggestedName?: string,

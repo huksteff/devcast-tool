@@ -4,6 +4,7 @@ import type { TimelineWindowSnapshot } from "../../src/components/video-editor/t
 test.use({ channel: process.env.DEVCAST_UI_BROWSER_CHANNEL === "chrome" ? "chrome" : undefined });
 
 test("detached timeline shows keyframes and runs its editing toolbar", async ({ page }) => {
+	page.on("dialog", (dialog) => void dialog.accept());
 	const snapshot = {
 		isPlaying: false,
 		keyframeMode: "auto",
@@ -27,7 +28,7 @@ test("detached timeline shows keyframes and runs its editing toolbar", async ({ 
 		clipRegions: [{ id: "clip-1", startMs: 0, endMs: 10000, sourceStartMs: 0, speed: 1 }],
 		selectedClipId: null,
 		audioRegions: [],
-		audioTrackCount: 1,
+		audioTrackCount: 24,
 		selectedAudioId: null,
 		captionRegions: [],
 		selectedCaptionId: null,
@@ -92,27 +93,41 @@ test("detached timeline shows keyframes and runs its editing toolbar", async ({ 
 	}, snapshot);
 	await page.goto("/?windowType=timeline-window");
 	await expect(page.getByRole("toolbar", { name: "Timeline tools" })).toBeVisible();
-	await expect(page.getByTitle("Keyframe @ 2000ms (drag to move)")).toBeVisible();
-	await expect(page.getByTitle("Keyframe @ 3000ms (drag to move)")).toBeVisible();
-	await page.getByTitle("Keyframe @ 2000ms (drag to move)").hover();
-	await expect(page.getByText("Position.x: 0 → 1")).toBeVisible();
+	const firstKeyframe = page.locator('button[aria-label="Keyframe @ 2000ms (drag to move)"]');
+	await expect(firstKeyframe).toBeVisible();
+	await expect(page.locator('button[aria-label="Keyframe @ 3000ms (drag to move)"]')).toBeVisible();
+	await firstKeyframe.hover();
+	await expect(page.getByText("Position X: 0 → 1")).toBeVisible();
+	const tooltipBounds = await page.getByRole("tooltip").boundingBox();
+	expect(tooltipBounds).not.toBeNull();
+	expect(tooltipBounds!.x).toBeGreaterThanOrEqual(0);
+	expect(tooltipBounds!.y).toBeGreaterThanOrEqual(0);
 	await expect(page.locator('[data-timeline-row="row-audio-0"]')).toBeVisible();
-	await expect(page.getByRole("button", { name: "+ Add sound" })).toBeVisible();
-	await page.getByTitle("Keyframe @ 2000ms (drag to move)").click();
+	const scroll = page.getByTestId("timeline-scroll");
+	await expect.poll(() => scroll.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+	await scroll.evaluate((node) => { node.scrollTop = 200; });
+	await expect.poll(() => scroll.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+	await scroll.evaluate((node) => { node.scrollTop = 0; });
+	await expect(page.getByRole("button", { name: "+ Add sound" }).first()).toBeVisible();
+	await firstKeyframe.click();
 	await page.evaluate(() => {
 		const state = (window as unknown as { __timelineTest: { snapshot: TimelineWindowSnapshot; listener: ((message: unknown) => void) | null } }).__timelineTest;
 		state.snapshot = { ...state.snapshot, selectedKeyframeId: "keyframe-at-playhead" };
 		state.listener?.({ type: "snapshot", snapshot: state.snapshot });
 	});
-	await page.getByRole("button", { name: "Copy selected keyframe" }).click();
-	await page.getByRole("button", { name: "Paste keyframe at playhead" }).click();
+	await expect(page.getByRole("button", { name: "Copy keyframe" })).toHaveCount(0);
+	await expect(page.getByRole("button", { name: "Paste keyframe" })).toHaveCount(0);
+	await page.keyboard.press("ControlOrMeta+c");
+	await page.keyboard.press("ControlOrMeta+v");
+	await page.getByRole("button", { name: "Show source audio" }).click();
+	await page.getByRole("button", { name: "Delete Audio 1 track" }).click();
+	await page.getByRole("button", { name: "Delete annotation track" }).click();
 	await expect(page.getByRole("button", { name: "Disable automatic keyframes" })).toHaveAttribute(
 		"aria-pressed",
 		"true",
 	);
 	await page.getByRole("button", { name: "Disable automatic keyframes" }).click();
-	await page.getByRole("button", { name: "Keyframe editing mode" }).click();
-	await page.getByRole("menuitem", { name: "Manual keyframes (I)" }).click();
+	await expect(page.getByRole("button", { name: "Keyframe editing mode" })).toHaveCount(0);
 	await page.getByRole("button", { name: "Hide keyframes" }).click();
 	await page.getByRole("button", { name: "Generate Captions" }).click();
 	await page.getByRole("button", { name: /Add Zoom/ }).click();
@@ -130,7 +145,7 @@ test("detached timeline shows keyframes and runs its editing toolbar", async ({ 
 		state.snapshot = { ...state.snapshot, showKeyframes: false };
 		state.listener?.({ type: "snapshot", snapshot: state.snapshot });
 	});
-	await expect(page.getByTitle("Keyframe @ 2000ms (drag to move)")).toHaveCount(0);
+	await expect(firstKeyframe).toHaveCount(0);
 	const actions = await page.evaluate(
 		() =>
 			(window as unknown as { __timelineTest: { actions: Array<{ type: string }> } })
@@ -142,9 +157,11 @@ test("detached timeline shows keyframes and runs its editing toolbar", async ({ 
 	expect(actionTypes).toContain("copy-keyframe");
 	expect(actionTypes).toContain("paste-keyframe");
 	expect(actionTypes).toContain("audio-track-added");
-	await expect(actionTypes.slice(-7, -1)).toEqual([
+	expect(actionTypes).toContain("toggle-source-audio-tracks");
+	expect(actionTypes).toContain("audio-track-delete");
+	expect(actionTypes).toContain("annotation-track-delete");
+	await expect(actionTypes.slice(-6, -1)).toEqual([
 		"toggle-keyframe-mode",
-		"set-keyframe-mode",
 		"toggle-keyframe-visibility",
 		"generate-captions",
 		"zoom-added",

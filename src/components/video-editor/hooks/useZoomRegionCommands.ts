@@ -133,11 +133,11 @@ export function useZoomRegionCommands({
 		[setZoomRegions],
 	);
 	const handleZoomFocusChange = useCallback(
-		(id: string, focus: ZoomFocus) => {
+		(id: string, focus: ZoomFocus, scale?: number) => {
 			setZoomRegions((current) =>
 				current.map((region) =>
 					region.id === id
-						? { ...region, focus: clampFocusToDepth(focus, region.depth) }
+						? { ...region, ...(scale === undefined ? {} : { scale }), focus: clampFocusToDepth(focus, region.depth) }
 						: region,
 				),
 			);
@@ -150,7 +150,7 @@ export function useZoomRegionCommands({
 			setZoomRegions((current) =>
 				current.map((region) =>
 					region.id === selectedZoomId
-						? { ...region, depth, focus: clampFocusToDepth(region.focus, depth) }
+						? { ...region, depth, scale: undefined, focus: clampFocusToDepth(region.focus, depth) }
 						: region,
 				),
 			);

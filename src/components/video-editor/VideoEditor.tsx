@@ -225,6 +225,7 @@ export default function VideoEditor() {
 		timeline,
 		exportSettings,
 		initialPreferences: initialEditorPreferences,
+		applyNewVideoPreset: presets.applyNewVideoPreset,
 		smokeConfig: smokeExportConfig,
 		devConfig: devOpenRecordingConfig,
 		aspectRatio,

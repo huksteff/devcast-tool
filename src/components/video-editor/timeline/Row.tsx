@@ -12,6 +12,7 @@ interface RowProps extends RowDefinition {
 	hint?: string;
 	isEmpty?: boolean;
 	labelColor?: string;
+	onDelete?: () => void;
 	onMouseEnter?: React.MouseEventHandler<HTMLDivElement>;
 	onMouseMove?: React.MouseEventHandler<HTMLDivElement>;
 	onMouseLeave?: React.MouseEventHandler<HTMLDivElement>;
@@ -22,7 +23,6 @@ interface RowProps extends RowDefinition {
 export default function Row({
 	id,
 	embedded = false,
-	caption = false,
 	compact = true,
 	filmstrip = false,
 	children,
@@ -30,6 +30,7 @@ export default function Row({
 	hint,
 	isEmpty,
 	labelColor = "#666",
+	onDelete,
 	onMouseEnter,
 	onMouseMove,
 	onMouseLeave,
@@ -44,11 +45,11 @@ export default function Row({
 			className="bg-foreground/[0.018] border-t border-foreground/[0.10] relative"
 			style={{
 				...rowWrapperStyle,
-				...(embedded || caption
+				...(embedded
 					? {
 							position: "absolute" as const,
 							insetInline: 0,
-							...(caption ? { top: 36 } : { bottom: 7 }),
+							bottom: 7,
 							zIndex: 15,
 							pointerEvents: "none" as const,
 						}
@@ -57,12 +58,12 @@ export default function Row({
 				flexGrow: 0,
 				flexShrink: 0,
 				height:
-					embedded || caption
+					embedded
 						? 20
 						: filmstrip || !compact
 							? `calc(${TIMELINE_CLIP_ROW_HEIGHT_PX}px * var(--timeline-row-scale, 1))`
 							: `calc(${TIMELINE_ROW_MIN_HEIGHT_PX}px * var(--timeline-row-scale, 1))`,
-				flexBasis: caption
+				flexBasis: embedded
 					? 20
 					: filmstrip || !compact
 						? `calc(${TIMELINE_CLIP_ROW_HEIGHT_PX}px * var(--timeline-row-scale, 1))`
@@ -77,6 +78,7 @@ export default function Row({
 					{label}
 				</div>
 			)}
+			{onDelete && <button type="button" aria-label={`Delete ${label ?? "annotation"} track`} title={`Delete ${label ?? "annotation"} track`} className="absolute right-2 top-1/2 z-40 -translate-y-1/2 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-destructive/20 hover:text-destructive" onMouseDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onDelete(); }}>×</button>}
 			{isEmpty && hint && (
 				<div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10">
 					<span className="text-[11px] text-foreground/15 font-medium">{hint}</span>

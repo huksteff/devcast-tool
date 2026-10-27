@@ -432,6 +432,7 @@ interface SettingsPanelProps {
 	selected: string;
 	onWallpaperChange: (path: string) => void;
 	selectedZoomDepth?: ZoomDepth | null;
+	selectedZoomScale?: number;
 	onZoomDepthChange?: (depth: ZoomDepth) => void;
 	selectedZoomId?: string | null;
 	selectedZoomMode?: ZoomMode | null;
@@ -924,6 +925,7 @@ export function SettingsPanel({
 	selected,
 	onWallpaperChange,
 	selectedZoomDepth,
+	selectedZoomScale,
 	onZoomDepthChange,
 	selectedZoomId,
 	selectedZoomMode,
@@ -2805,7 +2807,7 @@ export function SettingsPanel({
 						<SectionLabel>{tSettings("zoom.amount", "Amount")}</SectionLabel>
 						<ChoiceGroup
 							aria-label="Zoom level"
-							value={String(selectedZoomDepth)}
+							value={selectedZoomScale === undefined ? String(selectedZoomDepth) : undefined}
 							onValueChange={(value) =>
 								onZoomDepthChange?.(Number(value) as ZoomDepth)
 							}
@@ -2817,6 +2819,7 @@ export function SettingsPanel({
 								</ChoiceItem>
 							))}
 						</ChoiceGroup>
+						{selectedZoomScale !== undefined && <p className="text-xs text-muted-foreground">{selectedZoomScale.toFixed(2)}×</p>}
 					</>
 				)}
 				{advanced && (

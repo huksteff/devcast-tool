@@ -64,11 +64,11 @@ type Props = {
 export function EditorShell(props: Props) {
 	const [keyframeMode, setKeyframeMode] = useState<KeyframeEditMode>("off");
 	const [showKeyframes, setShowKeyframes] = useState(true);
-	const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
 	const [signInOpen, setSignInOpen] = useState(false);
 	const [signInReason, setSignInReason] = useState<SignInReason>("account");
 	const [shareRequestNonce, setShareRequestNonce] = useState(0);
 	const auth = useDevCastAuth();
+	const { selectedKeyframeId, setSelectedKeyframeId } = props.timeline;
 	const requestSignIn = (reason: SignInReason) => {
 		if (reason === "share" && auth.user) {
 			setShareRequestNonce((value) => value + 1);

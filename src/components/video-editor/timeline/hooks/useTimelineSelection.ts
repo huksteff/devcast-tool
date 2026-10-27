@@ -24,6 +24,7 @@ interface UseTimelineSelectionParams {
 	) => void;
 	selectedKeyframeId?: string | null;
 	onSelectKeyframe?: (id: string | null) => void;
+	keyframeClipboardRef?: { current: { annotationId: string; frame: AnnotationPositionKeyframe } | null };
 	onAudioDelete?: (id: string) => void;
 	onCaptionDelete?: (id: string) => void;
 	onSelectZoom: (id: string | null) => void;
@@ -49,6 +50,7 @@ export function useTimelineSelection({
 	onAnnotationPositionKeyframesChange,
 	selectedKeyframeId: sharedSelectedKeyframeId,
 	onSelectKeyframe,
+	keyframeClipboardRef,
 	onAudioDelete,
 	onCaptionDelete,
 	onSelectZoom,
@@ -71,7 +73,8 @@ export function useTimelineSelection({
 	const [localSelectedKeyframeId, setLocalSelectedKeyframeId] = useState<string | null>(null);
 	const selectedKeyframeId = sharedSelectedKeyframeId === undefined ? localSelectedKeyframeId : sharedSelectedKeyframeId;
 	const setSelectedKeyframeId = onSelectKeyframe ?? setLocalSelectedKeyframeId;
-	const copiedKeyframeRef = useRef<AnnotationPositionKeyframe | null>(null);
+	const localKeyframeClipboardRef = useRef<{ annotationId: string; frame: AnnotationPositionKeyframe } | null>(null);
+	const copiedKeyframeRef = keyframeClipboardRef ?? localKeyframeClipboardRef;
 	const [selectAllBlocksActive, setSelectAllBlocksActive] = useState(false);
 	const hasAnyZoomBlocks = useMemo(() => zoomRegions.length > 0, [zoomRegions.length]);
 
@@ -110,19 +113,24 @@ export function useTimelineSelection({
 	}, [onAnnotationPositionKeyframesChange, selectedAnnotation, selectedKeyframeId, setSelectedKeyframeId]);
 
 	const copySelectedKeyframe = useCallback(() => {
-		const frame = selectedAnnotation?.positionKeyframes?.find((item) => item.id === selectedKeyframeId);
-		if (frame) copiedKeyframeRef.current = structuredClone(frame);
-	}, [selectedAnnotation, selectedKeyframeId]);
+		const source = annotationRegions.find((region) => region.positionKeyframes?.some((item) => item.id === selectedKeyframeId));
+		const frame = source?.positionKeyframes?.find((item) => item.id === selectedKeyframeId);
+		if (source && frame) copiedKeyframeRef.current = { annotationId: source.id, frame: structuredClone(frame) };
+	}, [annotationRegions, copiedKeyframeRef, selectedKeyframeId]);
+	const hasCopiedKeyframe = useCallback(() => copiedKeyframeRef.current !== null, [copiedKeyframeRef]);
 
 	const pasteKeyframe = useCallback(() => {
-		if (!selectedAnnotation || !onAnnotationPositionKeyframesChange || !copiedKeyframeRef.current) return;
-		const timeMs = Math.max(0, Math.min(totalMs, Math.round(currentTimeMs)));
 		const copied = copiedKeyframeRef.current;
-		const next = (selectedAnnotation.positionKeyframes ?? []).filter((frame) => Math.abs(frame.timeMs - timeMs) >= 1);
-		const pasted = { ...copied, id: globalThis.crypto.randomUUID(), timeMs, position: { ...copied.position }, size: copied.size ? { ...copied.size } : undefined };
-		onAnnotationPositionKeyframesChange(selectedAnnotation.id, [...next, pasted].sort((a, b) => a.timeMs - b.timeMs));
+		if (!copied || !onAnnotationPositionKeyframesChange) return;
+		const target = selectedAnnotation ?? annotationRegions.find((region) => region.id === copied.annotationId);
+		if (!target) return;
+		const timeMs = Math.max(0, Math.min(totalMs, Math.round(currentTimeMs)));
+		const next = (target.positionKeyframes ?? []).filter((frame) => Math.abs(frame.timeMs - timeMs) >= 1);
+		const pasted = { ...structuredClone(copied.frame), id: globalThis.crypto.randomUUID(), timeMs };
+		onAnnotationPositionKeyframesChange(target.id, [...next, pasted].sort((a, b) => a.timeMs - b.timeMs));
+		onSelectAnnotation?.(target.id);
 		setSelectedKeyframeId(pasted.id);
-	}, [currentTimeMs, onAnnotationPositionKeyframesChange, selectedAnnotation, totalMs, setSelectedKeyframeId]);
+	}, [annotationRegions, copiedKeyframeRef, currentTimeMs, onAnnotationPositionKeyframesChange, onSelectAnnotation, selectedAnnotation, totalMs, setSelectedKeyframeId]);
 
 	const handleKeyframeMove = useCallback(
 		(id: string, newTime: number) => {
@@ -291,6 +299,7 @@ export function useTimelineSelection({
 		addKeyframe,
 		deleteSelectedKeyframe,
 		copySelectedKeyframe,
+		hasCopiedKeyframe,
 		pasteKeyframe,
 		handleKeyframeMove,
 		deleteSelectedZoom,

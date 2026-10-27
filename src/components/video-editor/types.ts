@@ -12,6 +12,8 @@ export interface ZoomRegion {
 	startMs: number;
 	endMs: number;
 	depth: ZoomDepth;
+	/** Continuous camera magnification set by resizing the focus rectangle. */
+	scale?: number;
 	focus: ZoomFocus;
 	mode?: ZoomMode;
 }
@@ -1165,6 +1167,10 @@ export const ZOOM_DEPTH_SCALES: Record<ZoomDepth, number> = {
 };
 
 export const DEFAULT_ZOOM_DEPTH: ZoomDepth = 3;
+export function getZoomScale(region: Pick<ZoomRegion, "depth" | "scale">): number {
+	return typeof region.scale === "number" && Number.isFinite(region.scale)
+		? Math.max(1, Math.min(5, region.scale)) : ZOOM_DEPTH_SCALES[region.depth];
+}
 export const DEFAULT_AUTO_ZOOM_DEPTH: ZoomDepth = 2;
 
 export function clampFocusToDepth(focus: ZoomFocus, _depth: ZoomDepth): ZoomFocus {

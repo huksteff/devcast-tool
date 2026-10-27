@@ -21,6 +21,7 @@ export type TimelineWindowSnapshot = {
 	keyframeMode: KeyframeEditMode;
 	showKeyframes: boolean;
 	selectedKeyframeId: string | null;
+	hasCopiedKeyframe?: boolean;
 	canGenerateAutoCaptions: boolean;
 	isGeneratingCaptions: boolean;
 	rowScale: number;
@@ -60,6 +61,7 @@ export type TimelineWindowAction =
 	| { type: "toggle-keyframe-mode" }
 	| { type: "set-keyframe-mode"; mode: KeyframeEditMode }
 	| { type: "toggle-keyframe-visibility" }
+	| { type: "toggle-source-audio-tracks" }
 	| { type: "select-keyframe"; id: string | null }
 	| { type: "copy-keyframe" }
 	| { type: "paste-keyframe" }
@@ -79,6 +81,7 @@ export type TimelineWindowAction =
 	| { type: "audio-span-change"; id: string; span: Span; trackIndex?: number }
 	| { type: "audio-delete"; id: string }
 	| { type: "audio-track-added" }
+	| { type: "audio-track-delete"; trackIndex: number; confirmed?: boolean }
 	| { type: "select-audio"; id: string | null }
 	| { type: "caption-span-change"; id: string; span: Span }
 	| { type: "caption-delete"; id: string }
@@ -87,6 +90,7 @@ export type TimelineWindowAction =
 	| { type: "annotation-added"; span: Span; trackIndex?: number }
 	| { type: "annotation-span-change"; id: string; span: Span; trackIndex?: number }
 	| { type: "annotation-delete"; id: string }
+	| { type: "annotation-track-delete"; trackIndex: number; confirmed?: boolean }
 	| { type: "annotation-position-keyframes-change"; id: string; keyframes: AnnotationPositionKeyframe[] }
 	| { type: "select-annotation"; id: string | null }
 	| { type: "clipboard"; operation: "copy" | "cut" | "paste" };

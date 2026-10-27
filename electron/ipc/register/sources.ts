@@ -657,7 +657,7 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
 			x: left, y: top, width: Math.max(1, right - left), height: Math.max(1, bottom - top),
 			frame: false, transparent: true, alwaysOnTop: true, skipTaskbar: true,
 			resizable: false, hasShadow: false, show: false,
-			webPreferences: { preload: path.join(sourcesRegisterDir, "../../preload.mjs"), nodeIntegration: false, contextIsolation: true },
+			webPreferences: { preload: path.join(sourcesRegisterDir, "../../preload.cjs"), nodeIntegration: false, contextIsolation: true },
 		});
 		// This window is the only overlay that should receive input. Explicitly
 		// disable click-through so a prior HUD passthrough state cannot leak here.

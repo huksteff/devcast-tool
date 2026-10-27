@@ -6,12 +6,14 @@ import { constants as fsConstants } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { BrowserWindow, dialog, ipcMain, shell } from "electron";
-import { RECORDINGS_DIR } from "../../appPaths";
+import { RECORDINGS_DIR, USER_DATA_PATH } from "../../appPaths";
+import { createEditingSessionStore } from "../project/editingSessions";
 import { buildMediaUrl, getMediaServerBaseUrl } from "../../mediaServer";
 import { LEGACY_PROJECT_FILE_EXTENSIONS, PROJECT_FILE_EXTENSION } from "../constants";
 import { getProjectBackupPath, writeProjectFileAtomically } from "../project/atomicSave";
 import {
 	getProjectsDir,
+	isAllowedLocalReadPath,
 	getProjectThumbnailPath,
 	isPathInsideDirectory,
 	isTrustedProjectPath,
@@ -214,6 +216,34 @@ async function ensureNamedProjectSaveDoesNotOverwriteDifferentProject(
 }
 
 export function registerProjectHandlers() {
+	const editingSessions = createEditingSessionStore(path.join(USER_DATA_PATH, "editing-sessions"));
+	const checkpointEditingSession = (projectData: unknown, projectPath: string) => {
+		const video = getProjectVideoPath(projectData);
+		if (!video) return;
+		try { editingSessions.checkpoint(video, projectPath); }
+		catch (error) { console.warn("Could not update editing session checkpoint:", error); }
+	};
+	ipcMain.on("save-editing-session", (event, projectData, projectPath?: string | null) => {
+		try {
+			const video = getProjectVideoPath(projectData);
+			if (!video || !projectData.editor || !isAllowedLocalReadPath(video)) throw new Error("Invalid editing session source");
+			editingSessions.save(projectData, projectPath);
+			event.returnValue = { success: true };
+		} catch (error) { event.returnValue = { success: false, error: String(error) }; }
+	});
+	ipcMain.handle("load-editing-session", async (_, video: string, projectPath?: string | null) => {
+		try {
+			if (typeof video !== "string" || !isAllowedLocalReadPath(video) || !isTrustedProjectPath(projectPath)) return { success: false };
+			const project = editingSessions.load(video, projectPath);
+			if (project) {
+				await Promise.all([
+					project.editor.webcam?.sourcePath,
+					...(project.editor.audioRegions ?? []).map((region) => region.audioPath),
+				].map(rememberApprovedLocalReadPath));
+			}
+			return { success: true, project };
+		} catch (error) { return { success: false, error: String(error) }; }
+	});
 	const imports = new Map<number, AbortController>();
 	const pendingImports = new Map<number, Set<string>>();
 	const watchedImportSenders = new WeakSet<Electron.WebContents>();
@@ -440,6 +470,7 @@ export function registerProjectHandlers() {
 						JSON.stringify(preparedProject.projectData, null, 2),
 					);
 					setCurrentProjectPath(trustedExistingProjectPath);
+					checkpointEditingSession(preparedProject.projectData, trustedExistingProjectPath);
 					await saveProjectThumbnail(trustedExistingProjectPath, thumbnailDataUrl);
 					await rememberRecentProject(trustedExistingProjectPath);
 					return {
@@ -484,6 +515,7 @@ export function registerProjectHandlers() {
 					JSON.stringify(preparedProject.projectData, null, 2),
 				);
 				setCurrentProjectPath(result.filePath);
+				checkpointEditingSession(preparedProject.projectData, result.filePath);
 				await saveProjectThumbnail(result.filePath, thumbnailDataUrl);
 				await rememberRecentProject(result.filePath);
 
@@ -564,6 +596,7 @@ export function registerProjectHandlers() {
 					JSON.stringify(preparedProject.projectData, null, 2),
 				);
 				await saveProjectThumbnail(targetProjectPath, thumbnailDataUrl);
+				checkpointEditingSession(preparedProject.projectData, targetProjectPath);
 				await rememberRecentProject(targetProjectPath);
 
 				if (namedSaveMode === "rename" && activeProjectPath && isSavingToDifferentPath) {
@@ -750,10 +783,12 @@ export function registerProjectHandlers() {
 			};
 
 			setCurrentRecordingSession(nextSession);
-			await replaceApprovedSessionLocalReadPaths([
-				resolvedSession.videoPath,
-				resolvedSession.webcamPath,
-			]);
+			const mediaPaths = [resolvedSession.videoPath, resolvedSession.webcamPath];
+			if (options?.preserveProjectPath) {
+				await Promise.all(mediaPaths.map(rememberApprovedLocalReadPath));
+			} else {
+				await replaceApprovedSessionLocalReadPaths(mediaPaths);
+			}
 
 			if (nextSession.webcamPath) {
 				await persistRecordingSessionManifest(nextSession);

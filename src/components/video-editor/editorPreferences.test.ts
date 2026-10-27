@@ -6,6 +6,8 @@ import {
 	EDITOR_PRESETS_STORAGE_KEY,
 	loadEditorPreferences,
 	loadEditorPresets,
+	loadSelectedEditorPreset,
+	rememberSelectedEditorPreset,
 	normalizeEditorPreferences,
 	saveEditorPreferences,
 	saveEditorPresets,
@@ -59,6 +61,15 @@ function createStorageMock(initialValues: Record<string, string> = {}): Storage 
 		},
 	};
 }
+
+it("keeps the chosen preset independent from later project parameter changes", () => {
+	vi.stubGlobal("localStorage", createStorageMock({
+		[EDITOR_PRESETS_STORAGE_KEY]: JSON.stringify([{ id: "studio", name: "Studio", createdAt: "2026-01-01", updatedAt: "2026-01-01", snapshot: { ...DEFAULT_EDITOR_PREFERENCES, cursorSize: 2 } }]),
+	}));
+	rememberSelectedEditorPreset("studio");
+	saveEditorPreferences({ cursorSize: 7 });
+	expect(loadSelectedEditorPreset()?.snapshot.cursorSize).toBe(2);
+});
 
 function stubElectronSettings(initialValues: Record<string, unknown> = {}) {
 	const store = new Map(Object.entries(initialValues));
@@ -321,11 +332,11 @@ describe("editorPreferences", () => {
 			showCursor: false,
 			loopCursor: true,
 			cursorStyle: "figma",
-			cursorSize: DEFAULT_EDITOR_PREFERENCES.cursorSize,
-			cursorSmoothing: DEFAULT_EDITOR_PREFERENCES.cursorSmoothing,
-			cursorMotionBlur: DEFAULT_EDITOR_PREFERENCES.cursorMotionBlur,
-			cursorClickBounce: DEFAULT_EDITOR_PREFERENCES.cursorClickBounce,
-			cursorClickBounceDuration: DEFAULT_EDITOR_PREFERENCES.cursorClickBounceDuration,
+			cursorSize: 3,
+			cursorSmoothing: 1.25,
+			cursorMotionBlur: 0.5,
+			cursorClickBounce: 2.25,
+			cursorClickBounceDuration: 350,
 			cursorSway: 1.5,
 			borderRadius: 18,
 			padding: { top: 30, right: 30, bottom: 30, left: 30, linked: true },

@@ -13,6 +13,7 @@ type SessionPresentation = {
 };
 
 type Input = {
+	applyNewVideoPreset: () => void;
 	project: ReturnType<typeof useProjectState>;
 	appearance: ReturnType<typeof useAppearanceState>;
 	timeline: ReturnType<typeof useTimelineState>;
@@ -26,6 +27,7 @@ type Input = {
 };
 
 export function useInitialEditorSource({
+	applyNewVideoPreset,
 	project,
 	appearance,
 	timeline,
@@ -94,6 +96,7 @@ export function useInitialEditorSource({
 					project.setCurrentProjectPath(null);
 					project.setLastSavedSnapshot(null);
 					resetSourceScopedEditorState();
+					applyNewVideoPreset();
 					pendingFreshRecordingAutoZoomPathRef.current =
 						appearance.autoApplyFreshRecordingAutoZooms ? sourceUrl : null;
 					appearance.setWebcam((previous) => ({
@@ -165,6 +168,7 @@ export function useInitialEditorSource({
 					project.setCurrentProjectPath(null);
 					project.setLastSavedSnapshot(null);
 					resetSourceScopedEditorState();
+					applyNewVideoPreset();
 					pendingFreshRecordingAutoZoomPathRef.current =
 						appearance.autoApplyFreshRecordingAutoZooms ? sourceUrl : null;
 					applySessionPresentation(sessionResult.session);
@@ -190,6 +194,7 @@ export function useInitialEditorSource({
 				project.setCurrentProjectPath(null);
 				project.setLastSavedSnapshot(null);
 				resetSourceScopedEditorState();
+				applyNewVideoPreset();
 				pendingFreshRecordingAutoZoomPathRef.current = null;
 				applySessionPresentation(null);
 				appearance.setWebcam((previous) => ({

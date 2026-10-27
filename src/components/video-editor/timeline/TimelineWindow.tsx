@@ -66,7 +66,7 @@ export default function TimelineWindow() {
 				send({ type: "copy-keyframe" });
 				return;
 			}
-			if (key === "v" && copiedKeyframeRef.current) {
+			if (key === "v" && (copiedKeyframeRef.current || snapshot?.hasCopiedKeyframe)) {
 				send({ type: "paste-keyframe" });
 				return;
 			}
@@ -78,7 +78,7 @@ export default function TimelineWindow() {
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [send, snapshot?.selectedKeyframeId]);
+	}, [send, snapshot?.selectedKeyframeId, snapshot?.hasCopiedKeyframe]);
 
 	if (!snapshot) {
 		return (
@@ -164,26 +164,12 @@ export default function TimelineWindow() {
 						>
 							Add audio track
 						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => void timelineRef.current?.addAudio(snapshot.audioTrackCount - 1)}>
+						<DropdownMenuItem onClick={() => void timelineRef.current?.addAudio(Math.max(0, snapshot.audioTrackCount - 1))}>
 							Add sound file
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
-				<Button
-					variant="ghost"
-					size="sm"
-					className="h-9 shrink-0"
-					disabled={!snapshot.selectedKeyframeId}
-					title="Copy selected keyframe"
-					onClick={() => { copiedKeyframeRef.current = true; send({ type: "copy-keyframe" }); }}
-				>Copy keyframe</Button>
-				<Button
-					variant="ghost"
-					size="sm"
-					className="h-9 shrink-0"
-					title="Paste keyframe at playhead"
-					onClick={() => send({ type: "paste-keyframe" })}
-				>Paste keyframe</Button>
+						<Button variant="ghost" size="sm" className="h-9 shrink-0" aria-pressed={snapshot.showSourceAudioTrack} onClick={() => send({ type: "toggle-source-audio-tracks" })}>{snapshot.showSourceAudioTrack ? "Hide source audio" : "Show source audio"}</Button>
 				<Button
 					variant="ghost"
 					size="icon"
@@ -207,11 +193,11 @@ export default function TimelineWindow() {
 				<Button
 					variant="ghost"
 					size="icon"
-					className={`h-9 w-9 shrink-0 ${snapshot.keyframeMode !== "off" ? "bg-primary/20 text-primary" : ""}`}
+					className={`h-9 w-9 shrink-0 ${snapshot.keyframeMode === "auto" ? "bg-primary/20 text-primary" : ""}`}
 					title={
 						snapshot.keyframeMode === "auto"
-							? "Disable automatic keyframes"
-							: "Enable automatic keyframes"
+							? "Automatic keyframes on — click to turn off; I adds a keyframe manually"
+							: "Automatic keyframes off — click to turn on; I adds a keyframe manually"
 					}
 					aria-label={
 						snapshot.keyframeMode === "auto"
@@ -226,23 +212,11 @@ export default function TimelineWindow() {
 						weight={snapshot.keyframeMode === "auto" ? "fill" : "regular"}
 					/>
 				</Button>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button variant="ghost" size="icon" className="h-9 w-5 shrink-0" title="Keyframe editing mode" aria-label="Keyframe editing mode">
-							<CaretDown className="h-3 w-3" />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="start">
-						<DropdownMenuItem onClick={() => send({ type: "set-keyframe-mode", mode: "auto" })}>Automatic keyframes</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => send({ type: "set-keyframe-mode", mode: "manual" })}>Manual keyframes (I)</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => send({ type: "set-keyframe-mode", mode: "off" })}>Keyframe editing off</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
 				<Button
 					variant="ghost"
 					size="icon"
 					className={`h-9 w-9 shrink-0 ${snapshot.showKeyframes ? "bg-primary/20 text-primary" : ""}`}
-					title={snapshot.showKeyframes ? "Hide keyframes" : "Show keyframes"}
+					title={snapshot.showKeyframes ? "Keyframes visible — click to hide markers" : "Keyframes hidden — click to show markers"}
 					aria-label={snapshot.showKeyframes ? "Hide keyframes" : "Show keyframes"}
 					aria-pressed={snapshot.showKeyframes}
 					onClick={() => send({ type: "toggle-keyframe-visibility" })}
@@ -311,6 +285,11 @@ export default function TimelineWindow() {
 					audioRegions={snapshot.audioRegions}
 					audioTrackCount={snapshot.audioTrackCount}
 					onAddAudioTrack={() => send({ type: "audio-track-added" })}
+					onDeleteAudioTrack={(trackIndex) => {
+						const count = snapshot.audioRegions.filter((region) => (region.trackIndex ?? 0) === trackIndex).length;
+						if (count && !window.confirm(`Delete audio track and its ${count} sound clip${count === 1 ? "" : "s"}?`)) return;
+						send({ type: "audio-track-delete", trackIndex, confirmed: true });
+					}}
 					onAudioAdded={(span, audioPath, trackIndex) =>
 						send({ type: "audio-added", span, audioPath, trackIndex })
 					}
@@ -338,6 +317,11 @@ export default function TimelineWindow() {
 						send({ type: "annotation-span-change", id, span, trackIndex })
 					}
 					onAnnotationDelete={(id) => send({ type: "annotation-delete", id })}
+					onDeleteAnnotationTrack={(trackIndex) => {
+						const count = snapshot.annotationRegions.filter((region) => (region.trackIndex ?? 0) === trackIndex).length;
+						if (count && !window.confirm(`Delete annotation track and its ${count} annotation${count === 1 ? "" : "s"}?`)) return;
+						send({ type: "annotation-track-delete", trackIndex, confirmed: true });
+					}}
 					onAnnotationPositionKeyframesChange={(id, keyframes) =>
 						send({ type: "annotation-position-keyframes-change", id, keyframes })
 					}

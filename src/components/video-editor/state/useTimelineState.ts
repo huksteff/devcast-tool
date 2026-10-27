@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AudioTrackMix } from "../audio/audioTrackMix";
 import type { SourceAudioTrackSettings } from "../audio/audioTypes";
 import type {
 	AnnotationRegion,
+	AnnotationPositionKeyframe,
 	AudioRegion,
 	AutoCaptionSettings,
 	CaptionCue,
@@ -25,6 +26,8 @@ export function useTimelineState() {
 	const [speedRegions, setSpeedRegions] = useState<SpeedRegion[]>([]);
 	const [annotationRegions, setAnnotationRegions] = useState<AnnotationRegion[]>([]);
 	const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+	const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
+	const keyframeClipboardRef = useRef<{ annotationId: string; frame: AnnotationPositionKeyframe } | null>(null);
 	const [audioRegions, setAudioRegions] = useState<AudioRegion[]>([]);
 	const [audioTrackCount, setAudioTrackCount] = useState(1);
 	const [audioTrackMix, setAudioTrackMix] = useState<AudioTrackMix>({});
@@ -63,6 +66,9 @@ export function useTimelineState() {
 		setAnnotationRegions,
 		selectedAnnotationId,
 		setSelectedAnnotationId,
+		selectedKeyframeId,
+		setSelectedKeyframeId,
+		keyframeClipboardRef,
 		audioRegions,
 		setAudioRegions,
 		audioTrackCount,

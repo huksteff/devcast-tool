@@ -533,14 +533,13 @@ export function createHudOverlayWindow(): BrowserWindow {
 		hasShadow: false,
 		show: false,
 		webPreferences: {
-			preload: path.join(electronWindowsDir, "preload.mjs"),
+			preload: path.join(electronWindowsDir, "preload.cjs"),
 			nodeIntegration: false,
 			contextIsolation: true,
 			webSecurity: false,
 			backgroundThrottling: false,
 		},
 	});
-	applyHudOverlayShape(win);
 	// Keep the recording controls and webcam above normal and full-screen apps.
 	// Transparent regions remain click-through via setIgnoreMouseEvents().
 	win.setAlwaysOnTop(true, "screen-saver");
@@ -564,6 +563,7 @@ export function createHudOverlayWindow(): BrowserWindow {
 			return;
 		}
 		hasShownHudWindow = true;
+		applyHudOverlayShape(win);
 		// Showing or changing native window state can recreate platform window
 		// flags. Reassert capture protection on both sides of the transition.
 		applyHudOverlayCaptureProtectionToWindow(win, hudOverlayHiddenFromCapture);
@@ -589,6 +589,8 @@ export function createHudOverlayWindow(): BrowserWindow {
 	win.on("show", () => {
 		if (!win.isDestroyed()) {
 			applyHudOverlayCaptureProtectionToWindow(win, hudOverlayHiddenFromCapture);
+			applyHudOverlayShape(win);
+			if (!isHudOverlayMousePassthroughSupported()) win.setIgnoreMouseEvents(false);
 		}
 	});
 
@@ -708,7 +710,7 @@ export function createTimelineWindow(): BrowserWindow {
 		title: "DevCast Timeline",
 		backgroundColor: "#181a1f",
 		webPreferences: {
-			preload: path.join(electronWindowsDir, "preload.mjs"),
+			preload: path.join(electronWindowsDir, "preload.cjs"),
 			nodeIntegration: false,
 			contextIsolation: true,
 			webSecurity: false,
@@ -807,12 +809,28 @@ ipcMain.on("timeline-window:message", (event, message: unknown) => {
  * user to move their mouse over the bar.
  */
 export function reassertHudOverlayMousePassthrough(): void {
-	if (process.platform !== "win32" || !isHudOverlayMousePassthroughSupported()) {
+	if (process.platform !== "win32") {
 		return;
 	}
 
 	const hud = getHudOverlayWindow();
 	if (!hud) {
+		return;
+	}
+	if (!isHudOverlayMousePassthroughSupported()) {
+		// Windows uses a shaped input region. Reapply it after sibling windows
+		// close too; the forwarded-mouse recovery below never runs on Windows.
+		applyHudOverlayBounds();
+		hud.setIgnoreMouseEvents(false);
+		applyHudOverlayShape(hud);
+		if (hud.isVisible()) hud.moveTop();
+		if (hudOverlayMouseReassertTimer) clearTimeout(hudOverlayMouseReassertTimer);
+		hudOverlayMouseReassertTimer = setTimeout(() => {
+			hudOverlayMouseReassertTimer = null;
+			if (hud.isDestroyed()) return;
+			hud.setIgnoreMouseEvents(false);
+			applyHudOverlayShape(hud);
+		}, 50);
 		return;
 	}
 
@@ -859,7 +877,7 @@ export function createUpdateToastWindow(): BrowserWindow {
 		focusable: true,
 		backgroundColor: "#00000000",
 		webPreferences: {
-			preload: path.join(electronWindowsDir, "preload.mjs"),
+			preload: path.join(electronWindowsDir, "preload.cjs"),
 			nodeIntegration: false,
 			contextIsolation: true,
 			backgroundThrottling: false,
@@ -1080,7 +1098,7 @@ export function createEditorWindow(): BrowserWindow {
 		show: false,
 		backgroundColor: "#000000",
 		webPreferences: {
-			preload: path.join(electronWindowsDir, "preload.mjs"),
+			preload: path.join(electronWindowsDir, "preload.cjs"),
 			nodeIntegration: false,
 			contextIsolation: true,
 			webSecurity: false,
@@ -1184,7 +1202,7 @@ export function createSourceSelectorWindow(): BrowserWindow {
 		}),
 		backgroundColor: "#00000000",
 		webPreferences: {
-			preload: path.join(electronWindowsDir, "preload.mjs"),
+			preload: path.join(electronWindowsDir, "preload.cjs"),
 			nodeIntegration: false,
 			contextIsolation: true,
 		},
@@ -1231,7 +1249,7 @@ export function createCountdownWindow(): BrowserWindow {
 		focusable: true,
 		show: false,
 		webPreferences: {
-			preload: path.join(electronWindowsDir, "preload.mjs"),
+			preload: path.join(electronWindowsDir, "preload.cjs"),
 			nodeIntegration: false,
 			contextIsolation: true,
 		},

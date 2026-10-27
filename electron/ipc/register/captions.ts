@@ -192,12 +192,13 @@ export function registerCaptionHandlers() {
 	ipcMain.handle("delete-whisper-small-model", async (event) => {
 		try {
 			await deleteWhisperSmallModel();
+			const deleted = await getWhisperSmallModelStatus();
 			sendWhisperModelDownloadProgress(event.sender, {
 				status: "idle",
 				progress: 0,
-				path: null,
+				path: deleted.path,
 			});
-			return { success: true };
+			return { success: true, path: deleted.path };
 		} catch (error) {
 			console.error("Failed to delete Whisper small model:", error);
 			// Verify whether the file was actually removed despite the error
@@ -207,9 +208,9 @@ export function registerCaptionHandlers() {
 				sendWhisperModelDownloadProgress(event.sender, {
 					status: "idle",
 					progress: 0,
-					path: null,
+					path: status.path,
 				});
-				return { success: true };
+				return { success: true, path: status.path };
 			}
 			sendWhisperModelDownloadProgress(event.sender, {
 				status: "error",

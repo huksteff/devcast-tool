@@ -245,7 +245,12 @@ async function generateCaptionsForSource(options: {
 	const whisperExecutablePath = await resolveWhisperExecutablePath(options.whisperExecutablePath);
 	const whisperModelPath = path.resolve(options.whisperModelPath);
 	await ensureReadableFile(whisperExecutablePath, { executable: true });
-	await ensureReadableFile(whisperModelPath);
+	try {
+		await ensureReadableFile(whisperModelPath);
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+		throw new Error("Whisper model not found. Download the model again in Caption settings or select an existing model.");
+	}
 
 	const tempBase = path.join(
 		app.getPath("temp"),

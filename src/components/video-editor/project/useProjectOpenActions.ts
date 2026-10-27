@@ -16,6 +16,8 @@ import type { VideoPlaybackRef } from "../VideoPlayback";
 type Set<T> = Dispatch<SetStateAction<T>>;
 
 type UseProjectOpenActionsInput = {
+	applyNewVideoPreset: () => void;
+	flushEditingSession: () => void;
 	project: ReturnType<typeof useProjectState>;
 	appearance: ReturnType<typeof useAppearanceState>;
 	videoPlaybackRef: RefObject<VideoPlaybackRef | null>;
@@ -35,6 +37,8 @@ type UseProjectOpenActionsInput = {
 };
 
 export function useProjectOpenActions({
+	applyNewVideoPreset,
+	flushEditingSession,
 	project,
 	appearance,
 	videoPlaybackRef,
@@ -54,13 +58,14 @@ export function useProjectOpenActions({
 }: UseProjectOpenActionsInput) {
 	const confirmReplaceSourceWithUnsavedChanges = useCallback(
 		async (actionLabel: string) => {
+			flushEditingSession();
 			if (!hasUnsavedChanges) return true;
 			const decision = await openUnsavedChangesDialog(actionLabel);
 			if (decision === "discard") return true;
 			if (decision === "save") return saveProject(false);
 			return false;
 		},
-		[hasUnsavedChanges, openUnsavedChangesDialog, saveProject],
+		[hasUnsavedChanges, openUnsavedChangesDialog, saveProject, flushEditingSession],
 	);
 
 	const handleOpenProjectFromLibrary = useCallback(
@@ -139,6 +144,7 @@ export function useProjectOpenActions({
 			project.setCurrentProjectPath(null);
 			project.setLastSavedSnapshot(null);
 			resetSourceScopedEditorState();
+			applyNewVideoPreset();
 			pendingFreshRecordingAutoZoomPathRef.current =
 				appearance.autoApplyFreshRecordingAutoZooms ? sourceVideoUrl : null;
 			appearance.setWebcam((previous) => ({

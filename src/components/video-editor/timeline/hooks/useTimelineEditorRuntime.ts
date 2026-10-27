@@ -55,6 +55,7 @@ interface UseTimelineEditorRuntimeParams {
 	onAnnotationPositionKeyframesChange?: (id: string, keyframes: AnnotationPositionKeyframe[]) => void;
 	selectedKeyframeId?: string | null;
 	onSelectKeyframe?: (id: string | null) => void;
+	keyframeClipboardRef?: { current: { annotationId: string; frame: AnnotationPositionKeyframe } | null };
 	selectedAnnotationId?: string | null;
 	onSelectAnnotation?: (id: string | null) => void;
 	speedRegions: SpeedRegion[];
@@ -108,6 +109,7 @@ export function useTimelineEditorRuntime({
 	onAnnotationPositionKeyframesChange,
 	selectedKeyframeId: sharedSelectedKeyframeId,
 	onSelectKeyframe,
+	keyframeClipboardRef,
 	selectedAnnotationId,
 	onSelectAnnotation,
 	speedRegions,
@@ -139,6 +141,7 @@ export function useTimelineEditorRuntime({
 		addKeyframe,
 		deleteSelectedKeyframe,
 		copySelectedKeyframe,
+		hasCopiedKeyframe,
 		pasteKeyframe,
 		handleKeyframeMove,
 		deleteSelectedZoom,
@@ -171,6 +174,7 @@ export function useTimelineEditorRuntime({
 		onAnnotationPositionKeyframesChange,
 		selectedKeyframeId: sharedSelectedKeyframeId,
 		onSelectKeyframe,
+		keyframeClipboardRef,
 		onAudioDelete,
 		onCaptionDelete,
 		onSelectZoom,
@@ -301,6 +305,7 @@ export function useTimelineEditorRuntime({
 		handleAddAnnotation: () => handleAddAnnotation(),
 		deleteSelectedKeyframe,
 		copySelectedKeyframe,
+		hasCopiedKeyframe,
 		pasteKeyframe,
 		deleteSelectedZoom,
 		deleteSelectedClip,

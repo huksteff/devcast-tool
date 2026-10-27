@@ -40,6 +40,16 @@ describe("resolveVideoUrl", () => {
 });
 
 describe("normalizeProjectEditor", () => {
+	it("preserves custom cursor and camera values instead of replacing them with a motion preset", () => {
+		const custom = { cursorSize: 3.2, cursorSmoothing: 1.25, cursorSpringStiffnessMultiplier: 1.4, cursorSpringDampingMultiplier: 1.3, cursorSpringMassMultiplier: 1.6, cursorClickBounce: 2.25, cursorClickBounceDuration: 375, zoomInDurationMs: 640, zoomOutDurationMs: 830, zoomSmoothness: 0.73, cursorMotionBlur: 0.45 };
+		expect(normalizeProjectEditor(custom)).toMatchObject(custom);
+	});
+	it("retains a resized zoom scale when saving and reopening a project", () => {
+		const zoom = { id: "zoom-resized", startMs: 0, endMs: 2000, depth: 2, scale: 2.73, focus: { cx: 0.4, cy: 0.6 }, mode: "manual" };
+		const first = normalizeProjectEditor({ zoomRegions: [zoom] });
+		const reopened = normalizeProjectEditor(JSON.parse(JSON.stringify(first)));
+		expect(reopened.zoomRegions[0]).toEqual(zoom);
+	});
 	it("ignores retired temporal blur fields when opening an older project", () => {
 		const savedEditor = {
 			zoomMotionBlur: 0.6,
@@ -159,6 +169,7 @@ describe("normalizeProjectEditor", () => {
 describe("loaded clip sequence migration", () => {
 	it("preserves empty audio lanes and derives lanes used by imported sounds", () => {
 		expect(normalizeProjectEditor({ audioTrackCount: 3, audioRegions: [] }).audioTrackCount).toBe(3);
+		expect(normalizeProjectEditor({ audioTrackCount: 0, audioRegions: [] }).audioTrackCount).toBe(0);
 		expect(normalizeProjectEditor({ audioRegions: [{ id: "sound", startMs: 0, endMs: 100, audioPath: "a.wav", volume: 1, trackIndex: 4 }] }).audioTrackCount).toBe(5);
 		expect(normalizeProjectEditor({ audioTrackMix: { 1: { volume: 0.4, gain: 2 } } }).audioTrackMix?.[1]).toEqual({ volume: 0.4, gain: 2 });
 	});

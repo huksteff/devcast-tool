@@ -20,7 +20,6 @@ import {
 	legacyBorderRadiusPixelsToPercent,
 	normalizeProjectEditor,
 	resolveVideoUrl,
-	stripPersistedDevMotionBlurSettings,
 	validateProjectData,
 } from "../projectPersistence";
 import type { useAppearanceState } from "../state/useAppearanceState";
@@ -83,9 +82,13 @@ export function useProjectLifecycle(input: Input) {
 		const current = inputRef.current;
 		const { project, appearance, timeline, exportSettings, refs } = current;
 		if (!validateProjectData(candidate)) return false;
-		const loadedProject = candidate;
+		let loadedProject = candidate;
+		if (path && window.electronAPI.loadEditingSession) {
+			const recovery = await window.electronAPI.loadEditingSession(fromFileUrl(candidate.videoPath), path);
+			if (recovery.success && validateProjectData(recovery.project)) loadedProject = recovery.project;
+		}
 		const sourcePath = fromFileUrl(loadedProject.videoPath);
-		const persistedEditor = stripPersistedDevMotionBlurSettings(loadedProject.editor ?? {});
+		const persistedEditor = loadedProject.editor ?? {};
 		const editor = normalizeProjectEditor({
 			...persistedEditor,
 			borderRadius:
@@ -187,6 +190,8 @@ export function useProjectLifecycle(input: Input) {
 		refs.autoFullTrackClipEndMsRef.current = null;
 		timeline.setSpeedRegions(editor.speedRegions);
 		timeline.setAnnotationRegions(editor.annotationRegions);
+		timeline.keyframeClipboardRef.current = null;
+		timeline.setSelectedKeyframeId(null);
 		timeline.setAudioRegions(editor.audioRegions);
 		timeline.setAudioTrackCount(editor.audioTrackCount ?? 1);
 		timeline.setAudioTrackMix(editor.audioTrackMix ?? {});
@@ -350,6 +355,8 @@ export function useProjectLifecycle(input: Input) {
 		refs.autoFullTrackClipEndMsRef.current = null;
 		timeline.setSpeedRegions([]);
 		timeline.setAnnotationRegions([]);
+		timeline.keyframeClipboardRef.current = null;
+		timeline.setSelectedKeyframeId(null);
 		timeline.setAudioRegions([]);
 		timeline.setAudioTrackCount(1);
 		timeline.setAudioTrackMix({});

@@ -17,6 +17,11 @@ const region: ZoomRegion = {
 };
 
 describe("resolveSceneZoomTarget", () => {
+	it("uses the resized area magnification for the shared preview/export camera", () => {
+		const target = resolveSceneZoomTarget({ zoomRegions: [{ ...region, scale: 2.73 }], timeMs: 2000, cursorFollowCamera: createCursorFollowCameraState() });
+		expect(target.scale).toBeCloseTo(2.73);
+		expect(target.focus).toEqual(region.focus);
+	});
 	it("returns the neutral camera when no zoom is active", () => {
 		expect(
 			resolveSceneZoomTarget({

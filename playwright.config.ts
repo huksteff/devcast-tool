@@ -3,6 +3,7 @@ export default defineConfig({
 	testDir: "./tests/ui",
 	timeout: 30000,
 	use: {
+		channel: process.env.DEVCAST_UI_BROWSER_CHANNEL || undefined,
 		baseURL: "http://127.0.0.1:5178",
 		viewport: { width: 1440, height: 1000 },
 		trace: "retain-on-failure",

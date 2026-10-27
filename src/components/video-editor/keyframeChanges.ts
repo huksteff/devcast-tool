@@ -10,15 +10,50 @@ function readable(value: unknown): string {
 	return "Changed";
 }
 
+function labelForPath(path: string): string {
+	const parts = path.split(".").filter((part) => part !== "Settings");
+	const key = parts[parts.length - 1] ?? path;
+	if (parts[0] === "Position") return key === "x" ? "Position X" : "Position Y";
+	if (parts[0] === "Size") return key === "width" ? "Width" : "Height";
+	const group = parts[0];
+	const parent = parts[parts.length - 2];
+	if (group === "style" && key === "color") return "Text color";
+	const names: Record<string, string> = {
+		type: "Annotation type", content: "Text", textContent: "Text", imageContent: "Image",
+		figureData: "Shape", drawingData: "Drawing", clickData: "Click effect", calloutEvent: "Callout", stages: "Animation",
+		style: "Text style", blurIntensity: "Blur strength", blurColor: "Blur color",
+		kind: "Shape", arrowDirection: "Arrow direction", strokeWidth: "Stroke width", opacity: "Opacity",
+		fillEnabled: "Fill", fillColor: "Fill color", outlineEnabled: "Outline", color: "Color",
+		fontSize: "Font size", fontFamily: "Font", fontWeight: "Font weight", fontStyle: "Font style",
+		textDecoration: "Underline", textAlign: "Text alignment", backgroundColor: "Background color", borderRadius: "Corner radius",
+		particleCount: "Particle count", radius: "Radius", durationMs: "Duration", cycleDurationMs: "Cycle duration",
+		glow: "Glow", colors: "Colors", enabled: "Enabled", gradientEnabled: "Gradient", gradientColors: "Gradient colors",
+		gradientGlow: "Gradient glow", scale: "Scale", background: "Background", textColor: "Text color",
+		inEnabled: "Entrance", outEnabled: "Exit", inDurationMs: "Entrance duration", outDurationMs: "Exit duration",
+		inTransition: "Entrance effect", outTransition: "Exit effect", action: "Action", tool: "Tool",
+		eraserSize: "Eraser size", showEraserInDrawOut: "Show eraser on exit", strokes: "Strokes", points: "Points",
+	};
+	if (parent === "fillGradient" || parent === "gradient") {
+		const prefix = parent === "fillGradient" ? "Fill gradient" : "Outline gradient";
+		if (key === "enabled") return prefix;
+		return `${prefix} ${names[key]?.toLowerCase() ?? key}`;
+	}
+	const prefix: Record<string, string> = { figureData: "Shape", drawingData: "Drawing", clickData: "Click effect", calloutEvent: "Callout", stages: "Animation" };
+	const suffix = names[key] ?? key.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+	return group && prefix[group] && !suffix.startsWith(prefix[group]) ? `${prefix[group]} ${suffix.toLowerCase()}` : suffix;
+}
+
 function collectChanges(before: unknown, after: unknown, path: string, output: string[]): void {
 	if (Object.is(before, after)) return;
-	if (before && after && typeof before === "object" && typeof after === "object" && !Array.isArray(before) && !Array.isArray(after)) {
-		for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
-			collectChanges((before as Record<string, unknown>)[key], (after as Record<string, unknown>)[key], path ? `${path}.${key}` : key, output);
+	const beforeObject = before && typeof before === "object" && !Array.isArray(before) ? before as Record<string, unknown> : null;
+	const afterObject = after && typeof after === "object" && !Array.isArray(after) ? after as Record<string, unknown> : null;
+	if ((beforeObject || afterObject) && (beforeObject || before == null) && (afterObject || after == null)) {
+		for (const key of new Set([...Object.keys(beforeObject ?? {}), ...Object.keys(afterObject ?? {})])) {
+			collectChanges(beforeObject?.[key], afterObject?.[key], path ? `${path}.${key}` : key, output);
 		}
 		return;
 	}
-	if (JSON.stringify(before) !== JSON.stringify(after)) output.push(`${path}: ${readable(before)} → ${readable(after)}`);
+	if (JSON.stringify(before) !== JSON.stringify(after)) output.push(`${labelForPath(path)}: ${readable(before)} → ${readable(after)}`);
 }
 
 export function describeAnnotationKeyframeChanges(annotation: AnnotationRegion): Map<string, string[]> {

@@ -11,6 +11,23 @@ type Options = {
 type Variant = "default" | "accent" | "success" | "warning" | "danger";
 const ids = new Map<string | number, string>();
 
+async function copyError(text: string) {
+	try {
+		if (typeof window !== "undefined" && window.electronAPI?.copyTextToClipboard) {
+			const result = await window.electronAPI.copyTextToClipboard(text);
+			if (!result.success) throw new Error(result.error || "Clipboard unavailable");
+		} else {
+			await navigator.clipboard.writeText(text);
+		}
+		heroToast.success("Error copied");
+	} catch {
+		heroToast.danger("Could not copy error. Select the error text and press Ctrl+C.", {
+			description: <span className="select-text whitespace-pre-wrap break-words">{text}</span>,
+			timeout: 0,
+		});
+	}
+}
+
 function plainText(value: ReactNode): string {
 	if (typeof value === "string" || typeof value === "number") return String(value);
 	if (Array.isArray(value)) return value.map(plainText).join("");
@@ -26,7 +43,9 @@ function notify(title: ReactNode, options: Options = {}, variant: Variant = "def
 	const action = options.action;
 	const nativeOptions = {
 		variant,
-		description: options.description,
+		description: variant === "danger" && options.description
+			? <span className="select-text whitespace-pre-wrap break-words">{options.description}</span>
+			: options.description,
 		timeout:
 			options.duration === Infinity
 				? 0
@@ -43,22 +62,16 @@ function notify(title: ReactNode, options: Options = {}, variant: Variant = "def
 			: variant === "danger" && errorText
 				? {
 						children: "Copy",
-						onPress: () => {
-							void navigator.clipboard.writeText(errorText).then(
-								() => heroToast.success("Error copied"),
-								() =>
-									heroToast.danger("Could not copy error", {
-										description: errorText,
-									}),
-							);
-						},
+						onPress: () => { void copyError(errorText); },
 					}
 				: undefined,
 	};
 	const previous = options.id === undefined ? undefined : ids.get(options.id);
+	const displayTitle = variant === "danger"
+		? <span className="select-text whitespace-pre-wrap break-words">{title}</span> : title;
 	const key = previous
-		? heroToast.update(previous, title, nativeOptions)
-		: heroToast(title, nativeOptions);
+		? heroToast.update(previous, displayTitle, nativeOptions)
+		: heroToast(displayTitle, nativeOptions);
 	if (options.id !== undefined) ids.set(options.id, key);
 	return key;
 }

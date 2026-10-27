@@ -36,6 +36,7 @@ export interface TimelineEditorProps {
 	showAllAnnotationKeyframes?: boolean;
 	selectedKeyframeId?: string | null;
 	onSelectKeyframe?: (id: string | null) => void;
+	keyframeClipboardRef?: { current: { annotationId: string; frame: AnnotationPositionKeyframe } | null };
 	rowScale?: number;
 	onRowScaleChange?: (value: number) => void;
 	videoDuration: number;
@@ -65,6 +66,7 @@ export interface TimelineEditorProps {
 	onAnnotationAdded?: (span: Span, trackIndex?: number) => void;
 	onAnnotationSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAnnotationDelete?: (id: string) => void;
+	onDeleteAnnotationTrack?: (trackIndex: number) => void;
 	onAnnotationPositionKeyframesChange?: (id: string, keyframes: AnnotationPositionKeyframe[]) => void;
 	selectedAnnotationId?: string | null;
 	onSelectAnnotation?: (id: string | null) => void;
@@ -73,6 +75,7 @@ export interface TimelineEditorProps {
 	audioRegions?: AudioRegion[];
 	audioTrackCount?: number;
 	onAddAudioTrack?: () => void;
+	onDeleteAudioTrack?: (trackIndex: number) => void;
 	onAudioAdded?: (span: Span, audioPath: string, trackIndex?: number) => void;
 	onAudioSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAudioDelete?: (id: string) => void;
@@ -129,6 +132,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			showAllAnnotationKeyframes,
 			selectedKeyframeId: sharedSelectedKeyframeId,
 			onSelectKeyframe,
+			keyframeClipboardRef,
 			rowScale = 1,
 			onRowScaleChange,
 			videoDuration,
@@ -158,6 +162,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onAnnotationAdded,
 			onAnnotationSpanChange,
 			onAnnotationDelete,
+			onDeleteAnnotationTrack,
 			onAnnotationPositionKeyframesChange,
 			selectedAnnotationId,
 			onSelectAnnotation,
@@ -166,6 +171,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			audioRegions = [],
 			audioTrackCount = 1,
 			onAddAudioTrack,
+			onDeleteAudioTrack,
 			onAudioAdded,
 			onAudioSpanChange,
 			onAudioDelete,
@@ -431,6 +437,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onAnnotationPositionKeyframesChange,
 			selectedKeyframeId: sharedSelectedKeyframeId,
 			onSelectKeyframe,
+			keyframeClipboardRef,
 			selectedAnnotationId,
 			onSelectAnnotation,
 			speedRegions,
@@ -476,8 +483,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 				<div
 					ref={timelineContainerRef}
 					data-testid="timeline-scroll"
-					style={{ outline: "none", boxShadow: "none" }}
-					className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto bg-transparent relative px-3"
+					className="custom-scrollbar flex-1 min-h-0 overflow-x-hidden overflow-y-scroll bg-transparent relative px-3"
+					style={{ outline: "none", boxShadow: "none", scrollbarGutter: "stable" }}
 					tabIndex={0}
 					onFocus={() => {
 						isTimelineFocusedRef.current = true;
@@ -542,6 +549,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							items={timelineItems}
 							audioTrackCount={audioTrackCount}
 							onAddAudioTrack={onAddAudioTrack}
+							onDeleteAudioTrack={onDeleteAudioTrack}
+							onDeleteAnnotationTrack={onDeleteAnnotationTrack}
 							onAddAudioFile={(trackIndex) => void handleAddAudio(trackIndex)}
 							videoDurationMs={totalMs}
 							currentTimeMs={currentTimeMs}

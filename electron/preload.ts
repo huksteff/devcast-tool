@@ -522,6 +522,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getSources: async (opts: Electron.SourcesOptions) => {
 		return await ipcRenderer.invoke("get-sources", opts);
 	},
+	saveEditingSession: (project: unknown, projectPath?: string | null) => ipcRenderer.sendSync("save-editing-session", project, projectPath),
+	loadEditingSession: (video: string, projectPath?: string | null) => ipcRenderer.invoke("load-editing-session", video, projectPath),
 	switchToEditor: () => {
 		return ipcRenderer.invoke("switch-to-editor");
 	},

@@ -23,6 +23,7 @@ interface UseTimelineKeyboardShortcutsParams {
 	handleAddAnnotation: () => void;
 	deleteSelectedKeyframe: () => void;
 	copySelectedKeyframe: () => void;
+	hasCopiedKeyframe: () => boolean;
 	pasteKeyframe: () => void;
 	deleteSelectedZoom: () => void;
 	deleteSelectedClip: () => void;
@@ -52,6 +53,7 @@ export function useTimelineKeyboardShortcuts({
 	handleAddAnnotation,
 	deleteSelectedKeyframe,
 	copySelectedKeyframe,
+	hasCopiedKeyframe,
 	pasteKeyframe,
 	deleteSelectedZoom,
 	deleteSelectedClip,
@@ -122,17 +124,19 @@ export function useTimelineKeyboardShortcuts({
 				return;
 			}
 
-			if (!isTimelineFocusedRef.current) {
-				return;
-			}
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c" && window.getSelection?.()?.toString()) return;
 			if (selectedKeyframeId && matchesShortcut(e, { key: "c", ctrl: true }, isMac)) {
 				e.preventDefault();
 				copySelectedKeyframe();
 				return;
 			}
-			if (matchesShortcut(e, { key: "v", ctrl: true }, isMac)) {
+			if (hasCopiedKeyframe() && matchesShortcut(e, { key: "v", ctrl: true }, isMac)) {
 				e.preventDefault();
 				pasteKeyframe();
+				return;
+			}
+
+			if (!isTimelineFocusedRef.current) {
 				return;
 			}
 
@@ -171,6 +175,7 @@ export function useTimelineKeyboardShortcuts({
 		deleteSelectedClip,
 		deleteSelectedKeyframe,
 		copySelectedKeyframe,
+		hasCopiedKeyframe,
 		pasteKeyframe,
 		deleteSelectedZoom,
 		handleAddAnnotation,

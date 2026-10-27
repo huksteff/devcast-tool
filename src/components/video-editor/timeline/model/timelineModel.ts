@@ -70,6 +70,7 @@ export function buildTimelineItems(params: {
 		span: { start: region.startMs, end: region.endMs },
 		label: `Zoom ${index + 1}`,
 		zoomDepth: region.depth,
+		zoomScale: region.scale,
 		zoomMode: region.mode ?? "auto",
 		variant: "zoom",
 	}));

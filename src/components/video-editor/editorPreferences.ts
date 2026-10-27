@@ -104,6 +104,21 @@ export interface EditorPreferences extends PersistedEditorControls {
 
 export const EDITOR_PREFERENCES_STORAGE_KEY = "devcast.editor.preferences";
 export const EDITOR_PRESETS_STORAGE_KEY = "devcast.editor.presets";
+export const SELECTED_EDITOR_PRESET_KEY = "devcast.editor.selectedPreset";
+
+export function rememberSelectedEditorPreset(id: string | null) {
+	saveAppSetting(SELECTED_EDITOR_PRESET_KEY, id);
+	saveLocalStorageJson(SELECTED_EDITOR_PRESET_KEY, id);
+}
+
+export function loadSelectedEditorPreset(): EditorPreset | null {
+	let id = loadAppSetting<string>(SELECTED_EDITOR_PRESET_KEY);
+	if (!id) {
+		try { id = JSON.parse(globalThis.localStorage?.getItem(SELECTED_EDITOR_PRESET_KEY) || "null"); }
+		catch { return null; }
+	}
+	return loadEditorPresets().find((preset) => preset.id === id) ?? null;
+}
 
 const DEFAULT_EDITOR_CONTROLS = normalizeProjectEditor({});
 

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { installDesktopBridge } from "./bridge";
 
-test("split clips share one grip and captions live inside the filmstrip", async ({ page }) => {
+test("split clips share one grip and captions have an independent timeline lane", async ({ page }) => {
 	test.setTimeout(120000);
 	page.setDefaultTimeout(10000);
 	await installDesktopBridge(page, "filmstrip.mp4");
@@ -79,9 +79,9 @@ test("split clips share one grip and captions live inside the filmstrip", async 
 	expect((await caption.textContent())!.length).toBeLessThan(35);
 	const captionBox = (await caption.boundingBox())!;
 	const clipBox = (await first.locator(".timeline-block").boundingBox())!;
-	expect(captionBox.y).toBeGreaterThan(clipBox.y);
-	expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(clipBox.y + clipBox.height);
-	expect((await page.locator('[data-timeline-row="row-zoom"]').boundingBox())!.height).toBe(64);
+	expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(clipBox.y);
+	expect(await page.locator('[data-timeline-row="row-captions"]').evaluate((node) => getComputedStyle(node).position)).toBe("relative");
+	expect((await page.locator('[data-timeline-row="row-zoom"]').boundingBox())!.height).toBe(32);
 	expect(await scroll.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
 	const captionStart = Number(await caption.getAttribute("data-start-ms"));
 	const captionDuration = Number(await caption.getAttribute("data-end-ms")) - captionStart;
@@ -103,7 +103,7 @@ test("split clips share one grip and captions live inside the filmstrip", async 
 		Number(await caption.getAttribute("data-end-ms")) -
 			Number(await caption.getAttribute("data-start-ms")),
 	).toBeCloseTo(captionDuration, 0);
-	await page.screenshot({ path: "test-results/embedded-captions.png", animations: "disabled" });
+	await page.screenshot({ path: "test-results/caption-lane.png", animations: "disabled" });
 });
 
 test("background swaps use the section fade without sliding or overlapping panels", async ({

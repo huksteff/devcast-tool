@@ -4,7 +4,6 @@ import type { useExportSettings } from "../export/useExportSettings";
 import {
 	fromFileUrl,
 	type ProjectEditorState,
-	stripPersistedDevMotionBlurSettings,
 } from "../projectPersistence";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useProjectState } from "../state/useProjectState";
@@ -32,7 +31,7 @@ export function useProjectSnapshotModel({
 	projectSaveDialogInputRef,
 }: Input) {
 	const buildPersistedEditorState = useCallback(
-		(editor: Partial<ProjectEditorState>) => stripPersistedDevMotionBlurSettings(editor),
+		(editor: Partial<ProjectEditorState>) => editor,
 		[],
 	);
 	const currentSourcePath = useMemo(

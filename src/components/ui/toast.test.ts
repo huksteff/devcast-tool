@@ -44,7 +44,27 @@ it("preserves explicit actions and updates named notifications", () => {
 		expect.objectContaining({ variant: "success" }),
 	);
 	expect(native).toHaveBeenCalledWith(
-		"Retry",
+		expect.objectContaining({ props: expect.objectContaining({ children: "Retry" }) }),
 		expect.objectContaining({ actionProps: { children: "Retry", onPress: onClick } }),
 	);
+});
+it("uses the Electron clipboard when browser clipboard permissions are unavailable", async () => {
+	const copyTextToClipboard = vi.fn().mockResolvedValue({ success: true });
+	vi.stubGlobal("window", { electronAPI: { copyTextToClipboard } });
+	vi.stubGlobal("navigator", {});
+	toast.error("Model missing", { description: "C:\\Whisper\\small.bin" });
+	const options = (native.mock.calls as unknown as [unknown, { actionProps: { onPress: () => void } }][])[0][1];
+	options.actionProps.onPress();
+	await vi.waitFor(() => expect(native.success).toHaveBeenCalledWith("Error copied"));
+	expect(copyTextToClipboard).toHaveBeenCalledWith("Model missing\n\nC:\\Whisper\\small.bin");
+});
+it("keeps failures selectable without recursively adding failed Copy actions", async () => {
+	vi.stubGlobal("window", { electronAPI: { copyTextToClipboard: vi.fn().mockResolvedValue({ success: false }) } });
+	toast.error("Model missing");
+	const options = (native.mock.calls as unknown as [unknown, { actionProps: { onPress: () => void } }][])[0][1];
+	options.actionProps.onPress();
+	await vi.waitFor(() => expect(native.danger).toHaveBeenCalledOnce());
+	expect(native.danger.mock.calls[0][1]).toEqual(expect.objectContaining({
+		timeout: 0, description: expect.objectContaining({ props: expect.objectContaining({ className: expect.stringContaining("select-text"), children: "Model missing" }) }),
+	}));
 });
