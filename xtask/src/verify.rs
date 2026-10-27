@@ -82,7 +82,7 @@ pub fn run(options: &Options) -> Report {
         (
             "fmt",
             run::cargo(
-                &["fmt", "--all", "--check"],
+                &["fmt", "--all", "--check", "--", "--color=never"],
                 "Запусти `cargo fmt --all` и повтори.",
             ),
         ),
