@@ -1,0 +1,8 @@
+[package]
+name = "spike-velopack"
+version = "1.0.1"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+velopack = "1"
