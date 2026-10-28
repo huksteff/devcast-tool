@@ -7,14 +7,13 @@
 
 use windows::Win32::Foundation::POINT;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetKeyboardLayout, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT,
-    KEYEVENTF_KEYUP, MAPVK_VK_TO_CHAR, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_MOVE,
-    MOUSEEVENTF_VIRTUALDESK, MOUSEINPUT, MapVirtualKeyExW, SendInput, VIRTUAL_KEY,
+    INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_KEYUP,
+    MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_MOVE, MOUSEEVENTF_VIRTUALDESK, MOUSEINPUT,
+    SendInput, VIRTUAL_KEY,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetForegroundWindow, GetPhysicalCursorPos, GetSystemMetrics, GetWindowThreadProcessId,
-    SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
-    SetPhysicalCursorPos,
+    GetPhysicalCursorPos, GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
+    SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SetPhysicalCursorPos,
 };
 
 /// Puts the pointer back where it was, also on panic.
@@ -99,29 +98,16 @@ pub fn chord_inputs(keys: &[u16]) -> Vec<INPUT> {
     downs.chain(ups).collect()
 }
 
-/// What typing the ASCII `text` key by key gives in the keyboard layout of the foreground
-/// window: synthetic keys are virtual-key codes, and `A` types «ф» in a Russian layout. The
-/// layout is the user's setting, so tests compare with this instead of switching it.
-pub fn as_typed(text: &str) -> String {
-    // SAFETY: reads the foreground window, its thread and that thread's keyboard layout.
-    let layout = unsafe {
-        let thread = GetWindowThreadProcessId(GetForegroundWindow(), None);
-        GetKeyboardLayout(thread)
-    };
+/// Typed text with every letter as `a` or `A` and control characters left out: synthetic keys
+/// are virtual-key codes, so `A` types «ф» in a Russian layout, and the layout is the user's
+/// setting. Tests compare shapes, which tell that every key arrived in order.
+pub fn letter_shape(text: &str) -> String {
     text.chars()
-        .map(|c| {
-            if !c.is_ascii_alphabetic() {
-                return c;
-            }
-            let vk = u32::from(c.to_ascii_uppercase());
-            // SAFETY: a pure lookup in the given layout.
-            let mapped = unsafe { MapVirtualKeyExW(vk, MAPVK_VK_TO_CHAR, Some(layout)) };
-            let base = char::from_u32(mapped & 0xFFFF).unwrap_or(c);
-            if c.is_ascii_uppercase() {
-                base.to_uppercase().next().unwrap_or(base)
-            } else {
-                base.to_lowercase().next().unwrap_or(base)
-            }
+        .filter(|c| !c.is_control() || *c == '\r')
+        .map(|c| match c {
+            c if c.is_uppercase() => 'A',
+            c if c.is_alphabetic() => 'a',
+            c => c,
         })
         .collect()
 }

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "clips": [
+    {
+      "id": "c1",
+      "media": {
+        "path": "media/recording-1/video.mp4",
+        "kind": "recording",
+        "duration": 5183333,
+        "size": {
+          "width": 1280,
+          "height": 720
+        }
+      },
+      "trim": {
+        "start": 0,
+        "end": 5183333
+      },
+      "cuts": [],
+      "speeds": []
+    }
+  ],
+  "clip_ids": 2,
+  "effects": {}
+}

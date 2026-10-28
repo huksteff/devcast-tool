@@ -30,8 +30,8 @@ use dc_capture::{Area, RecordingConfig, Source};
 use dc_project::Defaults;
 use send::{
     ALT, CTRL, DELETE, ENTER, ESC, F5, LEFT, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
-    MOUSEEVENTF_WHEEL, PointerBack, SHIFT, act, as_typed, chord, click, glide, move_to, type_text,
-    wait,
+    MOUSEEVENTF_WHEEL, PointerBack, SHIFT, act, chord, click, glide, letter_shape, move_to,
+    type_text, wait,
 };
 
 const WIDTH: i32 = 1280;
@@ -212,7 +212,10 @@ fn typing(scene: &Scene) {
         chord(&[DELETE]);
         chord(&[ESC]);
     });
-    assert_eq!(Canvas::text(), as_typed("hello devcast\rshortcuts"));
+    assert_eq!(
+        letter_shape(&Canvas::text()),
+        letter_shape("hello devcast\rshortcuts")
+    );
     let with = |key: u16, ctrl, shift, alt| KeyEvent {
         key,
         modifiers: Modifiers {

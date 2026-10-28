@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "tracks": [
+    {
+      "name": "video",
+      "rate": 60,
+      "start": 1135344600740,
+      "segments": [],
+      "file": "video.mp4",
+      "length": 358,
+      "size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "name": "system",
+      "rate": 48000,
+      "start": 1135344600740,
+      "segments": [],
+      "file": "system.mp4",
+      "length": 286708,
+      "size": null
+    }
+  ],
+  "pauses": []
+}

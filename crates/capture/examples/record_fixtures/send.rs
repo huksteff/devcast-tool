@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-pub use crate::common::synthetic::{PointerBack, as_typed};
+pub use crate::common::synthetic::{PointerBack, letter_shape};
 use crate::common::synthetic::{chord_inputs, key, mouse, move_input, send};
 use windows::Win32::UI::Input::KeyboardAndMouse::MOUSE_EVENT_FLAGS;
 pub use windows::Win32::UI::Input::KeyboardAndMouse::{
