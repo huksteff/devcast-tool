@@ -1,9 +1,11 @@
-//! Input of a recording: the hook thread and the writer thread (decision 009).
+//! Input of a recording: the hook thread and the writer thread (decision 009), which saves
+//! cursor pictures as PNG.
 
 use std::path::Path;
 use std::sync::mpsc::{self, Sender};
 use std::thread::JoinHandle;
 
+use super::cursor::encode_png;
 use super::hooks::Hooks;
 use crate::error::CaptureError;
 use crate::event::HostTime;
@@ -21,7 +23,7 @@ impl InputRecording {
         let (events, messages) = mpsc::channel();
         let writer = std::thread::Builder::new()
             .name("devcast-input-writer".to_owned())
-            .spawn(move || write(&messages))
+            .spawn(move || write(&messages, encode_png))
             .map_err(|e| {
                 CaptureError::platform("запустить запись мыши")(e.to_string())
             })?;

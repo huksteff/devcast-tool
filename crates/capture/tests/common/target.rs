@@ -1,13 +1,16 @@
 //! A window of the test process on the test monitor: the only place synthetic input goes.
+//! The cursor is the arrow over its left half and the I-beam over its right half.
 
 use std::sync::mpsc;
 use std::thread::JoinHandle;
 
-use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
+use windows::Win32::Graphics::Gdi::ScreenToClient;
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW, IDC_ARROW,
-    LoadCursorW, MSG, PostMessageW, PostQuitMessage, RegisterClassW, TranslateMessage, WM_CLOSE,
-    WM_DESTROY, WNDCLASSW, WS_BORDER, WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
+    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetCursorPos,
+    GetMessageW, HTCLIENT, IDC_ARROW, IDC_IBEAM, LoadCursorW, MSG, PostMessageW, PostQuitMessage,
+    RegisterClassW, SetCursor, TranslateMessage, WM_CLOSE, WM_DESTROY, WM_SETCURSOR, WNDCLASSW,
+    WS_BORDER, WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
 };
 use windows::core::w;
 
@@ -53,6 +56,22 @@ extern "system" fn window_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     match message {
+        WM_SETCURSOR if (lparam.0 & 0xFFFF) as u32 == HTCLIENT => {
+            // SAFETY: reads the pointer and our window's size; shared cursors need no release.
+            unsafe {
+                let (mut point, mut rect) = (POINT::default(), RECT::default());
+                GetCursorPos(&mut point).unwrap();
+                let _ = ScreenToClient(hwnd, &mut point);
+                GetClientRect(hwnd, &mut rect).unwrap();
+                let id = if point.x < rect.right / 2 {
+                    IDC_ARROW
+                } else {
+                    IDC_IBEAM
+                };
+                SetCursor(Some(LoadCursorW(None, id).unwrap()));
+            }
+            LRESULT(1)
+        }
         WM_CLOSE => {
             // SAFETY: our window, on its own thread.
             let _ = unsafe { DestroyWindow(hwnd) };

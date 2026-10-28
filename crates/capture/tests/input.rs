@@ -3,7 +3,8 @@
 //!
 //! `#[ignore]`: moves the pointer (only over that monitor; put back where it was at the end).
 //! `DEVCAST_TEST_MONITOR=<n> cargo nextest run -p dc-capture --run-ignored=all --no-capture input`
-//! The folder is deleted at the end; the numbers are printed.
+//! The folder is deleted at the end; the numbers are printed. Not while the owner works: it
+//! takes the pointer for a few seconds.
 
 #![cfg(windows)]
 #![allow(
@@ -22,7 +23,7 @@ use std::time::Duration;
 
 use common::test_monitor;
 use dc_capture::HostTime;
-use dc_capture::input::{Button, CursorEvent, Timed, read_cursor};
+use dc_capture::input::{Button, CursorEvent, CursorKind, Timed, image_file, read_cursor};
 use dc_capture::win::{InputRecording, now};
 use target::Target;
 use windows::Win32::Foundation::POINT;
@@ -195,14 +196,18 @@ fn records_mouse_without_losses() {
     assert!(events.windows(2).all(|w| w[0].at <= w[1].at));
     for &(px, py) in &path {
         let near = |e: &CursorEvent| {
-            let (ex, ey) = e.position();
+            let Some((ex, ey)) = e.position() else {
+                return false;
+            };
             matches!(e, CursorEvent::Move { .. }) && (ex - px).abs() <= 1 && (ey - py).abs() <= 1
         };
         assert!(count(&events, near) >= 1, "move to ({px}, {py})");
     }
     // The owner's own mouse may nudge the pointer between the move and the click.
     let at_end = |e: &CursorEvent| {
-        let (ex, ey) = e.position();
+        let Some((ex, ey)) = e.position() else {
+            return false;
+        };
         (ex - end_x).abs() <= NUDGE && (ey - end_y).abs() <= NUDGE
     };
     let button = |b: Button, down: bool| {
@@ -226,5 +231,53 @@ fn records_mouse_without_losses() {
         .filter(|e| button(Button::Left, true)(&e.event))
         .collect();
     print_delays(&downs, &pressed);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+#[ignore = "moves the pointer over monitor DEVCAST_TEST_MONITOR"]
+fn records_cursor_shapes_and_pictures() {
+    let _back = PointerBack::save();
+    let (_target, x, y) = show_target();
+    let dir = folder("input-shapes");
+    let input = InputRecording::start().unwrap();
+    input.begin(now().unwrap(), &dir).unwrap();
+    for _ in 0..3 {
+        for px in [x + 100, x + 300] {
+            send(&[move_to(px, y + 150)]);
+            pause(100);
+        }
+    }
+    // The user's last action is well before the stop.
+    pause(200);
+    let summary = input.join().unwrap();
+    let events = read_cursor(&dir).unwrap();
+    println!("summary {summary:?}");
+    let mut kinds = Vec::new();
+    for e in &events {
+        match e.event {
+            CursorEvent::Image { id, x, y } => {
+                let png = std::fs::read(dir.join(image_file(id))).unwrap();
+                assert_eq!(&png[..4], b"\x89PNG");
+                println!("image {id}: hotspot ({x}, {y}), {} bytes", png.len());
+            }
+            CursorEvent::Shape { kind, image } => {
+                println!("{} µs: {kind:?} image {image:?}", e.at.micros());
+                kinds.push(kind);
+            }
+            _ => {}
+        }
+    }
+    kinds.retain(|k| matches!(k, CursorKind::Arrow | CursorKind::Text));
+    kinds.dedup();
+    assert!(kinds.len() >= 6, "arrow and I-beam alternate: {kinds:?}");
+    let ids: Vec<u32> = events
+        .iter()
+        .filter_map(|e| match e.event {
+            CursorEvent::Image { id, .. } => Some(id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(ids, (0..ids.len() as u32).collect::<Vec<_>>());
     std::fs::remove_dir_all(&dir).unwrap();
 }

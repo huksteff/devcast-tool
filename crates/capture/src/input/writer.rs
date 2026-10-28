@@ -1,21 +1,26 @@
 //! The thread that writes the input events of a recording into its folder.
 //!
 //! Hooks start before the video and send events from then on; until [`InputMessage::Begin`]
-//! (and for events older than the start) only the pointer position is kept, and it is written
-//! at the start time, so the file always begins with where the pointer is. The thread ends
+//! (and for events older than the start) only the pointer position and the cursor shape are
+//! kept, and they are written at the start time, so the file always begins with them. A
+//! cursor picture is saved as PNG when a shape first shows it, before its records. The thread ends
 //! when every sender is gone: the hooks stopped and the recording dropped its handle.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::Instant;
 
-use super::cursor::{CURSOR_FILE, CursorEvent};
+use super::cursor::{CURSOR_FILE, CursorEvent, image_file};
 use super::file::{FLUSH, RecordWriter, Timed};
+use super::image::CursorImage;
+use super::shapes::{SeenShape, Shapes};
 use crate::error::CaptureError;
 use crate::event::HostTime;
 
 pub enum InputMessage {
     Mouse(Timed<CursorEvent>),
+    /// The cursor shape changed (or this is the first look at it).
+    Shape(Timed<SeenShape>),
     /// The recording starts at this host time and is written into this folder.
     Begin(HostTime, PathBuf),
     /// A hook could not do its work; the recording of input ends with this error.
@@ -30,27 +35,47 @@ pub struct InputSummary {
     pub ups: u64,
     /// Both wheels.
     pub wheels: u64,
+    pub shapes: u64,
+    /// Distinct cursor pictures saved.
+    pub images: u64,
+}
+
+/// Encodes a cursor picture as PNG.
+pub type EncodePng = fn(&CursorImage) -> Result<Vec<u8>, CaptureError>;
+
+struct Open {
+    start: HostTime,
+    dir: PathBuf,
+    records: RecordWriter<Timed<CursorEvent>>,
 }
 
 struct Writer {
-    file: Option<(HostTime, RecordWriter<Timed<CursorEvent>>)>,
+    file: Option<Open>,
+    png: EncodePng,
     position: Option<(i32, i32)>,
     written: Option<(i32, i32)>,
+    shapes: Shapes,
     summary: InputSummary,
 }
 
 /// Writes the events of `messages` until the channel closes.
-pub fn write(messages: &Receiver<InputMessage>) -> Result<InputSummary, CaptureError> {
+pub fn write(
+    messages: &Receiver<InputMessage>,
+    png: EncodePng,
+) -> Result<InputSummary, CaptureError> {
     let mut writer = Writer {
         file: None,
+        png,
         position: None,
         written: None,
+        shapes: Shapes::default(),
         summary: InputSummary::default(),
     };
     let mut flushed = Instant::now();
     loop {
         match messages.recv_timeout(FLUSH) {
             Ok(InputMessage::Mouse(event)) => writer.mouse(event)?,
+            Ok(InputMessage::Shape(shape)) => writer.shape(shape)?,
             Ok(InputMessage::Begin(start, dir)) => writer.begin(start, dir)?,
             Ok(InputMessage::Failed(error)) => return Err(error),
             Err(RecvTimeoutError::Timeout) => {}
@@ -67,128 +92,103 @@ pub fn write(messages: &Receiver<InputMessage>) -> Result<InputSummary, CaptureE
 
 impl Writer {
     fn begin(&mut self, start: HostTime, dir: PathBuf) -> Result<(), CaptureError> {
-        let file = RecordWriter::create(&dir.join(CURSOR_FILE))?;
-        self.file = Some((start, file));
+        let records = RecordWriter::create(&dir.join(CURSOR_FILE))?;
+        self.file = Some(Open {
+            start,
+            dir,
+            records,
+        });
         if let Some((x, y)) = self.position {
             self.put(Timed {
                 at: start,
                 event: CursorEvent::Move { x, y },
             })?;
         }
-        Ok(())
+        self.put_shape(start)
+    }
+
+    /// The event is part of the recording: it began, and not later than the event.
+    fn records(&self, at: HostTime) -> bool {
+        self.file.as_ref().is_some_and(|open| at >= open.start)
     }
 
     fn mouse(&mut self, event: Timed<CursorEvent>) -> Result<(), CaptureError> {
-        let begun = self
-            .file
-            .as_ref()
-            .is_some_and(|(start, _)| event.at >= *start);
-        if begun {
+        if self.records(event.at) {
             self.put(event)
         } else {
-            self.position = Some(event.event.position());
+            self.position = event.event.position();
             Ok(())
         }
     }
 
+    fn shape(&mut self, shape: Timed<SeenShape>) -> Result<(), CaptureError> {
+        self.shapes.see(shape.event)?;
+        if self.records(shape.at) {
+            self.put_shape(shape.at)?;
+        }
+        Ok(())
+    }
+
+    /// Writes the current shape if it is not the written one, its new picture first.
+    fn put_shape(&mut self, at: HostTime) -> Result<(), CaptureError> {
+        let Some(open) = &mut self.file else {
+            return Ok(());
+        };
+        let Some(change) = self.shapes.change() else {
+            return Ok(());
+        };
+        if let Some((id, image)) = change.new_image {
+            save(&open.dir, id, &(self.png)(image)?)?;
+            let (x, y) = image.hotspot;
+            let event = CursorEvent::Image {
+                id,
+                x: x as i32,
+                y: y as i32,
+            };
+            open.records.write(&Timed { at, event })?;
+            self.summary.images += 1;
+        }
+        open.records.write(&Timed {
+            at,
+            event: change.shape,
+        })?;
+        self.summary.shapes += 1;
+        Ok(())
+    }
+
     /// Writes an event of the recording; a move to where the pointer already is is skipped.
     fn put(&mut self, event: Timed<CursorEvent>) -> Result<(), CaptureError> {
-        let position = Some(event.event.position());
+        let position = event.event.position();
         let counter = match event.event {
             CursorEvent::Move { .. } if position == self.written => return Ok(()),
             CursorEvent::Move { .. } => &mut self.summary.moves,
             CursorEvent::Down { .. } => &mut self.summary.downs,
             CursorEvent::Up { .. } => &mut self.summary.ups,
             CursorEvent::Wheel { .. } | CursorEvent::HWheel { .. } => &mut self.summary.wheels,
+            CursorEvent::Image { .. } | CursorEvent::Shape { .. } => return Ok(()),
         };
         *counter += 1;
         self.position = position;
         self.written = position;
-        if let Some((_, file)) = &mut self.file {
-            file.write(&event)?;
+        if let Some(open) = &mut self.file {
+            open.records.write(&event)?;
         }
         Ok(())
     }
 
     fn flush(&mut self) -> Result<(), CaptureError> {
         match &mut self.file {
-            Some((_, file)) => file.flush(),
+            Some(open) => open.records.flush(),
             None => Ok(()),
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::sync::mpsc;
-
-    use super::*;
-    use crate::input::cursor::{Button, read_cursor};
-
-    fn at(micros: i64, event: CursorEvent) -> InputMessage {
-        InputMessage::Mouse(Timed {
-            at: HostTime::from_micros(micros),
-            event,
-        })
-    }
-
-    #[test]
-    fn starts_at_the_last_position_and_skips_still_moves() {
-        let dir = tempfile::tempdir().unwrap();
-        let (send, receive) = mpsc::channel();
-        let (x, y, button) = (2, 2, Button::Left);
-        let still = CursorEvent::Move { x, y };
-        let down = CursorEvent::Down { button, x, y };
-        let up = CursorEvent::Up { button, x, y };
-        let wheel = CursorEvent::Wheel { x, y, delta: 120 };
-        let moved = CursorEvent::Move { x: 4, y };
-        for message in [
-            at(10, CursorEvent::Move { x: 1, y: 1 }),
-            at(20, still),
-            InputMessage::Begin(HostTime::from_micros(100), dir.path().to_path_buf()),
-            at(90, CursorEvent::Move { x: 3, y: 3 }),
-            at(110, still),
-            at(120, down),
-            at(130, still),
-            at(140, up),
-            at(150, wheel),
-            at(160, moved),
-        ] {
-            send.send(message).unwrap();
-        }
-        drop(send);
-        let summary = write(&receive).unwrap();
-        let expected = [
-            (100, still),
-            (120, down),
-            (140, up),
-            (150, wheel),
-            (160, moved),
-        ]
-        .map(|(micros, event)| Timed {
-            at: HostTime::from_micros(micros),
-            event,
-        });
-        assert_eq!(read_cursor(dir.path()).unwrap(), expected);
-        let counts = InputSummary {
-            moves: 2,
-            downs: 1,
-            ups: 1,
-            wheels: 1,
-        };
-        assert_eq!(summary, counts);
-    }
-
-    #[test]
-    fn a_hook_failure_ends_the_writer_with_its_error() {
-        let (send, receive) = mpsc::channel();
-        let error = CaptureError::platform("прочитать системные часы")(
-            "нет".to_owned(),
-        );
-        send.send(InputMessage::Failed(error)).unwrap();
-        assert!(matches!(
-            write(&receive),
-            Err(CaptureError::Platform { .. })
-        ));
-    }
+fn save(dir: &Path, id: u32, png: &[u8]) -> Result<(), CaptureError> {
+    let path = dir.join(image_file(id));
+    std::fs::write(&path, png).map_err(CaptureError::file("записать", &path))
 }
+
+#[cfg(test)]
+#[path = "writer_tests.rs"]
+mod tests;

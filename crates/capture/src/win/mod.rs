@@ -2,11 +2,13 @@
 
 mod capture;
 mod clock;
+mod cursor;
 mod d3d;
 mod frame;
 mod hooks;
 mod input;
 mod monitors;
+mod mouse;
 mod nv12;
 mod preview;
 mod recording;

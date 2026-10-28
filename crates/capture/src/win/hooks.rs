@@ -2,30 +2,68 @@
 //!
 //! Windows calls a low-level hook from the message loop of the thread that set it and removes
 //! a hook that answers slower than `LowLevelHooksTimeout`, so the hook only stamps the event
-//! with the host clock and hands it to the writer thread.
+//! with the host clock and hands it to the writer thread. Cursor shape changes come to the
+//! same loop as accessibility events of the cursor object (`OBJID_CURSOR`: shown, hidden,
+//! «name» changed = new shape); the picture of a cursor handle is read the first time it is
+//! seen, while the handle is surely alive, and encoded by the writer.
 
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::sync::mpsc::{self, Sender};
 use std::thread::JoinHandle;
 
-use windows::Win32::Foundation::{LPARAM, LRESULT, POINT, WPARAM};
+use windows::Win32::Foundation::{HWND, LPARAM, POINT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Threading::GetCurrentThreadId;
+use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, DispatchMessageW, GetMessageW, GetPhysicalCursorPos, HC_ACTION, HHOOK, MSG,
-    MSLLHOOKSTRUCT, PM_NOREMOVE, PeekMessageW, PostThreadMessageW, SetWindowsHookExW,
-    TranslateMessage, UnhookWindowsHookEx, WH_MOUSE_LL, WM_LBUTTONDOWN, WM_LBUTTONUP,
-    WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_QUIT,
-    WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDOWN, WM_XBUTTONUP, XBUTTON1,
+    DispatchMessageW, EVENT_OBJECT_HIDE, EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_SHOW, GetMessageW,
+    GetPhysicalCursorPos, HHOOK, MSG, OBJID_CURSOR, PM_NOREMOVE, PeekMessageW, PostThreadMessageW,
+    SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, WH_MOUSE_LL, WINEVENT_OUTOFCONTEXT,
+    WM_QUIT,
 };
 
 use super::clock::now;
+use super::cursor::{SystemCursors, current, picture};
+use super::mouse::mouse_proc;
 use crate::error::CaptureError;
-use crate::input::{Button, CursorEvent, InputMessage, Timed};
+use crate::event::HostTime;
+use crate::input::{CursorEvent, InputMessage, SeenShape, Timed};
 
 thread_local! {
-    /// Where the hooks of this thread send events; set while the hooks are installed.
-    static EVENTS: RefCell<Option<Sender<InputMessage>>> = const { RefCell::new(None) };
+    /// What the hooks of this thread need; set while the hooks are installed.
+    static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
+}
+
+struct State {
+    events: Sender<InputMessage>,
+    cursors: SystemCursors,
+    /// Cursor handles whose picture was sent.
+    seen: HashSet<isize>,
+    /// The last cursor handle sent and whether it was shown.
+    last: Option<(isize, bool)>,
+}
+
+impl State {
+    /// The cursor shape at `at`, if it changed since the last look.
+    fn look(&mut self, at: HostTime) -> Result<Option<InputMessage>, CaptureError> {
+        let (handle, visible) = current()?;
+        if self.last == Some((handle, visible)) {
+            return Ok(None);
+        }
+        self.last = Some((handle, visible));
+        let image = match visible && self.seen.insert(handle) {
+            true => Some(picture(handle)?),
+            false => None,
+        };
+        let event = SeenShape {
+            handle,
+            kind: self.cursors.kind(handle),
+            visible,
+            image,
+        };
+        Ok(Some(InputMessage::Shape(Timed { at, event })))
+    }
 }
 
 /// The hook thread; dropping it removes the hooks.
@@ -36,20 +74,17 @@ pub struct Hooks {
 
 impl Hooks {
     /// Installs the hooks; from now on events go to `events`, the first being where the
-    /// pointer is.
+    /// pointer is and what the cursor is.
     pub fn start(events: Sender<InputMessage>) -> Result<Self, CaptureError> {
+        let failed = || CaptureError::platform("запустить запись мыши");
         let (ready, started) = mpsc::channel();
         let handle = std::thread::Builder::new()
             .name("devcast-input-hooks".to_owned())
             .spawn(move || run(events, &ready))
-            .map_err(|e| {
-                CaptureError::platform("запустить запись мыши")(e.to_string())
-            })?;
-        let thread = started.recv().map_err(|_| {
-            CaptureError::platform("запустить запись мыши")(
-                "поток хуков упал".to_owned(),
-            )
-        })??;
+            .map_err(|e| failed()(e.to_string()))?;
+        let thread = started
+            .recv()
+            .map_err(|_| failed()("поток хуков упал".to_owned()))??;
         Ok(Self {
             thread,
             handle: Some(handle),
@@ -70,25 +105,18 @@ impl Drop for Hooks {
 }
 
 fn run(events: Sender<InputMessage>, ready: &Sender<Result<u32, CaptureError>>) {
-    let failed = CaptureError::platform("установить хук мыши");
     let mut message = MSG::default();
     // SAFETY: creates this thread's message queue so that WM_QUIT can be posted to it.
     let _ = unsafe { PeekMessageW(&mut message, None, 0, 0, PM_NOREMOVE) };
-    EVENTS.set(Some(events));
-    // SAFETY: a low-level hook with a procedure of this module; removed below on this thread.
-    let hook = unsafe {
-        GetModuleHandleW(None).and_then(|module| {
-            SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), Some(module.into()), 0)
-        })
-    };
-    let hook = match hook {
-        Ok(hook) => hook,
-        Err(e) => {
-            let _ = ready.send(Err(failed(e.to_string())));
+    let hooks = match install(events) {
+        Ok(hooks) => hooks,
+        Err(error) => {
+            let _ = ready.send(Err(error));
             return;
         }
     };
-    send(initial_position());
+    send_mouse(initial_position());
+    look_at_cursor();
     // SAFETY: the id of this thread.
     let _ = ready.send(Ok(unsafe { GetCurrentThreadId() }));
     // SAFETY: the message loop of this thread; it ends on WM_QUIT (0) or an error (−1).
@@ -99,14 +127,63 @@ fn run(events: Sender<InputMessage>, ready: &Sender<Result<u32, CaptureError>>) 
             DispatchMessageW(&message);
         }
     }
-    unhook(hook);
-    EVENTS.set(None);
+    unhook(hooks);
+    STATE.set(None);
 }
 
-fn unhook(hook: HHOOK) {
-    // SAFETY: the hook was set on this thread above and is removed once.
-    if let Err(e) = unsafe { UnhookWindowsHookEx(hook) } {
-        send(Err(CaptureError::platform("снять хук мыши")(
+/// The mouse hook and the two cursor event hooks (shown/hidden, shape).
+type Installed = (HHOOK, [HWINEVENTHOOK; 2]);
+
+fn install(events: Sender<InputMessage>) -> Result<Installed, CaptureError> {
+    STATE.set(Some(State {
+        events,
+        cursors: SystemCursors::load()?,
+        seen: HashSet::new(),
+        last: None,
+    }));
+    // SAFETY: a low-level hook with a procedure of this module; removed by `unhook` on this
+    // thread.
+    let mouse = unsafe {
+        GetModuleHandleW(None).and_then(|module| {
+            SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), Some(module.into()), 0)
+        })
+    }
+    .map_err(|e| CaptureError::platform("установить хук мыши")(e.to_string()))?;
+    let ranges = [
+        (EVENT_OBJECT_SHOW, EVENT_OBJECT_HIDE),
+        (EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE),
+    ];
+    // SAFETY: out-of-context event hooks of all processes, delivered to this thread's message
+    // loop; removed by `unhook` on this thread.
+    let cursor = ranges.map(|(first, last)| unsafe {
+        SetWinEventHook(
+            first,
+            last,
+            None,
+            Some(cursor_proc),
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT,
+        )
+    });
+    if cursor.iter().any(|hook| hook.is_invalid()) {
+        unhook((mouse, cursor));
+        return Err(CaptureError::platform("следить за курсором")(
+            "SetWinEventHook отказал".to_owned(),
+        ));
+    }
+    Ok((mouse, cursor))
+}
+
+fn unhook((mouse, cursor): Installed) {
+    for hook in cursor.into_iter().filter(|hook| !hook.is_invalid()) {
+        // SAFETY: an event hook set on this thread, removed once. It fails only for a hook
+        // that is already gone, which leaves nothing to remove.
+        let _ = unsafe { UnhookWinEvent(hook) };
+    }
+    // SAFETY: the hook was set on this thread and is removed once.
+    if let Err(e) = unsafe { UnhookWindowsHookEx(mouse) } {
+        post(Err(CaptureError::platform("снять хук мыши")(
             e.to_string(),
         )));
     }
@@ -124,79 +201,45 @@ fn initial_position() -> Result<CursorEvent, CaptureError> {
     })
 }
 
-/// Stamps `event` with the host clock now and sends it to the writer.
-fn send(event: Result<CursorEvent, CaptureError>) {
-    let message = match (now(), event) {
-        (Ok(at), Ok(event)) => InputMessage::Mouse(Timed { at, event }),
-        (Err(error), _) | (_, Err(error)) => InputMessage::Failed(error),
-    };
-    EVENTS.with_borrow(|events| {
-        if let Some(events) = events {
+/// Sends `message` (or the error that took its place) to the writer.
+fn post(message: Result<InputMessage, CaptureError>) {
+    let message = message.unwrap_or_else(InputMessage::Failed);
+    STATE.with_borrow(|state| {
+        if let Some(state) = state {
             // The writer is gone only after it failed; its error is reported at the stop.
-            let _ = events.send(message);
+            let _ = state.events.send(message);
         }
     });
 }
 
-unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    if code == HC_ACTION as i32 {
-        // SAFETY: for WH_MOUSE_LL with HC_ACTION, lparam points to an MSLLHOOKSTRUCT that the
-        // system owns for the duration of the call.
-        let info = unsafe { &*(lparam.0 as *const MSLLHOOKSTRUCT) };
-        if let Some(event) = mouse_event(wparam.0 as u32, info) {
-            send(Ok(event));
-        }
-    }
-    // SAFETY: passes the event on unchanged.
-    unsafe { CallNextHookEx(None, code, wparam, lparam) }
+/// Stamps `event` with the host clock now and sends it to the writer.
+pub fn send_mouse(event: Result<CursorEvent, CaptureError>) {
+    post(now().and_then(|at| Ok(InputMessage::Mouse(Timed { at, event: event? }))));
 }
 
-/// The event of a low-level mouse message; `pt` is in physical desktop pixels.
-fn mouse_event(message: u32, info: &MSLLHOOKSTRUCT) -> Option<CursorEvent> {
-    let (x, y) = (info.pt.x, info.pt.y);
-    let high = (info.mouseData >> 16) as u16;
-    let side = if high == XBUTTON1 {
-        Button::X1
-    } else {
-        Button::X2
-    };
-    let delta = i32::from(high as i16);
-    Some(match message {
-        WM_MOUSEMOVE => CursorEvent::Move { x, y },
-        WM_LBUTTONDOWN => CursorEvent::Down {
-            button: Button::Left,
-            x,
-            y,
-        },
-        WM_LBUTTONUP => CursorEvent::Up {
-            button: Button::Left,
-            x,
-            y,
-        },
-        WM_RBUTTONDOWN => CursorEvent::Down {
-            button: Button::Right,
-            x,
-            y,
-        },
-        WM_RBUTTONUP => CursorEvent::Up {
-            button: Button::Right,
-            x,
-            y,
-        },
-        WM_MBUTTONDOWN => CursorEvent::Down {
-            button: Button::Middle,
-            x,
-            y,
-        },
-        WM_MBUTTONUP => CursorEvent::Up {
-            button: Button::Middle,
-            x,
-            y,
-        },
-        WM_XBUTTONDOWN => CursorEvent::Down { button: side, x, y },
-        WM_XBUTTONUP => CursorEvent::Up { button: side, x, y },
-        WM_MOUSEWHEEL => CursorEvent::Wheel { x, y, delta },
-        WM_MOUSEHWHEEL => CursorEvent::HWheel { x, y, delta },
-        _ => return None,
-    })
+/// Sends the cursor shape if it changed.
+fn look_at_cursor() {
+    let looked = now().and_then(|at| {
+        STATE.with_borrow_mut(|state| match state {
+            Some(state) => state.look(at),
+            None => Ok(None),
+        })
+    });
+    if let Some(message) = looked.transpose() {
+        post(message);
+    }
+}
+
+unsafe extern "system" fn cursor_proc(
+    _hook: HWINEVENTHOOK,
+    _event: u32,
+    _window: HWND,
+    object: i32,
+    _child: i32,
+    _thread: u32,
+    _time: u32,
+) {
+    if object == OBJID_CURSOR.0 {
+        look_at_cursor();
+    }
 }
