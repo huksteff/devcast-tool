@@ -156,8 +156,8 @@ extern "system" fn window_proc(
             redraw();
             LRESULT(0)
         }
-        // SAFETY: the system asks us to paint our window.
         WM_PAINT => {
+            // SAFETY: the system asks us to paint our window.
             unsafe { paint(hwnd) };
             LRESULT(0)
         }

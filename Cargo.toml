@@ -23,6 +23,8 @@ dbg_macro = "deny"
 too_many_lines = "deny"
 # каждый #[allow] обязан объяснять причину: #[allow(lint, reason = "...")]
 allow_attributes_without_reason = "deny"
+# у каждого unsafe-блока комментарий // SAFETY: (docs/ARCHITECTURE.md, «Правила кода»)
+undocumented_unsafe_blocks = "deny"
 
 # Общие версии внешних зависимостей: крейты пишут `serde.workspace = true`.
 [workspace.dependencies]

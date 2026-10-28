@@ -148,9 +148,10 @@ fn install(events: Sender<InputMessage>) -> Result<Installed, CaptureError> {
     let failed = |e: windows::core::Error| {
         CaptureError::platform("установить хук ввода")(e.to_string())
     };
+    // SAFETY: the handle of this process's own module; it is not freed.
+    let module = unsafe { GetModuleHandleW(None) }.map_err(failed)?;
     // SAFETY: low-level hooks with procedures of this module; removed by `unhook` on this
     // thread.
-    let module = unsafe { GetModuleHandleW(None) }.map_err(failed)?;
     let mouse = unsafe { SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), Some(module.into()), 0) }
         .map_err(failed)?;
     // SAFETY: as above.

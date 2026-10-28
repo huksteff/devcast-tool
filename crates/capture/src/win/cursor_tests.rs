@@ -10,6 +10,7 @@ use windows::Win32::UI::WindowsAndMessaging::{IDC_ARROW, IDC_IBEAM, LoadCursorW}
 use super::*;
 
 fn system(id: PCWSTR) -> isize {
+    // SAFETY: a shared system cursor; it needs no release.
     unsafe { LoadCursorW(None, id) }.unwrap().0 as isize
 }
 
