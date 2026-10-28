@@ -25,8 +25,8 @@
 ## Как тестировать
 
 - `cargo nextest run -p dc-capture`.
-- Живые тесты `tests/live.rs` с `#[ignore]` пишут экран: рисуют тестовую картинку ffplay на мониторе `DEVCAST_TEST_MONITOR` и снимают его. `DEVCAST_TEST_MONITOR=2 cargo nextest run -p dc-capture --run-ignored=all --no-capture`, затем открыть напечатанные PNG и удалить их вместе с записями. `tests/record.rs` пишет файлы и проверяет их ffprobe; `tests/sound.rs` — системный звук с тоном ffplay (ищется по частоте: в системе может играть что-то ещё), микрофон и индикатор (запись комнаты сразу удаляется); `tests/sync.rs` — вспышка своего окна и писк 17 кГц в начале каждой секунды QPC, расхождение не должно уползать (`DEVCAST_SYNC_SECONDS`, ночью 1800); `tests/input.rs` — SendInput только в своё окно на тестовом мониторе (курсор возвращается; не запускать, пока владелец работает); `tests/recover.rs` пишет в дочернем процессе (тот же exe), убивает его и восстанавливает. `tests/pause.rs` — пауза и отмена, `tests/project.rs` — проект из записи. На ПК владельца записывать можно только монитор 2.
-- Фикстуры v2 (`fixtures/recordings/`, задача 3.16) пишет `examples/record_fixtures` — своё окно, SendInput, тоны; что в каждой — README там. Не тест: ночной `--run-ignored=all` их не перезаписывает.
+- Живые тесты `tests/live.rs` с `#[ignore]` пишут экран: рисуют тестовую картинку ffplay на мониторе `DEVCAST_TEST_MONITOR` и снимают его. `DEVCAST_TEST_MONITOR=2 cargo nextest run -p dc-capture --run-ignored=all --no-capture`, затем открыть напечатанные PNG и удалить их вместе с записями. `tests/record.rs` пишет файлы и проверяет их ffprobe; `tests/sound.rs` — системный звук с тоном ffplay (ищется по частоте: в системе может играть что-то ещё), микрофон и индикатор (запись комнаты сразу удаляется); `tests/sync.rs` — вспышка своего окна и писк 17 кГц в начале каждой секунды QPC, расхождение не должно уползать (`DEVCAST_SYNC_SECONDS`, ночью 1800); `tests/input.rs` — SendInput только в своё окно на тестовом мониторе (курсор возвращается; не запускать, пока владелец работает); `tests/recover.rs` пишет в дочернем процессе (тот же exe), убивает его и восстанавливает. `tests/pause.rs` — пауза и отмена, `tests/project.rs` — проект из записи. Общие помощники — `tests/common` (тестовая картинка, `fresh_dir`, SendInput в `synthetic.rs`). На ПК владельца записывать можно только монитор 2.
+- Фикстуры v2 (`fixtures/recordings/`, задача 3.16) пишет `examples/record_fixtures` — своё окно, SendInput и тоны из `tests/common`; что в каждой — README там. Не тест: ночной `--run-ignored=all` их не перезаписывает.
 
 ## Куда не лезть
 
@@ -34,4 +34,4 @@
 
 ## Ссылки
 
-- docs/roadmap/03-capture.md, docs/decisions/007-capture.md (WGC), 008-audio.md, 009-input-hooks.md.
+- docs/roadmap/03-capture.md, docs/decisions/007-capture.md (WGC, пауза, проект), 008-audio.md, 009-input-hooks.md.
