@@ -7,7 +7,8 @@
 
 use windows::Win32::Foundation::POINT;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_KEYUP,
+    ACTIVATE_KEYBOARD_LAYOUT_FLAGS, ActivateKeyboardLayout, GetKeyboardLayoutList, HKL, INPUT,
+    INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_KEYUP,
     MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_MOVE, MOUSEEVENTF_VIRTUALDESK, MOUSEINPUT,
     SendInput, VIRTUAL_KEY,
 };
@@ -96,4 +97,19 @@ pub fn chord_inputs(keys: &[u16]) -> Vec<INPUT> {
     let downs = keys.iter().map(|&k| key(k, false));
     let ups = keys.iter().rev().map(|&k| key(k, true));
     downs.chain(ups).collect()
+}
+
+/// Synthetic keys are virtual-key codes: `A` types «ф» in a Russian layout. Call on the thread
+/// of the window that takes the keys: it switches to an installed English (US) layout for that
+/// thread only; the user's layout list does not change.
+pub fn english_layout() {
+    let mut layouts = [HKL::default(); 64];
+    // SAFETY: fills the array with the layouts installed for the user.
+    let count = unsafe { GetKeyboardLayoutList(Some(&mut layouts)) } as usize;
+    let english = layouts[..count]
+        .iter()
+        .find(|hkl| (hkl.0 as usize & 0xFFFF) == 0x0409)
+        .expect("add the English (US) keyboard layout in Windows: synthetic typing needs it");
+    // SAFETY: activates an installed layout for this thread only (no KLF_SETFORPROCESS).
+    unsafe { ActivateKeyboardLayout(*english, ACTIVATE_KEYBOARD_LAYOUT_FLAGS(0)) }.unwrap();
 }
