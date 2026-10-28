@@ -146,7 +146,7 @@ devcast new <video...> -o name.dcproj | clip add <video...> | clip move c2 --to 
 devcast info | save
 devcast ls <zooms|clips|annots|captions|tracks|clicks> [--from --to] [--fields]
 devcast transcript [--from --to] [--words]       # текст с таймкодами и id слов
-devcast silences [--min 0.5] [--db -30]
+devcast silences [--min 0.5] [--db -30] [--track mic] [--from --to]   # паузы по готовому видео
 devcast events <clicks|keys|activity> [--from --to]
 devcast cut <10.2-12.5,...|w120-w135> [--dry-run]
 devcast speed <from-to> <x>

@@ -9,6 +9,7 @@ pub mod levels;
 pub mod loudness;
 pub mod mix;
 pub mod reader;
+pub mod silence;
 pub mod track;
 
 mod limiter;

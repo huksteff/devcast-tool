@@ -506,6 +506,7 @@ name = "dc-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "dc-audio",
  "dc-capture",
  "dc-core",
  "dc-encode",

@@ -37,7 +37,7 @@ fn recording(id: ClipId, path: String, secs: f64) -> Clip {
     }
 }
 
-fn run_line(line: &str, cwd: &Path, registry: &Registry) -> Outcome {
+pub(crate) fn run_line(line: &str, cwd: &Path, registry: &Registry) -> Outcome {
     let args = line.split(' ').map(str::to_owned).collect();
     run(args, cwd, registry)
 }

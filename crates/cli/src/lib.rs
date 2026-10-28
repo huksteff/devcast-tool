@@ -15,6 +15,7 @@ mod record_args;
 mod record_control;
 pub mod registry;
 pub mod run;
+mod silences;
 mod skill;
 mod sources;
 mod telemetry;
@@ -74,3 +75,5 @@ pub fn main_outcome(args: Vec<OsString>) -> Outcome {
         Err(error) => Outcome::failure(&error, false),
     }
 }
+#[cfg(test)]
+mod silences_tests;

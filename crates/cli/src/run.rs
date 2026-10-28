@@ -16,7 +16,7 @@ use crate::ls::{self, Query};
 use crate::record;
 use crate::record_args::RecordArgs;
 use crate::record_control::Control;
-use crate::{autozoom, events, import, skill, sources};
+use crate::{autozoom, events, import, silences, skill, sources};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Outcome {
@@ -112,6 +112,11 @@ enum Builtin {
         #[arg(long, default_value_t = 0, help = "Сколько строк пропустить")]
         offset: usize,
     },
+    #[command(
+        about = "Тишина по готовому видео: паузы для вырезания (cut <от>-<до>)",
+        after_help = "silences --min 0.8 --db -35 --from 10"
+    )]
+    Silences(silences::Args),
     #[command(
         about = "События записей по готовому видео: клики, сочетания клавиш, отрезки активности",
         after_help = "events clicks --from 10 --to 1:20"
@@ -291,6 +296,7 @@ fn dispatch(
                 "у ls sources нет --from, --to и --fields: devcast ls sources".to_owned(),
             )),
         },
+        Builtin::Silences(args) => silences::silences(&ctx, &args),
         Builtin::Events { kind, from, to } => {
             events::events(&ctx, kind, from.as_ref(), to.as_ref())
         }
