@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use dc_audio::{CHANNELS, Mixer};
+use dc_audio::{CHANNELS, Levels, LoudnessCache, Mixer};
 use dc_core::geom::PixelSize;
 use dc_core::project::{Clip, Media, MediaKind, SpeedRange};
 use dc_core::time::Source;
@@ -55,6 +55,10 @@ pub fn speed(from: f64, to: f64, factor: f64) -> SpeedRange {
         range: range(from, to),
         factor,
     }
+}
+
+pub fn mixer(dir: &Path, project: &Project, levels: &Levels) -> Mixer {
+    Mixer::new(dir, project, levels, &mut LoudnessCache::default()).unwrap()
 }
 
 /// The whole output of `mixer` (and a second past it), rendered in order in `chunk` frames.

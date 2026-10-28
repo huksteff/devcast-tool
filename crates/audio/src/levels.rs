@@ -1,6 +1,6 @@
 //! Levels of the sound of each clip (SCOPE «Аудио», decision 000 «Звук»): every sound track
-//! (channel) of a clip has a volume 0–100 %, a gain up to 10× and a mute; the clip as a whole
-//! has a mute. There is no common level of a clip.
+//! (channel) of a clip has a volume 0–100 %, a gain up to 10×, a mute and EBU R128
+//! normalization; the clip as a whole has a mute. There is no common level of a clip.
 //!
 //! These are the levels in effect: which of them come from the project defaults and which the
 //! clip changed is the model of `fx/audio-tracks`, which passes the result here.
@@ -20,6 +20,7 @@ pub struct ChannelLevel {
     volume: f32,
     gain: f32,
     muted: bool,
+    normalized: bool,
 }
 
 impl Default for ChannelLevel {
@@ -28,13 +29,14 @@ impl Default for ChannelLevel {
             volume: 1.0,
             gain: 1.0,
             muted: false,
+            normalized: false,
         }
     }
 }
 
 impl ChannelLevel {
-    /// `volume` in 0–1 (0–100 %), `gain` in 1–[`GAIN_MAX`].
-    pub fn new(volume: f32, gain: f32, muted: bool) -> Result<Self, AudioError> {
+    /// `volume` in 0–1 (0–100 %), `gain` in 1–[`GAIN_MAX`]; not muted, not normalized.
+    pub fn new(volume: f32, gain: f32) -> Result<Self, AudioError> {
         if !(0.0..=1.0).contains(&volume) {
             return Err(AudioError::Level {
                 what: "громкость",
@@ -52,8 +54,17 @@ impl ChannelLevel {
         Ok(Self {
             volume,
             gain,
-            muted,
+            ..Self::default()
         })
+    }
+
+    pub fn with_mute(self, muted: bool) -> Self {
+        Self { muted, ..self }
+    }
+
+    /// Brought to −16 LUFS (EBU R128) before the volume and gain.
+    pub fn with_normalize(self, normalized: bool) -> Self {
+        Self { normalized, ..self }
     }
 
     pub fn volume(&self) -> f32 {
@@ -68,7 +79,11 @@ impl ChannelLevel {
         self.muted
     }
 
-    /// The factor applied to the track's samples.
+    pub fn normalized(&self) -> bool {
+        self.normalized
+    }
+
+    /// The factor of volume, gain and mute (normalization is measured by the mix).
     pub fn factor(&self) -> f32 {
         if self.muted {
             0.0
@@ -93,14 +108,12 @@ pub struct Levels {
 }
 
 impl Levels {
-    /// The factor of track `track` of clip `clip`.
-    pub fn factor(&self, clip: ClipId, track: &str) -> f32 {
+    /// Level of track `track` of clip `clip`, with the clip's mute applied.
+    pub fn channel(&self, clip: ClipId, track: &str) -> ChannelLevel {
         let Some(levels) = self.clips.get(&clip) else {
-            return 1.0;
+            return ChannelLevel::default();
         };
-        if levels.muted {
-            return 0.0;
-        }
-        levels.channels.get(track).map_or(1.0, ChannelLevel::factor)
+        let channel = levels.channels.get(track).copied().unwrap_or_default();
+        channel.with_mute(channel.muted || levels.muted)
     }
 }

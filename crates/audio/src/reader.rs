@@ -67,6 +67,22 @@ impl TrackReader {
         Ok(())
     }
 
+    /// Like [`Self::fill`], but says how many frames of `out` are before the end of the
+    /// stream; `None` when `start` is past it.
+    pub fn fill_until_end(
+        &mut self,
+        start: i64,
+        out: &mut [f32],
+    ) -> Result<Option<usize>, AudioError> {
+        self.fill(start, out)?;
+        let frames = (out.len() / CHANNELS) as i64;
+        if !self.ended {
+            return Ok(Some(frames as usize));
+        }
+        let left = (self.buffered_end() - start).min(frames);
+        Ok((left > 0).then_some(left as usize))
+    }
+
     fn buffered_end(&self) -> i64 {
         self.position + (self.buffer.len() / CHANNELS) as i64
     }

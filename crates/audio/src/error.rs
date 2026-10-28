@@ -35,6 +35,9 @@ pub enum AudioError {
         source: ffmpeg_next::Error,
     },
 
+    #[error("не удалось измерить громкость (EBU R128): {0}. Сообщи о баге")]
+    Loudness(ebur128::Error),
+
     #[error("не удалось пересчитать частоту звука {path}: {message}. Сообщи о баге")]
     Resample { path: PathBuf, message: String },
 }

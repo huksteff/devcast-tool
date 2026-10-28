@@ -6,6 +6,7 @@
 
 pub mod error;
 pub mod levels;
+pub mod loudness;
 pub mod mix;
 pub mod reader;
 pub mod track;
@@ -19,6 +20,7 @@ mod tempo;
 pub use error::AudioError;
 pub use levels::{ChannelLevel, ClipLevels, GAIN_MAX, Levels};
 pub use limiter::CEILING;
+pub use loudness::{LoudnessCache, Measurement, Meter, TARGET};
 pub use mix::Mixer;
 pub use part::CROSSFADE;
 pub use reader::TrackReader;
