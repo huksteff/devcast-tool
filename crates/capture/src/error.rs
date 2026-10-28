@@ -40,6 +40,11 @@ pub enum CaptureError {
     BadManifest { path: PathBuf, message: String },
 
     #[error(
+        "файл {path} повреждён ({message}): курсор и клавиши этой записи не прочитать, видео и звук не затронуты"
+    )]
+    BadTelemetry { path: PathBuf, message: String },
+
+    #[error(
         "в записи {0} нет ни одного целого сегмента: запись оборвалась в первые секунды, восстанавливать нечего"
     )]
     EmptyRecording(PathBuf),

@@ -6,6 +6,7 @@ pub mod error;
 pub mod event;
 pub mod finalize;
 pub mod grid;
+pub mod input;
 pub mod lead;
 pub mod list;
 pub mod manifest;

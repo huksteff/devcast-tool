@@ -1,21 +1,24 @@
-//! A whole recording: video and sound tracks into one folder with one manifest, all on the
-//! host clock (decision 008). Every track starts at the first video frame and ends at the stop;
-//! at the stop each track is joined into its own MP4.
+//! A whole recording: video, sound and input into one folder with one manifest, all on the
+//! host clock (decisions 008, 009). Every track starts at the first video frame and ends at
+//! the stop; at the stop each track is joined into its own MP4.
 
 use std::path::{Path, PathBuf};
 
 use super::clock::now;
+use super::input::InputRecording;
 use super::video::{VideoRecording, VideoStart, VideoSummary};
 use crate::audio::{AudioRecording, AudioSource, AudioSummary, MIC_TRACK, SYSTEM_TRACK};
 use crate::config::RecordingConfig;
 use crate::error::CaptureError;
 use crate::finalize::finalize;
+use crate::input::InputSummary;
 use crate::manifest::SharedManifest;
 
 pub struct Recording {
     manifest: SharedManifest,
     video: VideoRecording,
     audio: Vec<AudioRecording>,
+    input: InputRecording,
 }
 
 /// What was written.
@@ -23,6 +26,7 @@ pub struct Recording {
 pub struct RecordingSummary {
     pub video: VideoSummary,
     pub audio: Vec<AudioSummary>,
+    pub input: InputSummary,
     /// The finished MP4 of each track, in manifest order (video first).
     pub files: Vec<PathBuf>,
 }
@@ -42,15 +46,18 @@ impl Recording {
             let source = AudioSource::Microphone(name.clone());
             audio.push(AudioRecording::start(source, MIC_TRACK)?);
         }
+        let input = InputRecording::start()?;
         let video = VideoRecording::start(&config.source, config.fps, &manifest)?;
         let start = video.info().start;
         for track in &audio {
             track.begin(start, &manifest)?;
         }
+        input.begin(start, dir)?;
         Ok(Self {
             manifest,
             video,
             audio,
+            input,
         })
     }
 
@@ -59,7 +66,8 @@ impl Recording {
     }
 
     /// Stops every track now and joins each into its MP4.
-    pub fn stop(self) -> Result<RecordingSummary, CaptureError> {
+    pub fn stop(mut self) -> Result<RecordingSummary, CaptureError> {
+        self.input.stop();
         let at = now()?;
         for track in &self.audio {
             track.stop(at)?;
@@ -75,6 +83,7 @@ impl Recording {
         Ok(RecordingSummary {
             video,
             audio,
+            input: self.input.join()?,
             files,
         })
     }
