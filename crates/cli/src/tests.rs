@@ -12,6 +12,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ClipAdd {
+    /// Длина клипа, с
     secs: f64,
 }
 
@@ -212,4 +213,82 @@ fn project_flag_and_folder_inside_project() {
     assert_eq!(run(args, other, &f.registry).code, 0);
     assert_eq!(f.run_in("clip rm c1", &f.dir.media_dir()).code, 0);
     assert_eq!(f.clips(), 0);
+}
+
+#[test]
+fn help_lists_every_command_on_one_line() {
+    let f = Fixture::new();
+    let out = f.run("help");
+    assert_eq!(out.code, 0);
+    let lines: Vec<&str> = out.stdout.lines().collect();
+    assert_eq!(
+        lines,
+        [
+            "help      Список команд; с именем команды — её аргументы и пример",
+            "clip add  Добавить клип",
+            "clip rm   Удалить клип",
+            "Подробнее: devcast help <команда>; всё со схемами: devcast help --json",
+        ]
+    );
+}
+
+#[test]
+fn help_for_one_command_shows_args_and_example() {
+    let f = Fixture::new();
+    assert_eq!(
+        f.run("help clip rm"),
+        done(
+            "clip rm — Удалить клип
+пример: devcast clip rm c1
+  <id>: id c<число>, обязательный — Короткий id клипа: c<число>"
+        )
+    );
+    assert_eq!(
+        f.run("help clip add"),
+        done(
+            "clip add — Добавить клип
+пример: devcast clip add --secs 2
+  --secs: число, обязательный — Длина клипа, с"
+        )
+    );
+    assert_eq!(
+        f.run("help help"),
+        done(
+            "help — Список команд; с именем команды — её аргументы и пример
+пример: devcast help zoom add
+  <command>: текст — Команда из нескольких слов, например zoom add"
+        )
+    );
+    let out = f.run("help clip rn");
+    assert_eq!(out.code, 2);
+    assert!(
+        out.stderr.contains("похоже, нужна «clip rm»"),
+        "{}",
+        out.stderr
+    );
+}
+
+#[test]
+fn help_json_has_schemas_of_ops_project_and_effects() {
+    let f = Fixture::new();
+    let out = f.run("help clip add --json");
+    let json: serde_json::Value = serde_json::from_str(&out.stdout).unwrap();
+    assert_eq!(json["example"], "devcast clip add --secs 2");
+    assert_eq!(
+        json["args"],
+        serde_json::json!([{"name": "--secs", "kind": "число", "required": true, "about": "Длина клипа, с"}])
+    );
+    assert_eq!(json["schema"]["additionalProperties"], false);
+
+    let out = f.run("help --json");
+    let json: serde_json::Value = serde_json::from_str(&out.stdout).unwrap();
+    let names: Vec<&str> = json["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["help", "clip add", "clip rm"]);
+    assert!(json["project"]["properties"]["clips"].is_object());
+    assert!(json["effects"].is_object());
 }

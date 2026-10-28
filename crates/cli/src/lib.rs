@@ -3,6 +3,8 @@
 pub mod error;
 pub mod find;
 pub mod globals;
+mod help;
+mod help_args;
 pub mod registry;
 pub mod run;
 pub mod workspace;

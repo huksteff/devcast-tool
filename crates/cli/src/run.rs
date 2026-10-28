@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 use crate::error::CliError;
 use crate::find::find_project;
 use crate::globals::{self, Globals};
+use crate::help::help;
 use crate::workspace::Workspace;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -42,23 +43,42 @@ impl Outcome {
     disable_version_flag = true,
     disable_help_subcommand = true
 )]
-struct Cli {
+pub(crate) struct Cli {
     #[command(subcommand)]
     command: Builtin,
 }
 
+/// Built-in commands. `about` is the line in `devcast help`, `after_help` the example.
 #[derive(Debug, Subcommand)]
 enum Builtin {
+    #[command(
+        about = "Список команд; с именем команды — её аргументы и пример",
+        after_help = "help zoom add"
+    )]
+    Help {
+        #[arg(help = "Команда из нескольких слов, например zoom add")]
+        command: Vec<String>,
+    },
     /// An op from the registry, e.g. `zoom add --at 12.5`.
     #[command(external_subcommand)]
     Op(Vec<String>),
 }
 
 /// What a successful command prints: `text` normally, `json` under `--json`.
-struct Answer {
+pub(crate) struct Answer {
     text: String,
     json: Value,
     warnings: Vec<String>,
+}
+
+impl Answer {
+    pub(crate) fn new(text: String, json: Value) -> Self {
+        Self {
+            text,
+            json,
+            warnings: Vec::new(),
+        }
+    }
 }
 
 pub fn run(args: Vec<String>, cwd: &Path, registry: &Registry) -> Outcome {
@@ -99,6 +119,7 @@ fn dispatch(
             ))
         })?;
     match cli.command {
+        Builtin::Help { command } => help(&command, registry),
         Builtin::Op(words) => op(&words, globals, cwd, registry),
     }
 }
