@@ -1,6 +1,7 @@
-//! Random access to one sound track in the common format: frame `n` of the reader is at
-//! stream time `n / RATE` seconds (FFmpeg timestamps of the stream). Outside the stream it is
-//! silence. Reading forward decodes on; a jump back or far ahead seeks.
+//! Random access to one sound track in the common format: frame `n` of the reader is at source
+//! time `n / RATE` seconds, that is stream time (FFmpeg timestamps) `n / RATE` after the track's
+//! origin. Outside the stream it is silence. Reading forward decodes on; a jump back or far ahead
+//! seeks. Inside, frames count from the start of the stream's clock.
 
 use crate::error::AudioError;
 use crate::rate::RateConverter;
@@ -16,6 +17,8 @@ const SEEK_LEAD: f64 = 0.1;
 
 pub struct TrackReader {
     stream: StreamDecoder,
+    /// Stream frame of source frame 0.
+    origin: i64,
     converter: Option<RateConverter>,
     native: Vec<f32>,
     /// Decoded frames in the common format, from `position`.
@@ -35,6 +38,7 @@ impl TrackReader {
         };
         Ok(Self {
             stream,
+            origin: crate::frame_at(track.origin),
             converter,
             native: Vec::new(),
             buffer: Vec::new(),
@@ -44,8 +48,30 @@ impl TrackReader {
         })
     }
 
-    /// Fills `out` (interleaved, [`CHANNELS`]) with the frames from `start` on.
+    /// Fills `out` (interleaved, [`CHANNELS`]) with the frames from source frame `start` on.
     pub fn fill(&mut self, start: i64, out: &mut [f32]) -> Result<(), AudioError> {
+        self.fill_stream(start + self.origin, out)
+    }
+
+    /// Like [`Self::fill`], but says how many frames of `out` are before the end of the
+    /// stream; `None` when `start` is past it.
+    pub fn fill_until_end(
+        &mut self,
+        start: i64,
+        out: &mut [f32],
+    ) -> Result<Option<usize>, AudioError> {
+        let start = start + self.origin;
+        self.fill_stream(start, out)?;
+        let frames = (out.len() / CHANNELS) as i64;
+        if !self.ended {
+            return Ok(Some(frames as usize));
+        }
+        let left = (self.buffered_end() - start).min(frames);
+        Ok((left > 0).then_some(left as usize))
+    }
+
+    /// [`Self::fill`] from stream frame `start`.
+    fn fill_stream(&mut self, start: i64, out: &mut [f32]) -> Result<(), AudioError> {
         let end = start + (out.len() / CHANNELS) as i64;
         if start < self.position || start > self.buffered_end() + SEEK_AHEAD {
             self.seek(start)?;
@@ -65,22 +91,6 @@ impl TrackReader {
                 .copy_from_slice(&self.buffer[skip * CHANNELS..(skip + to - from) * CHANNELS]);
         }
         Ok(())
-    }
-
-    /// Like [`Self::fill`], but says how many frames of `out` are before the end of the
-    /// stream; `None` when `start` is past it.
-    pub fn fill_until_end(
-        &mut self,
-        start: i64,
-        out: &mut [f32],
-    ) -> Result<Option<usize>, AudioError> {
-        self.fill(start, out)?;
-        let frames = (out.len() / CHANNELS) as i64;
-        if !self.ended {
-            return Ok(Some(frames as usize));
-        }
-        let left = (self.buffered_end() - start).min(frames);
-        Ok((left > 0).then_some(left as usize))
     }
 
     fn buffered_end(&self) -> i64 {

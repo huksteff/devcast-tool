@@ -7,8 +7,10 @@
 
 mod common;
 
-use common::project::{add_clip, mixer, range, render_all, speech_dir, speech_project};
-use common::{channel, make, peak, read, rms, track};
+use common::project::{
+    add_clip, mixer, project_dir, range, render_all, speech_dir, speech_project,
+};
+use common::{channel, clip, peak, read, rms, track};
 use dc_audio::{
     CEILING, CHANNELS, ChannelLevel, ClipLevels, GAIN_MAX, Levels, RATE, frame_at, tracks,
 };
@@ -30,9 +32,9 @@ fn clip_levels(clip: ClipId, track: &str, channel: ChannelLevel) -> Levels {
 /// A project of the quiet tone and its sound as read straight from the file.
 fn quiet() -> (tempfile::TempDir, Project, Vec<f32>) {
     let dir = tempfile::tempdir().unwrap();
-    let path = make(dir.path(), "tone.flac", QUIET, &[]);
+    let path = clip(dir.path(), "tone.mp4", QUIET, &[]);
     let mut project = Project::default();
-    add_clip(&mut project, "tone.flac", 2.0);
+    add_clip(&mut project, "tone.mp4", 2.0);
     let source = read(&track(&path), 0, 3 * RATE as usize, 4096);
     (dir, project, source)
 }
@@ -73,7 +75,7 @@ fn gain_ten_on_speech_never_clips() {
     let levels = clip_levels(project.clips[0].id, "mic", mic);
     let mut mixer = mixer(&dir, &project, &levels);
     let mixed = render_all(&mut mixer, 4096);
-    let found = tracks(&dir, &project.clips[0].media).unwrap();
+    let found = tracks(&project_dir(&dir), &project.clips[0].media).unwrap();
     let frames = mixer.frames() as usize;
     let mic = read(&found[1], 0, frames, 48_000);
     let system = read(&found[0], 0, frames, 48_000);
@@ -124,7 +126,7 @@ fn mute_of_a_channel_and_of_a_clip() {
     let dir = speech_dir();
     let project = speech_project();
     let clip = project.clips[0].id;
-    let found = tracks(&dir, &project.clips[0].media).unwrap();
+    let found = tracks(&project_dir(&dir), &project.clips[0].media).unwrap();
     let frames = frame_at(20_016_666) as usize;
     let system = read(&found[0], 0, frames, 48_000);
     let levels = clip_levels(clip, "mic", level(1.0, 1.0, true));
@@ -149,7 +151,7 @@ fn mute_of_a_channel_and_of_a_clip() {
 fn muted_clip_next_to_a_loud_one_fades() {
     let (dir, mut project, _) = quiet();
     project.clips[0].trim = range(0.0, 1.0);
-    add_clip(&mut project, "tone.flac", 2.0).trim = range(1.0, 2.0);
+    add_clip(&mut project, "tone.mp4", 2.0).trim = range(1.0, 2.0);
     let mut levels = Levels::default();
     let second = project.clips[1].id;
     levels.clips.insert(

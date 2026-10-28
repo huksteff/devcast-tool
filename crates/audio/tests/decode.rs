@@ -128,7 +128,8 @@ fn imported_video_has_each_audio_stream() {
         "aac",
         path.to_str().unwrap(),
     ]);
-    let found = tracks(dir.path(), &media("two.mkv", MediaKind::Imported)).unwrap();
+    let project = common::project::project_dir(dir.path());
+    let found = tracks(&project, &media("two.mkv", MediaKind::Imported)).unwrap();
     let names: Vec<_> = found.iter().map(|t| t.name.as_str()).collect();
     assert_eq!(names, ["audio-1", "audio-2"]);
     for (track, hz) in found.iter().zip([440.0, 880.0]) {
@@ -144,7 +145,8 @@ fn imported_video_has_each_audio_stream() {
 #[test]
 fn recording_tracks_come_from_manifest() {
     let video = media("media/recording-1/video.mp4", MediaKind::Recording);
-    let found = tracks(&common::project::speech_dir(), &video).unwrap();
+    let project = common::project::project_dir(&common::project::speech_dir());
+    let found = tracks(&project, &video).unwrap();
     let names: Vec<_> = found.iter().map(|t| t.name.as_str()).collect();
     assert_eq!(names, ["system", "mic"]);
     let mic = &found[1];

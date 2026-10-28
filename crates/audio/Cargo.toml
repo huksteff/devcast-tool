@@ -13,6 +13,8 @@ workspace = true
 [dependencies]
 dc-capture = { path = "../capture" }
 dc-core = { path = "../core" }
+dc-media = { path = "../media" }
+dc-project = { path = "../project" }
 ebur128 = "0.1"
 ffmpeg-next = "9"
 rubato = "5"

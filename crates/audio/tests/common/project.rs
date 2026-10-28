@@ -8,9 +8,19 @@ use dc_core::geom::PixelSize;
 use dc_core::project::{Clip, Media, MediaKind, SpeedRange};
 use dc_core::time::Source;
 use dc_core::{Project, Range, Rect, SourceTime, TimeDelta};
+use dc_project::ProjectDir;
 
 pub fn speech_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.dcproj")
+}
+
+/// The project folder `dir`; a folder of test files becomes one with an empty `project.json`.
+pub fn project_dir(dir: &Path) -> ProjectDir {
+    let file = dir.join("project.json");
+    if !file.exists() {
+        std::fs::write(&file, serde_json::to_string(&Project::default()).unwrap()).unwrap();
+    }
+    ProjectDir::open(dir).unwrap()
 }
 
 pub fn speech_project() -> Project {
@@ -58,7 +68,13 @@ pub fn speed(from: f64, to: f64, factor: f64) -> SpeedRange {
 }
 
 pub fn mixer(dir: &Path, project: &Project, levels: &Levels) -> Mixer {
-    Mixer::new(dir, project, levels, &mut LoudnessCache::default()).unwrap()
+    Mixer::new(
+        &project_dir(dir),
+        project,
+        levels,
+        &mut LoudnessCache::default(),
+    )
+    .unwrap()
 }
 
 /// The whole output of `mixer` (and a second past it), rendered in order in `chunk` frames.

@@ -153,8 +153,7 @@ impl Decoder {
 
     fn seek_to_keyframe(&mut self, t: SourceTime) -> Result<(), MediaError> {
         let keyframe = self.probe.keyframe_before(t);
-        let first = self.probe.first_pts.rescale(self.time_base, MICROS);
-        let target = first + keyframe.micros();
+        let target = self.probe.origin_micros + keyframe.micros();
         self.input
             .seek(target, ..target)
             .map_err(|source| self.decode_error(source))?;

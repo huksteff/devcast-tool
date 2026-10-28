@@ -3,7 +3,9 @@
 //! the variable-rate flag are exact.
 //!
 //! Source time starts at the first frame: `SourceTime::ZERO` is the earliest presentation
-//! timestamp of the video stream.
+//! timestamp of the video stream. Every stream of the file counts from that point
+//! ([`Probe::origin_micros`]), as players keep the streams' timestamps relative to each other:
+//! sound that starts before the first frame has negative source time.
 
 use std::path::Path;
 
@@ -51,6 +53,9 @@ pub struct Probe {
     pub keyframes: Vec<SourceTime>,
     /// Timestamp of the first frame in the stream's time base: source time zero.
     pub first_pts: i64,
+    /// Source time zero on the file's own clock, which all its streams share, microseconds:
+    /// `first_pts` rescaled. Other streams (sound) subtract it from their timestamps.
+    pub origin_micros: i64,
 }
 
 impl Probe {
@@ -122,6 +127,7 @@ pub fn probe(path: &Path) -> Result<Probe, MediaError> {
         variable_rate: is_variable(&intervals),
         keyframes,
         first_pts,
+        origin_micros: first_pts.rescale(time_base, MICROS),
     })
 }
 

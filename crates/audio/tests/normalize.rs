@@ -8,8 +8,8 @@
 
 mod common;
 
-use common::make;
-use common::project::{add_clip, render_all, speech_dir, speech_project};
+use common::clip;
+use common::project::{add_clip, project_dir, render_all, speech_dir, speech_project};
 use dc_audio::{
     ChannelLevel, Levels, LoudnessCache, Measurement, Meter, Mixer, TARGET, frame_at, tracks,
 };
@@ -38,10 +38,11 @@ fn measure(samples: &[f32]) -> Measurement {
 /// Mix of `project` at `levels`, measured: the source track before and the output after.
 fn mix(dir: &Path, project: &Project, levels: &Levels, track: usize) -> (Measurement, Measurement) {
     let mut cache = LoudnessCache::default();
-    let mut mixer = Mixer::new(dir, project, levels, &mut cache).unwrap();
+    let folder = project_dir(dir);
+    let mut mixer = Mixer::new(&folder, project, levels, &mut cache).unwrap();
     let frames = mixer.frames() as usize;
     let output = render_all(&mut mixer, 48_000);
-    let source = tracks(dir, &project.clips[0].media).unwrap()[track].clone();
+    let source = tracks(&folder, &project.clips[0].media).unwrap()[track].clone();
     let before = cache.measure(&source).unwrap();
     let after = measure(&output[..frames * dc_audio::CHANNELS]);
     (before, after)
@@ -49,9 +50,9 @@ fn mix(dir: &Path, project: &Project, levels: &Levels, track: usize) -> (Measure
 
 fn imported(source: &str, seconds: f64) -> (tempfile::TempDir, Project) {
     let dir = tempfile::tempdir().unwrap();
-    make(dir.path(), "sound.flac", source, &[]);
+    clip(dir.path(), "sound.mp4", source, &[]);
     let mut project = Project::default();
-    add_clip(&mut project, "sound.flac", seconds);
+    add_clip(&mut project, "sound.mp4", seconds);
     (dir, project)
 }
 
@@ -117,7 +118,12 @@ fn volume_applies_after_normalization() {
 fn silence_stays_silent() {
     let (dir, project) = imported("anullsrc=r=48000:cl=stereo:d=3", 3.0);
     let levels = normalized(project.clips[0].id, "audio-1", 1.0);
-    let mut mixer = Mixer::new(dir.path(), &project, &levels, &mut LoudnessCache::default());
+    let mut mixer = Mixer::new(
+        &project_dir(dir.path()),
+        &project,
+        &levels,
+        &mut LoudnessCache::default(),
+    );
     let output = render_all(mixer.as_mut().unwrap(), 4800);
     assert_eq!(output.len(), (frame_at(3_000_000) as usize + 48_000) * 2);
     assert!(output.iter().all(|s| *s == 0.0));

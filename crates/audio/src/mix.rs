@@ -7,9 +7,9 @@
 //! what was asked before (except the inner state of `atempo` after a jump, see `part`).
 
 use std::collections::HashMap;
-use std::path::Path;
 
 use dc_core::{Project, TimeMap};
+use dc_project::ProjectDir;
 
 use crate::error::AudioError;
 use crate::levels::Levels;
@@ -36,7 +36,7 @@ impl Mixer {
     /// The mix of `project`, whose folder is `project_dir`, at `levels`; normalized tracks are
     /// measured into `loudness` unless they are there already.
     pub fn new(
-        project_dir: &Path,
+        project_dir: &ProjectDir,
         project: &Project,
         levels: &Levels,
         loudness: &mut LoudnessCache,

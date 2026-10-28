@@ -468,6 +468,8 @@ version = "0.1.0"
 dependencies = [
  "dc-capture",
  "dc-core",
+ "dc-media",
+ "dc-project",
  "ebur128",
  "ffmpeg-next",
  "rubato",

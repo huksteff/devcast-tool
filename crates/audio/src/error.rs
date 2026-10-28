@@ -7,6 +7,9 @@ pub enum AudioError {
     #[error(transparent)]
     Capture(#[from] dc_capture::CaptureError),
 
+    #[error(transparent)]
+    Media(#[from] dc_media::MediaError),
+
     #[error(
         "не удалось {action} звук {path}: {source}. Проверь, что файл на месте и не повреждён; если файл в порядке — сообщи о баге"
     )]
