@@ -155,6 +155,11 @@ impl<K: IdKind> IdCounter<K> {
         id
     }
 
+    /// The number the next [`Self::allocate`] will return.
+    pub fn next_number(&self) -> u32 {
+        self.next.max(1)
+    }
+
     /// After loading a project: make sure no existing id can be handed out again.
     pub fn ensure_above(&mut self, existing: impl IntoIterator<Item = Id<K>>) {
         for id in existing {

@@ -2,6 +2,7 @@
 
 pub mod geom;
 pub mod id;
+pub mod project;
 pub mod time;
 
 pub use geom::{PixelSize, Point, Rect};
