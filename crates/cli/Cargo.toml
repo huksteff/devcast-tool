@@ -11,5 +11,18 @@ publish.workspace = true
 name = "devcast"
 path = "src/main.rs"
 
+[dependencies]
+clap.workspace = true
+dc-core = { path = "../core" }
+dc-ops = { path = "../ops" }
+dc-project = { path = "../project" }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+schemars.workspace = true
+serde.workspace = true
+tempfile.workspace = true
+
 [lints]
 workspace = true

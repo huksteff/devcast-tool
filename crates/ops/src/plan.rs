@@ -26,23 +26,25 @@ const PLAN_HINT: &str = r#"план — JSON-массив шагов вида {"
 /// Parses a plan file.
 pub fn parse_plan(text: &str) -> Result<Vec<Step>, OpsError> {
     let value: Value = serde_json::from_str(text)
-        .map_err(|e| OpsError(format!("план не читается как JSON ({e}); {PLAN_HINT}")))?;
+        .map_err(|e| OpsError::Usage(format!("план не читается как JSON ({e}); {PLAN_HINT}")))?;
     let Value::Array(items) = value else {
-        return Err(OpsError(format!("{PLAN_HINT}, а не одиночный объект")));
+        return Err(OpsError::Usage(format!(
+            "{PLAN_HINT}, а не одиночный объект"
+        )));
     };
     if items.is_empty() {
-        return Err(OpsError(format!("план пуст; {PLAN_HINT}")));
+        return Err(OpsError::Usage(format!("план пуст; {PLAN_HINT}")));
     }
     items
         .into_iter()
         .enumerate()
         .map(|(index, item)| {
             let Value::Object(mut args) = item else {
-                return Err(OpsError(format!("шаг {}: {PLAN_HINT}", index + 1)));
+                return Err(OpsError::Usage(format!("шаг {}: {PLAN_HINT}", index + 1)));
             };
             match args.remove("op") {
                 Some(Value::String(op)) => Ok(Step { op, args }),
-                _ => Err(OpsError(format!(
+                _ => Err(OpsError::Usage(format!(
                     "шаг {}: нет поля \"op\" с именем команды; {PLAN_HINT}",
                     index + 1
                 ))),
@@ -64,7 +66,7 @@ pub(crate) fn build(
                 .command(&step.op, step.args.clone())
                 .map_err(|e| match steps.len() {
                     1 => e,
-                    _ => OpsError(format!("шаг {}: {e}", index + 1)),
+                    _ => OpsError::Usage(format!("шаг {}: {e}", index + 1)),
                 })
         })
         .collect()

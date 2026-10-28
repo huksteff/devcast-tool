@@ -8,6 +8,9 @@ use serde_json::{Map, Value};
 
 use crate::error::OpsError;
 
+/// Global flags of `devcast`, accepted anywhere on the command line; no op may use these fields.
+pub const RESERVED_FIELDS: [&str; 3] = ["project", "json", "dry_run"];
+
 #[derive(Debug, Clone)]
 pub struct Registry {
     ops: Vec<OpInfo>,
@@ -42,21 +45,43 @@ impl Registry {
     }
 
     pub fn find(&self, name: &str) -> Result<&OpInfo, OpsError> {
-        if let Some(op) = self.ops.iter().find(|op| op.name == name) {
-            return Ok(op);
+        self.get(name)
+            .ok_or_else(|| self.unknown(name, &[name.to_owned()]))
+    }
+
+    /// The op named by the first words of a command line (`zoom add --at 12` → `zoom add`) and
+    /// how many words its name took. The longest matching name wins.
+    pub fn resolve(&self, words: &[String]) -> Result<(&OpInfo, usize), OpsError> {
+        let longest = self.ops.iter().map(|op| op.name.split(' ').count()).max();
+        let longest = longest.unwrap_or(1).min(words.len());
+        let prefixes: Vec<String> = (1..=longest).map(|n| words[..n].join(" ")).collect();
+        for (n, name) in prefixes.iter().enumerate().rev() {
+            if let Some(op) = self.get(name) {
+                return Ok((op, n + 1));
+            }
         }
+        let typed = prefixes.last().cloned().unwrap_or_default();
+        Err(self.unknown(&typed, &prefixes))
+    }
+
+    fn get(&self, name: &str) -> Option<&OpInfo> {
+        self.ops.iter().find(|op| op.name == name)
+    }
+
+    /// «нет команды», with the op closest to any of the `typed` spellings.
+    fn unknown(&self, name: &str, typed: &[String]) -> OpsError {
         let closest = self
             .ops
             .iter()
-            .map(|op| (distance(op.name, name), op.name))
+            .flat_map(|op| typed.iter().map(|t| (distance(op.name, t), op.name)))
             .filter(|(d, _)| *d <= 3)
             .min();
-        Err(OpsError(match closest {
+        OpsError::Usage(match closest {
             Some((_, similar)) => {
                 format!("нет команды «{name}»; похоже, нужна «{similar}». Список: devcast help")
             }
             None => format!("нет команды «{name}». Список: devcast help"),
-        }))
+        })
     }
 
     /// Builds the command `name` from its arguments.
@@ -67,7 +92,7 @@ impl Registry {
     ) -> Result<Box<dyn Command>, OpsError> {
         let op = self.find(name)?;
         (op.parse)(Value::Object(args)).map_err(|e| {
-            OpsError(format!("{name}: неверные аргументы ({e}). Пример: devcast {}; все поля: devcast help {name}", op.example))
+            OpsError::Usage(format!("{name}: неверные аргументы ({e}). Пример: devcast {}; все поля: devcast help {name}", op.example))
         })
     }
 }
@@ -99,6 +124,13 @@ fn check(op: &OpInfo) -> Vec<String> {
         );
     }
     let properties = schema.get("properties").and_then(Value::as_object);
+    for field in RESERVED_FIELDS {
+        if properties.is_some_and(|p| p.contains_key(field)) {
+            problems.push(format!(
+                "поле «{field}» занято глобальным флагом devcast, переименуй его"
+            ));
+        }
+    }
     for name in op.positional {
         if !properties.is_some_and(|p| p.contains_key(*name)) {
             problems.push(format!("позиционного аргумента «{name}» нет среди полей"));

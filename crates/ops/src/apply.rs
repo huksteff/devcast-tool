@@ -47,7 +47,7 @@ pub fn apply(
     };
     let diff = target_history
         .apply_batch(target, &name, &commands)
-        .map_err(|e| OpsError(e.to_string()))?;
+        .map_err(|e| OpsError::Failed(e.to_string()))?;
     let changed = *target != original;
     Ok(Applied {
         diff,

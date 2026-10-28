@@ -10,7 +10,7 @@ pub use apply::{Applied, apply};
 pub use argv::parse_args;
 pub use error::OpsError;
 pub use plan::{Step, parse_plan};
-pub use registry::Registry;
+pub use registry::{RESERVED_FIELDS, Registry};
 
 #[cfg(test)]
 mod tests;

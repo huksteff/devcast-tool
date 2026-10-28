@@ -38,7 +38,7 @@ pub fn parse_args(op: &OpInfo, args: &[String]) -> Result<Map<String, Value>, Op
             }
         } else {
             let Some(name) = positional.next() else {
-                return Err(OpsError(format!(
+                return Err(OpsError::Usage(format!(
                     "{}: лишний аргумент «{arg}». Пример: devcast {}",
                     op.name, op.example
                 )));
@@ -51,7 +51,7 @@ pub fn parse_args(op: &OpInfo, args: &[String]) -> Result<Map<String, Value>, Op
             Some(text) => serde_json::from_str(&text).unwrap_or(Value::String(text)),
         };
         if fields.insert(field.clone(), value).is_some() {
-            return Err(OpsError(format!(
+            return Err(OpsError::Usage(format!(
                 "{}: аргумент «{field}» указан дважды",
                 op.name
             )));
