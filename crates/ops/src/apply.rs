@@ -47,7 +47,7 @@ pub fn apply(
     };
     let diff = target_history
         .apply_batch(target, &name, &commands)
-        .map_err(|e| OpsError(e.to_string()))?;
+        .map_err(|e| OpsError::Failed(e.to_string()))?;
     let changed = *target != original;
     Ok(Applied {
         diff,
@@ -67,10 +67,15 @@ impl fmt::Display for Applied {
         }
         write!(f, "{}", self.diff)?;
         let (before, after) = self.duration;
-        if before != after {
-            let time = |d: TimeDelta| OutputTime::from_micros(d.micros());
-            write!(f, "; длительность {}→{}", time(before), time(after))?;
+        match duration_change(before, after) {
+            Some(change) => write!(f, "; {change}"),
+            None => Ok(()),
         }
-        Ok(())
     }
+}
+
+/// `длительность 3:12.000→2:58.000`, or nothing if the output length did not change.
+pub fn duration_change(before: TimeDelta, after: TimeDelta) -> Option<String> {
+    let time = |d: TimeDelta| OutputTime::from_micros(d.micros());
+    (before != after).then(|| format!("длительность {}→{}", time(before), time(after)))
 }

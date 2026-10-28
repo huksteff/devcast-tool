@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::{Registry, Step, apply, parse_args, parse_plan};
+use crate::{OpsError, Registry, Step, apply, parse_args, parse_plan};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -41,14 +41,17 @@ impl Op for Note {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-struct Loose {}
+struct Loose {
+    #[serde(default)]
+    dry_run: bool,
+}
 
 impl Command for Loose {
     fn name(&self) -> &'static str {
         Self::NAME
     }
     fn apply(&self, _: &mut Project) -> Result<Diff, CommandError> {
-        Ok(Diff::default())
+        Ok(Diff::note(self.dry_run.to_string()))
     }
 }
 
@@ -156,6 +159,7 @@ fn registry_rejects_ops_breaking_the_rules() {
         "deny_unknown_fields",
         "«missing»",
         "дважды",
+        "«dry_run» занято",
     ] {
         assert!(error.contains(expected), "{expected}: {error}");
     }
@@ -170,6 +174,21 @@ fn unknown_op_suggests_the_closest() {
         !error.contains("похоже") && error.contains("devcast help"),
         "{error}"
     );
+}
+
+#[test]
+fn command_line_names_the_longest_matching_op() {
+    let registry = registry();
+    let (op, words) = registry.resolve(&args(&["clip", "rm", "c1"])).unwrap();
+    assert_eq!((op.name, words), ("clip rm", 2));
+    let error = registry.resolve(&args(&["clip", "rn", "c1"])).unwrap_err();
+    assert!(
+        error.to_string().contains("похоже, нужна «clip rm»"),
+        "{error}"
+    );
+    let error = registry.resolve(&args(&["note", "sett", "x"])).unwrap_err();
+    assert!(error.to_string().contains("«note set»"), "{error}");
+    assert!(registry.resolve(&[]).is_err());
 }
 
 #[test]
@@ -268,10 +287,17 @@ fn missing_id_lists_existing_and_how_to_list() {
         "clip rm",
         json!({"id": "c9"}).as_object().unwrap().clone(),
     )];
-    let error = apply(&registry, &mut project, &mut history, &rm, false)
-        .unwrap_err()
-        .to_string();
-    assert_eq!(error, "c9 не найден (есть c1,c2); список: devcast ls clips");
+    let error = apply(&registry, &mut project, &mut history, &rm, false).unwrap_err();
+    assert_eq!(
+        error,
+        OpsError::Failed("c9 не найден (есть c1,c2); список: devcast ls clips".to_owned())
+    );
+    let bad = vec![Step::new(
+        "clip rm",
+        json!({"id": "z9"}).as_object().unwrap().clone(),
+    )];
+    let error = apply(&registry, &mut project, &mut history, &bad, false).unwrap_err();
+    assert!(matches!(error, OpsError::Usage(_)), "{error:?}");
 }
 
 #[test]
