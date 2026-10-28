@@ -32,3 +32,4 @@ schemars = "1.2"
 thiserror = "2"
 proptest = "1.12"
 insta = { version = "1.49", features = ["json"] }
+tempfile = "3"

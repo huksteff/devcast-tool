@@ -227,6 +227,13 @@ version = "0.1.0"
 [[package]]
 name = "dc-project"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
 
 [[package]]
 name = "dc-render"

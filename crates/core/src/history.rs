@@ -90,10 +90,11 @@ impl History {
         }
     }
 
-    /// Restores stacks loaded from disk (oldest first).
-    pub fn from_changes(undo: Vec<Change>, limit: usize) -> Self {
+    /// Restores stacks loaded from disk: `undo` oldest first, `redo` with the next step to redo last.
+    pub fn from_stacks(undo: Vec<Change>, redo: Vec<Change>, limit: usize) -> Self {
         let mut history = Self::new(limit);
         history.undo = undo;
+        history.redo = redo;
         history.trim();
         history
     }
@@ -163,6 +164,11 @@ impl History {
     /// Undoable steps, oldest first.
     pub fn changes(&self) -> &[Change] {
         &self.undo
+    }
+
+    /// Undone steps that can be redone; the next one to redo is last.
+    pub fn redo_changes(&self) -> &[Change] {
+        &self.redo
     }
 
     pub fn can_undo(&self) -> bool {

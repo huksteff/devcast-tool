@@ -170,7 +170,7 @@ fn changes_survive_json() {
     let json = serde_json::to_string(&h.changes()[0]).unwrap();
     let back: Change = serde_json::from_str(&json).unwrap();
     assert_eq!(&back, &h.changes()[0]);
-    let mut restored = History::from_changes(vec![back], 10);
+    let mut restored = History::from_stacks(vec![back], Vec::new(), 10);
     restored.undo(&mut p);
     assert!(p.effects.is_empty());
 }
