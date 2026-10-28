@@ -22,6 +22,13 @@ pub enum AudioError {
     #[error("запись {0} не собрана: открой проект в DevCast, он восстановит её, затем повтори")]
     Unfinished(PathBuf),
 
+    #[error("{what} {value} вне допустимого: задай значение в пределах {range}")]
+    Level {
+        what: &'static str,
+        value: f32,
+        range: &'static str,
+    },
+
     #[error("не удалось изменить скорость звука до {speed}×: {source}. Сообщи о баге")]
     Tempo {
         speed: f64,

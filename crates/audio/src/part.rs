@@ -27,6 +27,8 @@ const TEMPO_BLOCK: usize = 4096;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Part {
     pub track: SourceTrack,
+    /// Level factor of the track in this clip; 0 is muted.
+    pub gain: f32,
     /// Output frames of the segment, `start..end`.
     pub start: i64,
     pub end: i64,

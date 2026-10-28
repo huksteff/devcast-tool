@@ -5,16 +5,20 @@
 //! A position in it is a frame index ([`frame_at`]).
 
 pub mod error;
+pub mod levels;
 pub mod mix;
 pub mod reader;
 pub mod track;
 
+mod limiter;
 mod part;
 mod rate;
 mod stream;
 mod tempo;
 
 pub use error::AudioError;
+pub use levels::{ChannelLevel, ClipLevels, GAIN_MAX, Levels};
+pub use limiter::CEILING;
 pub use mix::Mixer;
 pub use part::CROSSFADE;
 pub use reader::TrackReader;
