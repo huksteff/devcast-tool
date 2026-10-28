@@ -4,6 +4,7 @@ pub mod geom;
 pub mod id;
 pub mod project;
 pub mod time;
+pub mod timemap;
 
 pub use geom::{PixelSize, Point, Rect};
 pub use id::{Id, IdCounter, IdKind};

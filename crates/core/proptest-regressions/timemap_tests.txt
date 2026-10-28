@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc f8c4c6b79fd522f52ad48538141e49b8a87e3ec8c93cf6ec5d202134c86f01d3 # shrinks to clip = (6.328702, [], [SpeedRange { range: Range { start: Time { micros: 4777729, kind: PhantomData<dc_core::time::Source> }, end: Time { micros: 5946336, kind: PhantomData<dc_core::time::Source> } }, factor: 0.25 }, SpeedRange { range: Range { start: Time { micros: 5946336, kind: PhantomData<dc_core::time::Source> }, end: Time { micros: 6328702, kind: PhantomData<dc_core::time::Source> } }, factor: 4.0 }]), frac = 0.6357170878740067
