@@ -18,10 +18,15 @@ fn clip(project: &mut Project, length: f64) -> &mut Clip {
             path: "media/screen.mp4".to_owned(),
             kind: MediaKind::Recording,
             duration,
+            size: dc_core::PixelSize {
+                width: 1920,
+                height: 1080,
+            },
         },
         trim: Range::new(SourceTime::ZERO, SourceTime::ZERO + duration).unwrap(),
         cuts: Vec::new(),
         speeds: Vec::new(),
+        crop: dc_core::Rect::FULL,
     });
     project.clips.last_mut().unwrap()
 }

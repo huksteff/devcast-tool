@@ -24,10 +24,15 @@ fn add_clip(
             path: format!("media/{id}.mp4"),
             kind: MediaKind::Recording,
             duration: TimeDelta::from_secs_f64(duration),
+            size: crate::geom::PixelSize {
+                width: 1920,
+                height: 1080,
+            },
         },
         trim: r(0.0, duration),
         cuts,
         speeds,
+        crop: crate::geom::Rect::FULL,
     });
     id
 }

@@ -36,10 +36,15 @@ pub fn project(durations: &[f64]) -> Project {
                 path: format!("media/{id}.mp4"),
                 kind: MediaKind::Recording,
                 duration: TimeDelta::from_secs_f64(duration),
+                size: dc_core::PixelSize {
+                    width: 1920,
+                    height: 1080,
+                },
             },
             trim: sr(0.0, duration),
             cuts: Vec::new(),
             speeds: Vec::new(),
+            crop: dc_core::Rect::FULL,
         });
     }
     p

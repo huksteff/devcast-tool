@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::geom::{PixelSize, Rect};
 use crate::id::{Id, IdCounter, IdKind};
 use crate::time::{Range, SourceTime, TimeDelta};
 
@@ -16,6 +17,9 @@ pub const SCHEMA_VERSION: u32 = 1;
 /// Slowest and fastest allowed speed of a range (SCOPE: 0.25–16×).
 pub const SPEED_MIN: f64 = 0.25;
 pub const SPEED_MAX: f64 = 16.0;
+
+/// Smallest crop width and height, as a fraction of the source frame.
+pub const CROP_MIN: f64 = 0.05;
 
 /// Id kind of clips on the main track (`c1`, `c2`, …).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -46,6 +50,8 @@ pub struct Media {
     pub kind: MediaKind,
     /// Full length of the source.
     pub duration: TimeDelta,
+    /// Frame size of the source video; crop and output aspect are computed from it.
+    pub size: PixelSize,
 }
 
 /// A part of a source played faster or slower; pitch is preserved.
@@ -69,6 +75,33 @@ pub struct Clip {
     /// Speed changes inside `trim`: sorted, not overlapping. Missing parts play at 1×.
     #[serde(default)]
     pub speeds: Vec<SpeedRange>,
+    /// Visible part of the source frame, in its fractions; a clip split in two keeps it in both.
+    #[serde(default = "full_frame", skip_serializing_if = "is_full_frame")]
+    pub crop: Rect,
+}
+
+fn full_frame() -> Rect {
+    Rect::FULL
+}
+
+fn is_full_frame(rect: &Rect) -> bool {
+    *rect == Rect::FULL
+}
+
+/// Why `rect` cannot be a crop: it must lie inside the source frame and be at least [`CROP_MIN`].
+pub fn crop_problem(rect: Rect) -> Option<String> {
+    let (x, y, w, h) = (rect.x(), rect.y(), rect.w(), rect.h());
+    if w < CROP_MIN || h < CROP_MIN {
+        return Some(format!(
+            "ширина и высота кропа — не меньше {CROP_MIN} (5% кадра); сейчас {w}x{h}"
+        ));
+    }
+    if x < 0.0 || y < 0.0 || x + w > 1.0 || y + h > 1.0 {
+        return Some(format!(
+            "кроп должен лежать внутри кадра: x, y ≥ 0, x+w ≤ 1, y+h ≤ 1; сейчас {x},{y},{w},{h}. Весь кадр: 0,0,1,1"
+        ));
+    }
+    None
 }
 
 /// The whole edit.
@@ -142,6 +175,13 @@ impl Clip {
                 source_end
             ));
         }
+        if self.media.size.width == 0 || self.media.size.height == 0 {
+            problems.push(format!(
+                "пустой размер кадра {}x{}",
+                self.media.size.width, self.media.size.height
+            ));
+        }
+        problems.extend(crop_problem(self.crop));
         if self.trim.is_empty() {
             problems.push("пустой trim".to_owned());
         }

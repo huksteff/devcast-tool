@@ -83,10 +83,15 @@ impl Command for ClipAdd {
                 path: "m.mp4".to_owned(),
                 kind: MediaKind::Imported,
                 duration,
+                size: dc_core::PixelSize {
+                    width: 1920,
+                    height: 1080,
+                },
             },
             trim,
             cuts: Vec::new(),
             speeds: Vec::new(),
+            crop: dc_core::Rect::FULL,
         });
         Ok(Diff::added(id))
     }
