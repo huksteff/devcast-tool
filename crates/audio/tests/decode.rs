@@ -2,17 +2,11 @@
 
 mod common;
 
-use std::path::{Path, PathBuf};
-
 use common::{channel, frequency, make, peak, read, track};
 use dc_audio::{CHANNELS, RATE, tracks};
 use dc_core::TimeDelta;
 use dc_core::geom::PixelSize;
 use dc_core::project::{Media, MediaKind};
-
-fn speech() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.dcproj")
-}
 
 fn media(path: &str, kind: MediaKind) -> Media {
     Media {
@@ -150,7 +144,7 @@ fn imported_video_has_each_audio_stream() {
 #[test]
 fn recording_tracks_come_from_manifest() {
     let video = media("media/recording-1/video.mp4", MediaKind::Recording);
-    let found = tracks(&speech(), &video).unwrap();
+    let found = tracks(&common::project::speech_dir(), &video).unwrap();
     let names: Vec<_> = found.iter().map(|t| t.name.as_str()).collect();
     assert_eq!(names, ["system", "mic"]);
     let mic = &found[1];

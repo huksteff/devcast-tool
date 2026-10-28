@@ -22,6 +22,12 @@ pub enum AudioError {
     #[error("запись {0} не собрана: открой проект в DevCast, он восстановит её, затем повтори")]
     Unfinished(PathBuf),
 
+    #[error("не удалось изменить скорость звука до {speed}×: {source}. Сообщи о баге")]
+    Tempo {
+        speed: f64,
+        source: ffmpeg_next::Error,
+    },
+
     #[error("не удалось пересчитать частоту звука {path}: {message}. Сообщи о баге")]
     Resample { path: PathBuf, message: String },
 }

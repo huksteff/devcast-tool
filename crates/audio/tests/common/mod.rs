@@ -7,6 +7,8 @@
     reason = "helpers shared by test files, each using its own part; a failed step must fail the test"
 )]
 
+pub mod project;
+
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
