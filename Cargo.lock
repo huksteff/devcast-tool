@@ -450,6 +450,14 @@ version = "0.1.0"
 [[package]]
 name = "dc-audio"
 version = "0.1.0"
+dependencies = [
+ "dc-capture",
+ "dc-core",
+ "ffmpeg-next",
+ "rubato",
+ "tempfile",
+ "thiserror 2.0.21",
+]
 
 [[package]]
 name = "dc-capture"
