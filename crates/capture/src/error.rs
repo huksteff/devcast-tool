@@ -11,6 +11,9 @@ pub enum CaptureError {
     #[error(transparent)]
     Source(#[from] SourceError),
 
+    #[error(transparent)]
+    Encode(#[from] dc_encode::EncodeError),
+
     #[error(
         "монитора {index} нет, подключено {count}: выбери другой (список — devcast ls sources)"
     )]

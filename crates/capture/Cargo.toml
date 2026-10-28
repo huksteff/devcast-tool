@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+dc-encode = { path = "../encode" }
 serde.workspace = true
 thiserror.workspace = true
 

@@ -1,8 +1,8 @@
 //! A captured frame as the sink sees it: the whole capture or the area cut out on the GPU.
 
 use windows::Win32::Graphics::Direct3D11::{
-    D3D11_BIND_SHADER_RESOURCE, D3D11_BOX, D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT, ID3D11Device,
-    ID3D11DeviceContext, ID3D11Texture2D,
+    D3D11_BIND_RENDER_TARGET, D3D11_BIND_SHADER_RESOURCE, D3D11_BOX, D3D11_TEXTURE2D_DESC,
+    D3D11_USAGE_DEFAULT, ID3D11Device, ID3D11DeviceContext, ID3D11Texture2D,
 };
 use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
 use windows_capture::frame::Frame;
@@ -36,6 +36,14 @@ impl VideoFrame<'_> {
     /// When the frame was shown on screen, on the QPC timeline.
     pub fn time(&self) -> HostTime {
         self.time
+    }
+
+    pub(crate) fn device(&self) -> &ID3D11Device {
+        self.device
+    }
+
+    pub(crate) fn context(&self) -> &ID3D11DeviceContext {
+        self.context
     }
 
     /// Copies the frame to memory (slow: for previews and checks, not for every frame).
@@ -152,7 +160,7 @@ fn create_texture(device: &ID3D11Device, area: Area) -> Result<ID3D11Texture2D, 
             Quality: 0,
         },
         Usage: D3D11_USAGE_DEFAULT,
-        BindFlags: D3D11_BIND_SHADER_RESOURCE.0 as u32,
+        BindFlags: (D3D11_BIND_SHADER_RESOURCE.0 | D3D11_BIND_RENDER_TARGET.0) as u32,
         CPUAccessFlags: 0,
         MiscFlags: 0,
     };
