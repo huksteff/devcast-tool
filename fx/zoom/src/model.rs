@@ -22,7 +22,7 @@ impl Effect for ZoomEffect {
     type State = ZoomState;
     const LISTS: &'static [&'static str] = &[ZoomKind::LIST];
 
-    fn items(state: &ZoomState) -> Vec<Item> {
+    fn items(state: &ZoomState) -> Result<Vec<Item>, serde_json::Error> {
         state
             .zooms
             .iter()
