@@ -18,7 +18,7 @@
 | Звук | cpal 0.18: WASAPI loopback и микрофон, воспроизведение; rubato (ресэмплинг), ebur128 (нормализация), nnnoiseless (шумоподавление, проверить в пробе) | В cpal 0.18 после создания потока нужно вызвать `play()`. Loopback шлёт «тихие» пакеты, тишину заполняем по таймстемпам. |
 | Файлы записи | сегменты fMP4 (GOP 1 с, решение 003) по каждой дорожке + `manifest.json` с атомарной записью | Как у Cap и OBS Hybrid MP4. После вылета отбрасываем неполный последний сегмент. По стопу собираем обычный MP4. |
 | GIF | gifski 1.34 | Лучшее качество. Лицензия AGPL совпадает с проектом. |
-| Субтитры | whisper-rs 0.16 (whisper.cpp): Vulkan на Windows и Linux, Metal на macOS | Время слов через DTW (`flash_attn` при этом выключен). Модели GGML small и large-v3-turbo скачиваются с проверкой SHA-256. |
+| Субтитры | whisper-rs 0.16 (whisper.cpp): Vulkan на Windows и Linux, Metal на macOS | Время слов через DTW (`flash_attn` при этом выключен). Модели GGML small и large-v3-turbo скачиваются с проверкой SHA-256 и докачкой: ureq (блокирующий, rustls), см. решение 010. |
 | Связь CLI и редактора | interprocess 2.4: local socket (named pipe / unix socket), сообщения JSON с длиной в начале | Имя сокета своё для каждого пользователя. |
 | Горячие клавиши и трей | global-hotkey 0.9, tray-icon 0.26 | Создаются на потоке цикла событий (в `CreationContext`). События передаются через обработчик и `request_repaint()`. |
 | Установщик и обновления | Velopack (Rust SDK) | Windows, macOS и Linux, дельта-обновления, источник — GitHub Releases. `vpk` в CI требует .NET 8 SDK. |

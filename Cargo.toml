@@ -36,3 +36,6 @@ thiserror = "2"
 proptest = "1.12"
 insta = { version = "1.49", features = ["json"] }
 tempfile = "3"
+sha2 = "0.11"
+# HTTP for model downloads: blocking, rustls, no async runtime (docs/decisions/010-whisper.md).
+ureq = { version = "3.4", default-features = false, features = ["rustls"] }
