@@ -13,6 +13,7 @@ use crate::error::CliError;
 use crate::globals::{self, Globals};
 use crate::help::help;
 use crate::ls::{self, Query};
+use crate::skill;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Outcome {
@@ -106,9 +107,22 @@ enum Builtin {
         #[arg(long, default_value_t = 0, help = "Сколько строк пропустить")]
         offset: usize,
     },
+    #[command(
+        about = "Установить skill для Claude Code в ~/.claude/skills/devcast",
+        after_help = "skill install"
+    )]
+    Skill {
+        #[arg(help = "Что сделать: install")]
+        action: SkillAction,
+    },
     /// An op from the registry, e.g. `zoom add --at 12.5`.
     #[command(external_subcommand)]
     Op(Vec<String>),
+}
+
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum SkillAction {
+    Install,
 }
 
 /// What a successful command prints: `text` normally, `json` under `--json`.
@@ -196,6 +210,9 @@ fn dispatch(
                 offset,
             },
         ),
+        Builtin::Skill {
+            action: SkillAction::Install,
+        } => skill::install(&skill::target()?, globals.dry_run),
         Builtin::Op(words) => edit::op(&ctx, &words),
     }
 }

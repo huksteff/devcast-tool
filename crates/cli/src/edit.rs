@@ -172,6 +172,7 @@ pub(crate) fn history(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         .map(|c| c.name.chars().count())
         .max()
         .unwrap_or(0);
+    let digits = undo.len().max(redo.len()).to_string().len();
     let mut lines = Vec::new();
     for (title, changes) in [
         ("отменить (devcast undo N):", &undo),
@@ -183,7 +184,7 @@ pub(crate) fn history(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         for (index, change) in changes.iter().enumerate() {
             let name = &change.name;
             lines.push(format!(
-                "  {}  {name:width$}  {}",
+                "  {:>digits$}  {name:width$}  {}",
                 index + 1,
                 change.summary
             ));

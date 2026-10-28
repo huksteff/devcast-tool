@@ -237,6 +237,7 @@ fn help_lists_every_command_on_one_line() {
             "save      Сохранить несохранённые изменения редактора в project.json",
             "info      Сводка проекта: длительность, сохранён ли, сколько объектов в каждом списке",
             "ls        Список объектов (clips, zooms …) с временем по готовому видео",
+            "skill     Установить skill для Claude Code в ~/.claude/skills/devcast",
             "clip add  Добавить клип",
             "clip rm   Удалить клип",
             "Подробнее: devcast help <команда>; всё со схемами: devcast help --json",
@@ -303,7 +304,8 @@ fn help_json_has_schemas_of_ops_project_and_effects() {
     assert_eq!(
         names,
         [
-            "help", "apply", "undo", "redo", "history", "save", "info", "ls", "clip add", "clip rm"
+            "help", "apply", "undo", "redo", "history", "save", "info", "ls", "skill", "clip add",
+            "clip rm"
         ]
     );
     assert!(json["project"]["properties"]["clips"].is_object());

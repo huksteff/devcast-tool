@@ -4,14 +4,14 @@ use dc_project::ProjectDir;
 
 use crate::{Outcome, registry::registry, run};
 
-struct Fixture {
+pub(crate) struct Fixture {
     _tmp: tempfile::TempDir,
-    dir: ProjectDir,
+    pub(crate) dir: ProjectDir,
 }
 
 impl Fixture {
     /// Two recordings, 20 s and 10 s.
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let tmp = tempfile::tempdir().unwrap();
         let dir = ProjectDir::create(tmp.path().join("Урок 2.dcproj")).unwrap();
         let mut project = Project::default();
@@ -39,7 +39,7 @@ impl Fixture {
         Self { _tmp: tmp, dir }
     }
 
-    fn run(&self, line: &str) -> Outcome {
+    pub(crate) fn run(&self, line: &str) -> Outcome {
         let args = line.split(' ').map(str::to_owned).collect();
         run(args, self.dir.root(), &registry().unwrap())
     }
@@ -74,7 +74,7 @@ fn ls_shows_objects_in_output_time_sorted_and_filtered() {
     assert!(f.ok("ls zooms").starts_with("z1  0:10.000–0:13.000"));
     assert!(
         f.ok("ls zooms")
-            .ends_with("z2  вырезан  focus={\"x\":0.5,\"y\":0.5}  mode=follow  scale=1.5"),
+            .ends_with("z2  вырезан  focus.x=0.5  focus.y=0.5  mode=follow  scale=1.5"),
         "cut out objects stay listed, last"
     );
 }

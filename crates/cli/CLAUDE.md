@@ -12,12 +12,13 @@
 - Без редактора CLI — единственный писатель (lock). Правит рабочее состояние: `session.json`, если редактор оставил несохранённое, иначе сразу `project.json`. Событие истории пишется до файла проекта.
 - Короткий вывод по умолчанию (`Applied` одной строкой), `--json` по запросу; ошибка под `--json` — `{"error", "code"}` в stderr.
 - Команды правки (`edit.rs`): команда `ops` и `apply plan.json` — одна запись истории; `undo [n]`, `redo` идут по `History`, на диск пишутся событиями `history.jsonl`; `save` переносит `session.json` в `project.json`. Под `--dry-run` всё делается в памяти без lock и записи.
-- `info` и `ls <список>` (`ls.rs`): списки — `clips` и `Effect::LISTS` эффектов; время объектов — выходное (`TimeMap::output_span`), вырезанные объекты в конце с пометкой «вырезан». Фильтры `--from/--to` по пересечению, `--fields`, страницы `--limit/--offset` с подсказкой следующей.
+- `info` и `ls <список>` (`ls.rs`): списки — `clips` и `Effect::LISTS` эффектов; время объектов — выходное (`TimeMap::output_span`), вырезанные объекты в конце с пометкой «вырезан». Фильтры `--from/--to` по пересечению, `--fields`, страницы `--limit/--offset` с подсказкой следующей. Вложенный объект в тексте — поля через точку (`focus.x=0.5`), JSON только под `--json`.
 - Новый эффект регистрируется одной строкой в `registry.rs`.
+- `skill install` (`skill.rs`) кладёт `skill/SKILL.md` (вшит через `include_str!`) в `~/.claude/skills/devcast/`. Строки `devcast …` в блоках кода SKILL.md и JSON-план оттуда `skill_tests` прогоняет подряд: меняешь команды или их аргументы — правь SKILL.md.
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-cli`. Сценарии — `src/tests.rs` с тестовыми командами `clip add/rm` на временной папке с кириллицей и пробелами; `src/edit_tests.rs` — apply/undo/redo/history/save; `src/ls_tests.rs` — info/ls на настоящем реестре; `tests/binary.rs` проверяет настоящий exe (коды выхода, stdout/stderr).
+- `cargo nextest run -p dc-cli`. Сценарии — `src/tests.rs` с тестовыми командами `clip add/rm` на временной папке с кириллицей и пробелами; `src/edit_tests.rs` — apply/undo/redo/history/save; `src/ls_tests.rs` — info/ls на настоящем реестре; `src/skill_tests.rs` — примеры SKILL.md и установка в временную папку; `src/e2e_tests.rs` — весь сценарий агента одним insta-снимком (после намеренной смены вывода — `INSTA_UPDATE=always cargo nextest run -p dc-cli e2e` и просмотр diff снимка; размер вывода — docs/decisions/014-cli-output.md); `tests/binary.rs` проверяет настоящий exe (коды выхода, stdout/stderr).
 
 ## Куда не лезть
 
@@ -25,4 +26,4 @@
 
 ## Ссылки
 
-- Задачи 2.16–2.19 в docs/roadmap/02-core.md, раздел «CLI» в docs/ARCHITECTURE.md.
+- Задачи 2.16–2.19, 2.23, 2.24 в docs/roadmap/02-core.md, раздел «CLI» в docs/ARCHITECTURE.md.
