@@ -171,12 +171,22 @@ fn row_text(row: &Row) -> String {
     };
     let mut line = format!("{}  {span}", row.id);
     for (key, value) in &row.fields {
-        match value {
-            Value::String(text) => line.push_str(&format!("  {key}={text}")),
-            other => line.push_str(&format!("  {key}={other}")),
-        }
+        push_field(&mut line, key, value);
     }
     line
+}
+
+/// `key=value`; an object becomes one `key.inner=value` per field, so no JSON in plain text.
+fn push_field(line: &mut String, key: &str, value: &Value) {
+    match value {
+        Value::String(text) => line.push_str(&format!("  {key}={text}")),
+        Value::Object(fields) => {
+            for (inner, value) in fields {
+                push_field(line, &format!("{key}.{inner}"), value);
+            }
+        }
+        other => line.push_str(&format!("  {key}={other}")),
+    }
 }
 
 fn row_json(row: &Row) -> Value {

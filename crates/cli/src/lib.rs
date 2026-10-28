@@ -13,6 +13,8 @@ mod skill;
 pub mod workspace;
 
 #[cfg(test)]
+mod e2e_tests;
+#[cfg(test)]
 mod edit_tests;
 #[cfg(test)]
 mod ls_tests;

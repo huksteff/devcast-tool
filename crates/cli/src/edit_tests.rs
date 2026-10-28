@@ -125,3 +125,15 @@ fn save_commits_unsaved_editor_state() {
         done("отменено: клипы +1 c1; длительность 0:01.000→0:00.000")
     );
 }
+
+#[test]
+fn history_numbers_stay_in_one_column() {
+    let f = Fixture::new();
+    for _ in 0..10 {
+        f.run("clip add --secs 1");
+    }
+    let out = f.run("history").stdout;
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines[1], "   1  clip add  клипы +1 c10");
+    assert_eq!(lines[10], "  10  clip add  клипы +1 c1");
+}

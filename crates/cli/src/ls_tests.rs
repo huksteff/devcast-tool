@@ -74,7 +74,7 @@ fn ls_shows_objects_in_output_time_sorted_and_filtered() {
     assert!(f.ok("ls zooms").starts_with("z1  0:10.000–0:13.000"));
     assert!(
         f.ok("ls zooms")
-            .ends_with("z2  вырезан  focus={\"x\":0.5,\"y\":0.5}  mode=follow  scale=1.5"),
+            .ends_with("z2  вырезан  focus.x=0.5  focus.y=0.5  mode=follow  scale=1.5"),
         "cut out objects stay listed, last"
     );
 }
