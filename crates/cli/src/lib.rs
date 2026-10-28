@@ -6,12 +6,15 @@ pub mod find;
 pub mod globals;
 mod help;
 mod help_args;
+mod ls;
 pub mod registry;
 pub mod run;
 pub mod workspace;
 
 #[cfg(test)]
 mod edit_tests;
+#[cfg(test)]
+mod ls_tests;
 #[cfg(test)]
 mod tests;
 

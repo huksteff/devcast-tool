@@ -23,7 +23,7 @@ pub(crate) struct Ctx<'a> {
 }
 
 impl Ctx<'_> {
-    fn open(&self, write: bool) -> Result<Workspace, CliError> {
+    pub(crate) fn open(&self, write: bool) -> Result<Workspace, CliError> {
         let dir = find_project(self.globals.project.as_deref(), self.cwd)?;
         Workspace::open(dir, write && !self.globals.dry_run)
     }
@@ -33,7 +33,7 @@ impl Ctx<'_> {
     }
 }
 
-fn answer(workspace: &mut Workspace, text: String, json: Value) -> Answer {
+pub(crate) fn answer(workspace: &mut Workspace, text: String, json: Value) -> Answer {
     Answer {
         text,
         json,

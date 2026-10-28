@@ -12,11 +12,12 @@
 - Без редактора CLI — единственный писатель (lock). Правит рабочее состояние: `session.json`, если редактор оставил несохранённое, иначе сразу `project.json`. Событие истории пишется до файла проекта.
 - Короткий вывод по умолчанию (`Applied` одной строкой), `--json` по запросу; ошибка под `--json` — `{"error", "code"}` в stderr.
 - Команды правки (`edit.rs`): команда `ops` и `apply plan.json` — одна запись истории; `undo [n]`, `redo` идут по `History`, на диск пишутся событиями `history.jsonl`; `save` переносит `session.json` в `project.json`. Под `--dry-run` всё делается в памяти без lock и записи.
+- `info` и `ls <список>` (`ls.rs`): списки — `clips` и `Effect::LISTS` эффектов; время объектов — выходное (`TimeMap::output_span`), вырезанные объекты в конце с пометкой «вырезан». Фильтры `--from/--to` по пересечению, `--fields`, страницы `--limit/--offset` с подсказкой следующей.
 - Новый эффект регистрируется одной строкой в `registry.rs`.
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-cli`. Сценарии — `src/tests.rs` с тестовыми командами `clip add/rm` на временной папке с кириллицей и пробелами; `src/edit_tests.rs` — apply/undo/redo/history/save; `tests/binary.rs` проверяет настоящий exe (коды выхода, stdout/stderr).
+- `cargo nextest run -p dc-cli`. Сценарии — `src/tests.rs` с тестовыми командами `clip add/rm` на временной папке с кириллицей и пробелами; `src/edit_tests.rs` — apply/undo/redo/history/save; `src/ls_tests.rs` — info/ls на настоящем реестре; `tests/binary.rs` проверяет настоящий exe (коды выхода, stdout/stderr).
 
 ## Куда не лезть
 

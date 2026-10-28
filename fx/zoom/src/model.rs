@@ -1,7 +1,7 @@
 //! Zoom regions and motion settings as stored in `project.effects["zoom"]`.
 
 use dc_core::time::Source;
-use dc_core::{Effect, Id, IdCounter, IdKind, Point, Range, TimeDelta};
+use dc_core::{Effect, Id, IdCounter, IdKind, Item, Point, Range, TimeDelta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +20,15 @@ impl Effect for ZoomEffect {
     const ID: &'static str = "zoom";
     const TITLE: &'static str = "Зум";
     type State = ZoomState;
+    const LISTS: &'static [&'static str] = &[ZoomKind::LIST];
+
+    fn items(state: &ZoomState) -> Vec<Item> {
+        state
+            .zooms
+            .iter()
+            .map(|z| Item::of(z.id, &z.media, z.range, z))
+            .collect()
+    }
 }
 
 /// Id kind of zoom regions (`z1`, `z2`, …).
@@ -30,7 +39,7 @@ impl IdKind for ZoomKind {
     const PREFIX: &'static str = "z";
     const NOUN: &'static str = "зума";
     const PLURAL: &'static str = "зумы";
-    const LIST: &'static str = "ls zooms";
+    const LIST: &'static str = "zooms";
 }
 
 pub type ZoomId = Id<ZoomKind>;

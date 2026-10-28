@@ -9,6 +9,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::id::{IdKind, is_valid_prefix};
+use crate::item::Item;
 use crate::project::{ClipKind, Project};
 
 /// Field of an effect state that holds its user settings (style, smoothness, format …), as opposed
@@ -32,6 +33,14 @@ pub trait Effect: 'static {
         + fmt::Debug
         + Send
         + Sync;
+
+    /// Lists of `devcast ls` this effect fills, e.g. `["zooms"]`.
+    const LISTS: &'static [&'static str] = &[];
+
+    /// Objects of the effect's track, for `devcast ls`.
+    fn items(_state: &Self::State) -> Vec<Item> {
+        Vec::new()
+    }
 }
 
 /// Effect state in the project does not match the effect's schema.
@@ -80,6 +89,10 @@ pub struct EffectInfo {
     pub schema: fn() -> schemars::Schema,
     /// Prefixes of the id kinds this effect owns (e.g. `["z"]` for zoom regions).
     pub id_prefixes: Vec<&'static str>,
+    /// See [`Effect::LISTS`].
+    pub lists: &'static [&'static str],
+    /// Objects of its track in `project`, see [`Effect::items`].
+    pub items: fn(&Project) -> Result<Vec<Item>, StateError>,
 }
 
 impl fmt::Debug for EffectInfo {
@@ -98,6 +111,8 @@ impl EffectInfo {
             title: E::TITLE,
             schema: || schemars::schema_for!(E::State),
             id_prefixes,
+            lists: E::LISTS,
+            items: |project| project.state::<E>().map(|state| E::items(&state)),
         }
     }
 }

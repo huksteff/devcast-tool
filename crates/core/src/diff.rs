@@ -151,7 +151,7 @@ mod tests {
         const PREFIX: &'static str = "z";
         const NOUN: &'static str = "зума";
         const PLURAL: &'static str = "зумы";
-        const LIST: &'static str = "ls zooms";
+        const LIST: &'static str = "zooms";
     }
 
     fn z(n: u32) -> Id<Zoom> {

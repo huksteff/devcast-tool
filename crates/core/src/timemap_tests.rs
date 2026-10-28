@@ -177,3 +177,31 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn output_span_follows_the_recording_through_cuts_splits_and_order() {
+    let mut p = Project::default();
+    add_clip(&mut p, 10.0, vec![r(2.0, 3.0)], vec![]);
+    let mut right = p.clips[0].clone();
+    right.id = p.clip_ids.allocate();
+    p.clips[0].trim = r(0.0, 5.0);
+    p.clips[0].cuts = vec![r(2.0, 3.0)];
+    right.trim = r(5.0, 10.0);
+    right.cuts = Vec::new();
+    add_clip(&mut p, 4.0, vec![], vec![]);
+    p.clips.insert(1, right);
+    let media = p.clips[0].media.path.clone();
+    let map = TimeMap::build(&p);
+    let span = |a, b| {
+        map.output_span(&media, r(a, b))
+            .map(|s| (s.start(), s.end()))
+    };
+    assert_eq!(
+        span(1.0, 4.0),
+        Some((o(1.0), o(3.0))),
+        "cut inside is skipped"
+    );
+    assert_eq!(span(4.0, 6.0), Some((o(3.0), o(5.0))), "across the split");
+    assert_eq!(span(2.0, 3.0), None, "all cut out");
+    assert_eq!(map.output_span("media/none.mp4", r(0.0, 1.0)), None);
+}

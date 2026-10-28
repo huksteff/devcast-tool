@@ -3,7 +3,7 @@
 //! [`OutputTime`]. Effects stay in source time, so cutting never moves them.
 
 use crate::project::{Clip, ClipId, Project};
-use crate::time::{OutputTime, Range, Source, SourceTime, TimeDelta};
+use crate::time::{Output, OutputTime, Range, Source, SourceTime, TimeDelta};
 
 /// A part of one clip's source played at a constant speed, placed on the output.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -26,6 +26,8 @@ impl Segment {
 pub struct TimeMap {
     segments: Vec<Segment>,
     duration: TimeDelta,
+    /// Recording (`Media.path`) of every clip.
+    media: Vec<(ClipId, String)>,
 }
 
 /// `source_len / speed`, rounded to the nearest microsecond.
@@ -56,7 +58,35 @@ impl TimeMap {
         Self {
             segments,
             duration: cursor.since(OutputTime::ZERO),
+            media: project
+                .clips
+                .iter()
+                .map(|c| (c.id, c.media.path.clone()))
+                .collect(),
         }
+    }
+
+    /// Where `range` of recording `media` plays: from the first shown moment to the end of the last
+    /// one; `None` if all of it is cut out or the recording is not on the track.
+    pub fn output_span(&self, media: &str, range: Range<Source>) -> Option<Range<Output>> {
+        let clips: Vec<ClipId> = self
+            .media
+            .iter()
+            .filter(|(_, path)| path == media)
+            .map(|(id, _)| *id)
+            .collect();
+        let shown = self.segments.iter().filter_map(|s| {
+            let part = s
+                .source
+                .intersect(&range)
+                .filter(|_| clips.contains(&s.clip))?;
+            let at = |t: SourceTime| s.output_start + scaled(t.since(s.source.start()), s.speed);
+            Some((at(part.start()), at(part.end())))
+        });
+        let (start, end) = shown.fold(None, |hull: Option<(OutputTime, OutputTime)>, (a, b)| {
+            Some(hull.map_or((a, b), |(start, end)| (start.min(a), end.max(b))))
+        })?;
+        Range::new(start, end).ok()
     }
 
     pub fn duration(&self) -> TimeDelta {

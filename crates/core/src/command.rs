@@ -35,7 +35,7 @@ impl CommandError {
             _ => format!("есть {}", id_list(K::PREFIX, &numbers)),
         };
         Self::new(format!(
-            "{id} не найден ({present}); список: devcast {}",
+            "{id} не найден ({present}); список: devcast ls {}",
             K::LIST
         ))
     }

@@ -12,6 +12,7 @@ use crate::edit::{self, Ctx, Way};
 use crate::error::CliError;
 use crate::globals::{self, Globals};
 use crate::help::help;
+use crate::ls::{self, Query};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Outcome {
@@ -82,6 +83,29 @@ enum Builtin {
         after_help = "save"
     )]
     Save,
+    #[command(
+        about = "Сводка проекта: длительность, сохранён ли, сколько объектов в каждом списке",
+        after_help = "info"
+    )]
+    Info,
+    #[command(
+        about = "Список объектов (clips, zooms …) с временем по готовому видео",
+        after_help = "ls zooms --from 10 --to 1:20 --fields scale,mode"
+    )]
+    Ls {
+        #[arg(help = "Список: clips, zooms …")]
+        list: String,
+        #[arg(long, help = "Только объекты, которые идут после этого момента")]
+        from: Option<String>,
+        #[arg(long, help = "Только объекты, которые начинаются раньше этого момента")]
+        to: Option<String>,
+        #[arg(long, help = "Какие поля показать, через запятую")]
+        fields: Option<String>,
+        #[arg(long, default_value_t = 50, help = "Сколько строк показать")]
+        limit: usize,
+        #[arg(long, default_value_t = 0, help = "Сколько строк пропустить")]
+        offset: usize,
+    },
     /// An op from the registry, e.g. `zoom add --at 12.5`.
     #[command(external_subcommand)]
     Op(Vec<String>),
@@ -153,6 +177,25 @@ fn dispatch(
         Builtin::Redo => edit::travel(&ctx, Way::Redo, 1),
         Builtin::History => edit::history(&ctx),
         Builtin::Save => edit::save(&ctx),
+        Builtin::Info => ls::info(&ctx),
+        Builtin::Ls {
+            list,
+            from,
+            to,
+            fields,
+            limit,
+            offset,
+        } => ls::ls(
+            &ctx,
+            &Query {
+                list,
+                from,
+                to,
+                fields,
+                limit,
+                offset,
+            },
+        ),
         Builtin::Op(words) => edit::op(&ctx, &words),
     }
 }

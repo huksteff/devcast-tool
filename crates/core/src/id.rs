@@ -21,7 +21,7 @@ pub trait IdKind:
     const NOUN: &'static str;
     /// Russian plural in the nominative case for change summaries, e.g. `"зумы"`.
     const PLURAL: &'static str;
-    /// CLI command without `devcast` that lists objects of this kind, e.g. `"ls zooms"`.
+    /// Name of the `devcast ls <list>` list of this kind, e.g. `"zooms"`.
     const LIST: &'static str;
 }
 
@@ -189,7 +189,7 @@ mod tests {
         const PREFIX: &'static str = "z";
         const NOUN: &'static str = "зума";
         const PLURAL: &'static str = "зумы";
-        const LIST: &'static str = "ls zooms";
+        const LIST: &'static str = "zooms";
     }
 
     #[test]
