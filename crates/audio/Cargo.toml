@@ -9,3 +9,15 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+dc-capture = { path = "../capture" }
+dc-core = { path = "../core" }
+ebur128 = "0.1"
+ffmpeg-next = "9"
+rubato = "5"
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true

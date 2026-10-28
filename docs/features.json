@@ -76,8 +76,8 @@
     { "id": "cap.translate", "area": "Субтитры", "title": "Перевод через CLI", "acceptance": "captions export → перевод → captions import сохраняет тайминг реплик.", "verify": ["test", "cli"], "tasks": ["5.27"], "status": "todo" },
 
     { "id": "audio.tracks", "area": "Аудио", "title": "Дополнительные дорожки", "acceptance": "mp3, wav, aac, m4a, flac, ogg; клипы идут по времени выхода.", "verify": ["test", "cli"], "tasks": ["5.37"], "status": "todo" },
-    { "id": "audio.levels", "area": "Аудио", "title": "Громкость и усиление", "acceptance": "Громкость 0–100% и отдельно усиление до 10× без цифрового клиппинга.", "verify": ["test"], "tasks": ["4.7"], "status": "todo" },
-    { "id": "audio.normalize", "area": "Аудио", "title": "Нормализация EBU R128", "acceptance": "Измеренная громкость результата совпадает с целевой.", "verify": ["test"], "tasks": ["4.8"], "status": "todo" },
+    { "id": "audio.levels", "area": "Аудио", "title": "Громкость и усиление", "acceptance": "Громкость 0–100% и отдельно усиление до 10× без цифрового клиппинга.", "verify": ["test"], "tasks": ["4.7"], "status": "pass" },
+    { "id": "audio.normalize", "area": "Аудио", "title": "Нормализация EBU R128", "acceptance": "Измеренная громкость результата совпадает с целевой.", "verify": ["test"], "tasks": ["4.8"], "status": "pass" },
     { "id": "audio.channels", "area": "Аудио", "title": "Каналы записи", "acceptance": "Уровни и mute системного звука и микрофона для каждого клипа.", "verify": ["test", "ui"], "tasks": ["4.7", "5.37", "7.19"], "status": "todo" },
     { "id": "audio.denoise", "area": "Аудио", "title": "Шумоподавление микрофона", "acceptance": "Переключатель на дорожке; исходник не меняется; шум на фикстуре заметно ниже.", "verify": ["test", "manual"], "tasks": ["4.9"], "status": "todo" },
 
