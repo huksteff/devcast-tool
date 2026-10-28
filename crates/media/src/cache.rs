@@ -16,9 +16,9 @@ const SUFFIX: &str = ".probe.json";
 
 /// What the cached probe was built from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-struct Stamp {
-    size: u64,
-    modified_ns: u128,
+pub(crate) struct Stamp {
+    pub(crate) size: u64,
+    pub(crate) modified_ns: u128,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -53,7 +53,7 @@ pub fn cached_probe(project: &ProjectDir, media: &str) -> Result<Probe, MediaErr
     Ok(cached.probe)
 }
 
-fn stamp(file: &Path) -> Result<Stamp, MediaError> {
+pub(crate) fn stamp(file: &Path) -> Result<Stamp, MediaError> {
     let metadata = std::fs::metadata(file).map_err(MediaError::io("прочитать", file))?;
     let modified = metadata
         .modified()

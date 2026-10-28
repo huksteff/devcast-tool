@@ -42,6 +42,12 @@ pub enum MediaError {
         source: ffmpeg_next::Error,
     },
 
+    #[error("не удалось сделать превью видео «{}»: {source}. Удали папку cache/ проекта и открой его снова", path.display())]
+    Preview {
+        path: PathBuf,
+        source: ffmpeg_next::Error,
+    },
+
     #[error("поток декодирования видео «{}» остановился: открой видео заново", path.display())]
     Stopped { path: PathBuf },
 

@@ -5,6 +5,7 @@ pub mod decoder;
 pub mod error;
 pub mod import;
 pub mod pool;
+pub mod preview;
 pub mod probe;
 pub mod seeker;
 
@@ -16,6 +17,7 @@ pub use decoder::{Decoder, Frame, nv12_len};
 pub use error::MediaError;
 pub use import::{VIDEO_EXTENSIONS, import, import_dry_run};
 pub use pool::{Buffer, FramePool};
+pub use preview::{PREVIEW_MAX, preview, project_preview};
 pub use probe::{Probe, StreamInfo, StreamKind, probe};
 pub use seeker::{Precision, Seeker};
 
