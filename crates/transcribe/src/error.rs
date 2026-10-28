@@ -41,6 +41,17 @@ pub enum TranscribeError {
     #[error("загрузка модели отменена; в следующий раз она продолжится с того же места")]
     Cancelled,
 
+    #[error(
+        "Whisper не смог распознать речь: {0}. Проверь, что модель скачана целиком (удали её, она скачается заново); если повторяется, сообщи о баге"
+    )]
+    Whisper(String),
+
+    #[error("путь к модели «{}» не читается Whisper: перенеси папку настроек в путь без необычных символов", .0.display())]
+    ModelPath(PathBuf),
+
+    #[error("не удалось прочитать звук для распознавания: {0}")]
+    Audio(String),
+
     #[error(transparent)]
     Settings(#[from] dc_project::ProjectError),
 }
