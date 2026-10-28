@@ -89,3 +89,7 @@
 DEVCAST_TEST_MONITOR=2 DEVCAST_SYNC_SECONDS=1800 cargo nextest run -p dc-capture --run-ignored=only --no-capture stays_in_sync
 ```
 Если пройдёт — отметить 3.9 в roadmap и `rec.sync` в features.json.
+
+## Одна точка отсчёта времени файла (2026-10-28)
+
+Время исходника всех потоков файла считается от первого кадра видео (`Probe::origin_micros`, единственный источник — `dc_media::probe`): звук = метка FFmpeg − origin. Так делают плееры: метки потоков на общих часах контейнера, сдвиг звука относительно картинки сохраняется. Тест `crates/audio/tests/origin.rs` (вспышка и щелчок, `-itsoffset` 0 / +0,3 / −0,2 с, mp4 flac, mp4 aac, mkv aac): щелчок − вспышка = сдвиг с точностью ≤ 0,3 мс (округление mkv до мс). До исправления mkv с −0,2 с давал расхождение 200 мс, а mp4 со звуком −0,2 с — 8 мс (декодер без `pkt_timebase` обрезал начало кадра по edit list, не сдвигая метку).

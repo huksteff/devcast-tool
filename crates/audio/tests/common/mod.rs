@@ -36,11 +36,27 @@ pub fn make(dir: &Path, name: &str, source: &str, options: &[&str]) -> PathBuf {
     path
 }
 
+/// Makes `name` (mp4) in `dir` as an imported video has it: the sound of the lavfi source
+/// `source` (FLAC, stream 0, extra output `options`) and a tiny black picture (stream 1), both
+/// from 0.
+pub fn clip(dir: &Path, name: &str, source: &str, options: &[&str]) -> PathBuf {
+    let path = dir.join(name);
+    let mut args = vec!["-f", "lavfi", "-i", source, "-f", "lavfi", "-i"];
+    args.extend(["color=c=black:s=16x16:r=10", "-map", "0:a", "-map", "1:v"]);
+    args.extend(["-shortest", "-c:a", "flac", "-c:v", "libx264"]);
+    args.extend_from_slice(options);
+    args.push(path.to_str().unwrap());
+    ffmpeg(&args);
+    path
+}
+
+/// Stream 0 of `path`, read from the start of the file's clock.
 pub fn track(path: &Path) -> SourceTrack {
     SourceTrack {
         name: "test".to_owned(),
         path: path.to_path_buf(),
         stream: 0,
+        origin: 0,
     }
 }
 

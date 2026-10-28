@@ -41,8 +41,11 @@ impl StreamDecoder {
         let time_base = stream.time_base();
         let context = ffmpeg::codec::context::Context::from_parameters(stream.parameters())
             .map_err(AudioError::file("прочитать параметры", path))?;
-        let decoder = context
-            .decoder()
+        let mut decoder = context.decoder();
+        // An edit list trims the start of a frame; the decoder moves the frame's time past the
+        // dropped samples only when it knows the packets' time base.
+        decoder.set_packet_time_base(time_base);
+        let decoder = decoder
             .audio()
             .map_err(AudioError::file("открыть декодер для", path))?;
         Ok(Self {

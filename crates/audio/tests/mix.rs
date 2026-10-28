@@ -3,9 +3,9 @@
 mod common;
 
 use common::project::{
-    add_clip, mixer, range, render_all, sharpest, speech_dir, speech_project, speed,
+    add_clip, mixer, project_dir, range, render_all, sharpest, speech_dir, speech_project, speed,
 };
-use common::{channel, frequency, make, read, track};
+use common::{channel, clip, frequency, read, track};
 use dc_audio::{CHANNELS, Levels, RATE, frame_at, tracks};
 use dc_core::Project;
 
@@ -23,16 +23,16 @@ fn frame(seconds: f64) -> usize {
 #[test]
 fn cut_has_no_click() {
     let dir = tempfile::tempdir().unwrap();
-    make(dir.path(), "tone.flac", TONE, &[]);
+    clip(dir.path(), "tone.mp4", TONE, &[]);
     let mut project = Project::default();
-    add_clip(&mut project, "tone.flac", 4.0).cuts = vec![range(1.0037, 1.6211)];
+    add_clip(&mut project, "tone.mp4", 4.0).cuts = vec![range(1.0037, 1.6211)];
     let mut mixer = mixer(dir.path(), &project, &Levels::default());
     assert_eq!(mixer.frames(), frame_at(4_000_000 - 617_400));
     let left = channel(&render_all(&mut mixer, 1024), 0);
     let join = frame(1.0037);
     let at_join = sharpest(&left, join - 480, join + 480);
     let source = channel(
-        &read(&track(&dir.path().join("tone.flac")), 0, 4 * 48_000, 4096),
+        &read(&track(&dir.path().join("tone.mp4")), 0, 4 * 48_000, 4096),
         0,
     );
     let hard_cut = (source[frame(1.6211)] - source[frame(1.0037) - 1]).abs();
@@ -51,12 +51,12 @@ fn cut_has_no_click() {
 #[test]
 fn join_inside_continuous_sound_is_transparent() {
     let dir = tempfile::tempdir().unwrap();
-    make(dir.path(), "tone.flac", TONE, &[]);
+    clip(dir.path(), "tone.mp4", TONE, &[]);
     let mut project = Project::default();
-    add_clip(&mut project, "tone.flac", 4.0).trim = range(0.0, 1.5);
-    add_clip(&mut project, "tone.flac", 4.0).trim = range(1.5, 4.0);
+    add_clip(&mut project, "tone.mp4", 4.0).trim = range(0.0, 1.5);
+    add_clip(&mut project, "tone.mp4", 4.0).trim = range(1.5, 4.0);
     let mixed = render_all(&mut mixer(dir.path(), &project, &Levels::default()), 1000);
-    let source = read(&track(&dir.path().join("tone.flac")), 0, 4 * 48_000, 4096);
+    let source = read(&track(&dir.path().join("tone.mp4")), 0, 4 * 48_000, 4096);
     let worst = mixed
         .iter()
         .zip(&source)
@@ -70,10 +70,10 @@ fn join_inside_continuous_sound_is_transparent() {
 #[test]
 fn speed_keeps_pitch_length_and_joins() {
     let dir = tempfile::tempdir().unwrap();
-    make(dir.path(), "tone.flac", TONE, &[]);
+    clip(dir.path(), "tone.mp4", TONE, &[]);
     for factor in [0.25, 2.0, 16.0] {
         let mut project = Project::default();
-        add_clip(&mut project, "tone.flac", 4.0).speeds = vec![speed(1.0, 2.0, factor)];
+        add_clip(&mut project, "tone.mp4", 4.0).speeds = vec![speed(1.0, 2.0, factor)];
         let mut mixer = mixer(dir.path(), &project, &Levels::default());
         let length = 3.0 + 1.0 / factor;
         assert_eq!(mixer.frames(), frame_at((length * 1e6).round() as i64));
@@ -93,10 +93,10 @@ fn speed_keeps_pitch_length_and_joins() {
 fn jumps_give_the_same_samples_as_playing_through() {
     let dir = tempfile::tempdir().unwrap();
     let source = "anoisesrc=sample_rate=44100:duration=4:amplitude=0.5:seed=3";
-    make(dir.path(), "noise.wav", source, &["-ac", "2"]);
+    clip(dir.path(), "noise.mp4", source, &["-ac", "2"]);
     let mut project = Project::default();
-    add_clip(&mut project, "noise.wav", 4.0).cuts = vec![range(0.5, 0.7), range(2.0, 2.9)];
-    add_clip(&mut project, "noise.wav", 4.0).trim = range(1.0, 3.0);
+    add_clip(&mut project, "noise.mp4", 4.0).cuts = vec![range(0.5, 0.7), range(2.0, 2.9)];
+    add_clip(&mut project, "noise.mp4", 4.0).trim = range(1.0, 3.0);
     let mut mixer = mixer(dir.path(), &project, &Levels::default());
     let through = render_all(&mut mixer, 1024);
     for start in [100_000_i64, 3_000, 140_000, 23_999, 90_000] {
@@ -114,7 +114,7 @@ fn recording_mixes_system_and_mic() {
     let mut mixer = mixer(&dir, &project, &Levels::default());
     assert_eq!(mixer.frames(), frame_at(20_016_666));
     let mixed = render_all(&mut mixer, 4800);
-    let found = tracks(&dir, &project.clips[0].media).unwrap();
+    let found = tracks(&project_dir(&dir), &project.clips[0].media).unwrap();
     let frames = mixer.frames() as usize;
     let system = read(&found[0], 0, frames, 48_000);
     let mic = read(&found[1], 0, frames, 48_000);

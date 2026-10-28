@@ -22,3 +22,4 @@ Thumbs.db
 # Блокировка проектов-фикстур: состояние процесса, а не данные
 /fixtures/**/lock
 /fixtures/**/lock-owner.json
+/fixtures/**/cache/

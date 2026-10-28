@@ -1,5 +1,7 @@
 //! Atomic file replacement: write a temporary file next to the target, flush it to disk, then
-//! rename over the target. A crash leaves either the old file or the new one, never a mix.
+//! rename over the target. A crash leaves either the old file or the new one, never a mix. The
+//! temporary file is named after the process, so two processes writing the same file (the app
+//! and the CLI filling one probe cache) do not open each other's.
 
 use std::io::Write;
 use std::path::Path;
@@ -8,7 +10,7 @@ use crate::error::{ProjectError, Result};
 
 pub fn write(path: &Path, bytes: &[u8]) -> Result<()> {
     let mut tmp = path.as_os_str().to_owned();
-    tmp.push(".tmp");
+    tmp.push(format!(".{}.tmp", std::process::id()));
     let tmp = std::path::PathBuf::from(tmp);
     {
         let mut file = std::fs::File::create(&tmp).map_err(ProjectError::io("создать", &tmp))?;
