@@ -7,14 +7,14 @@
 
 use windows::Win32::Foundation::POINT;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    ACTIVATE_KEYBOARD_LAYOUT_FLAGS, ActivateKeyboardLayout, GetKeyboardLayoutList, HKL, INPUT,
-    INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_KEYUP,
-    MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_MOVE, MOUSEEVENTF_VIRTUALDESK, MOUSEINPUT,
-    SendInput, VIRTUAL_KEY,
+    GetKeyboardLayout, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT,
+    KEYEVENTF_KEYUP, MAPVK_VK_TO_CHAR, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_MOVE,
+    MOUSEEVENTF_VIRTUALDESK, MOUSEINPUT, MapVirtualKeyExW, SendInput, VIRTUAL_KEY,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetPhysicalCursorPos, GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
-    SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SetPhysicalCursorPos,
+    GetForegroundWindow, GetPhysicalCursorPos, GetSystemMetrics, GetWindowThreadProcessId,
+    SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
+    SetPhysicalCursorPos,
 };
 
 /// Puts the pointer back where it was, also on panic.
@@ -99,17 +99,29 @@ pub fn chord_inputs(keys: &[u16]) -> Vec<INPUT> {
     downs.chain(ups).collect()
 }
 
-/// Synthetic keys are virtual-key codes: `A` types «ф» in a Russian layout. Call on the thread
-/// of the window that takes the keys: it switches to an installed English (US) layout for that
-/// thread only; the user's layout list does not change.
-pub fn english_layout() {
-    let mut layouts = [HKL::default(); 64];
-    // SAFETY: fills the array with the layouts installed for the user.
-    let count = unsafe { GetKeyboardLayoutList(Some(&mut layouts)) } as usize;
-    let english = layouts[..count]
-        .iter()
-        .find(|hkl| (hkl.0 as usize & 0xFFFF) == 0x0409)
-        .expect("add the English (US) keyboard layout in Windows: synthetic typing needs it");
-    // SAFETY: activates an installed layout for this thread only (no KLF_SETFORPROCESS).
-    unsafe { ActivateKeyboardLayout(*english, ACTIVATE_KEYBOARD_LAYOUT_FLAGS(0)) }.unwrap();
+/// What typing the ASCII `text` key by key gives in the keyboard layout of the foreground
+/// window: synthetic keys are virtual-key codes, and `A` types «ф» in a Russian layout. The
+/// layout is the user's setting, so tests compare with this instead of switching it.
+pub fn as_typed(text: &str) -> String {
+    // SAFETY: reads the foreground window, its thread and that thread's keyboard layout.
+    let layout = unsafe {
+        let thread = GetWindowThreadProcessId(GetForegroundWindow(), None);
+        GetKeyboardLayout(thread)
+    };
+    text.chars()
+        .map(|c| {
+            if !c.is_ascii_alphabetic() {
+                return c;
+            }
+            let vk = u32::from(c.to_ascii_uppercase());
+            // SAFETY: a pure lookup in the given layout.
+            let mapped = unsafe { MapVirtualKeyExW(vk, MAPVK_VK_TO_CHAR, Some(layout)) };
+            let base = char::from_u32(mapped & 0xFFFF).unwrap_or(c);
+            if c.is_ascii_uppercase() {
+                base.to_uppercase().next().unwrap_or(base)
+            } else {
+                base.to_lowercase().next().unwrap_or(base)
+            }
+        })
+        .collect()
 }

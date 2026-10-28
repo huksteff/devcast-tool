@@ -23,6 +23,7 @@ dc-ipc = { path = "../ipc" }
 dc-media = { path = "../media" }
 dc-ops = { path = "../ops" }
 dc-project = { path = "../project" }
+dc-transcribe = { path = "../transcribe" }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true

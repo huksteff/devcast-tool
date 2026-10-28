@@ -275,7 +275,7 @@ fn typed_text_is_not_recorded_and_shortcuts_are() {
         "typed into the window: {:?}; keys.bin: {keys:?}; {summary:?}",
         Target::typed()
     );
-    assert_eq!(Target::typed(), "abcA");
+    assert_eq!(Target::typed(), common::synthetic::as_typed("abcA"));
     let with = |key: u8, ctrl, shift| KeyEvent {
         key: u16::from(key),
         modifiers: Modifiers {

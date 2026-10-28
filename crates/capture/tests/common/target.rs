@@ -119,7 +119,6 @@ fn run(x: i32, y: i32, width: i32, height: i32, created: &mpsc::Sender<isize>) {
             ..Default::default()
         };
         RegisterClassW(&class);
-        crate::common::synthetic::english_layout();
         let hwnd = CreateWindowExW(
             WS_EX_TOPMOST,
             w!("devcast-input-target"),

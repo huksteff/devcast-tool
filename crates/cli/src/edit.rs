@@ -44,7 +44,12 @@ pub(crate) fn answer(workspace: &mut Workspace, text: String, json: Value) -> An
 /// `devcast <op> [args]`: one op as one undo step.
 pub(crate) fn op(ctx: &Ctx<'_>, words: &[String]) -> Result<Answer, CliError> {
     let (info, taken) = ctx.registry.resolve(words)?;
-    let fields = dc_ops::parse_args(info, &words[taken..])?;
+    let args = if info.name == "cut" {
+        crate::transcript::word_ranges(ctx, &words[taken..])?
+    } else {
+        words[taken..].to_vec()
+    };
+    let fields = dc_ops::parse_args(info, &args)?;
     apply_steps(ctx, &[Step::new(info.name, fields)])
 }
 

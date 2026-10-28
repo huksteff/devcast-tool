@@ -19,6 +19,7 @@ mod silences;
 mod skill;
 mod sources;
 mod telemetry;
+mod transcript;
 pub mod workspace;
 
 #[cfg(test)]
@@ -77,3 +78,5 @@ pub fn main_outcome(args: Vec<OsString>) -> Outcome {
 }
 #[cfg(test)]
 mod silences_tests;
+#[cfg(test)]
+mod transcript_tests;

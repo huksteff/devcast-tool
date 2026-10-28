@@ -136,3 +136,40 @@ pub fn find(
         })
         .collect())
 }
+
+/// Frames of the loudness window when looking for the quietest moment: 10 ms.
+const QUIET_WINDOW: usize = RATE as usize / 100;
+
+/// The quietest moment of `track` within `reach` of `around` (the middle of the 10 ms window
+/// with the least RMS, in 1 ms steps): where a cut between words does not split a sound.
+pub fn quietest(
+    track: &SourceTrack,
+    around: SourceTime,
+    reach: TimeDelta,
+) -> Result<SourceTime, AudioError> {
+    let center = frame_at(around.micros());
+    let reach = frame_at(reach.micros());
+    let first = center - reach - QUIET_WINDOW as i64 / 2;
+    let frames = (2 * reach) as usize + QUIET_WINDOW;
+    let mut samples = vec![0.0; frames * CHANNELS];
+    TrackReader::open(track)?.fill(first, &mut samples)?;
+    let step = RATE as usize / 1000;
+    let energy = |at: usize| -> f64 {
+        samples[at * CHANNELS..(at + QUIET_WINDOW) * CHANNELS]
+            .iter()
+            .map(|s| f64::from(*s).powi(2))
+            .sum()
+    };
+    // Ties go to the moment closest to `around`.
+    let best = (0..=2 * reach as usize)
+        .step_by(step)
+        .min_by(|a, b| {
+            energy(*a).total_cmp(&energy(*b)).then_with(|| {
+                let distance = |x: usize| (x as i64 - reach).abs();
+                distance(*a).cmp(&distance(*b))
+            })
+        })
+        .unwrap_or(reach as usize);
+    let frame = first + (best + QUIET_WINDOW / 2) as i64;
+    Ok(SourceTime::from_micros(frame * 1_000_000 / i64::from(RATE)))
+}

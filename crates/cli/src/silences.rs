@@ -125,7 +125,7 @@ fn search(
     Ok(found)
 }
 
-fn pick(
+pub(crate) fn pick(
     mut available: Vec<SourceTrack>,
     wanted: Option<&String>,
     media: &str,

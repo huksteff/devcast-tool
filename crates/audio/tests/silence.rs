@@ -87,3 +87,29 @@ fn matches_hand_marked_pauses_of_speech() {
         );
     }
 }
+
+#[test]
+fn quietest_moment_is_in_the_gap_between_sounds() {
+    let dir = tempfile::tempdir().unwrap();
+    // Sound until 1.0 s, a 40 ms gap, sound again.
+    let source = "aevalsrc='0.5*sin(2*PI*440*t)*(lt(t,1)+gte(t,1.04))':s=48000:d=2";
+    let path = make(dir.path(), "gap.flac", source, &["-ac", "2"]);
+    let around = dc_core::SourceTime::from_secs_f64(1.1);
+    let reach = dc_core::TimeDelta::from_millis(150);
+    let found = silence::quietest(&track(&path), around, reach)
+        .unwrap()
+        .as_secs_f64();
+    // Any quiet window inside the 1.00–1.04 gap; of equals, the one nearest to 1.1.
+    assert!((found - 1.035).abs() <= 0.001, "{found}");
+    let calm = silence::quietest(
+        &track(&path),
+        dc_core::SourceTime::from_secs_f64(1.6),
+        reach,
+    )
+    .unwrap()
+    .as_secs_f64();
+    assert!(
+        (1.45..=1.75).contains(&calm),
+        "no gap near: stays within reach, {calm}"
+    );
+}

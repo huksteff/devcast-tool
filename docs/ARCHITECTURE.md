@@ -145,7 +145,7 @@ devcast ls sources                               # мониторы, окна, �
 devcast new <video...> -o name.dcproj | clip add <video...> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
 devcast info | save
 devcast ls <zooms|clips|annots|captions|tracks|clicks> [--from --to] [--fields]
-devcast transcript [--from --to] [--words]       # текст с таймкодами и id слов
+devcast transcript [--from --to] [--words] [--model fast|accurate] [--language ru] [--track mic]   # реплики или слова с id
 devcast silences [--min 0.5] [--db -30] [--track mic] [--from --to]   # паузы по готовому видео
 devcast events <clicks|keys|activity> [--from --to]
 devcast cut <10.2-12.5,...|w120-w135> [--dry-run]
