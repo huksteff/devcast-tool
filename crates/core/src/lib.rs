@@ -1,5 +1,6 @@
 //! Time, ids, geometry, Project, Effect and Command traits, history, time map. No IO, no GPU.
 
+pub mod arg;
 pub mod command;
 pub mod diff;
 pub mod effect;
@@ -10,6 +11,7 @@ pub mod project;
 pub mod time;
 pub mod timemap;
 
+pub use arg::{RangeArg, RangesArg, TimeArg};
 pub use command::{Command, CommandError, Op, OpInfo};
 pub use diff::Diff;
 pub use effect::{Effect, EffectInfo, EffectRegistry, StateError};
