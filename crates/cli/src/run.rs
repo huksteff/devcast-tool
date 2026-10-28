@@ -16,7 +16,7 @@ use crate::ls::{self, Query};
 use crate::record;
 use crate::record_args::RecordArgs;
 use crate::record_control::Control;
-use crate::{events, import, skill, sources};
+use crate::{autozoom, events, import, skill, sources};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Outcome {
@@ -146,6 +146,12 @@ enum Builtin {
         #[command(subcommand)]
         command: ClipCommand,
     },
+    /// `zoom suggest`; the other `zoom …` commands are ops of the registry.
+    #[command(disable_help_subcommand = true)]
+    Zoom {
+        #[command(subcommand)]
+        command: ZoomCommand,
+    },
     #[command(
         about = "Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
         after_help = "record --source screen:1 --duration 10 -o урок.dcproj"
@@ -185,6 +191,18 @@ enum ClipCommand {
         videos: Vec<PathBuf>,
     },
     /// `clip move`, `clip split` … from the registry.
+    #[command(external_subcommand)]
+    Op(Vec<String>),
+}
+
+#[derive(Debug, Subcommand)]
+enum ZoomCommand {
+    #[command(
+        about = "Предложить автозумы по группам кликов, ничего не меняя; добавить их — zoom add --at clicks",
+        after_help = "zoom suggest"
+    )]
+    Suggest,
+    /// `zoom add`, `zoom set` … from the registry.
     #[command(external_subcommand)]
     Op(Vec<String>),
 }
@@ -283,6 +301,12 @@ fn dispatch(
         Builtin::Clip {
             command: ClipCommand::Op(words),
         } => edit::op(&ctx, &[vec!["clip".to_owned()], words].concat()),
+        Builtin::Zoom {
+            command: ZoomCommand::Suggest,
+        } => autozoom::suggest(&ctx),
+        Builtin::Zoom {
+            command: ZoomCommand::Op(words),
+        } => autozoom::op(&ctx, &[vec!["zoom".to_owned()], words].concat()),
         Builtin::Record { control, args } => record::record(&ctx, control, &args),
         Builtin::Ls {
             list,

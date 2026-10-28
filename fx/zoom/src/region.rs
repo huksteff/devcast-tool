@@ -25,7 +25,8 @@ fn center() -> f64 {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ZoomAdd {
-    /// Start on the output video.
+    /// Start on the output video. `clicks` (CLI only) — the zooms of `devcast zoom suggest`
+    /// on clusters of clicks, one undo step; then only `scale` and `mode` apply.
     pub at: TimeArg<Output>,
     /// Length, seconds of the output video.
     #[serde(default = "one_second")]

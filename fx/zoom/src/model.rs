@@ -84,6 +84,8 @@ pub struct ZoomSettings {
     pub motion_blur: f64,
     /// Close zooms hand over to each other without zooming out in between.
     pub connect: bool,
+    /// Zooms on clusters of clicks are added right after a recording.
+    pub auto: bool,
 }
 
 /// Ready-made zoom-in and zoom-out durations.
@@ -127,6 +129,7 @@ impl Default for ZoomSettings {
             smoothness: 0.5,
             motion_blur: 0.35,
             connect: true,
+            auto: true,
         }
     }
 }

@@ -60,7 +60,7 @@ pub(crate) fn plan(ctx: &Ctx<'_>, path: &Path) -> Result<Answer, CliError> {
     apply_steps(ctx, &dc_ops::parse_plan(&text)?)
 }
 
-fn apply_steps(ctx: &Ctx<'_>, steps: &[Step]) -> Result<Answer, CliError> {
+pub(crate) fn apply_steps(ctx: &Ctx<'_>, steps: &[Step]) -> Result<Answer, CliError> {
     let mut workspace = ctx.open(true)?;
     let applied = dc_ops::apply(
         ctx.registry,

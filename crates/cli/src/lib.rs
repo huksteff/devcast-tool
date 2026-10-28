@@ -1,5 +1,6 @@
 //! devcast command-line tool: edit, analyse, render and export projects.
 
+mod autozoom;
 mod edit;
 pub mod error;
 mod events;
@@ -19,6 +20,8 @@ mod sources;
 mod telemetry;
 pub mod workspace;
 
+#[cfg(test)]
+mod autozoom_tests;
 #[cfg(test)]
 mod e2e_tests;
 #[cfg(test)]
