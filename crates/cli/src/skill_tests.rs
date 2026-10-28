@@ -1,11 +1,11 @@
-use crate::ls_tests::Fixture;
 use crate::skill::{SKILL, install};
+use crate::test_util::Recordings;
 
 /// Every `devcast …` line of SKILL.md's code blocks runs, in order, on a 30 s two-clip project;
 /// the JSON block is the plan.
 #[test]
 fn skill_examples_run() {
-    let f = Fixture::new();
+    let f = Recordings::new();
     let mut transcript = String::new();
     for block in SKILL.split("```").skip(1).step_by(2) {
         if let Some(plan) = block.strip_prefix("json") {

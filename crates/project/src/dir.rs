@@ -25,34 +25,50 @@ const FOLDERS: [&str; 3] = ["media", "assets", "cache"];
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectDir {
     root: PathBuf,
+    name: String,
 }
 
 impl ProjectDir {
     /// Creates a new folder with an empty project. Fails if the folder already exists.
     pub fn create(root: impl Into<PathBuf>) -> Result<Self> {
-        let dir = Self { root: root.into() };
-        if dir.root.exists() {
-            return Err(ProjectError::AlreadyExists { path: dir.root });
+        let root = root.into();
+        if root.exists() {
+            return Err(ProjectError::AlreadyExists { path: root });
         }
         for folder in FOLDERS {
-            let path = dir.root.join(folder);
+            let path = root.join(folder);
             std::fs::create_dir_all(&path).map_err(ProjectError::io("создать папку", &path))?;
         }
-        atomic::write_json(&dir.file(PROJECT_FILE), &Project::default())?;
-        Ok(dir)
+        atomic::write_json(&root.join(PROJECT_FILE), &Project::default())?;
+        Self::named(root)
     }
 
     /// Opens an existing project folder (does not read the project yet).
     pub fn open(root: impl Into<PathBuf>) -> Result<Self> {
-        let dir = Self { root: root.into() };
-        if !dir.file(PROJECT_FILE).is_file() {
-            return Err(ProjectError::NotAProject { path: dir.root });
+        let root = root.into();
+        if !root.join(PROJECT_FILE).is_file() {
+            return Err(ProjectError::NotAProject { path: root });
         }
-        Ok(dir)
+        Self::named(root)
+    }
+
+    /// The folder's own name, also when `root` is given as `..` or `.`.
+    fn named(root: PathBuf) -> Result<Self> {
+        let full = std::fs::canonicalize(&root).map_err(ProjectError::io("открыть", &root))?;
+        let Some(name) = full.file_name() else {
+            return Err(ProjectError::NotAProject { path: root });
+        };
+        let name = name.to_string_lossy().into_owned();
+        Ok(Self { root, name })
     }
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    /// Folder name, e.g. `Урок 1.dcproj`.
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn file(&self, name: &str) -> PathBuf {
@@ -166,16 +182,12 @@ fn copy_tree(from: &Path, to: &Path) -> Result<()> {
     std::fs::create_dir_all(to).map_err(ProjectError::io("создать папку", to))?;
     let entries = std::fs::read_dir(from).map_err(ProjectError::io("прочитать папку", from))?;
     for entry in entries {
-        let path = entry
-            .map_err(ProjectError::io("прочитать папку", from))?
-            .path();
-        let Some(name) = path.file_name() else {
-            continue;
-        };
+        let entry = entry.map_err(ProjectError::io("прочитать папку", from))?;
+        let (path, target) = (entry.path(), to.join(entry.file_name()));
         if path.is_dir() {
-            copy_tree(&path, &to.join(name))?;
+            copy_tree(&path, &target)?;
         } else {
-            std::fs::copy(&path, to.join(name)).map_err(ProjectError::io("скопировать", &path))?;
+            std::fs::copy(&path, target).map_err(ProjectError::io("скопировать", &path))?;
         }
     }
     Ok(())

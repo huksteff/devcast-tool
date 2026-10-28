@@ -1,6 +1,6 @@
 //! The whole CLI session an agent would run on a two-clip project, as one readable snapshot.
 
-use crate::ls_tests::Fixture;
+use crate::test_util::Recordings;
 
 const PLAN: &str = r#"[
   {"op": "zoom set", "id": "z1", "scale": 2},
@@ -32,7 +32,7 @@ const SCENARIO: &[&str] = &[
 
 #[test]
 fn scenario_output_is_short_and_readable() {
-    let f = Fixture::new();
+    let f = Recordings::new();
     std::fs::write(f.dir.root().join("план.json"), PLAN).unwrap();
     let mut log = String::new();
     for line in SCENARIO {

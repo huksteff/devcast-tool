@@ -2,6 +2,7 @@
 //! for `devcast ls`: id, recording, source range and the rest of their fields.
 
 use serde::Serialize;
+use serde::ser::Error as _;
 use serde_json::{Map, Value};
 
 use crate::id::{Id, IdKind};
@@ -21,27 +22,28 @@ pub struct Item {
 
 impl Item {
     /// `object` as stored, without its `id`, `media` and `range` fields, which the item has itself.
-    /// `object` is a struct, so it serializes to a JSON object.
+    /// Fails if `object` does not serialize to a JSON object.
     pub fn of<K: IdKind>(
         id: Id<K>,
         media: &str,
         range: Range<Source>,
         object: &impl Serialize,
-    ) -> Self {
-        let mut fields = match serde_json::to_value(object) {
-            Ok(Value::Object(fields)) => fields,
-            _ => Map::new(),
+    ) -> Result<Self, serde_json::Error> {
+        let Value::Object(mut fields) = serde_json::to_value(object)? else {
+            return Err(serde_json::Error::custom(format!(
+                "{id}: объект дорожки должен быть JSON-объектом"
+            )));
         };
         for key in ["id", "media", "range"] {
             fields.remove(key);
         }
-        Self {
+        Ok(Self {
             id: id.to_string(),
             list: K::LIST,
             media: media.to_owned(),
             range,
             fields,
-        }
+        })
     }
 }
 
@@ -73,7 +75,8 @@ mod tests {
             "media/a.mp4",
             range,
             &object,
-        );
+        )
+        .unwrap();
         assert_eq!((item.id.as_str(), item.list), ("c4", "clips"));
         assert_eq!(
             Value::Object(item.fields),

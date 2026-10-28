@@ -1,4 +1,4 @@
-use crate::tests::{Fixture, done};
+use crate::test_util::{Fixture, done};
 
 fn plan(f: &Fixture, name: &str, text: &str) -> String {
     let path = f.cwd.join(name);

@@ -1,7 +1,7 @@
 //! Output time → the clips and source ranges it shows, through [`TimeMap`] only.
 
 use dc_core::time::{Output, Source, Time, Timeline};
-use dc_core::{ClipId, CommandError, OutputTime, Project, Range, SourceTime, TimeMap};
+use dc_core::{ClipId, CommandError, OutputTime, Project, Range, TimeMap};
 
 /// The source material shown in `range` of the output: one range per clip, in track order. A range
 /// spans the clip's old cuts inside it, so cutting or speeding it up leaves no slivers between them.
@@ -31,12 +31,12 @@ pub fn source_spans(
         .filter(|s| s.output_start < range.end() && range.start() < s.output_end());
     for segment in shown {
         let start = if range.start() > segment.output_start {
-            source_at(&map, range.start())?
+            segment.source_at(range.start())
         } else {
             segment.source.start()
         };
         let end = if range.end() < segment.output_end() {
-            source_at(&map, range.end())?
+            segment.source_at(range.end())
         } else {
             segment.source.end()
         };
@@ -47,12 +47,6 @@ pub fn source_spans(
     }
     spans.retain(|(_, span)| !span.is_empty());
     Ok(spans)
-}
-
-fn source_at(map: &TimeMap, t: OutputTime) -> Result<SourceTime, CommandError> {
-    map.to_source(t)
-        .map(|(_, source)| source)
-        .ok_or_else(|| CommandError::new(format!("внутренняя ошибка: {t} не найден на дорожке")))
 }
 
 pub fn range_of<K: Timeline>(start: Time<K>, end: Time<K>) -> Result<Range<K>, CommandError> {

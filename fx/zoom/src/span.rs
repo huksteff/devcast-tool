@@ -2,7 +2,7 @@
 //! time, so clips split from one recording share their zooms.
 
 use dc_core::time::Source;
-use dc_core::{ClipId, CommandError, OutputTime, Project, Range, SourceTime, TimeDelta, TimeMap};
+use dc_core::{CommandError, OutputTime, Project, Range, SourceTime, TimeDelta, TimeMap};
 
 /// A moment of one recording: `Media.path` and source time.
 pub type Edge = (String, SourceTime);
@@ -10,7 +10,6 @@ pub type Edge = (String, SourceTime);
 /// The output timeline of a project, for turning command times into zoom edges.
 pub struct Timeline {
     map: TimeMap,
-    media: Vec<(ClipId, String)>,
 }
 
 impl Timeline {
@@ -21,22 +20,7 @@ impl Timeline {
                 "в проекте нет клипов: сначала добавь видео (devcast clip add)",
             ));
         }
-        Ok(Self {
-            map,
-            media: project
-                .clips
-                .iter()
-                .map(|c| (c.id, c.media.path.clone()))
-                .collect(),
-        })
-    }
-
-    /// Recording of `clip`; every clip of the time map is in `media`.
-    fn media_of(&self, clip: ClipId) -> &str {
-        self.media
-            .iter()
-            .find(|(id, _)| *id == clip)
-            .map_or("", |(_, path)| path.as_str())
+        Ok(Self { map })
     }
 
     fn end_of_video(&self) -> OutputTime {
@@ -55,13 +39,13 @@ impl Timeline {
     /// The source moment shown at `t`.
     pub fn start(&self, t: OutputTime) -> Result<Edge, CommandError> {
         let t = Self::output(t)?;
-        let (clip, source) = self.map.to_source(t).ok_or_else(|| {
+        let segment = self.map.segment_at(t).ok_or_else(|| {
             CommandError::new(format!(
                 "начало зума {t} не раньше конца видео ({}): укажи время меньше",
                 self.end_of_video()
             ))
         })?;
-        Ok((self.media_of(clip).to_owned(), source))
+        Ok((segment.media.clone(), segment.source_at(t)))
     }
 
     /// The exclusive source end of what is shown before `t`: at the end of a segment it stays in
@@ -75,7 +59,7 @@ impl Timeline {
             )));
         }
         if let Some(segment) = self.map.segments().iter().find(|s| s.output_end() == t) {
-            return Ok((self.media_of(segment.clip).to_owned(), segment.source.end()));
+            return Ok((segment.media.clone(), segment.source.end()));
         }
         self.start(t)
     }
@@ -88,8 +72,8 @@ impl Timeline {
                 .map
                 .segments()
                 .iter()
-                .skip_while(|s| self.media_of(s.clip) != media || !s.source.contains(from))
-                .find(|s| self.media_of(s.clip) != media)
+                .skip_while(|s| s.media != media || !s.source.contains(from))
+                .find(|s| s.media != media)
                 .map_or(self.end_of_video(), |s| s.output_start);
             return Err(CommandError::new(format!(
                 "зум переходит через стык клипов разных записей в {joint}: раздели его на два зума"

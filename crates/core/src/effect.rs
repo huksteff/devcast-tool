@@ -38,8 +38,8 @@ pub trait Effect: 'static {
     const LISTS: &'static [&'static str] = &[];
 
     /// Objects of the effect's track, for `devcast ls`.
-    fn items(_state: &Self::State) -> Vec<Item> {
-        Vec::new()
+    fn items(_state: &Self::State) -> Result<Vec<Item>, serde_json::Error> {
+        Ok(Vec::new())
     }
 }
 
@@ -112,7 +112,13 @@ impl EffectInfo {
             schema: || schemars::schema_for!(E::State),
             id_prefixes,
             lists: E::LISTS,
-            items: |project| project.state::<E>().map(|state| E::items(&state)),
+            items: |project| {
+                let state = project.state::<E>()?;
+                E::items(&state).map_err(|e| StateError {
+                    effect: E::ID,
+                    message: e.to_string(),
+                })
+            },
         }
     }
 }

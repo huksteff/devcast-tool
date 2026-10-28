@@ -1,15 +1,8 @@
 use proptest::prelude::*;
 
 use super::*;
-use crate::project::{Media, MediaKind, SpeedRange};
-
-fn t(secs: f64) -> SourceTime {
-    SourceTime::from_secs_f64(secs)
-}
-
-fn r(a: f64, b: f64) -> Range<Source> {
-    Range::new(t(a), t(b)).unwrap()
-}
+use crate::project::SpeedRange;
+use crate::test_util::{clip, r, t};
 
 fn add_clip(
     p: &mut Project,
@@ -17,23 +10,9 @@ fn add_clip(
     cuts: Vec<Range<Source>>,
     speeds: Vec<SpeedRange>,
 ) -> ClipId {
-    let id = p.clip_ids.allocate();
-    p.clips.push(Clip {
-        id,
-        media: Media {
-            path: format!("media/{id}.mp4"),
-            kind: MediaKind::Recording,
-            duration: TimeDelta::from_secs_f64(duration),
-            size: crate::geom::PixelSize {
-                width: 1920,
-                height: 1080,
-            },
-        },
-        trim: r(0.0, duration),
-        cuts,
-        speeds,
-        crop: crate::geom::Rect::FULL,
-    });
+    let id = clip(p, duration);
+    let added = p.clips.last_mut().unwrap();
+    (added.cuts, added.speeds) = (cuts, speeds);
     id
 }
 
@@ -158,7 +137,7 @@ proptest! {
         let back = map.to_output(id, src).unwrap();
         // Source time has 1 µs resolution; in slow motion (speed < 1) one source µs spans
         // 1/speed output µs, so the round trip may land up to ceil(1/speed) µs away.
-        let speed = map.segments().iter().find(|s| s.output_start <= out && out < s.output_end()).unwrap().speed;
+        let speed = map.segment_at(out).unwrap().speed;
         let tolerance = (1.0 / speed).ceil() as i64;
         prop_assert!((back.micros() - out.micros()).abs() <= tolerance, "{out} → {src} → {back} (speed {speed})");
     }

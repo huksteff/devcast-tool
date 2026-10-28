@@ -12,6 +12,9 @@ pub mod project;
 pub mod time;
 pub mod timemap;
 
+#[cfg(test)]
+mod test_util;
+
 pub use arg::{RangeArg, RangesArg, TimeArg};
 pub use command::{Command, CommandError, Op, OpInfo};
 pub use diff::Diff;

@@ -1,6 +1,7 @@
 //! Project checks (verify) and maintenance commands: `cargo xtask <command>`.
 
 mod changed;
+mod crates;
 mod deps;
 mod features;
 mod hook;
@@ -19,7 +20,8 @@ const USAGE: &str = "\
 
 Команды:
   verify [--full] [--include-ignored]
-      Проверки перед «готово»: fmt, clippy, длина файлов, зависимости, пометки о недоделках, тесты.
+      Проверки перед «готово»: fmt, clippy, длина файлов, CLAUDE.md и lints крейтов, зависимости,
+      пометки о недоделках, тесты.
       Без --full тесты идут только для крейтов с незакоммиченными правками
       и для крейтов, которые от них зависят. --include-ignored добавляет долгие тесты.
   hook-stop
