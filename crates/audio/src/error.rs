@@ -41,6 +41,17 @@ pub enum AudioError {
     #[error("не удалось измерить громкость (EBU R128): {0}. Сообщи о баге")]
     Loudness(ebur128::Error),
 
+    #[error(transparent)]
+    Project(#[from] dc_project::ProjectError),
+
+    #[error(
+        "не удалось прочитать или записать кэш волны {path}: {source}. Проверь место на диске; папку cache/ проекта можно удалить, она построится заново"
+    )]
+    Cache {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+
     #[error("не удалось пересчитать частоту звука {path}: {message}. Сообщи о баге")]
     Resample { path: PathBuf, message: String },
 }
@@ -54,6 +65,13 @@ impl AudioError {
         move |source| Self::File {
             action,
             path,
+            source,
+        }
+    }
+
+    pub(crate) fn cache(path: &Path, source: std::io::Error) -> Self {
+        Self::Cache {
+            path: path.to_path_buf(),
             source,
         }
     }
