@@ -1,17 +1,23 @@
 //! Probe, keyframe index, hardware decoding, frame-accurate seek, preview frames.
 
 pub mod cache;
+pub mod decoder;
 pub mod error;
 pub mod import;
+pub mod pool;
 pub mod probe;
+pub mod seeker;
 
 #[cfg(test)]
 mod test_util;
 
 pub use cache::{cached_probe, probe_cache_path};
+pub use decoder::{Decoder, Frame, nv12_len};
 pub use error::MediaError;
 pub use import::{VIDEO_EXTENSIONS, import, import_dry_run};
+pub use pool::{Buffer, FramePool};
 pub use probe::{Probe, StreamInfo, StreamKind, probe};
+pub use seeker::{Precision, Seeker};
 
 /// Initializes FFmpeg once per process and keeps its log to errors only: failures come back as
 /// [`MediaError`] anyway.

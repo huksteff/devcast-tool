@@ -31,6 +31,20 @@ pub enum MediaError {
         source: ffmpeg_next::Error,
     },
 
+    #[error(
+        "декодированные кадры заняли весь лимит памяти ({limit_mb} МБ): отпускай показанные кадры или увеличь лимит пула"
+    )]
+    PoolFull { limit_mb: usize },
+
+    #[error("не удалось декодировать видео «{}»: {source}. Файл повреждён; перекодируй его", path.display())]
+    Decode {
+        path: PathBuf,
+        source: ffmpeg_next::Error,
+    },
+
+    #[error("поток декодирования видео «{}» остановился: открой видео заново", path.display())]
+    Stopped { path: PathBuf },
+
     #[error("не удалось {action} «{}»: {source}. Проверь, что путь существует и диск не переполнен", path.display())]
     Io {
         action: &'static str,
