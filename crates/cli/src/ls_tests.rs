@@ -1,59 +1,8 @@
-use dc_core::project::{Media, MediaKind};
-use dc_core::{Clip, PixelSize, Project, Range, Rect, SourceTime, TimeDelta};
-use dc_project::ProjectDir;
-
-use crate::{Outcome, registry::registry, run};
-
-pub(crate) struct Fixture {
-    _tmp: tempfile::TempDir,
-    pub(crate) dir: ProjectDir,
-}
-
-impl Fixture {
-    /// Two recordings, 20 s and 10 s.
-    pub(crate) fn new() -> Self {
-        let tmp = tempfile::tempdir().unwrap();
-        let dir = ProjectDir::create(tmp.path().join("Урок 2.dcproj")).unwrap();
-        let mut project = Project::default();
-        for (name, secs) in [("a", 20.0), ("b", 10.0)] {
-            let duration = TimeDelta::from_secs_f64(secs);
-            let id = project.clip_ids.allocate();
-            project.clips.push(Clip {
-                id,
-                media: Media {
-                    path: format!("media/{name}.mp4"),
-                    kind: MediaKind::Recording,
-                    duration,
-                    size: PixelSize {
-                        width: 1920,
-                        height: 1080,
-                    },
-                },
-                trim: Range::new(SourceTime::ZERO, SourceTime::ZERO + duration).unwrap(),
-                cuts: Vec::new(),
-                speeds: Vec::new(),
-                crop: Rect::FULL,
-            });
-        }
-        dir.save(&project).unwrap();
-        Self { _tmp: tmp, dir }
-    }
-
-    pub(crate) fn run(&self, line: &str) -> Outcome {
-        let args = line.split(' ').map(str::to_owned).collect();
-        run(args, self.dir.root(), &registry().unwrap())
-    }
-
-    fn ok(&self, line: &str) -> String {
-        let out = self.run(line);
-        assert_eq!(out.code, 0, "{line}: {}", out.stderr);
-        out.stdout.trim_end().to_owned()
-    }
-}
+use crate::test_util::Recordings;
 
 #[test]
 fn ls_shows_objects_in_output_time_sorted_and_filtered() {
-    let f = Fixture::new();
+    let f = Recordings::new();
     f.ok("zoom add --at 12 --duration 3 --scale 2");
     f.ok("zoom add --at 2 --duration 1");
     f.ok("cut 0-1");
@@ -81,7 +30,7 @@ fn ls_shows_objects_in_output_time_sorted_and_filtered() {
 
 #[test]
 fn ls_clips_and_info_summarise_the_project() {
-    let f = Fixture::new();
+    let f = Recordings::new();
     f.ok("cut 0-1");
     f.ok("zoom add --at 20 --duration 2");
     assert_eq!(
@@ -101,7 +50,7 @@ fn ls_clips_and_info_summarise_the_project() {
 
 #[test]
 fn ls_errors_name_what_exists() {
-    let f = Fixture::new();
+    let f = Recordings::new();
     let out = f.run("ls zoomz");
     assert_eq!(out.code, 2);
     assert_eq!(out.stderr, "нет списка «zoomz»; есть: clips, zooms\n");

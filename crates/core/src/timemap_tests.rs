@@ -1,15 +1,8 @@
 use proptest::prelude::*;
 
 use super::*;
-use crate::project::{Media, MediaKind, SpeedRange};
-
-fn t(secs: f64) -> SourceTime {
-    SourceTime::from_secs_f64(secs)
-}
-
-fn r(a: f64, b: f64) -> Range<Source> {
-    Range::new(t(a), t(b)).unwrap()
-}
+use crate::project::SpeedRange;
+use crate::test_util::{clip, r, t};
 
 fn add_clip(
     p: &mut Project,
@@ -17,23 +10,9 @@ fn add_clip(
     cuts: Vec<Range<Source>>,
     speeds: Vec<SpeedRange>,
 ) -> ClipId {
-    let id = p.clip_ids.allocate();
-    p.clips.push(Clip {
-        id,
-        media: Media {
-            path: format!("media/{id}.mp4"),
-            kind: MediaKind::Recording,
-            duration: TimeDelta::from_secs_f64(duration),
-            size: crate::geom::PixelSize {
-                width: 1920,
-                height: 1080,
-            },
-        },
-        trim: r(0.0, duration),
-        cuts,
-        speeds,
-        crop: crate::geom::Rect::FULL,
-    });
+    let id = clip(p, duration);
+    let added = p.clips.last_mut().unwrap();
+    (added.cuts, added.speeds) = (cuts, speeds);
     id
 }
 

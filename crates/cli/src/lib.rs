@@ -21,6 +21,8 @@ mod ls_tests;
 #[cfg(test)]
 mod skill_tests;
 #[cfg(test)]
+mod test_util;
+#[cfg(test)]
 mod tests;
 
 use std::ffi::OsString;

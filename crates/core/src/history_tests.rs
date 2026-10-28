@@ -1,8 +1,8 @@
 use super::*;
 use crate::diff::Diff;
 use crate::effect::Effect;
-use crate::project::{ClipId, Media, MediaKind};
-use crate::time::{Range, SourceTime, TimeDelta};
+use crate::project::ClipId;
+use crate::test_util::{clip, r};
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, schemars::JsonSchema)]
 struct Items {
@@ -49,25 +49,8 @@ impl Command for BrokenClip {
         "test broken"
     }
     fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
-        let id = project.clip_ids.allocate();
-        let end = SourceTime::from_secs_f64(5.0);
-        project.clips.push(Clip {
-            id,
-            media: Media {
-                path: "m.mp4".to_owned(),
-                kind: MediaKind::Imported,
-                duration: TimeDelta::from_secs_f64(1.0),
-                size: crate::geom::PixelSize {
-                    width: 1920,
-                    height: 1080,
-                },
-            },
-            trim: Range::new(SourceTime::ZERO, end)
-                .map_err(|e| CommandError::new(e.to_string()))?,
-            cuts: Vec::new(),
-            speeds: Vec::new(),
-            crop: crate::geom::Rect::FULL,
-        });
+        let id = clip(project, 1.0);
+        project.clip_mut(id).unwrap().trim = r(0.0, 5.0);
         Ok(Diff::added(id))
     }
 }

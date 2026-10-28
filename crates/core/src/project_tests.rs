@@ -1,34 +1,5 @@
 use super::*;
-use crate::time::Source;
-
-fn t(secs: f64) -> SourceTime {
-    SourceTime::from_secs_f64(secs)
-}
-
-fn r(a: f64, b: f64) -> Range<Source> {
-    Range::new(t(a), t(b)).unwrap()
-}
-
-pub fn clip(project: &mut Project, duration: f64) -> ClipId {
-    let id = project.clip_ids.allocate();
-    project.clips.push(Clip {
-        id,
-        media: Media {
-            path: format!("media/{id}.mp4"),
-            kind: MediaKind::Recording,
-            duration: TimeDelta::from_secs_f64(duration),
-            size: crate::geom::PixelSize {
-                width: 1920,
-                height: 1080,
-            },
-        },
-        trim: r(0.0, duration),
-        cuts: Vec::new(),
-        speeds: Vec::new(),
-        crop: crate::geom::Rect::FULL,
-    });
-    id
-}
+use crate::test_util::{clip, r};
 
 #[test]
 fn fresh_project_is_consistent() {
