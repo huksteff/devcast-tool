@@ -158,7 +158,7 @@ proptest! {
         let back = map.to_output(id, src).unwrap();
         // Source time has 1 µs resolution; in slow motion (speed < 1) one source µs spans
         // 1/speed output µs, so the round trip may land up to ceil(1/speed) µs away.
-        let speed = map.segments().iter().find(|s| s.output_start <= out && out < s.output_end()).unwrap().speed;
+        let speed = map.segment_at(out).unwrap().speed;
         let tolerance = (1.0 / speed).ceil() as i64;
         prop_assert!((back.micros() - out.micros()).abs() <= tolerance, "{out} → {src} → {back} (speed {speed})");
     }

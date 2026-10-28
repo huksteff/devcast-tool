@@ -28,9 +28,7 @@ impl Command for ClipSplit {
         let map = TimeMap::build(project);
         let end = OutputTime::ZERO + map.duration();
         let segment = map
-            .segments()
-            .iter()
-            .find(|s| s.output_start <= t && t < s.output_end())
+            .segment_at(t)
             .filter(|_| t > OutputTime::ZERO)
             .ok_or_else(|| {
                 CommandError::new(format!(
@@ -43,9 +41,7 @@ impl Command for ClipSplit {
                 "в {t} уже стык клипов: разрезать нечего; стыки: devcast ls clips"
             )));
         }
-        let (id, at) = map.to_source(t).ok_or_else(|| {
-            CommandError::new(format!("внутренняя ошибка: {t} не найден на дорожке"))
-        })?;
+        let (id, at) = (segment.clip, segment.source_at(t));
         let index = project
             .clips
             .iter()
