@@ -57,6 +57,10 @@ impl Command for BrokenClip {
                 path: "m.mp4".to_owned(),
                 kind: MediaKind::Imported,
                 duration: TimeDelta::from_secs_f64(1.0),
+                size: crate::geom::PixelSize {
+                    width: 1920,
+                    height: 1080,
+                },
             },
             trim: Range::new(SourceTime::ZERO, end)
                 .map_err(|e| CommandError::new(e.to_string()))?,

@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::geom::PixelSize;
 use crate::id::{Id, IdCounter, IdKind};
 use crate::time::{Range, SourceTime, TimeDelta};
 
@@ -46,6 +47,8 @@ pub struct Media {
     pub kind: MediaKind,
     /// Full length of the source.
     pub duration: TimeDelta,
+    /// Frame size of the source video; crop and output aspect are computed from it.
+    pub size: PixelSize,
 }
 
 /// A part of a source played faster or slower; pitch is preserved.
@@ -140,6 +143,12 @@ impl Clip {
                 self.trim.start(),
                 self.trim.end(),
                 source_end
+            ));
+        }
+        if self.media.size.width == 0 || self.media.size.height == 0 {
+            problems.push(format!(
+                "пустой размер кадра {}x{}",
+                self.media.size.width, self.media.size.height
             ));
         }
         if self.trim.is_empty() {

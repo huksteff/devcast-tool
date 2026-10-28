@@ -4,8 +4,13 @@
 //! Rotation is applied in pixel space of a concrete frame size, so a rotated rectangle keeps its
 //! shape on non-square frames; that is why rotation helpers take a [`PixelSize`].
 
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
+use std::fmt;
+use std::str::FromStr;
+
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
+use serde::de::{self, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// A point in normalized frame coordinates.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
@@ -22,9 +27,9 @@ pub struct PixelSize {
 }
 
 /// Axis-aligned rectangle: top-left corner and size, normalized; size is never negative.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(try_from = "RawRect", into = "RawRect")]
-#[schemars(with = "RawRect")]
+/// Stored as `{x, y, w, h}`; also read from the text `x,y,w,h` (CLI: `--rect 0.1,0,0.8,1`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[serde(into = "RawRect")]
 pub struct Rect {
     x: f64,
     y: f64,
@@ -33,7 +38,7 @@ pub struct Rect {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
-#[schemars(rename = "Rect")]
+#[schemars(rename = "RectFields")]
 struct RawRect {
     /// Left edge, fraction of frame width.
     x: f64,
@@ -135,10 +140,73 @@ impl Rect {
     }
 }
 
-impl TryFrom<RawRect> for Rect {
-    type Error = InvalidRect;
-    fn try_from(raw: RawRect) -> Result<Self, Self::Error> {
-        Self::new(raw.x, raw.y, raw.w, raw.h)
+/// Text that is not `x,y,w,h`, or a rectangle that [`Rect::new`] rejects.
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum ParseRectError {
+    #[error("«{0}» — не прямоугольник: ожидается x,y,w,h в долях кадра, например 0.1,0,0.8,1")]
+    Format(String),
+    #[error(transparent)]
+    Invalid(#[from] InvalidRect),
+}
+
+impl FromStr for Rect {
+    type Err = ParseRectError;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let numbers: Vec<f64> = text
+            .split(',')
+            .map(|part| part.trim().parse())
+            .collect::<Result<_, _>>()
+            .map_err(|_| ParseRectError::Format(text.to_owned()))?;
+        let [x, y, w, h] = numbers[..] else {
+            return Err(ParseRectError::Format(text.to_owned()));
+        };
+        Ok(Self::new(x, y, w, h)?)
+    }
+}
+
+impl<'de> Deserialize<'de> for Rect {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_any(RectVisitor)
+    }
+}
+
+struct RectVisitor;
+
+impl<'de> Visitor<'de> for RectVisitor {
+    type Value = Rect;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("прямоугольник \"x,y,w,h\" или {x, y, w, h}")
+    }
+
+    fn visit_str<E: de::Error>(self, text: &str) -> Result<Rect, E> {
+        text.parse().map_err(E::custom)
+    }
+
+    fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Rect, A::Error> {
+        let raw = RawRect::deserialize(de::value::MapAccessDeserializer::new(map))?;
+        Rect::new(raw.x, raw.y, raw.w, raw.h).map_err(de::Error::custom)
+    }
+}
+
+impl JsonSchema for Rect {
+    fn schema_name() -> Cow<'static, str> {
+        "Rect".into()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        let fields = generator.subschema_for::<RawRect>();
+        json_schema!({
+            "anyOf": [
+                {
+                    "type": "string",
+                    "description": "x,y,w,h in frame fractions, e.g. 0.1,0,0.8,1",
+                    "pattern": "^[^,]+,[^,]+,[^,]+,[^,]+$"
+                },
+                fields
+            ]
+        })
     }
 }
 
@@ -187,6 +255,29 @@ mod tests {
         assert!(Rect::new(f64::NAN, 0.0, 0.1, 0.1).is_err());
         let error = serde_json::from_str::<Rect>(r#"{"x":0,"y":0,"w":-1,"h":1}"#).unwrap_err();
         assert!(error.to_string().contains("не отрицательными"), "{error}");
+    }
+
+    #[test]
+    fn reads_text_and_fields_and_writes_fields() {
+        let r = Rect::new(0.1, 0.0, 0.8, 1.0).unwrap();
+        assert_eq!("0.1,0,0.8,1".parse::<Rect>().unwrap(), r);
+        assert_eq!(" 0.1, 0 ,0.8,1 ".parse::<Rect>().unwrap(), r);
+        assert_eq!(serde_json::from_str::<Rect>(r#""0.1,0,0.8,1""#).unwrap(), r);
+        let json = serde_json::to_string(&r).unwrap();
+        assert_eq!(json, r#"{"x":0.1,"y":0.0,"w":0.8,"h":1.0}"#);
+        assert_eq!(serde_json::from_str::<Rect>(&json).unwrap(), r);
+    }
+
+    #[test]
+    fn bad_text_explains_the_form() {
+        for text in ["0.1,0,0.8", "0.1,0,0.8,1,2", "a,b,c,d", ""] {
+            let error = text.parse::<Rect>().unwrap_err().to_string();
+            assert!(error.contains("ожидается x,y,w,h"), "{text}: {error}");
+        }
+        let error = serde_json::from_str::<Rect>(r#""0,0,-1,1""#).unwrap_err();
+        assert!(error.to_string().contains("не отрицательными"), "{error}");
+        let error = serde_json::from_str::<Rect>("5").unwrap_err();
+        assert!(error.to_string().contains("x,y,w,h"), "{error}");
     }
 
     #[test]

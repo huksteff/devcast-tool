@@ -5,19 +5,13 @@ use serde::Deserialize;
 use crate::Crop;
 use crate::state::{Aspect, MIN_SIZE};
 
-/// Crops a clip; values are fractions of its source frame.
+/// Crops a clip.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CropClip {
     pub clip: dc_core::ClipId,
-    /// Left edge, 0..1.
-    pub x: f64,
-    /// Top edge, 0..1.
-    pub y: f64,
-    /// Width, at least 0.05; `x + w` at most 1.
-    pub w: f64,
-    /// Height, at least 0.05; `y + h` at most 1.
-    pub h: f64,
+    /// Visible part as fractions of the source frame: inside 0..1, width and height at least 0.05.
+    pub rect: Rect,
 }
 
 impl Command for CropClip {
@@ -32,8 +26,7 @@ impl Command for CropClip {
                 project.clips.iter().map(|c| c.id),
             ));
         }
-        let rect = Rect::new(self.x, self.y, self.w, self.h)
-            .map_err(|e| CommandError::new(e.to_string()))?;
+        let rect = self.rect;
         check(rect)?;
         let mut state = project.state::<Crop>()?;
         let note = if rect == Rect::FULL {
@@ -43,7 +36,11 @@ impl Command for CropClip {
             state.clips.insert(self.clip, rect);
             format!(
                 "кроп {} {},{},{},{}",
-                self.clip, self.x, self.y, self.w, self.h
+                self.clip,
+                rect.x(),
+                rect.y(),
+                rect.w(),
+                rect.h()
             )
         };
         project.set_state::<Crop>(&state)?;
@@ -61,7 +58,7 @@ fn check(rect: Rect) -> Result<(), CommandError> {
     }
     if rect.x() < 0.0 || rect.y() < 0.0 || rect.x() + rect.w() > 1.0 || rect.y() + rect.h() > 1.0 {
         return Err(CommandError::new(format!(
-            "кроп должен лежать внутри кадра: x, y ≥ 0, x+w ≤ 1, y+h ≤ 1; сейчас {} {} {} {}. Весь кадр: 0 0 1 1",
+            "кроп должен лежать внутри кадра: x, y ≥ 0, x+w ≤ 1, y+h ≤ 1; сейчас {},{},{},{}. Весь кадр: 0,0,1,1",
             rect.x(),
             rect.y(),
             rect.w(),
@@ -73,9 +70,9 @@ fn check(rect: Rect) -> Result<(), CommandError> {
 
 impl Op for CropClip {
     const NAME: &'static str = "crop";
-    const ABOUT: &'static str = "Кроп клипа: x y w h в долях исходника, 0 0 1 1 снимает кроп";
-    const EXAMPLE: &'static str = "crop c1 0.1 0 0.8 1";
-    const POSITIONAL: &'static [&'static str] = &["clip", "x", "y", "w", "h"];
+    const ABOUT: &'static str = "Кроп клипа: x,y,w,h в долях исходника, 0,0,1,1 снимает кроп";
+    const EXAMPLE: &'static str = "crop c1 0.1,0,0.8,1";
+    const POSITIONAL: &'static [&'static str] = &["clip", "rect"];
 }
 
 /// Sets the aspect of the output frame.

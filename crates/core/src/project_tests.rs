@@ -17,6 +17,10 @@ pub fn clip(project: &mut Project, duration: f64) -> ClipId {
             path: format!("media/{id}.mp4"),
             kind: MediaKind::Recording,
             duration: TimeDelta::from_secs_f64(duration),
+            size: crate::geom::PixelSize {
+                width: 1920,
+                height: 1080,
+            },
         },
         trim: r(0.0, duration),
         cuts: Vec::new(),
@@ -30,6 +34,17 @@ fn fresh_project_is_consistent() {
     let mut p = Project::default();
     clip(&mut p, 10.0);
     assert_eq!(p.problems(), Vec::<String>::new());
+}
+
+#[test]
+fn empty_frame_size_is_a_problem() {
+    let mut p = Project::default();
+    let id = clip(&mut p, 10.0);
+    p.clip_mut(id).unwrap().media.size.height = 0;
+    assert_eq!(
+        p.problems(),
+        vec!["c1: пустой размер кадра 1920x0".to_owned()]
+    );
 }
 
 #[test]

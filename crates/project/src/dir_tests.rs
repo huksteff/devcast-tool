@@ -11,6 +11,10 @@ fn with_clip(mut project: Project) -> Project {
             path: "media/screen.mp4".to_owned(),
             kind: MediaKind::Recording,
             duration: TimeDelta::from_secs_f64(3.0),
+            size: dc_core::PixelSize {
+                width: 1920,
+                height: 1080,
+            },
         },
         trim: Range::new(SourceTime::ZERO, SourceTime::from_secs_f64(3.0)).unwrap(),
         cuts: Vec::new(),

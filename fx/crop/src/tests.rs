@@ -17,6 +17,10 @@ fn project(clips: u32) -> Project {
                 path: "media/screen.mp4".to_owned(),
                 kind: MediaKind::Recording,
                 duration,
+                size: dc_core::PixelSize {
+                    width: 1920,
+                    height: 1080,
+                },
             },
             trim: Range::new(SourceTime::ZERO, SourceTime::ZERO + duration).unwrap(),
             cuts: Vec::new(),
@@ -33,10 +37,7 @@ fn c(n: u32) -> ClipId {
 fn crop(clip: u32, x: f64, y: f64, w: f64, h: f64) -> CropClip {
     CropClip {
         clip: c(clip),
-        x,
-        y,
-        w,
-        h,
+        rect: Rect::new(x, y, w, h).unwrap(),
     }
 }
 
@@ -112,10 +113,6 @@ fn crop_smaller_than_minimum_is_rejected() {
         let message = error(&mut p, &crop(1, 0.0, 0.0, w, h));
         assert!(message.contains("не меньше 0.05"), "{w}x{h}: {message}");
     }
-    let message = error(&mut p, &crop(1, 0.0, 0.0, -0.5, 0.5));
-    assert!(message.contains("не отрицательными"), "{message}");
-    let message = error(&mut p, &crop(1, f64::NAN, 0.0, 0.5, 0.5));
-    assert!(message.contains("конечными"), "{message}");
 }
 
 #[test]
@@ -214,12 +211,17 @@ fn parse(name: &str, args: Value) -> Result<Diff, String> {
 
 #[test]
 fn ops_parse_their_json_arguments() {
-    let diff = parse(
-        "crop",
-        json!({"clip": "c1", "x": 0, "y": 0.5, "w": 1, "h": 0.5}),
-    )
-    .unwrap();
+    let diff = parse("crop", json!({"clip": "c1", "rect": "0,0.5,1,0.5"})).unwrap();
     assert_eq!(diff.to_string(), "кроп c1 0,0.5,1,0.5");
+    let fields = json!({"clip": "c1", "rect": {"x": 0, "y": 0.5, "w": 1, "h": 0.5}});
+    assert_eq!(
+        parse("crop", fields).unwrap().to_string(),
+        "кроп c1 0,0.5,1,0.5"
+    );
+    let negative = parse("crop", json!({"clip": "c1", "rect": "0,0,-0.5,0.5"})).unwrap_err();
+    assert!(negative.contains("не отрицательными"), "{negative}");
+    let short = parse("crop", json!({"clip": "c1", "rect": "0,0,1"})).unwrap_err();
+    assert!(short.contains("ожидается x,y,w,h"), "{short}");
     assert_eq!(
         parse("aspect", json!({"aspect": "4:3"}))
             .unwrap()
@@ -237,10 +239,7 @@ fn ops_parse_their_json_arguments() {
         vertical.contains("16:9") && vertical.contains("free"),
         "{vertical}"
     );
-    let typo = parse(
-        "crop",
-        json!({"clip": "c1", "x": 0, "y": 0, "w": 1, "h": 1, "z": 1}),
-    );
+    let typo = parse("crop", json!({"clip": "c1", "rect": "0,0,1,1", "z": 1}));
     assert!(typo.unwrap_err().contains("unknown field"));
 }
 
