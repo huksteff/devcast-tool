@@ -9,7 +9,7 @@ pub mod project;
 pub mod time;
 pub mod timemap;
 
-pub use command::{Command, CommandError};
+pub use command::{Command, CommandError, Op, OpInfo};
 pub use effect::{Effect, EffectInfo, EffectRegistry, StateError};
 pub use geom::{PixelSize, Point, Rect};
 pub use history::{Change, History};

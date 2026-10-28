@@ -117,15 +117,27 @@ impl History {
     ) -> Result<String, CommandError> {
         let mut draft = project.clone();
         let mut summaries = Vec::new();
-        for command in commands {
-            summaries.push(command.apply(&mut draft)?);
+        // In a batch, errors name the failing step: «шаг 3 (zoom add): …».
+        let step = |index: usize, error: CommandError| match commands.len() {
+            1 => error,
+            _ => CommandError::new(format!(
+                "шаг {} ({}): {error}. Ни один шаг не применён",
+                index + 1,
+                commands[index].name()
+            )),
+        };
+        for (index, command) in commands.iter().enumerate() {
+            summaries.push(command.apply(&mut draft).map_err(|e| step(index, e))?);
             let problems = draft.problems();
             if !problems.is_empty() {
-                return Err(CommandError::new(format!(
-                    "внутренняя ошибка команды «{}»: она нарушила целостность проекта ({}). Изменения отменены; это баг, сообщи о нём",
-                    command.name(),
-                    problems.join("; ")
-                )));
+                return Err(step(
+                    index,
+                    CommandError::new(format!(
+                        "внутренняя ошибка команды «{}»: она нарушила целостность проекта ({}). Изменения отменены; это баг, сообщи о нём",
+                        command.name(),
+                        problems.join("; ")
+                    )),
+                ));
             }
         }
         let summary = summaries.join("; ");

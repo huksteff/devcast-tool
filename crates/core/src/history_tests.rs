@@ -111,7 +111,10 @@ fn batch_is_one_step_and_all_or_nothing() {
     let error = h
         .apply_batch(&mut p, "apply", &[&Push(3), &Fail])
         .unwrap_err();
-    assert_eq!(error.to_string(), "нельзя");
+    assert_eq!(
+        error.to_string(),
+        "шаг 2 (test fail): нельзя. Ни один шаг не применён"
+    );
     assert_eq!(
         items(&p),
         vec![1, 2],

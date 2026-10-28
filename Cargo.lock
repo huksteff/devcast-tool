@@ -223,6 +223,13 @@ version = "0.1.0"
 [[package]]
 name = "dc-ops"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "dc-project"
