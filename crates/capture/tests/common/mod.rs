@@ -8,6 +8,7 @@
 )]
 
 pub mod probe;
+pub mod synthetic;
 
 use std::path::PathBuf;
 use std::process::{Child, Command};
@@ -32,6 +33,17 @@ pub fn test_monitor() -> MonitorInfo {
         .into_iter()
         .find(|m| m.index == index)
         .expect("no such monitor")
+}
+
+/// `name` in the test temp folder, with what an earlier run left there deleted. Only tests
+/// have the folder; `examples/record_fixtures` shares this module too.
+#[cfg(test)]
+pub fn fresh_dir(name: &str) -> PathBuf {
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+    dir
 }
 
 fn ffplay() -> PathBuf {

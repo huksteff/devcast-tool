@@ -28,12 +28,12 @@ mod common;
 mod flash;
 
 use std::io::{BufReader, Read};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
 use common::probe::{Probe, tool};
-use common::{Running, test_monitor};
+use common::{Running, fresh_dir, test_monitor};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use dc_capture::audio::RATE;
 use dc_capture::win::{Recording, VideoSummary};
@@ -229,10 +229,7 @@ fn stays_in_sync() {
     let (x, y) = (monitor.bounds.x() + 100, monitor.bounds.y() + 100);
     let _flasher = Flasher::show(x, y, 320, 240);
     let _beeps = play_beeps();
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("sync");
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
+    let dir = fresh_dir("sync");
     let config = RecordingConfig {
         fps: Fps::Fps60,
         ..RecordingConfig::new(Source::Area(Area::new(x, y, 320, 240).unwrap()))

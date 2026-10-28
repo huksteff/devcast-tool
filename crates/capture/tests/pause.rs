@@ -12,21 +12,12 @@
 
 mod common;
 
-use std::path::PathBuf;
 use std::time::Duration;
 
 use common::probe::Probe;
-use common::{TestPicture, test_monitor};
+use common::{TestPicture, fresh_dir, test_monitor};
 use dc_capture::win::Recording;
 use dc_capture::{Fps, Manifest, RecordingConfig};
-
-fn folder(name: &str) -> PathBuf {
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-    dir
-}
 
 #[test]
 #[ignore = "records the screen: needs DEVCAST_TEST_MONITOR"]
@@ -38,7 +29,7 @@ fn pause_is_cut_out_and_cancel_deletes_everything() {
         ..RecordingConfig::new(picture.window.source())
     };
 
-    let dir = folder("pause");
+    let dir = fresh_dir("pause");
     let recording = Recording::start(&config, &dir).unwrap();
     std::thread::sleep(Duration::from_secs(2));
     let paused = recording.pause().unwrap();
@@ -72,7 +63,7 @@ fn pause_is_cut_out_and_cancel_deletes_everything() {
     assert!(gap < 0.2, "longest frame {gap} s");
     std::fs::remove_dir_all(&dir).unwrap();
 
-    let dir = folder("cancel");
+    let dir = fresh_dir("cancel");
     let recording = Recording::start(&config, &dir).unwrap();
     std::thread::sleep(Duration::from_secs(3));
     recording.pause().unwrap();

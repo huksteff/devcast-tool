@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use common::probe::{Probe, frame_png, frame_rgb};
-use common::{TestPicture, test_monitor};
+use common::{TestPicture, fresh_dir, test_monitor};
 use dc_capture::win::{Recording, VideoStart, VideoSummary};
 use dc_capture::{Area, Fps, Manifest, RecordingConfig, Source};
 use windows::Win32::Foundation::FILETIME;
@@ -44,10 +44,7 @@ struct Recorded {
 }
 
 fn record(name: &str, source: &Source, fps: Fps, seconds: u64) -> Recorded {
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
+    let dir = fresh_dir(name);
     let config = RecordingConfig {
         fps,
         system_audio: false,

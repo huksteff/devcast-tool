@@ -12,22 +12,13 @@
 
 mod common;
 
-use std::path::PathBuf;
 use std::time::Duration;
 
-use common::{TestPicture, test_monitor};
+use common::{TestPicture, fresh_dir, test_monitor};
 use dc_capture::input::read_cursor;
 use dc_capture::win::ProjectRecording;
 use dc_capture::{Area, Fps, Manifest, RecordingConfig, Source};
 use dc_project::{Defaults, ProjectDir};
-
-fn folder(name: &str) -> PathBuf {
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-    dir
-}
 
 #[test]
 #[ignore = "records the screen: needs DEVCAST_TEST_MONITOR"]
@@ -41,7 +32,7 @@ fn stop_saves_a_project_and_cancel_deletes_it() {
         ..RecordingConfig::new(Source::Area(area))
     };
 
-    let root = folder("Запись проекта.dcproj");
+    let root = fresh_dir("Запись проекта.dcproj");
     let recording =
         ProjectRecording::start(&config, &root, "devcast test", Defaults::factory()).unwrap();
     std::thread::sleep(Duration::from_secs(3));
@@ -63,7 +54,7 @@ fn stop_saves_a_project_and_cancel_deletes_it() {
     println!("{}: {project:?}", root.display());
     std::fs::remove_dir_all(&root).unwrap();
 
-    let root = folder("Отмена.dcproj");
+    let root = fresh_dir("Отмена.dcproj");
     let recording =
         ProjectRecording::start(&config, &root, "devcast test", Defaults::factory()).unwrap();
     std::thread::sleep(Duration::from_secs(1));

@@ -11,7 +11,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     unsafe_code,
-    reason = "test helpers: a failed step must fail the test; synthetic input is Win32"
+    reason = "test helpers: a failed step must fail the test; the test window is Win32"
 )]
 
 mod common;
@@ -21,47 +21,24 @@ mod target;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use common::test_monitor;
+use common::synthetic::{self, PointerBack, chord_inputs, mouse, move_input};
+use common::{fresh_dir, test_monitor};
 use dc_capture::input::{
     Button, CursorEvent, CursorKind, KeyEvent, Modifiers, Timed, image_file, read_cursor, read_keys,
 };
 use dc_capture::win::{InputRecording, now};
 use dc_capture::{HostTime, PauseClock};
 use target::Target;
-use windows::Win32::Foundation::POINT;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_KEYUP,
-    MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_HWHEEL, MOUSEEVENTF_LEFTDOWN,
-    MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_MOVE,
-    MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_VIRTUALDESK, MOUSEEVENTF_WHEEL,
-    MOUSEINPUT, SendInput, VIRTUAL_KEY,
-};
-use windows::Win32::UI::WindowsAndMessaging::{
-    GetPhysicalCursorPos, GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
-    SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SetPhysicalCursorPos,
+    INPUT, MOUSE_EVENT_FLAGS, MOUSEEVENTF_HWHEEL, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
+    MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
+    MOUSEEVENTF_WHEEL,
 };
 
 const CLICKS: usize = 50;
 const MOVES: i32 = 50;
 /// How far from where it was sent a click may land: the window reaches 100 px around.
 const NUDGE: i32 = 100;
-
-/// Puts the pointer back where it was when the test started, also on panic.
-struct PointerBack(POINT);
-
-impl PointerBack {
-    fn save() -> Self {
-        let mut point = POINT::default();
-        unsafe { GetPhysicalCursorPos(&mut point) }.unwrap();
-        Self(point)
-    }
-}
-
-impl Drop for PointerBack {
-    fn drop(&mut self) {
-        let _ = unsafe { SetPhysicalCursorPos(self.0.x, self.0.y) };
-    }
-}
 
 /// The test window in the middle of the test monitor: its top-left corner.
 fn show_target() -> (Target, i32, i32) {
@@ -72,53 +49,21 @@ fn show_target() -> (Target, i32, i32) {
 }
 
 fn folder(name: &str) -> PathBuf {
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
-    let _ = std::fs::remove_dir_all(&dir);
+    let dir = fresh_dir(name);
     std::fs::create_dir_all(&dir).unwrap();
     dir
-}
-
-fn mouse(flags: MOUSE_EVENT_FLAGS, x: i32, y: i32, data: i32) -> INPUT {
-    INPUT {
-        r#type: INPUT_MOUSE,
-        Anonymous: INPUT_0 {
-            mi: MOUSEINPUT {
-                dx: x,
-                dy: y,
-                mouseData: data as u32,
-                dwFlags: flags,
-                ..Default::default()
-            },
-        },
-    }
-}
-
-/// A move to desktop pixel (`x`, `y`) in the 0..65535 units of the virtual desktop.
-fn move_to(x: i32, y: i32) -> INPUT {
-    let (left, top, width, height) = unsafe {
-        (
-            GetSystemMetrics(SM_XVIRTUALSCREEN),
-            GetSystemMetrics(SM_YVIRTUALSCREEN),
-            GetSystemMetrics(SM_CXVIRTUALSCREEN),
-            GetSystemMetrics(SM_CYVIRTUALSCREEN),
-        )
-    };
-    let scale = |v: i32, origin: i32, size: i32| ((v - origin) * 65535 + size / 2) / (size - 1);
-    let flags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK;
-    mouse(flags, scale(x, left, width), scale(y, top, height), 0)
 }
 
 /// A button or wheel action at desktop pixel (`x`, `y`): the move and the action are one
 /// `SendInput`, which the user's own mouse cannot get between.
 fn at_point(x: i32, y: i32, flags: MOUSE_EVENT_FLAGS, data: i32) -> [INPUT; 2] {
-    [move_to(x, y), mouse(flags, 0, 0, data)]
+    [move_input(x, y), mouse(flags, 0, 0, data)]
 }
 
 /// Sends `inputs` and returns the host time right before.
 fn send(inputs: &[INPUT]) -> HostTime {
     let at = now().unwrap();
-    let sent = unsafe { SendInput(inputs, size_of::<INPUT>() as i32) };
-    assert_eq!(sent as usize, inputs.len());
+    synthetic::send(inputs);
     at
 }
 
@@ -152,7 +97,7 @@ fn act(x: i32, y: i32) -> (Vec<(i32, i32)>, Vec<HostTime>) {
         .map(|i| (x + 20 + i * 5, y + 40 + i * 3))
         .collect();
     for &(px, py) in &path {
-        send(&[move_to(px, py)]);
+        send(&[move_input(px, py)]);
         pause(2);
     }
     let (end_x, end_y) = *path.last().unwrap();
@@ -251,7 +196,7 @@ fn records_cursor_shapes_and_pictures() {
         .unwrap();
     for _ in 0..3 {
         for px in [x + 100, x + 300] {
-            send(&[move_to(px, y + 150)]);
+            send(&[move_input(px, y + 150)]);
             pause(100);
         }
     }
@@ -289,29 +234,9 @@ fn records_cursor_shapes_and_pictures() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
-fn key(vk: u16, up: bool) -> INPUT {
-    let flags = if up {
-        KEYEVENTF_KEYUP
-    } else {
-        KEYBD_EVENT_FLAGS(0)
-    };
-    INPUT {
-        r#type: INPUT_KEYBOARD,
-        Anonymous: INPUT_0 {
-            ki: KEYBDINPUT {
-                wVk: VIRTUAL_KEY(vk),
-                dwFlags: flags,
-                ..Default::default()
-            },
-        },
-    }
-}
-
 /// Presses `chord` in order and releases it in reverse, in one `SendInput`.
 fn chord(keys: &[u16]) {
-    let downs = keys.iter().map(|&k| key(k, false));
-    let ups = keys.iter().rev().map(|&k| key(k, true));
-    send(&downs.chain(ups).collect::<Vec<_>>());
+    send(&chord_inputs(keys));
     pause(30);
 }
 

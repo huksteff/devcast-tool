@@ -16,12 +16,11 @@
 mod common;
 
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use common::probe::{AudioProbe, Probe, frame_png};
-use common::{Running, TestPicture, test_monitor};
+use common::{Running, TestPicture, fresh_dir, test_monitor};
 use dc_capture::win::Recording;
 use dc_capture::{Manifest, RecordingConfig, recover};
 
@@ -59,10 +58,7 @@ fn check_sound(path: &std::path::Path, kept: f64, seconds: f64) {
 fn recording_survives_kill() {
     let monitor = test_monitor();
     let _picture = TestPicture::show(&monitor, 30);
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("recover-kill");
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
+    let dir = fresh_dir("recover-kill");
     let mut child = Running(
         Command::new(std::env::current_exe().unwrap())
             .args([

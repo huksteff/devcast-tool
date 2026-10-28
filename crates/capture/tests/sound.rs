@@ -16,12 +16,11 @@
 
 mod common;
 
-use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use common::probe::{AudioProbe, Probe, audio_left};
-use common::{Running, TestPicture, test_monitor, tone};
+use common::{Running, TestPicture, fresh_dir, test_monitor, tone};
 use dc_capture::audio::{FLOOR_DB, LEVELS_PER_SECOND, LevelMeter, RATE, list_microphones};
 use dc_capture::win::Recording;
 use dc_capture::{Fps, Manifest, RecordingConfig};
@@ -103,10 +102,7 @@ fn meters_microphone_level() {
 fn records_microphone_track() {
     let monitor = test_monitor();
     let picture = TestPicture::show(&monitor, 20);
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("sound-mic");
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
+    let dir = fresh_dir("sound-mic");
     let config = RecordingConfig {
         fps: Fps::Fps30,
         system_audio: false,
@@ -142,10 +138,7 @@ fn records_microphone_track() {
 fn records_system_sound_on_the_video_clock() {
     let monitor = test_monitor();
     let picture = TestPicture::show(&monitor, 20);
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("sound-system");
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
+    let dir = fresh_dir("sound-system");
     let config = RecordingConfig {
         fps: Fps::Fps30,
         ..RecordingConfig::new(picture.window.source())
