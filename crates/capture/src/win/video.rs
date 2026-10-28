@@ -102,32 +102,15 @@ impl VideoRecording {
                 CaptureError::platform("запустить кодирование")(e.to_string())
             })?;
         let (first_tx, first_rx) = mpsc::channel();
-        let sink = EncodeSink {
-            size: (width, height),
+        let sink = EncodeSink::new(
+            (width, height),
             fps,
-            first: Some(first_tx),
-            started: None,
-            lead: LeadFilter::default(),
-            last: None,
-            clock: clock.clone(),
-            held: None,
-            frames: frames_tx.clone(),
-            spare: (0..IN_FLIGHT)
-                .map(|_| Nv12Frame::new(width, height))
-                .collect::<Result<_, _>>()?,
-            returned: returned_rx,
-        };
-        let capture = VideoCapture::start(source, sink)?;
-        let start = match first_rx.recv_timeout(FIRST_FRAME) {
-            Ok(start) => start,
-            Err(RecvTimeoutError::Timeout) => {
-                capture.stop()?;
-                return Err(CaptureError::NoFrame {
-                    seconds: FIRST_FRAME.as_secs(),
-                });
-            }
-            Err(RecvTimeoutError::Disconnected) => return Err(failure(capture)),
-        };
+            first_tx,
+            clock,
+            frames_tx.clone(),
+            returned_rx,
+        )?;
+        let (capture, start) = first_frame(VideoCapture::start(source, sink)?, &first_rx)?;
         let mut track = Track::new(VIDEO_TRACK, fps.get(), start);
         track.size = Some((width, height));
         let writer = match TrackWriter::create(manifest, track, video) {
@@ -200,12 +183,19 @@ fn frame_size(source: &Source) -> Result<(u32, u32), CaptureError> {
         fn closed(&mut self) {}
     }
     let (sender, receiver) = mpsc::channel();
-    let capture = VideoCapture::start(source, Size(sender))?;
+    let (capture, size) = first_frame(VideoCapture::start(source, Size(sender))?, &receiver)?;
+    capture.wait()?;
+    Ok(size)
+}
+
+/// What the sink of `capture` sends at its first frame; a capture that delivers nothing within
+/// [`FIRST_FRAME`] or ends before its first frame is stopped and gives an error.
+fn first_frame<S: FrameSink, T>(
+    capture: VideoCapture<S>,
+    receiver: &Receiver<T>,
+) -> Result<(VideoCapture<S>, T), CaptureError> {
     match receiver.recv_timeout(FIRST_FRAME) {
-        Ok(size) => {
-            capture.wait()?;
-            Ok(size)
-        }
+        Ok(value) => Ok((capture, value)),
         Err(RecvTimeoutError::Timeout) => {
             capture.stop()?;
             Err(CaptureError::NoFrame {
@@ -231,6 +221,33 @@ struct EncodeSink {
     frames: SyncSender<Message>,
     spare: Vec<Nv12Frame>,
     returned: Receiver<Nv12Frame>,
+}
+
+impl EncodeSink {
+    fn new(
+        size: (u32, u32),
+        fps: Fps,
+        first: Sender<HostTime>,
+        clock: &PauseClock,
+        frames: SyncSender<Message>,
+        returned: Receiver<Nv12Frame>,
+    ) -> Result<Self, CaptureError> {
+        Ok(Self {
+            size,
+            fps,
+            first: Some(first),
+            started: None,
+            lead: LeadFilter::default(),
+            last: None,
+            clock: clock.clone(),
+            held: None,
+            frames,
+            spare: (0..IN_FLIGHT)
+                .map(|_| Nv12Frame::new(size.0, size.1))
+                .collect::<Result<_, _>>()?,
+            returned,
+        })
+    }
 }
 
 impl FrameSink for EncodeSink {

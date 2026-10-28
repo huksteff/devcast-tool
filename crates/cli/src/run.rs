@@ -13,7 +13,8 @@ use crate::error::CliError;
 use crate::globals::{self, Globals};
 use crate::help::help;
 use crate::ls::{self, Query};
-use crate::record::{self, RecordArgs};
+use crate::record;
+use crate::record_args::RecordArgs;
 use crate::record_control::Control;
 use crate::{skill, sources};
 

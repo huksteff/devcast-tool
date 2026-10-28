@@ -12,7 +12,8 @@ use dc_capture::{
 };
 use dc_project::ProjectDir;
 
-use crate::record::{RecordArgs, Switch, config, project_folder, summary};
+use crate::record::summary;
+use crate::record_args::{RecordArgs, Switch, config, project_folder};
 use crate::record_control::{self, Control, Reply, Server};
 use crate::sources;
 use crate::test_util::Fixture;

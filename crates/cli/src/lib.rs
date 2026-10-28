@@ -8,6 +8,7 @@ mod help;
 mod help_args;
 mod ls;
 mod record;
+mod record_args;
 mod record_control;
 pub mod registry;
 pub mod run;
