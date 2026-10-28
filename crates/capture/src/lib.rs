@@ -1,5 +1,6 @@
 //! Recorder trait, segmented recording with manifest, crash recovery, platform capture backends.
 
+pub mod audio;
 pub mod config;
 pub mod error;
 pub mod event;
@@ -25,7 +26,7 @@ pub use event::{HostTime, RecordingEvent};
 pub use finalize::finalize;
 pub use grid::FrameGrid;
 pub use list::{MonitorInfo, SourceList, WindowInfo};
-pub use manifest::{Manifest, Segment, Track};
+pub use manifest::{Manifest, Segment, SharedManifest, Track};
 pub use preview::{BgraImage, Preview};
 pub use recorder::Recorder;
 pub use recover::recover;

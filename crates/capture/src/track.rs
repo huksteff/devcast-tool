@@ -1,24 +1,22 @@
-//! Writing the encoded video track as fMP4 segments listed in `manifest.json`.
+//! Writing one encoded track (video or sound) as fMP4 segments listed in `manifest.json`.
 //!
-//! A segment starts with a key frame and closes at the first key frame [`SEGMENT_SECONDS`] or
-//! more after its start; then the manifest is rewritten with it. A frame lasts until the next
-//! one (variable frame rate), so each packet is held until the next arrives and only then
+//! A segment starts with a key packet and closes at the first key packet [`SEGMENT_SECONDS`] or
+//! more after its start; then the manifest is rewritten with it. A video frame lasts until the
+//! next one (variable frame rate), so each packet is held until the next arrives and only then
 //! written with its duration. Packets in a segment have times from 0.
 
-use std::path::{Path, PathBuf};
-
-use dc_encode::{Mp4Layout, Mp4Writer, Packet, VideoParameters};
+use dc_encode::{Mp4Layout, Mp4Writer, Packet, StreamParameters};
 
 use crate::error::CaptureError;
-use crate::manifest::{Manifest, Segment, Track};
+use crate::manifest::{Segment, SharedManifest, Track};
 
 /// At most this much is lost when the process dies (plus up to a second to the next key frame).
 pub const SEGMENT_SECONDS: i64 = 2;
 
-pub struct VideoTrackWriter {
-    dir: PathBuf,
+pub struct TrackWriter {
+    manifest: SharedManifest,
     track: Track,
-    video: VideoParameters,
+    stream: StreamParameters,
     segment_ticks: i64,
     current: Option<OpenSegment>,
     held: Option<Packet>,
@@ -30,15 +28,19 @@ struct OpenSegment {
     start: i64,
 }
 
-impl VideoTrackWriter {
-    /// Starts the manifest of `dir` with the empty `track`; packets come in its ticks.
-    pub fn create(dir: &Path, track: Track, video: VideoParameters) -> Result<Self, CaptureError> {
-        Manifest::new(vec![track.clone()]).write(dir)?;
+impl TrackWriter {
+    /// Adds the empty `track` to the manifest; packets come in its ticks.
+    pub fn create(
+        manifest: &SharedManifest,
+        track: Track,
+        stream: StreamParameters,
+    ) -> Result<Self, CaptureError> {
+        manifest.set(&track)?;
         Ok(Self {
-            dir: dir.to_path_buf(),
+            manifest: manifest.clone(),
             segment_ticks: i64::from(track.rate) * SEGMENT_SECONDS,
             track,
-            video,
+            stream,
             current: None,
             held: None,
         })
@@ -56,15 +58,14 @@ impl VideoTrackWriter {
         Ok(())
     }
 
-    /// Writes the last frame lasting until tick `end`, closes the last segment and returns the
-    /// manifest.
-    pub fn finish(mut self, end: i64) -> Result<Manifest, CaptureError> {
+    /// Writes the last packet lasting until tick `end` and closes the last segment.
+    pub fn finish(mut self, end: i64) -> Result<(), CaptureError> {
         if let Some(mut last) = self.held.take() {
             last.set_duration(end - last.pts());
             self.write(last)?;
             self.close(end)?;
         }
-        Ok(Manifest::new(vec![self.track]))
+        Ok(())
     }
 
     /// Writes into the open segment, opening one at this packet if needed; returns the start
@@ -74,8 +75,8 @@ impl VideoTrackWriter {
             Some(segment) => segment,
             None => {
                 let name = self.track.segment_file(self.track.segments.len() + 1);
-                let file =
-                    Mp4Writer::create(&self.dir.join(&name), &self.video, Mp4Layout::Fragmented)?;
+                let path = self.manifest.dir().join(&name);
+                let file = Mp4Writer::create(&path, &self.stream, Mp4Layout::Fragmented)?;
                 self.current.insert(OpenSegment {
                     file,
                     name,
@@ -98,6 +99,6 @@ impl VideoTrackWriter {
             start: segment.start,
             end,
         });
-        Manifest::new(vec![self.track.clone()]).write(&self.dir)
+        self.manifest.set(&self.track)
     }
 }

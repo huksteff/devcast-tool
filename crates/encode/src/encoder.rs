@@ -6,7 +6,7 @@ use ffmpeg_next::util::color;
 use crate::codec::Codec;
 use crate::error::EncodeError;
 use crate::frame::{Nv12Frame, check_size};
-use crate::packet::{Packet, VideoParameters};
+use crate::packet::{Packet, StreamParameters};
 
 /// Size and frame rate of a stream. Timestamps are frame slots: tick = 1 / `fps` s.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,8 +67,8 @@ impl VideoEncoder {
         self.codec
     }
 
-    pub fn parameters(&self) -> VideoParameters {
-        VideoParameters {
+    pub fn parameters(&self) -> StreamParameters {
+        StreamParameters {
             codec: ffmpeg::codec::Parameters::from(&*self.inner),
             time_base: self.inner.time_base(),
         }

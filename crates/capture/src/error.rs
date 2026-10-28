@@ -75,6 +75,32 @@ pub enum CaptureError {
     NoFrame { seconds: u64 },
 
     #[error(
+        "нет устройства вывода звука: подключи колонки или наушники либо выключи запись системного звука"
+    )]
+    NoOutputDevice,
+
+    #[error(
+        "не удалось {action}: {message}. Проверь звуковые устройства в настройках Windows и перезапусти запись"
+    )]
+    Audio {
+        action: &'static str,
+        message: String,
+    },
+
+    #[error("микрофона «{0}» нет: подключи его, выбери другой из списка или выключи микрофон")]
+    MicrophoneNotFound(String),
+
+    #[error(
+        "устройство «{device}» отдаёт звук в формате {format}, а запись умеет только 32-битный float: выбери другое устройство"
+    )]
+    AudioFormat { device: String, format: String },
+
+    #[error(
+        "не удалось открыть звуковое устройство «{device}»: {message}. Проверь, что оно подключено и доступно в настройках конфиденциальности Windows (микрофон)"
+    )]
+    AudioDevice { device: String, message: String },
+
+    #[error(
         "не удалось {action}: {message}. Перезапусти запись; если повторяется, обнови драйвер видеокарты и Windows"
     )]
     Platform {
@@ -90,6 +116,20 @@ impl CaptureError {
             action,
             path,
             source,
+        }
+    }
+
+    pub(crate) fn audio(action: &'static str, error: impl std::fmt::Display) -> Self {
+        Self::Audio {
+            action,
+            message: error.to_string(),
+        }
+    }
+
+    pub(crate) fn audio_device(device: &str, error: cpal::Error) -> Self {
+        Self::AudioDevice {
+            device: device.to_owned(),
+            message: error.to_string(),
         }
     }
 

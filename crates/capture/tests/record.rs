@@ -19,8 +19,8 @@ use std::time::{Duration, Instant};
 
 use common::probe::{Probe, frame_png, frame_rgb};
 use common::{TestPicture, test_monitor};
-use dc_capture::win::{VideoRecording, VideoStart, VideoSummary};
-use dc_capture::{Area, Fps, Manifest, Source};
+use dc_capture::win::{Recording, VideoStart, VideoSummary};
+use dc_capture::{Area, Fps, Manifest, RecordingConfig, Source};
 use windows::Win32::Foundation::FILETIME;
 use windows::Win32::System::Threading::{GetCurrentProcess, GetProcessTimes};
 
@@ -48,13 +48,19 @@ fn record(name: &str, source: &Source, fps: Fps, seconds: u64) -> Recorded {
     if dir.exists() {
         std::fs::remove_dir_all(&dir).unwrap();
     }
-    let recording = VideoRecording::start(source, fps, &dir).unwrap();
+    let config = RecordingConfig {
+        fps,
+        system_audio: false,
+        ..RecordingConfig::new(*source)
+    };
+    let recording = Recording::start(&config, &dir).unwrap();
     let (cpu, wall) = (cpu_seconds(), Instant::now());
     std::thread::sleep(Duration::from_secs(seconds));
     let info = recording.info();
-    let summary = recording.stop().unwrap();
+    let finished = recording.stop().unwrap();
     let load = (cpu_seconds() - cpu) / wall.elapsed().as_secs_f64() * 100.0;
-    let path = summary.file.clone();
+    let summary = finished.video;
+    let path = finished.files[0].clone();
     assert_eq!(path, dir.join("video.mp4"));
     assert!(Manifest::read(&dir).unwrap().is_finished());
     let probe = Probe::read(&path);

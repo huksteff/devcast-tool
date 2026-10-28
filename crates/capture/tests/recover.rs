@@ -20,10 +20,10 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use common::probe::{Probe, frame_png};
+use common::probe::{AudioProbe, Probe, frame_png};
 use common::{Running, TestPicture, test_monitor};
-use dc_capture::win::VideoRecording;
-use dc_capture::{Fps, Manifest, recover};
+use dc_capture::win::Recording;
+use dc_capture::{Manifest, RecordingConfig, recover};
 
 /// Set for the child: the folder to record into.
 const CHILD_DIR: &str = "DEVCAST_TEST_RECORD_DIR";
@@ -37,11 +37,21 @@ fn child_records_until_killed() {
         return;
     };
     let monitor = test_monitor();
-    let _recording = VideoRecording::start(&monitor.source(), Fps::Fps60, dir.as_ref()).unwrap();
+    let config = RecordingConfig::new(monitor.source());
+    let _recording = Recording::start(&config, dir.as_ref()).unwrap();
     println!("{STARTED}");
     loop {
         std::thread::sleep(Duration::from_secs(1));
     }
+}
+
+/// The system sound track is recovered with the length of its complete segments.
+fn check_sound(path: &std::path::Path, kept: f64, seconds: f64) {
+    let audio = AudioProbe::read(path);
+    println!("recovered {}: {audio:?}", path.display());
+    audio.check_common();
+    assert!((audio.duration - kept).abs() < 0.001, "{audio:?} vs {kept}");
+    assert!(audio.duration > seconds - 3.5, "lost more than a segment");
 }
 
 #[test]
@@ -89,6 +99,9 @@ fn recording_survives_kill() {
     println!("killed after {seconds:.1} s: files {names:?}, complete segments {listed:?}");
     assert!(!manifest.is_finished());
     let kept = track.end() as f64 / 60.0;
+    let sound = &manifest.tracks[1];
+    assert_eq!(sound.name, "system");
+    let sound_kept = sound.end() as f64 / 48_000.0;
 
     let files = recover(&dir).unwrap();
     let probe = Probe::read(&files[0]);
@@ -112,10 +125,14 @@ fn recording_survives_kill() {
         "lost more than a segment and a GOP"
     );
     assert!(probe.frame_rate() > 50.0);
+    check_sound(&files[1], sound_kept, seconds);
     let mut left: Vec<String> = std::fs::read_dir(&dir)
         .unwrap()
         .map(|e| e.unwrap().file_name().into_string().unwrap())
         .collect();
     left.sort();
-    assert_eq!(left, ["manifest.json", "video.2s.png", "video.mp4"]);
+    assert_eq!(
+        left,
+        ["manifest.json", "system.mp4", "video.2s.png", "video.mp4"]
+    );
 }

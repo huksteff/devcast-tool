@@ -38,6 +38,14 @@ pub enum EncodeError {
     },
 
     #[error(
+        "кодек звука FLAC: не удалось {action}: {source}. Перезапусти запись; если повторяется, переустанови программу"
+    )]
+    Audio {
+        action: &'static str,
+        source: ffmpeg_next::Error,
+    },
+
+    #[error(
         "кодек {codec} выдал пакет без времени: обнови драйвер видеокарты или выбери другой кодек"
     )]
     NoTimestamp { codec: Codec },
@@ -62,6 +70,10 @@ impl EncodeError {
             action,
             source,
         }
+    }
+
+    pub(crate) fn audio(action: &'static str) -> impl FnOnce(ffmpeg_next::Error) -> Self {
+        move |source| Self::Audio { action, source }
     }
 
     pub(crate) fn file(

@@ -94,6 +94,66 @@ impl Probe {
     }
 }
 
+/// What ffprobe says about a recorded sound track.
+#[derive(Debug)]
+pub struct AudioProbe {
+    pub codec: String,
+    pub rate: u64,
+    pub channels: u64,
+    pub start: f64,
+    pub duration: f64,
+}
+
+impl AudioProbe {
+    pub fn read(path: &Path) -> Self {
+        let output = Command::new(tool("ffprobe"))
+            .args(["-v", "error", "-select_streams", "a:0", "-of", "json"])
+            .args([
+                "-show_entries",
+                "stream=codec_name,sample_rate,channels,start_time,duration",
+            ])
+            .arg(path)
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "ffprobe: {output:?}");
+        let json: Value = serde_json::from_slice(&output.stdout).unwrap();
+        let stream = &json["streams"][0];
+        let number = |key: &str| stream[key].as_str().unwrap().parse::<f64>().unwrap();
+        Self {
+            codec: stream["codec_name"].as_str().unwrap().to_owned(),
+            rate: number("sample_rate") as u64,
+            channels: stream["channels"].as_u64().unwrap(),
+            start: number("start_time"),
+            duration: number("duration"),
+        }
+    }
+
+    /// Every sound track: FLAC, 48 kHz stereo, from 0.
+    pub fn check_common(&self) {
+        assert_eq!(self.codec, "flac");
+        assert_eq!((self.rate, self.channels), (48_000, 2));
+        assert_eq!(self.start, 0.0);
+    }
+}
+
+/// The left channel of a sound track, decoded by FFmpeg.
+pub fn audio_left(path: &Path) -> Vec<f32> {
+    let output = Command::new(tool("ffmpeg"))
+        .args(["-v", "error", "-i"])
+        .arg(path)
+        .args(["-af", "pan=mono|c0=c0", "-f", "f32le", "-"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    output
+        .stdout
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|b| f32::from_le_bytes(*b))
+        .collect()
+}
+
 /// Saves the frame at `seconds` as PNG next to the file and returns its path.
 pub fn frame_png(path: &Path, seconds: f64) -> PathBuf {
     let png = path.with_extension(format!("{seconds}s.png"));

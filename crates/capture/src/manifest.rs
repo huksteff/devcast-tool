@@ -5,6 +5,7 @@
 //! unfinished segment or a temporary file.
 
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
@@ -23,15 +24,16 @@ pub struct Manifest {
     pub tracks: Vec<Track>,
 }
 
-/// One recorded stream (video now; system sound and microphone later).
+/// One recorded stream: video, system sound or microphone.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Track {
     /// Track name, also the stem of its files: `video` → `video-000001.mp4`, `video.mp4`.
     pub name: String,
-    /// Ticks per second of `start`/`end` (the frame rate for video).
+    /// Ticks per second of `start`/`end`: the frame rate for video, the sample rate for sound.
     pub rate: u32,
-    /// Host time of tick 0.
+    /// Host time of tick 0. All tracks of a recording share the host clock (QPC), so this is
+    /// what lines them up.
     pub start: HostTime,
     /// Complete segments in order; together they cover the track without gaps.
     pub segments: Vec<Segment>,
@@ -116,6 +118,57 @@ impl Manifest {
     }
 }
 
+/// The manifest of a recording being written, shared by the threads writing its tracks: each
+/// changes only its own track, and every change rewrites the file atomically.
+#[derive(Clone)]
+pub struct SharedManifest {
+    dir: PathBuf,
+    manifest: Arc<Mutex<Manifest>>,
+}
+
+impl SharedManifest {
+    /// Starts an empty manifest in `dir` (created if missing; must not hold another recording).
+    pub fn create(dir: &Path) -> Result<Self, CaptureError> {
+        std::fs::create_dir_all(dir).map_err(CaptureError::file("создать папку", dir))?;
+        if Manifest::path(dir).exists() {
+            return Err(CaptureError::RecordingExists(dir.to_path_buf()));
+        }
+        let manifest = Manifest::new(Vec::new());
+        manifest.write(dir)?;
+        Ok(Self {
+            dir: dir.to_path_buf(),
+            manifest: Arc::new(Mutex::new(manifest)),
+        })
+    }
+
+    pub fn dir(&self) -> &Path {
+        &self.dir
+    }
+
+    /// Adds `track` or replaces the track of the same name, and writes the file.
+    pub fn set(&self, track: &Track) -> Result<(), CaptureError> {
+        let mut manifest = self.lock()?;
+        match manifest.tracks.iter_mut().find(|t| t.name == track.name) {
+            Some(old) => old.clone_from(track),
+            None => manifest.tracks.push(track.clone()),
+        }
+        manifest.write(&self.dir)
+    }
+
+    /// The manifest as it is now.
+    pub fn get(&self) -> Result<Manifest, CaptureError> {
+        Ok(self.lock()?.clone())
+    }
+
+    fn lock(&self) -> Result<std::sync::MutexGuard<'_, Manifest>, CaptureError> {
+        self.manifest.lock().map_err(|_| {
+            CaptureError::platform("записать manifest.json")(
+                "поток записи дорожки упал".to_owned(),
+            )
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,6 +192,29 @@ mod tests {
             r#"{"version":1,"tracks":[{"name":"video","rate":60,"start":5000000,"segments":[{"file":"video-000001.mp4","start":0,"end":120}],"file":null}]}"#
         );
         assert_eq!(serde_json::from_str::<Manifest>(&json).unwrap(), manifest);
+    }
+
+    #[test]
+    fn shared_manifest_keeps_every_track() {
+        let dir = tempfile::tempdir().unwrap();
+        let shared = SharedManifest::create(dir.path()).unwrap();
+        assert!(matches!(
+            SharedManifest::create(dir.path()),
+            Err(CaptureError::RecordingExists(_))
+        ));
+        let mut video = Track::new("video", 60, HostTime::from_micros(10));
+        let system = Track::new("system", 48_000, HostTime::from_micros(10));
+        shared.set(&video).unwrap();
+        shared.set(&system).unwrap();
+        video.segments.push(Segment {
+            file: video.segment_file(1),
+            start: 0,
+            end: 120,
+        });
+        shared.set(&video).unwrap();
+        let read = Manifest::read(dir.path()).unwrap();
+        assert_eq!(read, Manifest::new(vec![video, system]));
+        assert_eq!(shared.get().unwrap(), read);
     }
 
     #[test]

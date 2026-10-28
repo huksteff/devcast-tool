@@ -1,11 +1,10 @@
 //! The video track of a recording: capture → NV12 on the GPU → encoder thread → fMP4
-//! segments with a manifest → one MP4 at stop.
+//! segments listed in the manifest.
 //!
 //! Before capture starts, one frame tells the size, and the codec is chosen and checked for
 //! speed at that size: a codec that cannot keep up is an error before anything is recorded.
 
 use std::ops::ControlFlow;
-use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, SyncSender};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -13,17 +12,15 @@ use std::time::Duration;
 use dc_encode::{Codec, Nv12Frame, VideoEncoder, VideoSettings};
 
 use super::capture::{FrameSink, VideoCapture};
-use super::clock::now;
 use super::frame::VideoFrame;
 use super::nv12::{Nv12Converter, even_size};
 use crate::config::Fps;
 use crate::error::CaptureError;
 use crate::event::HostTime;
-use crate::finalize::finalize;
 use crate::grid::FrameGrid;
-use crate::manifest::{Manifest, Track};
+use crate::manifest::{SharedManifest, Track};
 use crate::source::Source;
-use crate::track::VideoTrackWriter;
+use crate::track::TrackWriter;
 
 /// The first frame normally arrives within tens of milliseconds; this bound only turns a
 /// capture that delivers nothing into an error instead of a hang.
@@ -53,24 +50,14 @@ pub struct VideoSummary {
     pub frames: u64,
     /// Slot where the video ends (exclusive); its duration is `end / fps` seconds.
     pub end: i64,
-    /// The finished MP4.
-    pub file: PathBuf,
 }
 
 pub struct VideoRecording {
-    dir: PathBuf,
     capture: VideoCapture<EncodeSink>,
     control: SyncSender<Message>,
-    encoder: JoinHandle<Result<Encoded, CaptureError>>,
+    encoder: JoinHandle<Result<VideoSummary, CaptureError>>,
     grid: FrameGrid,
     info: VideoStart,
-}
-
-/// What the encoder thread leaves for finalizing.
-struct Encoded {
-    frames: u64,
-    end: i64,
-    manifest: Manifest,
 }
 
 enum Message {
@@ -83,13 +70,12 @@ enum Message {
 }
 
 impl VideoRecording {
-    /// Starts recording `source` at `fps` into the folder `dir` (created if missing; must not
-    /// hold another recording).
-    pub fn start(source: &Source, fps: Fps, dir: &Path) -> Result<Self, CaptureError> {
-        std::fs::create_dir_all(dir).map_err(CaptureError::file("создать папку", dir))?;
-        if Manifest::path(dir).exists() {
-            return Err(CaptureError::RecordingExists(dir.to_path_buf()));
-        }
+    /// Starts recording `source` at `fps` as the track `video` of `manifest`.
+    pub fn start(
+        source: &Source,
+        fps: Fps,
+        manifest: &SharedManifest,
+    ) -> Result<Self, CaptureError> {
         let (width, height) = even_size(frame_size(source)?);
         let settings = VideoSettings {
             width,
@@ -133,7 +119,7 @@ impl VideoRecording {
             Err(RecvTimeoutError::Disconnected) => return Err(failure(capture)),
         };
         let track = Track::new(VIDEO_TRACK, fps.get(), start);
-        let writer = match VideoTrackWriter::create(dir, track, video) {
+        let writer = match TrackWriter::create(manifest, track, video) {
             Ok(writer) => writer,
             Err(e) => {
                 capture.stop()?;
@@ -142,7 +128,6 @@ impl VideoRecording {
         };
         writer_tx.send(writer).map_err(|_| encoder_gone())?;
         Ok(Self {
-            dir: dir.to_path_buf(),
             capture,
             control: frames_tx,
             encoder,
@@ -160,10 +145,9 @@ impl VideoRecording {
         self.info
     }
 
-    /// Stops capturing, lets the last frame last until now and joins the segments into
-    /// `video.mp4` in the recording folder.
-    pub fn stop(self) -> Result<VideoSummary, CaptureError> {
-        let at = now()?;
+    /// Stops capturing, lets the last frame last until host time `at` and closes the last
+    /// segment.
+    pub fn stop(self, at: HostTime) -> Result<VideoSummary, CaptureError> {
         let captured = self.capture.stop();
         let sent = self.control.send(Message::End {
             grid: self.grid,
@@ -175,16 +159,10 @@ impl VideoRecording {
             )
         })?;
         // A failed encoder also fails the capture and the End message; its error says why.
-        let Encoded {
-            frames,
-            end,
-            mut manifest,
-        } = encoded?;
+        let summary = encoded?;
         captured?;
         sent.map_err(|_| encoder_gone())?;
-        let files = finalize(&self.dir, &mut manifest)?;
-        let file = files.into_iter().next().ok_or_else(encoder_gone)?;
-        Ok(VideoSummary { frames, end, file })
+        Ok(summary)
     }
 }
 
@@ -282,8 +260,8 @@ fn encode(
     frames: &Receiver<Message>,
     returned: &Sender<Nv12Frame>,
     mut encoder: VideoEncoder,
-    writer: &Receiver<VideoTrackWriter>,
-) -> Result<Encoded, CaptureError> {
+    writer: &Receiver<TrackWriter>,
+) -> Result<VideoSummary, CaptureError> {
     let mut track = writer.recv().map_err(|_| encoder_gone())?;
     let mut packets = Vec::new();
     let mut count = 0;
@@ -306,12 +284,8 @@ fn encode(
                     track.push(packet)?;
                 }
                 let end = grid.end(last, at);
-                let manifest = track.finish(end)?;
-                return Ok(Encoded {
-                    frames: count,
-                    end,
-                    manifest,
-                });
+                track.finish(end)?;
+                return Ok(VideoSummary { frames: count, end });
             }
         }
     }

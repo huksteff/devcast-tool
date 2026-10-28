@@ -34,6 +34,31 @@ pub fn test_monitor() -> MonitorInfo {
         .expect("no such monitor")
 }
 
+fn ffplay() -> PathBuf {
+    PathBuf::from(env!("FFMPEG_DIR")).join("bin/ffplay.exe")
+}
+
+/// ffplay playing a `frequency` Hz tone for `seconds` at `dbfs` peak, without a window.
+pub fn tone(frequency: u32, seconds: f64, dbfs: f64) -> Child {
+    // `sine` peaks at 1/8 of full scale, −18.06 dBFS.
+    let gain = dbfs + 18.06;
+    Command::new(ffplay())
+        .args([
+            "-loglevel",
+            "quiet",
+            "-nodisp",
+            "-autoexit",
+            "-f",
+            "lavfi",
+            "-i",
+        ])
+        .arg(format!(
+            "sine=frequency={frequency}:duration={seconds}:sample_rate=48000,volume={gain}dB"
+        ))
+        .spawn()
+        .unwrap()
+}
+
 /// ffplay showing `testsrc2` 1280×720 at 60 fps without a frame, 100 px from the monitor corner.
 pub struct TestPicture {
     _process: Running,
@@ -52,7 +77,7 @@ impl Drop for Running {
 
 impl TestPicture {
     pub fn show(monitor: &MonitorInfo, seconds: u32) -> Self {
-        let ffplay = PathBuf::from(env!("FFMPEG_DIR")).join("bin/ffplay.exe");
+        let ffplay = ffplay();
         let process = Running(
             Command::new(&ffplay)
                 .args([

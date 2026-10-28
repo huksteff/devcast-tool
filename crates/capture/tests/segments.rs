@@ -8,8 +8,8 @@
 
 use std::path::Path;
 
-use dc_capture::track::VideoTrackWriter;
-use dc_capture::{HostTime, Manifest, Track, finalize, recover};
+use dc_capture::track::TrackWriter;
+use dc_capture::{HostTime, Manifest, SharedManifest, Track, finalize, recover};
 use dc_encode::{Codec, Mp4Reader, Nv12Frame, VideoEncoder, VideoSettings};
 
 const FPS: u32 = 30;
@@ -18,11 +18,12 @@ const FPS: u32 = 30;
 /// `dir`; returns the manifest after `finish(end)`.
 fn write_track(dir: &Path, slots: &[i64], end: i64) -> Manifest {
     let writer = write_frames(dir, slots);
-    writer.finish(end).unwrap()
+    writer.finish(end).unwrap();
+    Manifest::read(dir).unwrap()
 }
 
 /// Encodes and pushes frames at `slots` without finishing: the last segment stays open.
-fn write_frames(dir: &Path, slots: &[i64]) -> VideoTrackWriter {
+fn write_frames(dir: &Path, slots: &[i64]) -> TrackWriter {
     let settings = VideoSettings {
         width: 160,
         height: 90,
@@ -30,7 +31,8 @@ fn write_frames(dir: &Path, slots: &[i64]) -> VideoTrackWriter {
     };
     let mut encoder = VideoEncoder::open(Codec::X264, settings).unwrap();
     let track = Track::new("video", FPS, HostTime::from_micros(42));
-    let mut writer = VideoTrackWriter::create(dir, track, encoder.parameters()).unwrap();
+    let manifest = SharedManifest::create(dir).unwrap();
+    let mut writer = TrackWriter::create(&manifest, track, encoder.parameters()).unwrap();
     let mut frame = Nv12Frame::new(settings.width, settings.height).unwrap();
     let mut packets = Vec::new();
     for (i, slot) in slots.iter().enumerate() {
@@ -63,12 +65,10 @@ fn read_all(path: &Path) -> Vec<(i64, i64, bool)> {
 fn segments_cover_the_track_and_join_into_one_file() {
     let dir = tempfile::tempdir().unwrap();
     let dir = dir.path().join("Запись 1");
-    std::fs::create_dir(&dir).unwrap();
     // 7 s at 30 fps with a still screen from 3.0 to 4.5 s.
     let slots: Vec<i64> = (0..90).chain(135..210).collect();
     let mut manifest = write_track(&dir, &slots, 215);
 
-    assert_eq!(manifest, Manifest::read(&dir).unwrap());
     let track = &manifest.tracks[0];
     let bounds: Vec<(i64, i64)> = track.segments.iter().map(|s| (s.start, s.end)).collect();
     assert_eq!(bounds, [(0, 60), (60, 135), (135, 195), (195, 215)]);
@@ -117,7 +117,6 @@ fn segments_cover_the_track_and_join_into_one_file() {
 fn recovery_keeps_complete_segments_and_drops_the_rest() {
     let dir = tempfile::tempdir().unwrap();
     let dir = dir.path().join("вылет");
-    std::fs::create_dir(&dir).unwrap();
     let slots: Vec<i64> = (0..200).collect();
     // Dropped without `finish`: files are closed (as the system does for a killed process)
     // but the open segment is not completed and not listed.

@@ -1,10 +1,12 @@
-//! Live encoding while recording, MP4 and GIF export, encoder self-test, export queue.
+//! Live encoding while recording (H.264 video, FLAC sound), MP4 and GIF export, encoder
+//! self-test, export queue.
 
 #![allow(
     unsafe_code,
     reason = "FFmpeg fields that ffmpeg-next does not wrap; each block has a SAFETY comment"
 )]
 
+pub mod audio;
 pub mod codec;
 pub mod encoder;
 pub mod error;
@@ -14,12 +16,13 @@ pub mod packet;
 pub mod reader;
 pub mod select;
 
+pub use audio::{AudioEncoder, AudioSettings};
 pub use codec::Codec;
 pub use encoder::{VideoEncoder, VideoSettings};
 pub use error::EncodeError;
 pub use frame::Nv12Frame;
 pub use mp4::{Mp4Layout, Mp4Writer};
-pub use packet::{Packet, VideoParameters};
+pub use packet::{Packet, StreamParameters};
 pub use reader::Mp4Reader;
 pub use select::{Selection, select};
 

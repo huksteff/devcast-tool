@@ -1,19 +1,19 @@
-//! An MP4 file with one H.264 video stream.
+//! An MP4 file with one stream: H.264 video or FLAC sound.
 
 use std::path::{Path, PathBuf};
 
 use ffmpeg_next as ffmpeg;
 
 use crate::error::EncodeError;
-use crate::packet::{Packet, VideoParameters};
+use crate::packet::{Packet, StreamParameters};
 
 /// How the file is laid out.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mp4Layout {
     /// One index at the end: the usual file for players and the editor.
     Plain,
-    /// Fragmented MP4: a fragment per key frame, no index at the end. Used for recording
-    /// segments.
+    /// Fragmented MP4: a fragment per video key frame (sound: one at the end), no index at the
+    /// end. Used for recording segments.
     Fragmented,
 }
 
@@ -25,21 +25,21 @@ pub struct Mp4Writer {
 }
 
 impl Mp4Writer {
-    /// Creates the file and writes its header. Packets come in `video`'s time base.
+    /// Creates the file and writes its header. Packets come in `stream`'s time base.
     pub fn create(
         path: &Path,
-        video: &VideoParameters,
+        stream: &StreamParameters,
         layout: Mp4Layout,
     ) -> Result<Self, EncodeError> {
         crate::init();
         let mut out =
             ffmpeg::format::output_as(path, "mp4").map_err(EncodeError::file("создать", path))?;
         {
-            let mut stream = out
+            let mut added = out
                 .add_stream(None::<ffmpeg::Codec>)
                 .map_err(EncodeError::file("создать дорожку в", path))?;
-            stream.set_parameters(video.codec.clone());
-            stream.set_time_base(video.time_base);
+            added.set_parameters(stream.codec.clone());
+            added.set_time_base(stream.time_base);
         }
         let mut options = ffmpeg::Dictionary::new();
         if layout == Mp4Layout::Fragmented {
@@ -55,7 +55,7 @@ impl Mp4Writer {
         Ok(Self {
             out,
             path: path.to_path_buf(),
-            packet_time_base: video.time_base,
+            packet_time_base: stream.time_base,
             stream_time_base,
         })
     }
@@ -66,7 +66,7 @@ impl Mp4Writer {
         inner.rescale_ts(self.packet_time_base, self.stream_time_base);
         inner
             .write(&mut self.out)
-            .map_err(EncodeError::file("записать кадр в", &self.path))?;
+            .map_err(EncodeError::file("записать пакет в", &self.path))?;
         Ok(())
     }
 

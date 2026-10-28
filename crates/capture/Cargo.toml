@@ -11,8 +11,10 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+cpal = "0.18"
 dc-encode = { path = "../encode" }
 dc-project = { path = "../project" }
+rubato = "5"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

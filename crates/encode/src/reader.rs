@@ -1,49 +1,47 @@
-//! Reading encoded video packets back from an MP4 file (plain or fragmented), without decoding.
+//! Reading encoded packets back from an MP4 file (plain or fragmented), without decoding.
 
 use std::path::{Path, PathBuf};
 
 use ffmpeg_next as ffmpeg;
 
 use crate::error::EncodeError;
-use crate::packet::{Packet, VideoParameters};
+use crate::packet::{Packet, StreamParameters};
 
 pub struct Mp4Reader {
     input: ffmpeg::format::context::Input,
     path: PathBuf,
     stream: usize,
     stream_time_base: ffmpeg::Rational,
-    video: VideoParameters,
+    parameters: StreamParameters,
 }
 
 impl Mp4Reader {
-    /// Opens the first video stream of `path`; packets come in `time_base` (seconds per tick).
+    /// Opens the stream of a one-stream file `path` (a recording track); packets come in
+    /// `time_base` (seconds per tick).
     pub fn open(path: &Path, (num, den): (i32, i32)) -> Result<Self, EncodeError> {
         crate::init();
         let input = ffmpeg::format::input(path).map_err(EncodeError::file("открыть", path))?;
-        let stream = input
-            .streams()
-            .best(ffmpeg::media::Type::Video)
-            .ok_or_else(|| {
-                EncodeError::file("найти видео в", path)(ffmpeg::Error::StreamNotFound)
-            })?;
-        let video = VideoParameters {
+        let stream = input.stream(0).ok_or_else(|| {
+            EncodeError::file("найти дорожку в", path)(ffmpeg::Error::StreamNotFound)
+        })?;
+        let parameters = StreamParameters {
             codec: stream.parameters(),
             time_base: ffmpeg::Rational::new(num, den),
         };
         Ok(Self {
             stream: stream.index(),
             stream_time_base: stream.time_base(),
-            video,
+            parameters,
             path: path.to_path_buf(),
             input,
         })
     }
 
-    pub fn parameters(&self) -> &VideoParameters {
-        &self.video
+    pub fn parameters(&self) -> &StreamParameters {
+        &self.parameters
     }
 
-    /// The next packet of the video stream, `None` at the end of the file.
+    /// The next packet, `None` at the end of the file.
     pub fn read(&mut self) -> Result<Option<Packet>, EncodeError> {
         loop {
             let mut packet = ffmpeg::Packet::empty();
@@ -55,9 +53,9 @@ impl Mp4Reader {
             if packet.stream() != self.stream {
                 continue;
             }
-            packet.rescale_ts(self.stream_time_base, self.video.time_base);
+            packet.rescale_ts(self.stream_time_base, self.parameters.time_base);
             let pts = packet.pts().ok_or_else(|| {
-                EncodeError::file("прочитать время кадра из", &self.path)(
+                EncodeError::file("прочитать время пакета из", &self.path)(
                     ffmpeg::Error::InvalidData,
                 )
             })?;
