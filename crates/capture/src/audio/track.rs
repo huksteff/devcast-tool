@@ -20,6 +20,9 @@ use crate::track::TrackWriter;
 /// Name of the system sound track in the manifest and of its files.
 pub const SYSTEM_TRACK: &str = "system";
 
+/// Name of the microphone track.
+pub const MIC_TRACK: &str = "mic";
+
 /// What was written.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AudioSummary {
@@ -31,7 +34,8 @@ pub struct AudioSummary {
     pub stats: TimelineStats,
     /// Times system sound moved to a new default output device.
     pub reconnects: u32,
-    /// Device failures the track went through as silence.
+    /// Device failures the track went through as silence (an unplugged microphone stays
+    /// silent until the stop).
     pub problems: Vec<String>,
 }
 

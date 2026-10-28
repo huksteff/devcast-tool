@@ -28,6 +28,11 @@ pub enum CaptureError {
         source: std::io::Error,
     },
 
+    #[error(
+        "файл настроек записи {path} повреждён ({message}): удали его, тогда настройки станут начальными"
+    )]
+    BadSettings { path: PathBuf, message: String },
+
     #[error("в папке {0} уже есть запись: выбери пустую папку")]
     RecordingExists(PathBuf),
 

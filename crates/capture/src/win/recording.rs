@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use super::clock::now;
 use super::video::{VideoRecording, VideoStart, VideoSummary};
-use crate::audio::{AudioRecording, AudioSource, AudioSummary, SYSTEM_TRACK};
+use crate::audio::{AudioRecording, AudioSource, AudioSummary, MIC_TRACK, SYSTEM_TRACK};
 use crate::config::RecordingConfig;
 use crate::error::CaptureError;
 use crate::finalize::finalize;
@@ -37,6 +37,10 @@ impl Recording {
         let mut audio = Vec::new();
         if config.system_audio {
             audio.push(AudioRecording::start(AudioSource::System, SYSTEM_TRACK)?);
+        }
+        if let Some(name) = &config.microphone {
+            let source = AudioSource::Microphone(name.clone());
+            audio.push(AudioRecording::start(source, MIC_TRACK)?);
         }
         let video = VideoRecording::start(&config.source, config.fps, &manifest)?;
         let start = video.info().start;

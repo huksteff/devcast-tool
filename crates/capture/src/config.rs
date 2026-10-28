@@ -1,7 +1,11 @@
-//! Settings of one recording: source, frame rate, audio tracks.
+//! Settings of one recording: source, frame rate, audio tracks. The last ones used are kept
+//! in a file of the app's settings (SCOPE: the last chosen values are remembered).
+
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::error::CaptureError;
 use crate::source::Source;
 
 /// Recording frame rate. Stored as a number: 30, 60 or 120.
@@ -64,6 +68,29 @@ impl RecordingConfig {
             system_audio: true,
             microphone: None,
         }
+    }
+
+    /// The settings saved last with [`Self::save`]; `None` when there are none yet.
+    pub fn load(path: &Path) -> Result<Option<Self>, CaptureError> {
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(CaptureError::file("прочитать", path)(e)),
+        };
+        serde_json::from_str(&text)
+            .map(Some)
+            .map_err(|e| CaptureError::BadSettings {
+                path: path.to_path_buf(),
+                message: e.to_string(),
+            })
+    }
+
+    /// Remembers these settings (atomically: a crash leaves the old file or the new one).
+    pub fn save(&self, path: &Path) -> Result<(), CaptureError> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(CaptureError::file("создать папку", parent))?;
+        }
+        Ok(dc_project::atomic::write_json(path, self)?)
     }
 
     /// Checks what the types cannot: a chosen microphone must have a name.
@@ -130,6 +157,22 @@ mod tests {
         let json = r#"{"source":"screen:1","fps":25,"system_audio":true,"microphone":null}"#;
         let error = serde_json::from_str::<RecordingConfig>(json).unwrap_err();
         assert!(error.to_string().contains("30, 60 или 120"), "{error}");
+    }
+
+    #[test]
+    fn last_settings_are_remembered() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("Настройки DevCast").join("recording.json");
+        assert_eq!(RecordingConfig::load(&path).unwrap(), None);
+        let config = RecordingConfig {
+            microphone: Some("Микрофон (6- Usb Audio Device)".to_owned()),
+            ..RecordingConfig::new(Source::Monitor(2))
+        };
+        config.save(&path).unwrap();
+        assert_eq!(RecordingConfig::load(&path).unwrap(), Some(config));
+        std::fs::write(&path, "{\"source\":").unwrap();
+        let error = RecordingConfig::load(&path).unwrap_err();
+        assert!(error.to_string().contains("удали его"), "{error}");
     }
 
     #[test]

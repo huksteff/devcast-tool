@@ -3,9 +3,11 @@
 
 mod device;
 mod drift;
+mod level;
 mod timeline;
 mod track;
 
 pub use device::{AudioSource, CHANNELS, MicrophoneInfo, list_microphones};
+pub use level::{AudioLevel, FLOOR_DB, LEVELS_PER_SECOND, LevelMeter};
 pub use timeline::{AudioTimeline, RATE, TimelineStats};
-pub use track::{AudioRecording, AudioSummary, SYSTEM_TRACK};
+pub use track::{AudioRecording, AudioSummary, MIC_TRACK, SYSTEM_TRACK};
