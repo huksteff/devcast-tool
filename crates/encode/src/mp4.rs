@@ -7,6 +7,16 @@ use ffmpeg_next as ffmpeg;
 use crate::error::EncodeError;
 use crate::packet::{Packet, VideoParameters};
 
+/// How the file is laid out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mp4Layout {
+    /// One index at the end: the usual file for players and the editor.
+    Plain,
+    /// Fragmented MP4: a fragment per key frame, no index at the end. Used for recording
+    /// segments.
+    Fragmented,
+}
+
 pub struct Mp4Writer {
     out: ffmpeg::format::context::Output,
     path: PathBuf,
@@ -16,7 +26,11 @@ pub struct Mp4Writer {
 
 impl Mp4Writer {
     /// Creates the file and writes its header. Packets come in `video`'s time base.
-    pub fn create(path: &Path, video: &VideoParameters) -> Result<Self, EncodeError> {
+    pub fn create(
+        path: &Path,
+        video: &VideoParameters,
+        layout: Mp4Layout,
+    ) -> Result<Self, EncodeError> {
         crate::init();
         let mut out =
             ffmpeg::format::output_as(path, "mp4").map_err(EncodeError::file("создать", path))?;
@@ -27,7 +41,11 @@ impl Mp4Writer {
             stream.set_parameters(video.codec.clone());
             stream.set_time_base(video.time_base);
         }
-        out.write_header()
+        let mut options = ffmpeg::Dictionary::new();
+        if layout == Mp4Layout::Fragmented {
+            options.set("movflags", "frag_keyframe+empty_moov+default_base_moof");
+        }
+        out.write_header_with(options)
             .map_err(EncodeError::file("записать заголовок в", path))?;
         let stream_time_base = out.stream(0).map(|s| s.time_base()).ok_or_else(|| {
             EncodeError::file("создать дорожку в", path)(

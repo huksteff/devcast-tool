@@ -107,3 +107,15 @@ pub fn frame_png(path: &Path, seconds: f64) -> PathBuf {
     assert!(status.success());
     png
 }
+
+/// Raw RGB of the frame at `seconds`, to compare frames.
+pub fn frame_rgb(path: &Path, seconds: f64) -> Vec<u8> {
+    let output = Command::new(tool("ffmpeg"))
+        .args(["-v", "error", "-ss", &seconds.to_string(), "-i"])
+        .arg(path)
+        .args(["-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    output.stdout
+}

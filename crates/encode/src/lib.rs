@@ -11,14 +11,16 @@ pub mod error;
 pub mod frame;
 pub mod mp4;
 pub mod packet;
+pub mod reader;
 pub mod select;
 
 pub use codec::Codec;
 pub use encoder::{VideoEncoder, VideoSettings};
 pub use error::EncodeError;
 pub use frame::Nv12Frame;
-pub use mp4::Mp4Writer;
+pub use mp4::{Mp4Layout, Mp4Writer};
 pub use packet::{Packet, VideoParameters};
+pub use reader::Mp4Reader;
 pub use select::{Selection, select};
 
 /// Initializes FFmpeg once per process and keeps its own log to errors only:

@@ -1,5 +1,7 @@
 //! Errors of capture. Every message says what happened and what to do.
 
+use std::path::{Path, PathBuf};
+
 use crate::config::ConfigError;
 use crate::source::{Source, SourceError};
 
@@ -13,6 +15,29 @@ pub enum CaptureError {
 
     #[error(transparent)]
     Encode(#[from] dc_encode::EncodeError),
+
+    #[error(transparent)]
+    Project(#[from] dc_project::ProjectError),
+
+    #[error(
+        "не удалось {action} {path}: {source}. Проверь, что диск не переполнен и папка доступна"
+    )]
+    File {
+        action: &'static str,
+        path: PathBuf,
+        source: std::io::Error,
+    },
+
+    #[error("в папке {0} уже есть запись: выбери пустую папку")]
+    RecordingExists(PathBuf),
+
+    #[error("файл {path} повреждён ({message}): эту запись не восстановить автоматически")]
+    BadManifest { path: PathBuf, message: String },
+
+    #[error(
+        "в записи {0} нет ни одного целого сегмента: запись оборвалась в первые секунды, восстанавливать нечего"
+    )]
+    EmptyRecording(PathBuf),
 
     #[error(
         "монитора {index} нет, подключено {count}: выбери другой (список — devcast ls sources)"
@@ -59,6 +84,15 @@ pub enum CaptureError {
 }
 
 impl CaptureError {
+    pub(crate) fn file(action: &'static str, path: &Path) -> impl FnOnce(std::io::Error) -> Self {
+        let path = path.to_path_buf();
+        move |source| Self::File {
+            action,
+            path,
+            source,
+        }
+    }
+
     pub(crate) fn platform(action: &'static str) -> impl FnOnce(String) -> Self {
         move |message| Self::Platform { action, message }
     }

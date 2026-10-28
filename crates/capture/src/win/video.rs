@@ -1,10 +1,11 @@
-//! The video track of a recording: capture → NV12 on the GPU → encoder thread → file.
+//! The video track of a recording: capture → NV12 on the GPU → encoder thread → fMP4
+//! segments with a manifest → one MP4 at stop.
 //!
 //! Before capture starts, one frame tells the size, and the codec is chosen and checked for
 //! speed at that size: a codec that cannot keep up is an error before anything is recorded.
 
 use std::ops::ControlFlow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, SyncSender};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -18,7 +19,9 @@ use super::nv12::{Nv12Converter, even_size};
 use crate::config::Fps;
 use crate::error::CaptureError;
 use crate::event::HostTime;
+use crate::finalize::finalize;
 use crate::grid::FrameGrid;
+use crate::manifest::{Manifest, Track};
 use crate::source::Source;
 use crate::track::VideoTrackWriter;
 
@@ -41,20 +44,33 @@ pub struct VideoStart {
     pub start: HostTime,
 }
 
+/// Name of the video track in the manifest and of its files.
+pub const VIDEO_TRACK: &str = "video";
+
 /// What was written.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VideoSummary {
     pub frames: u64,
     /// Slot where the video ends (exclusive); its duration is `end / fps` seconds.
     pub end: i64,
+    /// The finished MP4.
+    pub file: PathBuf,
 }
 
 pub struct VideoRecording {
+    dir: PathBuf,
     capture: VideoCapture<EncodeSink>,
     control: SyncSender<Message>,
-    encoder: JoinHandle<Result<VideoSummary, CaptureError>>,
+    encoder: JoinHandle<Result<Encoded, CaptureError>>,
     grid: FrameGrid,
     info: VideoStart,
+}
+
+/// What the encoder thread leaves for finalizing.
+struct Encoded {
+    frames: u64,
+    end: i64,
+    manifest: Manifest,
 }
 
 enum Message {
@@ -67,8 +83,13 @@ enum Message {
 }
 
 impl VideoRecording {
-    /// Starts recording `source` at `fps` into the MP4 file `path`.
-    pub fn start(source: &Source, fps: Fps, path: &Path) -> Result<Self, CaptureError> {
+    /// Starts recording `source` at `fps` into the folder `dir` (created if missing; must not
+    /// hold another recording).
+    pub fn start(source: &Source, fps: Fps, dir: &Path) -> Result<Self, CaptureError> {
+        std::fs::create_dir_all(dir).map_err(CaptureError::file("создать папку", dir))?;
+        if Manifest::path(dir).exists() {
+            return Err(CaptureError::RecordingExists(dir.to_path_buf()));
+        }
         let (width, height) = even_size(frame_size(source)?);
         let settings = VideoSettings {
             width,
@@ -77,12 +98,13 @@ impl VideoRecording {
         };
         let selection = dc_encode::select(settings)?;
         let encoder = VideoEncoder::open(selection.codec, settings)?;
-        let track = VideoTrackWriter::create(path, &encoder.parameters())?;
+        let video = encoder.parameters();
+        let (writer_tx, writer_rx) = mpsc::channel();
         let (frames_tx, frames_rx) = mpsc::sync_channel(IN_FLIGHT);
         let (returned_tx, returned_rx) = mpsc::channel();
         let encoder = std::thread::Builder::new()
             .name("devcast-encode".to_owned())
-            .spawn(move || encode(&frames_rx, &returned_tx, encoder, track))
+            .spawn(move || encode(&frames_rx, &returned_tx, encoder, &writer_rx))
             .map_err(|e| {
                 CaptureError::platform("запустить кодирование")(e.to_string())
             })?;
@@ -110,7 +132,17 @@ impl VideoRecording {
             }
             Err(RecvTimeoutError::Disconnected) => return Err(failure(capture)),
         };
+        let track = Track::new(VIDEO_TRACK, fps.get(), start);
+        let writer = match VideoTrackWriter::create(dir, track, video) {
+            Ok(writer) => writer,
+            Err(e) => {
+                capture.stop()?;
+                return Err(e);
+            }
+        };
+        writer_tx.send(writer).map_err(|_| encoder_gone())?;
         Ok(Self {
+            dir: dir.to_path_buf(),
             capture,
             control: frames_tx,
             encoder,
@@ -128,7 +160,8 @@ impl VideoRecording {
         self.info
     }
 
-    /// Stops capturing, lets the last frame last until now and closes the file.
+    /// Stops capturing, lets the last frame last until now and joins the segments into
+    /// `video.mp4` in the recording folder.
     pub fn stop(self) -> Result<VideoSummary, CaptureError> {
         let at = now()?;
         let captured = self.capture.stop();
@@ -142,10 +175,16 @@ impl VideoRecording {
             )
         })?;
         // A failed encoder also fails the capture and the End message; its error says why.
-        let summary = encoded?;
+        let Encoded {
+            frames,
+            end,
+            mut manifest,
+        } = encoded?;
         captured?;
         sent.map_err(|_| encoder_gone())?;
-        Ok(summary)
+        let files = finalize(&self.dir, &mut manifest)?;
+        let file = files.into_iter().next().ok_or_else(encoder_gone)?;
+        Ok(VideoSummary { frames, end, file })
     }
 }
 
@@ -237,13 +276,15 @@ impl FrameSink for EncodeSink {
     fn closed(&mut self) {}
 }
 
-/// The encoder thread: frames → packets → file, until [`Message::End`].
+/// The encoder thread: frames → packets → segments, until [`Message::End`]. The writer comes
+/// once the first frame has fixed the start time.
 fn encode(
     frames: &Receiver<Message>,
     returned: &Sender<Nv12Frame>,
     mut encoder: VideoEncoder,
-    mut track: VideoTrackWriter,
-) -> Result<VideoSummary, CaptureError> {
+    writer: &Receiver<VideoTrackWriter>,
+) -> Result<Encoded, CaptureError> {
+    let mut track = writer.recv().map_err(|_| encoder_gone())?;
     let mut packets = Vec::new();
     let mut count = 0;
     let mut last = 0;
@@ -265,8 +306,12 @@ fn encode(
                     track.push(packet)?;
                 }
                 let end = grid.end(last, at);
-                track.finish(end)?;
-                return Ok(VideoSummary { frames: count, end });
+                let manifest = track.finish(end)?;
+                return Ok(Encoded {
+                    frames: count,
+                    end,
+                    manifest,
+                });
             }
         }
     }

@@ -6,7 +6,10 @@
     reason = "test helpers: a failed step must fail the test"
 )]
 
-use dc_encode::{Codec, EncodeError, Mp4Writer, Nv12Frame, VideoEncoder, VideoSettings, select};
+use dc_encode::{
+    Codec, EncodeError, Mp4Layout, Mp4Reader, Mp4Writer, Nv12Frame, VideoEncoder, VideoSettings,
+    select,
+};
 use ffmpeg_next as ffmpeg;
 use ffmpeg_next::util::color;
 
@@ -46,7 +49,7 @@ fn variable_rate_file_has_key_frames_every_second_and_bt709_tags() {
     let slots = [0, 1, 2, 3, 50, 51, 52, 130, 131, 200];
     let end = 230;
     let mut encoder = VideoEncoder::open(Codec::X264, SETTINGS).unwrap();
-    let mut writer = Mp4Writer::create(&path, &encoder.parameters()).unwrap();
+    let mut writer = Mp4Writer::create(&path, &encoder.parameters(), Mp4Layout::Plain).unwrap();
     let mut frame = Nv12Frame::new(SETTINGS.width, SETTINGS.height).unwrap();
     let mut packets = Vec::new();
     for (i, pts) in slots.iter().enumerate() {
@@ -96,5 +99,46 @@ fn variable_rate_file_has_key_frames_every_second_and_bt709_tags() {
     assert_eq!(
         decoded.color_transfer_characteristic(),
         color::TransferCharacteristic::BT709
+    );
+}
+
+/// Recording segments are fragmented files; reading one back gives the same packets.
+#[test]
+fn fragmented_file_reads_back_with_times_keys_and_durations() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("сегмент.mp4");
+    let mut encoder = VideoEncoder::open(Codec::X264, SETTINGS).unwrap();
+    let mut writer =
+        Mp4Writer::create(&path, &encoder.parameters(), Mp4Layout::Fragmented).unwrap();
+    let mut frame = Nv12Frame::new(SETTINGS.width, SETTINGS.height).unwrap();
+    let mut packets = Vec::new();
+    let slots = [0, 1, 2, 70, 71, 140];
+    for pts in slots {
+        encoder.encode(&mut frame, pts, &mut packets).unwrap();
+    }
+    encoder.finish(&mut packets).unwrap();
+    let mut next = slots[1..].iter().copied().chain([150]);
+    for mut packet in packets {
+        packet.set_duration(next.next().unwrap() - packet.pts());
+        writer.write(packet).unwrap();
+    }
+    writer.finish().unwrap();
+
+    let mut reader = Mp4Reader::open(&path, (1, 60)).unwrap();
+    assert_eq!(reader.parameters().time_base(), (1, 60));
+    let mut read = Vec::new();
+    while let Some(packet) = reader.read().unwrap() {
+        read.push((packet.pts(), packet.duration(), packet.is_key()));
+    }
+    assert_eq!(
+        read,
+        [
+            (0, 1, true),
+            (1, 1, false),
+            (2, 68, false),
+            (70, 1, true),
+            (71, 69, false),
+            (140, 10, true)
+        ]
     );
 }

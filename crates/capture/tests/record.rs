@@ -17,10 +17,10 @@ mod common;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use common::probe::{Probe, frame_png};
+use common::probe::{Probe, frame_png, frame_rgb};
 use common::{TestPicture, test_monitor};
 use dc_capture::win::{VideoRecording, VideoStart, VideoSummary};
-use dc_capture::{Area, Fps, Source};
+use dc_capture::{Area, Fps, Manifest, Source};
 use windows::Win32::Foundation::FILETIME;
 use windows::Win32::System::Threading::{GetCurrentProcess, GetProcessTimes};
 
@@ -44,13 +44,19 @@ struct Recorded {
 }
 
 fn record(name: &str, source: &Source, fps: Fps, seconds: u64) -> Recorded {
-    let path = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("{name}.mp4"));
-    let recording = VideoRecording::start(source, fps, &path).unwrap();
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
+    if dir.exists() {
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+    let recording = VideoRecording::start(source, fps, &dir).unwrap();
     let (cpu, wall) = (cpu_seconds(), Instant::now());
     std::thread::sleep(Duration::from_secs(seconds));
     let info = recording.info();
     let summary = recording.stop().unwrap();
     let load = (cpu_seconds() - cpu) / wall.elapsed().as_secs_f64() * 100.0;
+    let path = summary.file.clone();
+    assert_eq!(path, dir.join("video.mp4"));
+    assert!(Manifest::read(&dir).unwrap().is_finished());
     let probe = Probe::read(&path);
     let megabytes = std::fs::metadata(&path).unwrap().len() as f64 / 1e6;
     println!(
@@ -112,5 +118,11 @@ fn records_monitor_area_and_window() {
     let rate = window.probe.frame_rate();
     assert!((rate - 30.0).abs() < 2.0, "{rate}");
     assert!(window.summary.frames > 100);
+    // The window holds only the moving test picture: a still recording means frames got lost.
+    assert_ne!(
+        frame_rgb(&window.path, 1.0),
+        frame_rgb(&window.path, 3.0),
+        "the test picture did not move: was ffplay covered or frozen?"
+    );
     assert!(window.path.exists());
 }

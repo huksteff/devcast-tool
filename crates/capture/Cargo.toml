@@ -12,11 +12,13 @@ workspace = true
 
 [dependencies]
 dc-encode = { path = "../encode" }
+dc-project = { path = "../project" }
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-serde_json.workspace = true
+tempfile.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-capture = "2"

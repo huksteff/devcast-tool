@@ -326,8 +326,10 @@ name = "dc-capture"
 version = "0.1.0"
 dependencies = [
  "dc-encode",
+ "dc-project",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "windows",
  "windows-capture",
