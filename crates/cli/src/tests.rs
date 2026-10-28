@@ -73,15 +73,15 @@ impl Op for ClipRm {
     const POSITIONAL: &'static [&'static str] = &["id"];
 }
 
-struct Fixture {
-    _tmp: tempfile::TempDir,
-    cwd: std::path::PathBuf,
-    dir: ProjectDir,
+pub(crate) struct Fixture {
+    pub(crate) _tmp: tempfile::TempDir,
+    pub(crate) cwd: std::path::PathBuf,
+    pub(crate) dir: ProjectDir,
     registry: Registry,
 }
 
 impl Fixture {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let tmp = tempfile::tempdir().unwrap();
         let cwd = tmp.path().join("Мои видео");
         std::fs::create_dir(&cwd).unwrap();
@@ -95,7 +95,7 @@ impl Fixture {
         }
     }
 
-    fn run(&self, line: &str) -> Outcome {
+    pub(crate) fn run(&self, line: &str) -> Outcome {
         self.run_in(line, &self.cwd)
     }
 
@@ -104,12 +104,12 @@ impl Fixture {
         run(args, cwd, &self.registry)
     }
 
-    fn clips(&self) -> usize {
+    pub(crate) fn clips(&self) -> usize {
         self.dir.load().unwrap().clips.len()
     }
 }
 
-fn done(stdout: &str) -> Outcome {
+pub(crate) fn done(stdout: &str) -> Outcome {
     Outcome {
         code: 0,
         stdout: format!("{stdout}\n"),
@@ -225,6 +225,11 @@ fn help_lists_every_command_on_one_line() {
         lines,
         [
             "help      Список команд; с именем команды — её аргументы и пример",
+            "apply     Применить план из JSON-файла: все шаги — один шаг отмены, всё или ничего",
+            "undo      Отменить последние шаги",
+            "redo      Вернуть последний отменённый шаг",
+            "history   Шаги, которые отменит undo и вернёт redo, новые сверху",
+            "save      Сохранить несохранённые изменения редактора в project.json",
             "clip add  Добавить клип",
             "clip rm   Удалить клип",
             "Подробнее: devcast help <команда>; всё со схемами: devcast help --json",
@@ -288,7 +293,12 @@ fn help_json_has_schemas_of_ops_project_and_effects() {
         .iter()
         .map(|c| c["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names, ["help", "clip add", "clip rm"]);
+    assert_eq!(
+        names,
+        [
+            "help", "apply", "undo", "redo", "history", "save", "clip add", "clip rm"
+        ]
+    );
     assert!(json["project"]["properties"]["clips"].is_object());
     assert!(json["effects"].is_object());
 }

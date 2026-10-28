@@ -1,5 +1,6 @@
 //! devcast command-line tool: edit, analyse, render and export projects.
 
+mod edit;
 pub mod error;
 pub mod find;
 pub mod globals;
@@ -9,6 +10,8 @@ pub mod registry;
 pub mod run;
 pub mod workspace;
 
+#[cfg(test)]
+mod edit_tests;
 #[cfg(test)]
 mod tests;
 

@@ -11,11 +11,12 @@
 - Проект: `--project`, иначе папка `*.dcproj`, внутри которой стоим, иначе единственная `*.dcproj` в текущей папке.
 - Без редактора CLI — единственный писатель (lock). Правит рабочее состояние: `session.json`, если редактор оставил несохранённое, иначе сразу `project.json`. Событие истории пишется до файла проекта.
 - Короткий вывод по умолчанию (`Applied` одной строкой), `--json` по запросу; ошибка под `--json` — `{"error", "code"}` в stderr.
+- Команды правки (`edit.rs`): команда `ops` и `apply plan.json` — одна запись истории; `undo [n]`, `redo` идут по `History`, на диск пишутся событиями `history.jsonl`; `save` переносит `session.json` в `project.json`. Под `--dry-run` всё делается в памяти без lock и записи.
 - Новый эффект регистрируется одной строкой в `registry.rs`.
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-cli`. Сценарии — `src/tests.rs` с тестовыми командами `clip add/rm` на временной папке с кириллицей и пробелами; `tests/binary.rs` проверяет настоящий exe (коды выхода, stdout/stderr).
+- `cargo nextest run -p dc-cli`. Сценарии — `src/tests.rs` с тестовыми командами `clip add/rm` на временной папке с кириллицей и пробелами; `src/edit_tests.rs` — apply/undo/redo/history/save; `tests/binary.rs` проверяет настоящий exe (коды выхода, stdout/stderr).
 
 ## Куда не лезть
 

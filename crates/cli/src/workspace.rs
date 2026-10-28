@@ -49,13 +49,25 @@ impl Workspace {
         })
     }
 
-    /// Writes `event`, which has just happened to `history`, and the project after it.
-    pub fn record(&self, event: Event) -> Result<(), CliError> {
-        self.log.append(&[event])?;
+    /// True when the editor left unsaved changes and this run edits them.
+    pub fn unsaved(&self) -> bool {
+        self.unsaved
+    }
+
+    /// Writes `events`, which have just happened to `history`, and the project after them.
+    pub fn record(&self, events: &[Event]) -> Result<(), CliError> {
+        self.log.append(events)?;
         match self.unsaved {
             true => self.dir.save_session(&self.project)?,
             false => self.dir.save(&self.project)?,
         }
+        Ok(())
+    }
+
+    /// `devcast save`: the working state becomes `project.json`, `session.json` goes away.
+    pub fn save(&mut self) -> Result<(), CliError> {
+        self.dir.save(&self.project)?;
+        self.unsaved = false;
         Ok(())
     }
 }
