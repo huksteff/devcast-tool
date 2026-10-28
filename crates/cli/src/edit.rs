@@ -92,6 +92,13 @@ pub(crate) fn apply_commands(
 
 /// Writes an applied change (history event, then the project) and makes the answer.
 fn finish(workspace: &mut Workspace, applied: &Applied) -> Result<Answer, CliError> {
+    write(workspace, applied)?;
+    let json = applied_json(applied);
+    Ok(answer(workspace, applied.to_string(), json))
+}
+
+/// Writes an applied change: its history event, then the project. A dry run writes nothing.
+pub(crate) fn write(workspace: &Workspace, applied: &Applied) -> Result<(), CliError> {
     if applied.changed && !applied.dry_run {
         let change = workspace.history.changes().last().cloned();
         let change = change.ok_or_else(|| {
@@ -102,8 +109,7 @@ fn finish(workspace: &mut Workspace, applied: &Applied) -> Result<Answer, CliErr
         })?;
         workspace.record(&[Event::Do(change)])?;
     }
-    let json = applied_json(applied);
-    Ok(answer(workspace, applied.to_string(), json))
+    Ok(())
 }
 
 pub(crate) fn applied_json(applied: &Applied) -> Value {

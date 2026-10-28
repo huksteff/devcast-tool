@@ -115,7 +115,11 @@ fn double_clicks_follow_the_windows_rule() {
 #[test]
 fn a_folder_without_manifest_or_video_is_an_error() {
     let empty = tempfile::tempdir().unwrap();
-    assert!(Telemetry::read(empty.path()).is_err());
+    let error = Telemetry::read(empty.path()).unwrap_err().to_string();
+    assert!(
+        error.contains("нет manifest.json: телеметрия курсора и клавиш недоступна"),
+        "{error}"
+    );
     let dir = folder(&[], &[]);
     let sound = Track::new("mic", 48_000, HostTime::from_micros(0));
     Manifest::new(vec![sound]).write(dir.path()).unwrap();

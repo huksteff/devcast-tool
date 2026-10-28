@@ -17,6 +17,7 @@ use crate::error::CliError;
 use crate::record_args::{RecordArgs, config, duration, project_folder};
 use crate::record_control::{self, Control, Reply, Request, Server};
 use crate::run::Answer;
+use crate::workspace::Workspace;
 
 /// `devcast record [stop|pause|resume|cancel] …`.
 pub(crate) fn record(
@@ -81,7 +82,7 @@ fn start(ctx: &Ctx<'_>, args: &RecordArgs) -> Result<Answer, CliError> {
     }
     let started = ProjectRecording::start(&config, &root, "devcast record", defaults);
     let result = match started {
-        Ok(recording) => run(ctx, recording, &server.requests, duration),
+        Ok(recording) => run(recording, &server.requests, duration),
         Err(e) => Err(CliError::Failed(e.to_string())),
     };
     let warnings = server.close()?;
@@ -92,7 +93,6 @@ fn start(ctx: &Ctx<'_>, args: &RecordArgs) -> Result<Answer, CliError> {
 
 /// Serves requests until the stop, the cancel or the end of `duration` of recording.
 fn run(
-    ctx: &Ctx<'_>,
     recording: ProjectRecording,
     requests: &Receiver<Request>,
     duration: Option<Duration>,
@@ -103,17 +103,17 @@ fn run(
         let request = match (left, clock.running) {
             (Some(left), Some(_)) => match requests.recv_timeout(left) {
                 Ok(request) => request,
-                Err(RecvTimeoutError::Timeout) => return stop(ctx, recording),
-                Err(RecvTimeoutError::Disconnected) => return closed(ctx, recording),
+                Err(RecvTimeoutError::Timeout) => return stop(recording),
+                Err(RecvTimeoutError::Disconnected) => return closed(recording),
             },
             _ => match requests.recv() {
                 Ok(request) => request,
-                Err(_) => return closed(ctx, recording),
+                Err(_) => return closed(recording),
             },
         };
         let result = match request.control {
             Control::Stop => {
-                let answer = stop(ctx, recording);
+                let answer = stop(recording);
                 reply(&request, &answer);
                 return answer;
             }
@@ -184,16 +184,17 @@ fn at(what: &str, recorded: Duration) -> Answer {
 }
 
 /// Stops the recording and, if the zoom setting `auto` of the project is on, adds auto zooms.
-fn stop(ctx: &Ctx<'_>, recording: ProjectRecording) -> Result<Answer, CliError> {
+fn stop(recording: ProjectRecording) -> Result<Answer, CliError> {
     let recorded = recording
         .stop()
         .map_err(|e| CliError::Failed(e.to_string()))?;
     let mut answer = summary(&recorded)?;
-    match autozoom::after_recording(ctx, &recorded.dir, &recorded.project) {
-        Ok(Some(zooms)) => {
-            answer.text.push_str(&format!("; автозумы: {}", zooms.text));
-            answer.json["zooms"] = zooms.json["diff"].clone();
-            answer.warnings.extend(zooms.warnings);
+    let zooms = Workspace::open(recorded.dir.clone(), true, false)
+        .and_then(|mut workspace| autozoom::after_recording(&mut workspace));
+    match zooms {
+        Ok(Some(applied)) => {
+            answer.text.push_str(&format!("; автозумы: {applied}"));
+            answer.json["zooms"] = applied.diff.to_string().into();
         }
         Ok(None) => {}
         Err(e) => answer.warnings.push(format!("автозумы не поставлены: {e}")),
@@ -202,8 +203,8 @@ fn stop(ctx: &Ctx<'_>, recording: ProjectRecording) -> Result<Answer, CliError> 
 }
 
 /// Nobody can reach the recording any more: it stops now.
-fn closed(ctx: &Ctx<'_>, recording: ProjectRecording) -> Result<Answer, CliError> {
-    let mut answer = stop(ctx, recording)?;
+fn closed(recording: ProjectRecording) -> Result<Answer, CliError> {
+    let mut answer = stop(recording)?;
     answer
         .warnings
         .push("канал управления закрылся, запись остановлена".to_owned());

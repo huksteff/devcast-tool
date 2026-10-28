@@ -46,6 +46,9 @@ pub struct Click {
 impl Telemetry {
     /// Reads `cursor.bin` and `keys.bin` of the finished recording in folder `dir`.
     pub fn read(dir: &Path) -> Result<Self, CaptureError> {
+        if !Manifest::path(dir).is_file() {
+            return Err(CaptureError::NoTelemetryManifest(dir.to_path_buf()));
+        }
         let manifest = Manifest::read(dir)?;
         let video = manifest
             .tracks

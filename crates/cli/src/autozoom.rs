@@ -1,14 +1,14 @@
 //! Auto zooms from the clicks of the recordings (`dc_fx_zoom::suggest`): `devcast zoom suggest`
-//! shows them, `devcast zoom add --at clicks` adds them as one undo step, and `devcast record`
-//! adds them right after the stop when the project's zoom setting `auto` is on.
+//! shows them, `devcast zoom add --at clicks` adds them as one undo step, and a recording added
+//! to a project (`devcast record` stop, a killed one recovered on open) gets them when the
+//! project's zoom setting `auto` is on.
 
 use dc_capture::input::{Button, CursorEvent};
-use dc_core::{Command, Op, Project};
+use dc_core::{Command, Op};
 use dc_fx_zoom::{
     Action, DEFAULT_SCALE, Mode, Pointer, Recording, Suggestions, ZoomAdd, ZoomEffect,
 };
-use dc_ops::Step;
-use dc_project::ProjectDir;
+use dc_ops::{Applied, Step};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -162,45 +162,50 @@ pub(crate) fn op(ctx: &Ctx<'_>, words: &[String]) -> Result<Answer, CliError> {
     })?;
     let mut workspace = ctx.open(true)?;
     let found = suggestions(&workspace)?;
-    let mut answer = add(ctx, &mut workspace, &found, &args)?;
+    let commands = commands(&found, &args);
+    let mut answer =
+        edit::apply_commands(ctx, &mut workspace, ZoomAdd::NAME, &as_commands(&commands))?;
     answer.warnings.extend(nothing(&found));
     Ok(answer)
 }
 
-fn add(
-    ctx: &Ctx<'_>,
-    workspace: &mut Workspace,
-    found: &Suggestions,
-    args: &ClickArgs,
-) -> Result<Answer, CliError> {
-    let commands: Vec<ZoomAdd> = found
+fn commands(found: &Suggestions, args: &ClickArgs) -> Vec<ZoomAdd> {
+    found
         .zooms
         .iter()
         .map(|z| z.command(args.scale, args.mode))
-        .collect();
-    let commands: Vec<&dyn Command> = commands.iter().map(|c| c as &dyn Command).collect();
-    edit::apply_commands(ctx, workspace, ZoomAdd::NAME, &commands)
+        .collect()
 }
 
-/// After `devcast record`: adds the suggested zooms to the recorded project `dir` if its zoom
-/// setting `auto` is on; `None` if it is off.
-pub(crate) fn after_recording(
-    ctx: &Ctx<'_>,
-    dir: &ProjectDir,
-    project: &Project,
-) -> Result<Option<Answer>, CliError> {
-    let settings = project
+fn as_commands(commands: &[ZoomAdd]) -> Vec<&dyn Command> {
+    commands.iter().map(|c| c as &dyn Command).collect()
+}
+
+/// A recording was just added to the project of `workspace` (the stop of `devcast record`, or a
+/// killed recording recovered on open): if the zoom setting `auto` is on, adds the suggested
+/// zooms as one undo step and writes them. `None` if the setting is off.
+pub(crate) fn after_recording(workspace: &mut Workspace) -> Result<Option<Applied>, CliError> {
+    let settings = workspace
+        .project
         .state::<ZoomEffect>()
         .map_err(|e| CliError::Failed(e.to_string()))?
         .settings;
     if !settings.auto {
         return Ok(None);
     }
-    let mut workspace = Workspace::open(dir.clone(), true, false)?;
-    let found = suggestions(&workspace)?;
+    let found = suggestions(workspace)?;
     let args = ClickArgs {
         scale: DEFAULT_SCALE,
         mode: Mode::default(),
     };
-    add(ctx, &mut workspace, &found, &args).map(Some)
+    let commands = commands(&found, &args);
+    let applied = dc_ops::apply_commands(
+        &mut workspace.project,
+        &mut workspace.history,
+        ZoomAdd::NAME,
+        &as_commands(&commands),
+        false,
+    )?;
+    edit::write(workspace, &applied)?;
+    Ok(Some(applied))
 }

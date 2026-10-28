@@ -10,6 +10,7 @@ use dc_core::{History, Project, SourceTime, history};
 use dc_project::history_log::Event;
 use dc_project::{HistoryLog, ProjectDir, ProjectError, ProjectLock};
 
+use crate::autozoom;
 use crate::error::CliError;
 
 #[derive(Debug)]
@@ -33,6 +34,7 @@ impl Workspace {
             false => None,
         };
         let recovered = recover(&dir, lock.is_some(), dry_run)?;
+        let added = recovered.clips > 0;
         let session = dir.load_session()?;
         let unsaved = session.is_some();
         let project = match session {
@@ -44,17 +46,34 @@ impl Workspace {
         if write && loaded.needs_rewrite {
             log.rewrite(&loaded.history)?;
         }
-        let mut warnings = recovered;
+        let mut warnings = recovered.lines;
         warnings.extend(loaded.warnings);
-        Ok(Self {
+        let mut workspace = Self {
             dir,
             log,
-            _lock: lock,
+            _lock: lock.or(recovered.lock),
             unsaved,
             project,
             history: loaded.history,
             warnings,
-        })
+        };
+        if added {
+            workspace.auto_zooms();
+        }
+        Ok(workspace)
+    }
+
+    /// Auto zooms for the recovered recordings, as after `devcast record`; a failure is a
+    /// warning: the recording itself is already in the project.
+    fn auto_zooms(&mut self) {
+        let line = match autozoom::after_recording(self) {
+            Ok(Some(applied)) if applied.changed => {
+                format!("автозумы восстановленной записи: {applied}")
+            }
+            Ok(_) => return,
+            Err(e) => format!("автозумы восстановленной записи не поставлены: {e}"),
+        };
+        self.warnings.push(line);
     }
 
     pub fn dir(&self) -> &ProjectDir {
@@ -89,29 +108,44 @@ impl Workspace {
     }
 }
 
-/// Finishes the recordings of `dir` whose process died and adds them to its working state;
-/// returns a warning line for each. Skipped while another process holds the project: that may
-/// be the recording itself.
-fn recover(dir: &ProjectDir, locked: bool, dry_run: bool) -> Result<Vec<String>, CliError> {
+/// What opening found of killed recordings.
+#[derive(Default)]
+struct Recovery {
+    /// A warning line per recording.
+    lines: Vec<String>,
+    /// Recordings added as clips.
+    clips: usize,
+    /// The lock taken for the recovery when the caller holds none: kept until the auto zooms of
+    /// the recovered recordings are written.
+    lock: Option<ProjectLock>,
+}
+
+/// Finishes the recordings of `dir` whose process died and adds them to its working state.
+/// Skipped while another process holds the project: that may be the recording itself.
+fn recover(dir: &ProjectDir, locked: bool, dry_run: bool) -> Result<Recovery, CliError> {
     let failed = |e: dc_capture::CaptureError| CliError::Failed(e.to_string());
     let media = dir.media_dir();
     let folders = unfinished_recordings(&media).map_err(failed)?;
     if dry_run {
-        return Ok(folders
+        let lines = folders
             .iter()
             .map(|f| {
                 format!("есть прерванная запись media/{f}, будет восстановлена при открытии без --dry-run")
             })
-            .collect());
+            .collect();
+        return Ok(Recovery {
+            lines,
+            ..Recovery::default()
+        });
     }
     if folders.is_empty() {
-        return Ok(Vec::new());
+        return Ok(Recovery::default());
     }
-    let _lock = match locked {
+    let lock = match locked {
         true => None,
         false => match ProjectLock::acquire(dir, "devcast") {
             Ok(lock) => Some(lock),
-            Err(ProjectError::Locked { .. }) => return Ok(Vec::new()),
+            Err(ProjectError::Locked { .. }) => return Ok(Recovery::default()),
             Err(e) => return Err(e.into()),
         },
     };
@@ -126,7 +160,14 @@ fn recover(dir: &ProjectDir, locked: bool, dry_run: bool) -> Result<Vec<String>,
         true => dir.save_session(&project)?,
         false => dir.save(&project)?,
     }
-    Ok(recovered.iter().map(line).collect())
+    Ok(Recovery {
+        lines: recovered.iter().map(line).collect(),
+        clips: recovered
+            .iter()
+            .filter(|r| matches!(r, Recovered::Clip { .. }))
+            .count(),
+        lock,
+    })
 }
 
 fn line(recovered: &Recovered) -> String {

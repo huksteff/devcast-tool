@@ -46,6 +46,12 @@ pub enum CaptureError {
     BadManifest { path: PathBuf, message: String },
 
     #[error(
+        "у записи {} нет manifest.json: телеметрия курсора и клавиш недоступна (видео и звук не затронуты); верни manifest.json из копии папки записи или добавь видео как импорт (devcast clip add)",
+        .0.display()
+    )]
+    NoTelemetryManifest(PathBuf),
+
+    #[error(
         "файл {path} повреждён ({message}): курсор и клавиши этой записи не прочитать, видео и звук не затронуты"
     )]
     BadTelemetry { path: PathBuf, message: String },
