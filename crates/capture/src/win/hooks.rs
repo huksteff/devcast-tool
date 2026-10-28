@@ -30,7 +30,7 @@ use super::keys::keyboard_proc;
 use super::mouse::mouse_proc;
 use crate::error::CaptureError;
 use crate::event::HostTime;
-use crate::input::{CursorEvent, InputMessage, KeyFilter, SeenShape, Timed};
+use crate::input::{CursorEvent, InputMessage, KeyFilter, SeenShape, Stroke, Timed};
 
 thread_local! {
     /// What the hooks of this thread need; set while the hooks are installed.
@@ -238,10 +238,10 @@ pub fn send_mouse(event: Result<CursorEvent, CaptureError>) {
     post(now().and_then(|at| Ok(InputMessage::Mouse(Timed { at, event: event? }))));
 }
 
-/// Passes key `key` going down or up through the privacy filter; only a shortcut is stamped
-/// and sent.
-pub fn send_key(key: u16, down: bool) {
-    let kept = STATE.with_borrow_mut(|state| state.as_mut().and_then(|s| s.keys.key(key, down)));
+/// Passes a key going down or up through the privacy filter; only a shortcut is stamped and
+/// sent.
+pub fn send_key(stroke: Stroke) {
+    let kept = STATE.with_borrow_mut(|state| state.as_mut().and_then(|s| s.keys.key(stroke)));
     if let Some(event) = kept {
         post(now().map(|at| InputMessage::Key(Timed { at, event })));
     }

@@ -13,7 +13,7 @@ mod writer;
 pub use cursor::{Button, CURSOR_FILE, CursorEvent, CursorKind, image_file, read_cursor};
 pub use file::{FLUSH, Timed};
 pub use image::CursorImage;
-pub use keys::{KEYS_FILE, KeyEvent, KeyFilter, Modifiers, read_keys};
+pub use keys::{KEYS_FILE, KeyEvent, KeyFilter, Modifiers, Stroke, read_keys};
 pub use shapes::SeenShape;
 pub use writer::{EncodePng, InputSummary};
 pub(crate) use writer::{InputMessage, write};

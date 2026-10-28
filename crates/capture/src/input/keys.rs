@@ -23,6 +23,18 @@ pub struct Modifiers {
     pub win: bool,
 }
 
+/// A key going down or up, as the keyboard hook reports it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Stroke {
+    /// Windows virtual-key code.
+    pub key: u16,
+    /// Hardware scan code.
+    pub scan: u32,
+    /// The extended-key flag: the grey navigation keys have it, their Numpad twins do not.
+    pub extended: bool,
+    pub down: bool,
+}
+
 /// A key pressed as part of a shortcut: `key` is a Windows virtual-key code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeyEvent {
@@ -56,6 +68,24 @@ const MODIFIER_KEYS: [(u16, usize); 11] = [
     (0x5C, 3), // VK_RWIN
 ];
 
+const LCONTROL: u16 = 0xA2;
+const RMENU: u16 = 0xA5;
+
+/// The scan code of the left Ctrl that Windows adds itself when AltGr (right Alt on layouts
+/// where it types characters) goes down or up.
+const ALTGR_CONTROL_SCAN: u32 = 0x21D;
+
+/// Numpad keys that type a character code while Alt is held: the digits with Num Lock on,
+/// and without it Insert, End, ↓, Page Down, ←, Clear, →, Home, ↑, Page Up (without the
+/// extended flag, unlike the grey keys of the same codes).
+const NUMPAD_DIGITS: (u16, u16) = (0x60, 0x69);
+const NUMPAD_NAVIGATION: [u16; 10] = [0x2D, 0x23, 0x28, 0x22, 0x25, 0x0C, 0x27, 0x24, 0x26, 0x21];
+
+fn is_numpad_code(stroke: Stroke) -> bool {
+    (NUMPAD_DIGITS.0..=NUMPAD_DIGITS.1).contains(&stroke.key)
+        || (!stroke.extended && NUMPAD_NAVIGATION.contains(&stroke.key))
+}
+
 fn is_special(key: u16) -> bool {
     SPECIAL
         .iter()
@@ -68,13 +98,22 @@ fn is_special(key: u16) -> bool {
 pub struct KeyFilter {
     /// Modifier keys down, one bit per entry of `MODIFIER_KEYS`.
     down: u16,
+    /// The left Ctrl that Windows adds for AltGr is down: the right Alt is AltGr, it types
+    /// characters and is not a modifier of a shortcut.
+    altgr: bool,
 }
 
 impl KeyFilter {
-    /// The key `key` went down (`true`) or up. Returns the event to record: a key pressed with
-    /// Ctrl, Alt or Win held, or a special key. Anything else — letters, digits, Shift+letter,
-    /// modifiers alone — gives `None` and is forgotten.
-    pub fn key(&mut self, key: u16, down: bool) -> Option<KeyEvent> {
+    /// A key went down or up. Returns the event to record: a key pressed with Ctrl, Alt or Win
+    /// held, or a special key. Anything else — letters, digits, Shift+letter, characters typed
+    /// with AltGr, Alt + Numpad character codes, modifiers alone — gives `None` and is
+    /// forgotten.
+    pub fn key(&mut self, stroke: Stroke) -> Option<KeyEvent> {
+        let Stroke { key, down, .. } = stroke;
+        if key == LCONTROL && stroke.scan == ALTGR_CONTROL_SCAN {
+            self.altgr = down;
+            return None;
+        }
         if let Some(bit) = MODIFIER_KEYS.iter().position(|&(k, _)| k == key) {
             match down {
                 true => self.down |= 1 << bit,
@@ -83,8 +122,9 @@ impl KeyFilter {
             return None;
         }
         let modifiers = self.modifiers();
+        let alt_code = modifiers.alt && !modifiers.ctrl && !modifiers.win && is_numpad_code(stroke);
         let shortcut = modifiers.ctrl || modifiers.alt || modifiers.win || is_special(key);
-        (down && shortcut).then_some(KeyEvent { key, modifiers })
+        (down && shortcut && !alt_code).then_some(KeyEvent { key, modifiers })
     }
 
     fn modifiers(&self) -> Modifiers {
@@ -92,6 +132,7 @@ impl KeyFilter {
             MODIFIER_KEYS
                 .iter()
                 .enumerate()
+                .filter(|&(_, &(k, _))| !(self.altgr && k == RMENU))
                 .any(|(bit, &(_, m))| m == modifier && self.down & (1 << bit) != 0)
         };
         Modifiers {

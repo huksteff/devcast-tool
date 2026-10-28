@@ -12,10 +12,24 @@ const ESC: u16 = 0x1B;
 
 /// Presses `chord` in order and releases it in reverse, through the filter.
 fn press(filter: &mut KeyFilter, chord: &[u16]) -> Vec<KeyEvent> {
-    let downs = chord.iter().filter_map(|&k| filter.key(k, true));
+    let downs = chord.iter().filter_map(|&k| filter.key(stroke(k, true)));
     let mut kept: Vec<KeyEvent> = downs.collect();
-    kept.extend(chord.iter().rev().filter_map(|&k| filter.key(k, false)));
+    kept.extend(
+        chord
+            .iter()
+            .rev()
+            .filter_map(|&k| filter.key(stroke(k, false))),
+    );
     kept
+}
+
+fn stroke(key: u16, down: bool) -> Stroke {
+    Stroke {
+        key,
+        scan: 0,
+        extended: false,
+        down,
+    }
 }
 
 fn letter(c: char) -> u16 {
@@ -69,8 +83,8 @@ fn special_keys_are_exactly_the_list() {
     let mut filter = KeyFilter::default();
     let kept: Vec<u16> = (1..=0xFE)
         .filter(|&key| {
-            let kept = filter.key(key, true).is_some();
-            filter.key(key, false);
+            let kept = filter.key(stroke(key, true)).is_some();
+            filter.key(stroke(key, false));
             kept
         })
         .collect();
