@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 cpal = "0.18"
+dc-core = { path = "../core" }
 dc-encode = { path = "../encode" }
 dc-project = { path = "../project" }
 rubato = "5"

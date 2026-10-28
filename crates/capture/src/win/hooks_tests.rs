@@ -175,6 +175,7 @@ fn typed_text_never_leaves_the_hook_and_shortcuts_reach_the_file() {
     let begin = InputMessage::Begin {
         start: HostTime::from_micros(0),
         dir: dir.path().to_path_buf(),
+        origin: (0, 0),
         clock: crate::pause::PauseClock::default(),
     };
     for message in std::iter::once(begin).chain(queued) {

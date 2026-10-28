@@ -31,10 +31,12 @@ pub enum InputMessage {
     /// A shortcut that passed the privacy filter.
     Key(Timed<KeyEvent>),
     /// The recording starts at host time `start` and is written into the folder `dir`; what
-    /// `clock` says is paused is not written.
+    /// `clock` says is paused is not written. Positions are written relative to `origin`, the
+    /// desktop pixel of the recorded picture's top-left corner.
     Begin {
         start: HostTime,
         dir: PathBuf,
+        origin: (i32, i32),
         clock: PauseClock,
     },
     /// The recording went on after a pause at this host time.
@@ -63,6 +65,7 @@ pub type EncodePng = fn(&CursorImage) -> Result<Vec<u8>, CaptureError>;
 
 struct Open {
     start: HostTime,
+    origin: (i32, i32),
     clock: PauseClock,
     dir: PathBuf,
     records: RecordWriter<Timed<CursorEvent>>,
@@ -97,7 +100,12 @@ pub fn write(
             Ok(InputMessage::Mouse(event)) => writer.mouse(event)?,
             Ok(InputMessage::Shape(shape)) => writer.shape(shape)?,
             Ok(InputMessage::Key(key)) => writer.key(&key)?,
-            Ok(InputMessage::Begin { start, dir, clock }) => writer.begin(start, dir, clock)?,
+            Ok(InputMessage::Begin {
+                start,
+                dir,
+                origin,
+                clock,
+            }) => writer.begin(start, dir, origin, clock)?,
             Ok(InputMessage::Resumed(at)) => writer.resumed(at)?,
             Ok(InputMessage::Failed(error)) => return Err(error),
             Err(RecvTimeoutError::Timeout) => {}
@@ -117,12 +125,14 @@ impl Writer {
         &mut self,
         start: HostTime,
         dir: PathBuf,
+        origin: (i32, i32),
         clock: PauseClock,
     ) -> Result<(), CaptureError> {
         let records = RecordWriter::create(&dir.join(CURSOR_FILE))?;
         let keys = RecordWriter::create(&dir.join(KEYS_FILE))?;
         self.file = Some(Open {
             start,
+            origin,
             clock,
             dir,
             records,
@@ -232,7 +242,10 @@ impl Writer {
         self.position = position;
         self.written = position;
         if let Some(open) = &mut self.file {
-            open.records.write(&event)?;
+            open.records.write(&Timed {
+                at: event.at,
+                event: event.event.relative_to(open.origin),
+            })?;
         }
         Ok(())
     }

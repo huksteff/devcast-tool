@@ -456,6 +456,7 @@ name = "dc-capture"
 version = "0.1.0"
 dependencies = [
  "cpal",
+ "dc-core",
  "dc-encode",
  "dc-project",
  "rubato",

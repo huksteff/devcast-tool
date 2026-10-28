@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use super::clock::now;
 use super::input::InputRecording;
+use super::origin::source_origin;
 use super::video::{VideoRecording, VideoStart, VideoSummary};
 use crate::audio::{AudioRecording, AudioSource, AudioSummary, MIC_TRACK, SYSTEM_TRACK};
 use crate::cancel::remove_recording;
@@ -61,13 +62,14 @@ impl Recording {
             let source = AudioSource::Microphone(name.clone());
             audio.push(AudioRecording::start(source, MIC_TRACK)?);
         }
+        let origin = source_origin(&config.source)?;
         let input = InputRecording::start()?;
         let video = VideoRecording::start(&config.source, config.fps, &manifest, &clock)?;
         let start = video.info().start;
         for track in &audio {
             track.begin(start, &manifest, &clock)?;
         }
-        input.begin(start, dir, &clock)?;
+        input.begin(start, dir, origin, &clock)?;
         Ok(Self {
             manifest,
             clock,

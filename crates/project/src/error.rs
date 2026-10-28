@@ -34,6 +34,11 @@ pub enum ProjectError {
         "проект уже открыт: {holder}. Закрой его там или отправляй команды через открытый редактор (devcast сделает это сам)"
     )]
     Locked { holder: String },
+
+    #[error(
+        "не найдена папка настроек приложения: переменная окружения APPDATA не задана. Запусти devcast из обычного сеанса Windows"
+    )]
+    NoSettingsDir,
 }
 
 impl ProjectError {

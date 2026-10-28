@@ -34,6 +34,7 @@ fn begin(micros: i64, dir: &std::path::Path, clock: &PauseClock) -> InputMessage
     InputMessage::Begin {
         start: HostTime::from_micros(micros),
         dir: dir.to_path_buf(),
+        origin: (0, 0),
         clock: clock.clone(),
     }
 }
@@ -188,4 +189,64 @@ fn pauses_are_cut_out_and_the_pointer_catches_up_on_resume() {
     assert_eq!(read_cursor(dir.path()).unwrap(), expected);
     let keys = crate::input::read_keys(dir.path()).unwrap();
     assert_eq!(keys.iter().map(|k| k.at).collect::<Vec<_>>(), [micros(310)]);
+}
+
+#[test]
+fn positions_are_relative_to_the_recorded_picture() {
+    let dir = tempfile::tempdir().unwrap();
+    let (send, receive) = mpsc::channel();
+    let button = Button::Right;
+    for message in [
+        at(10, CursorEvent::Move { x: -1900, y: 300 }),
+        InputMessage::Begin {
+            start: HostTime::from_micros(100),
+            dir: dir.path().to_path_buf(),
+            origin: (-1920, 11),
+            clock: PauseClock::default(),
+        },
+        at(
+            110,
+            CursorEvent::Down {
+                button,
+                x: -1920,
+                y: 11,
+            },
+        ),
+        at(
+            120,
+            CursorEvent::Wheel {
+                x: 5,
+                y: 0,
+                delta: -120,
+            },
+        ),
+        shape(130, 1, CursorKind::Arrow, Some(picture(0))),
+    ] {
+        send.send(message).unwrap();
+    }
+    drop(send);
+    write(&receive, fake_png).unwrap();
+    let events: Vec<CursorEvent> = read_cursor(dir.path())
+        .unwrap()
+        .iter()
+        .map(|e| e.event)
+        .collect();
+    let shape = CursorEvent::Shape {
+        kind: CursorKind::Arrow,
+        image: Some(0),
+    };
+    assert_eq!(
+        events,
+        [
+            CursorEvent::Move { x: 20, y: 289 },
+            CursorEvent::Down { button, x: 0, y: 0 },
+            CursorEvent::Wheel {
+                x: 1925,
+                y: -11,
+                delta: -120
+            },
+            CursorEvent::Image { id: 0, x: 0, y: 0 },
+            shape,
+        ]
+    );
 }

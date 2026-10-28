@@ -20,7 +20,9 @@ use crate::migrate::{MigrateError, migrate};
 pub const PROJECT_FILE: &str = "project.json";
 pub const SESSION_FILE: &str = "session.json";
 pub const HISTORY_FILE: &str = "history.jsonl";
-const FOLDERS: [&str; 3] = ["media", "assets", "cache"];
+/// Recordings, imported videos, sound, input telemetry.
+pub const MEDIA_DIR: &str = "media";
+const FOLDERS: [&str; 3] = [MEDIA_DIR, "assets", "cache"];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectDir {
@@ -76,7 +78,7 @@ impl ProjectDir {
     }
 
     pub fn media_dir(&self) -> PathBuf {
-        self.root.join("media")
+        self.root.join(MEDIA_DIR)
     }
 
     pub fn assets_dir(&self) -> PathBuf {

@@ -37,16 +37,19 @@ impl InputRecording {
     }
 
     /// Input is recorded from host time `start` into the folder `dir`, without what `clock`
-    /// says is paused.
+    /// says is paused; positions relative to `origin`, the desktop pixel of the recorded
+    /// picture's top-left corner.
     pub fn begin(
         &self,
         start: HostTime,
         dir: &Path,
+        origin: (i32, i32),
         clock: &PauseClock,
     ) -> Result<(), CaptureError> {
         self.send(InputMessage::Begin {
             start,
             dir: dir.to_path_buf(),
+            origin,
             clock: clock.clone(),
         })
     }

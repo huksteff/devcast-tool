@@ -9,7 +9,7 @@
 //! | 9 | button (down/up): 1 left, 2 right, 3 middle, 4 X1 (back), 5 X2 (forward); shape: [`CursorKind`] code; else 0 |
 //! | 10 | shape: 1 visible, 0 hidden; else 0 |
 //! | 11 | 0 |
-//! | 12..16, 16..20 | x, y: i32. Mouse events: physical desktop pixels (left of the main monitor is negative). Image: hotspot in the picture's pixels. Else 0 |
+//! | 12..16, 16..20 | x, y: i32. Mouse events: pixels of the recorded picture from its top-left corner (physical desktop pixels minus the source's corner; outside the picture they are negative or beyond its size). Image: hotspot in the picture's pixels. Else 0 |
 //! | 20..24 | i32: wheel delta (120 per notch; + away from the user / to the right); image and visible shape: image id; else 0 |
 //!
 //! An image record comes before the first shape that shows it; its picture is the PNG
@@ -92,6 +92,39 @@ impl CursorEvent {
             | Self::Wheel { x, y, .. }
             | Self::HWheel { x, y, .. } => Some((x, y)),
             Self::Image { .. } | Self::Shape { .. } => None,
+        }
+    }
+
+    /// The same event with the pointer in pixels of a picture whose top-left corner is at
+    /// desktop pixel `origin`. Image and shape stay as they are.
+    pub fn relative_to(self, (ox, oy): (i32, i32)) -> Self {
+        let (dx, dy) = (-ox, -oy);
+        match self {
+            Self::Move { x, y } => Self::Move {
+                x: x + dx,
+                y: y + dy,
+            },
+            Self::Down { button, x, y } => Self::Down {
+                button,
+                x: x + dx,
+                y: y + dy,
+            },
+            Self::Up { button, x, y } => Self::Up {
+                button,
+                x: x + dx,
+                y: y + dy,
+            },
+            Self::Wheel { x, y, delta } => Self::Wheel {
+                x: x + dx,
+                y: y + dy,
+                delta,
+            },
+            Self::HWheel { x, y, delta } => Self::HWheel {
+                x: x + dx,
+                y: y + dy,
+                delta,
+            },
+            Self::Image { .. } | Self::Shape { .. } => self,
         }
     }
 

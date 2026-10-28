@@ -8,6 +8,7 @@ pub mod error;
 pub mod history_log;
 pub mod lock;
 pub mod migrate;
+pub mod settings;
 
 pub use autosave::Autosave;
 pub use defaults::Defaults;

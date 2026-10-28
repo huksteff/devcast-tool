@@ -13,6 +13,7 @@ pub mod list;
 pub mod manifest;
 pub mod pause;
 pub mod preview;
+pub mod project;
 pub mod recorder;
 pub mod recover;
 pub mod source;
