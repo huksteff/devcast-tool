@@ -179,6 +179,12 @@ version = "0.1.0"
 [[package]]
 name = "dc-fx-crop"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "dc-fx-cursor"
