@@ -18,6 +18,7 @@ pub fn finalize(dir: &Path, manifest: &mut Manifest) -> Result<Vec<PathBuf>, Cap
         if track.file.is_none() {
             join(dir, track)?;
             track.file = Some(track.final_file());
+            track.length = track.end();
             track.segments.clear();
         }
     }

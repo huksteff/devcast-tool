@@ -100,6 +100,7 @@ pub(crate) struct Server {
     name: String,
     closing: Arc<AtomicBool>,
     thread: JoinHandle<Vec<String>>,
+    sender: Sender<Request>,
     pub requests: Receiver<Request>,
 }
 
@@ -116,7 +117,10 @@ impl Server {
         let flag = Arc::clone(&closing);
         let thread = std::thread::Builder::new()
             .name("devcast-record-control".to_owned())
-            .spawn(move || serve(&listener, &requests, &flag))
+            .spawn({
+                let requests = requests.clone();
+                move || serve(&listener, &requests, &flag)
+            })
             .map_err(|e| {
                 CliError::Failed(format!("не удалось запустить управление записью: {e}"))
             })?;
@@ -124,8 +128,23 @@ impl Server {
             name,
             closing,
             thread,
+            sender: requests,
             requests: received,
         })
+    }
+
+    /// Asks the recording to stop, as `devcast record stop` does, and waits until it has; for
+    /// Ctrl+C and closing the console.
+    pub(crate) fn stopper(&self) -> impl Fn() + Send + Sync + 'static {
+        let sender = self.sender.clone();
+        move || {
+            let (reply, replied) = mpsc::channel();
+            let control = Control::Stop;
+            // A recording that has already ended has nothing to stop.
+            if sender.send(Request { control, reply }).is_ok() {
+                let _ = replied.recv();
+            }
+        }
     }
 
     /// Frees the channel; returns what went wrong with requests on the way, as warnings.

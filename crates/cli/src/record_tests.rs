@@ -195,10 +195,13 @@ fn stop_prints_one_line_about_the_project() {
         at: HostTime::from_micros(3_000_000),
         resumed: Some(HostTime::from_micros(4_000_000)),
     });
-    let media =
-        dc_capture::project::recording_media("recording-1", "video.mp4", (1920, 1080), 741, 60);
-    let project =
-        dc_capture::project::recording_project(media, &dc_project::Defaults::factory()).unwrap();
+    for track in &mut manifest.tracks {
+        track.file = Some(track.final_file());
+    }
+    manifest.tracks[0].length = 741;
+    manifest.tracks[0].size = Some((1920, 1080));
+    let mut project = dc_core::Project::default();
+    dc_capture::project::add_recording(&mut project, "recording-1", &manifest).unwrap();
     let audio = |track| AudioSummary {
         track,
         device: "Динамики".to_owned(),

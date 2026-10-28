@@ -24,6 +24,8 @@ mod ls_tests;
 #[cfg(test)]
 mod record_tests;
 #[cfg(test)]
+mod recover_tests;
+#[cfg(test)]
 mod skill_tests;
 #[cfg(test)]
 mod test_util;

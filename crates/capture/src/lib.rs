@@ -33,7 +33,7 @@ pub use finalize::finalize;
 pub use grid::FrameGrid;
 pub use lead::{FrameLead, LeadFilter};
 pub use list::{MonitorInfo, SourceList, WindowInfo};
-pub use manifest::{Manifest, Segment, SharedManifest, Track};
+pub use manifest::{Manifest, Segment, SharedManifest, Track, VIDEO_TRACK};
 pub use pause::{Pause, PauseClock, Pauses, Placed};
 pub use preview::{BgraImage, Preview};
 pub use recorder::Recorder;

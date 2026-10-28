@@ -117,3 +117,43 @@ fn records_pauses_stops_and_cancels_through_the_cli() {
     assert!(background.wait().unwrap().success());
     assert!(!cwd.join("c.dcproj").exists());
 }
+
+#[test]
+#[ignore = "records the screen: needs DEVCAST_TEST_MONITOR"]
+fn a_killed_recording_opens_with_its_clip() {
+    let source = monitor();
+    let tmp = tempfile::tempdir().unwrap();
+    let cwd = tmp.path();
+    let mut background = Command::new(env!("CARGO_BIN_EXE_devcast"))
+        .args(["record", "--source", &source, "-o", "k.dcproj"])
+        .current_dir(cwd)
+        .stdout(Stdio::null())
+        .spawn()
+        .unwrap();
+    control(cwd, "pause");
+    control(cwd, "resume");
+    std::thread::sleep(Duration::from_secs(5));
+    // TerminateProcess: no stop, no finalizing.
+    background.kill().unwrap();
+    background.wait().unwrap();
+
+    let out = devcast(cwd, &["info", "--project", "k.dcproj"]);
+    assert!(out.status.success(), "{}", text(&out.stderr));
+    let warning = text(&out.stderr);
+    println!("{warning}{}", text(&out.stdout));
+    assert!(
+        warning.contains("восстановлена прерванная запись media/recording-1"),
+        "{warning}"
+    );
+    let project = ProjectDir::open(cwd.join("k.dcproj"))
+        .unwrap()
+        .load()
+        .unwrap();
+    let seconds = project.clips[0].media.duration.as_secs_f64();
+    assert!(
+        (2.0..=5.5).contains(&seconds),
+        "complete segments only: {seconds}"
+    );
+    let again = devcast(cwd, &["info", "--project", "k.dcproj"]);
+    assert!(text(&again.stderr).is_empty(), "{}", text(&again.stderr));
+}

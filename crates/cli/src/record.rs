@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
-use dc_capture::win::{ProjectRecording, RecordedProject, VIDEO_TRACK};
-use dc_capture::{Fps, RecordingConfig, Source};
+use dc_capture::win::{ProjectRecording, RecordedProject, on_console_stop};
+use dc_capture::{Fps, RecordingConfig, Source, VIDEO_TRACK};
 use dc_core::SourceTime;
 use dc_project::{Defaults, settings};
 use serde_json::json;
@@ -199,6 +199,10 @@ fn start(ctx: &Ctx<'_>, args: &RecordArgs) -> Result<Answer, CliError> {
     }
     let defaults = Defaults::load(&settings::defaults_file()?)?;
     let server = Server::start()?;
+    if let Err(e) = on_console_stop(server.stopper()) {
+        server.close()?;
+        return Err(CliError::Failed(e.to_string()));
+    }
     let started = ProjectRecording::start(&config, &root, "devcast record", defaults);
     let result = match started {
         Ok(recording) => run(recording, &server.requests, duration),

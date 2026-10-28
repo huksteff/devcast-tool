@@ -475,6 +475,7 @@ dependencies = [
  "clap",
  "dc-capture",
  "dc-core",
+ "dc-encode",
  "dc-fx-crop",
  "dc-fx-cut",
  "dc-fx-zoom",

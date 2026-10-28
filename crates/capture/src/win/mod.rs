@@ -2,6 +2,7 @@
 
 mod capture;
 mod clock;
+mod console;
 mod cursor;
 mod d3d;
 mod frame;
@@ -21,13 +22,14 @@ mod window_list;
 
 pub use capture::{FrameSink, VideoCapture};
 pub use clock::now;
+pub use console::on_console_stop;
 pub use frame::VideoFrame;
 pub use input::InputRecording;
 pub use origin::source_origin;
 pub use preview::{preview_monitor, preview_window};
 pub use project::{ProjectRecording, RecordedProject};
 pub use recording::{Recording, RecordingSummary};
-pub use video::{VIDEO_TRACK, VideoRecording, VideoStart, VideoSummary};
+pub use video::{VideoRecording, VideoStart, VideoSummary};
 
 use crate::error::CaptureError;
 use crate::list::SourceList;

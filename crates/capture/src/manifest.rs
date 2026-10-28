@@ -15,6 +15,9 @@ use crate::pause::{Pause, Pauses};
 
 pub const MANIFEST: &str = "manifest.json";
 
+/// Name of the video track in the manifest and of its files.
+pub const VIDEO_TRACK: &str = "video";
+
 /// Version of the manifest format; a newer one is refused.
 pub const VERSION: u32 = 1;
 
@@ -44,6 +47,10 @@ pub struct Track {
     pub segments: Vec<Segment>,
     /// The finished track file; once it is written the segments are deleted.
     pub file: Option<String>,
+    /// Length of the finished file in ticks, kept when the segments are deleted.
+    pub length: i64,
+    /// Frame size of a video track (width, height); `None` for sound.
+    pub size: Option<(u32, u32)>,
 }
 
 /// A finished segment: its packets have times from 0, at `start` ticks into the track.
@@ -64,12 +71,14 @@ impl Track {
             start,
             segments: Vec::new(),
             file: None,
+            length: 0,
+            size: None,
         }
     }
 
-    /// Where the track ends, in ticks.
+    /// Where the track ends, in ticks: the last complete segment, or the finished file.
     pub fn end(&self) -> i64 {
-        self.segments.last().map_or(0, |s| s.end)
+        self.segments.last().map_or(self.length, |s| s.end)
     }
 
     /// File name of segment `index` (from 1).
@@ -202,7 +211,7 @@ mod tests {
         let json = serde_json::to_string(&manifest).unwrap();
         assert_eq!(
             json,
-            r#"{"version":1,"tracks":[{"name":"video","rate":60,"start":5000000,"segments":[{"file":"video-000001.mp4","start":0,"end":120}],"file":null}],"pauses":[]}"#
+            r#"{"version":1,"tracks":[{"name":"video","rate":60,"start":5000000,"segments":[{"file":"video-000001.mp4","start":0,"end":120}],"file":null,"length":0,"size":null}],"pauses":[]}"#
         );
         assert_eq!(serde_json::from_str::<Manifest>(&json).unwrap(), manifest);
     }

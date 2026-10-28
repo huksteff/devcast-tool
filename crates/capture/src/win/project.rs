@@ -1,7 +1,7 @@
-//! Recording into a new project: the folder `name.dcproj` is created at the start and the
-//! recording is written into its `media/recording-N/`, so after a crash it is already there.
-//! At the stop the project gets one clip of the recording and the app defaults; a cancel
-//! deletes the whole project folder.
+//! Recording into a new project: the folder `name.dcproj` with the app defaults is created at
+//! the start and the recording is written into its `media/recording-N/`, so after a crash it is
+//! already there (and [`crate::project::recover_recordings`] finishes it). At the stop the
+//! project gets the clip of the recording; a cancel deletes the whole project folder.
 
 use std::path::Path;
 
@@ -9,18 +9,17 @@ use dc_core::Project;
 use dc_project::{Defaults, ProjectDir, ProjectLock};
 
 use super::recording::{Recording, RecordingSummary};
-use super::video::VIDEO_TRACK;
 use crate::config::RecordingConfig;
 use crate::error::CaptureError;
 use crate::event::HostTime;
-use crate::project::{free_recording_folder, recording_media, recording_project};
+use crate::project::{add_recording, free_recording_folder};
 
 /// A recording into a project that is held locked until the stop.
 pub struct ProjectRecording {
     dir: ProjectDir,
     lock: ProjectLock,
     folder: String,
-    defaults: Defaults,
+    project: Project,
     recording: Recording,
 }
 
@@ -43,13 +42,16 @@ impl ProjectRecording {
     ) -> Result<Self, CaptureError> {
         let dir = ProjectDir::create(root)?;
         let lock = ProjectLock::acquire(&dir, app)?;
+        let mut project = Project::default();
+        defaults.apply(&mut project);
+        dir.save(&project)?;
         let folder = free_recording_folder(&dir.media_dir());
         match Recording::start(config, &dir.media_dir().join(&folder)) {
             Ok(recording) => Ok(Self {
                 dir,
                 lock,
                 folder,
-                defaults,
+                project,
                 recording,
             }),
             Err(error) => {
@@ -76,29 +78,14 @@ impl ProjectRecording {
     }
 
     /// Finishes the recording and saves the project with it.
-    pub fn stop(self) -> Result<RecordedProject, CaptureError> {
-        let size = self.recording.info().size;
+    pub fn stop(mut self) -> Result<RecordedProject, CaptureError> {
         let summary = self.recording.stop()?;
-        let video = summary
-            .manifest
-            .tracks
-            .iter()
-            .find(|t| t.name == VIDEO_TRACK);
-        let video = video
-            .ok_or_else(|| CaptureError::EmptyRecording(self.dir.media_dir().join(&self.folder)))?;
-        let media = recording_media(
-            &self.folder,
-            &video.final_file(),
-            size,
-            summary.video.end,
-            video.rate,
-        );
-        let project = recording_project(media, &self.defaults)?;
-        self.dir.save(&project)?;
+        add_recording(&mut self.project, &self.folder, &summary.manifest)?;
+        self.dir.save(&self.project)?;
         drop(self.lock);
         Ok(RecordedProject {
             dir: self.dir,
-            project,
+            project: self.project,
             summary,
         })
     }

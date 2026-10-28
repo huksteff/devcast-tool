@@ -27,6 +27,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+dc-encode = { path = "../encode" }
 insta.workspace = true
 tempfile.workspace = true
 

@@ -1,10 +1,14 @@
 //! A project opened by one CLI run. Without the editor the CLI is the only writer and edits the
 //! working state: `session.json` when the editor left unsaved changes (they stay unsaved until
 //! `devcast save`), otherwise `project.json`, so the change is saved right away.
+//!
+//! A recording whose process died (killed, crashed) is finished and added to the project the
+//! first time the project is opened without a writer holding it (a running recording holds it).
 
-use dc_core::{History, Project, history};
+use dc_capture::project::{Recovered, recover_recordings, unfinished_recordings};
+use dc_core::{History, Project, SourceTime, history};
 use dc_project::history_log::Event;
-use dc_project::{HistoryLog, ProjectDir, ProjectLock};
+use dc_project::{HistoryLog, ProjectDir, ProjectError, ProjectLock};
 
 use crate::error::CliError;
 
@@ -27,6 +31,7 @@ impl Workspace {
             true => Some(ProjectLock::acquire(&dir, "devcast")?),
             false => None,
         };
+        let recovered = recover(&dir, lock.is_some())?;
         let session = dir.load_session()?;
         let unsaved = session.is_some();
         let project = match session {
@@ -38,6 +43,8 @@ impl Workspace {
         if write && loaded.needs_rewrite {
             log.rewrite(&loaded.history)?;
         }
+        let mut warnings = recovered;
+        warnings.extend(loaded.warnings);
         Ok(Self {
             dir,
             log,
@@ -45,7 +52,7 @@ impl Workspace {
             unsaved,
             project,
             history: loaded.history,
-            warnings: loaded.warnings,
+            warnings,
         })
     }
 
@@ -74,5 +81,53 @@ impl Workspace {
         self.dir.save(&self.project)?;
         self.unsaved = false;
         Ok(())
+    }
+}
+
+/// Finishes the recordings of `dir` whose process died and adds them to its working state;
+/// returns a warning line for each. Skipped while another process holds the project: that may
+/// be the recording itself.
+fn recover(dir: &ProjectDir, locked: bool) -> Result<Vec<String>, CliError> {
+    let failed = |e: dc_capture::CaptureError| CliError::Failed(e.to_string());
+    let media = dir.media_dir();
+    let folders = unfinished_recordings(&media).map_err(failed)?;
+    if folders.is_empty() {
+        return Ok(Vec::new());
+    }
+    let _lock = match locked {
+        true => None,
+        false => match ProjectLock::acquire(dir, "devcast") {
+            Ok(lock) => Some(lock),
+            Err(ProjectError::Locked { .. }) => return Ok(Vec::new()),
+            Err(e) => return Err(e.into()),
+        },
+    };
+    let session = dir.load_session()?;
+    let unsaved = session.is_some();
+    let mut project = match session {
+        Some(project) => project,
+        None => dir.load()?,
+    };
+    let recovered = recover_recordings(&media, &folders, &mut project).map_err(failed)?;
+    match unsaved {
+        true => dir.save_session(&project)?,
+        false => dir.save(&project)?,
+    }
+    Ok(recovered.iter().map(line).collect())
+}
+
+fn line(recovered: &Recovered) -> String {
+    match recovered {
+        Recovered::Clip {
+            folder,
+            clip,
+            duration,
+        } => format!(
+            "восстановлена прерванная запись media/{folder}: клип {clip}, {}",
+            SourceTime::ZERO + *duration
+        ),
+        Recovered::Empty { folder } => format!(
+            "прерванная запись media/{folder} оборвалась до первого целого сегмента: восстанавливать нечего, её файлы удалены"
+        ),
     }
 }

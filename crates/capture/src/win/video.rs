@@ -21,7 +21,7 @@ use crate::error::CaptureError;
 use crate::event::HostTime;
 use crate::grid::FrameGrid;
 use crate::lead::{FrameLead, LeadFilter};
-use crate::manifest::{SharedManifest, Track};
+use crate::manifest::{SharedManifest, Track, VIDEO_TRACK};
 use crate::pause::PauseClock;
 use crate::source::Source;
 use crate::track::TrackWriter;
@@ -44,9 +44,6 @@ pub struct VideoStart {
     /// Time of the first frame: slot 0 of the video.
     pub start: HostTime,
 }
-
-/// Name of the video track in the manifest and of its files.
-pub const VIDEO_TRACK: &str = "video";
 
 /// What was written.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -131,7 +128,8 @@ impl VideoRecording {
             }
             Err(RecvTimeoutError::Disconnected) => return Err(failure(capture)),
         };
-        let track = Track::new(VIDEO_TRACK, fps.get(), start);
+        let mut track = Track::new(VIDEO_TRACK, fps.get(), start);
+        track.size = Some((width, height));
         let writer = match TrackWriter::create(manifest, track, video) {
             Ok(writer) => writer,
             Err(e) => {
