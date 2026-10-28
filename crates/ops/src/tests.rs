@@ -88,6 +88,7 @@ impl Command for ClipAdd {
             trim,
             cuts: Vec::new(),
             speeds: Vec::new(),
+            crop: dc_core::Rect::FULL,
         });
         Ok(Diff::added(id))
     }

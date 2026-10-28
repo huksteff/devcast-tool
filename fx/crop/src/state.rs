@@ -1,12 +1,7 @@
-use std::collections::BTreeMap;
 use std::fmt;
 
-use dc_core::{ClipId, Rect};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-/// Smallest crop width and height, as a fraction of the source frame.
-pub const MIN_SIZE: f64 = 0.05;
 
 /// Aspect of the output frame. Clips of another aspect are fitted into it with black bars.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
@@ -50,9 +45,4 @@ pub struct CropSettings {
 pub struct CropState {
     #[serde(default)]
     pub settings: CropSettings,
-    /// Visible part of each cropped clip, as fractions of its source frame. A clip without an
-    /// entry is shown whole. Entries of removed clips stay: ids are never reused, and undoing the
-    /// removal brings the clip back with its crop.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub clips: BTreeMap<ClipId, Rect>,
 }

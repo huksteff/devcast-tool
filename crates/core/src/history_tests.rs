@@ -66,6 +66,7 @@ impl Command for BrokenClip {
                 .map_err(|e| CommandError::new(e.to_string()))?,
             cuts: Vec::new(),
             speeds: Vec::new(),
+            crop: crate::geom::Rect::FULL,
         });
         Ok(Diff::added(id))
     }

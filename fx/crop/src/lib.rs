@@ -1,10 +1,11 @@
-//! Per-clip crop and output aspect. Model and commands only; the frame is drawn by the render.
+//! Output aspect and the command that crops a clip (the crop itself is `Clip::crop` in dc-core).
+//! Model and commands only; the frame is drawn by the render.
 
 mod commands;
 mod state;
 
 pub use commands::{CropClip, SetAspect};
-pub use state::{Aspect, CropSettings, CropState, MIN_SIZE};
+pub use state::{Aspect, CropSettings, CropState};
 
 use dc_core::{Effect, EffectInfo, OpInfo};
 

@@ -25,6 +25,7 @@ fn project(clips: u32) -> Project {
             trim: Range::new(SourceTime::ZERO, SourceTime::ZERO + duration).unwrap(),
             cuts: Vec::new(),
             speeds: Vec::new(),
+            crop: dc_core::Rect::FULL,
         });
     }
     project
@@ -50,12 +51,12 @@ fn crop_is_stored_per_clip() {
     let mut p = project(2);
     let diff = crop(2, 0.1, 0.0, 0.8, 1.0).apply(&mut p).unwrap();
     assert_eq!(diff.to_string(), "кроп c2 0.1,0,0.8,1");
-    let state = p.state::<Crop>().unwrap();
-    assert_eq!(state.clips.len(), 1);
-    assert_eq!(state.clips[&c(2)], Rect::new(0.1, 0.0, 0.8, 1.0).unwrap());
+    assert_eq!(p.clips[0].crop, Rect::FULL);
+    assert_eq!(p.clips[1].crop, Rect::new(0.1, 0.0, 0.8, 1.0).unwrap());
+    assert!(p.effects.is_empty());
     assert_eq!(
-        p.effects["crop"],
-        json!({"settings": {"aspect": "source"}, "clips": {"c2": {"x": 0.1, "y": 0.0, "w": 0.8, "h": 1.0}}})
+        serde_json::to_value(&p.clips[1]).unwrap()["crop"],
+        json!({"x": 0.1, "y": 0.0, "w": 0.8, "h": 1.0})
     );
 }
 
@@ -65,7 +66,13 @@ fn full_frame_removes_the_crop() {
     crop(1, 0.2, 0.2, 0.5, 0.5).apply(&mut p).unwrap();
     let diff = crop(1, 0.0, 0.0, 1.0, 1.0).apply(&mut p).unwrap();
     assert_eq!(diff.to_string(), "кроп c1 снят");
-    assert!(!p.effects.contains_key("crop"));
+    assert_eq!(p.clips[0].crop, Rect::FULL);
+    assert!(
+        serde_json::to_value(&p.clips[0])
+            .unwrap()
+            .get("crop")
+            .is_none()
+    );
 }
 
 #[test]
@@ -103,7 +110,7 @@ fn crop_outside_the_frame_is_rejected() {
             "{x},{y},{w},{h}: {message}"
         );
     }
-    assert!(p.effects.is_empty());
+    assert_eq!(p.clips[0].crop, Rect::FULL);
 }
 
 #[test]
@@ -121,10 +128,8 @@ fn extreme_crops_inside_the_frame_are_accepted() {
     crop(1, 0.95, 0.95, 0.05, 0.05).apply(&mut p).unwrap();
     crop(1, 0.15, 0.3, 0.85, 0.7).apply(&mut p).unwrap();
     crop(1, 0.0, 0.0, 1.0, 0.05).apply(&mut p).unwrap();
-    assert_eq!(
-        p.state::<Crop>().unwrap().clips[&c(1)],
-        Rect::new(0.0, 0.0, 1.0, 0.05).unwrap()
-    );
+    assert_eq!(p.clips[0].crop, Rect::new(0.0, 0.0, 1.0, 0.05).unwrap());
+    assert!(p.problems().is_empty());
 }
 
 #[test]
@@ -139,7 +144,7 @@ fn aspect_is_a_setting_and_keeps_crops() {
     assert_eq!(diff.to_string(), "формат 16:10");
     let state = p.state::<Crop>().unwrap();
     assert_eq!(state.settings.aspect, Aspect::Wide16x10);
-    assert_eq!(state.clips.len(), 1);
+    assert_eq!(p.clips[0].crop, Rect::new(0.1, 0.1, 0.5, 0.5).unwrap());
     assert_eq!(
         p.effects["crop"][dc_core::effect::SETTINGS_FIELD],
         json!({"aspect": "16:10"})
@@ -147,7 +152,7 @@ fn aspect_is_a_setting_and_keeps_crops() {
 }
 
 #[test]
-fn default_aspect_without_crops_leaves_no_state() {
+fn default_aspect_leaves_no_state() {
     let mut p = project(1);
     SetAspect {
         aspect: Aspect::Standard4x3,
@@ -197,7 +202,7 @@ fn failed_step_leaves_project_untouched() {
         message.starts_with("шаг 2 (crop): c5 не найден"),
         "{message}"
     );
-    assert!(p.effects.is_empty() && !history.can_undo());
+    assert!(p.clips[0].crop == Rect::FULL && !history.can_undo());
 }
 
 fn op(name: &str) -> OpInfo {
@@ -271,7 +276,18 @@ fn effect_info_describes_the_state() {
     assert!(info.id_prefixes.is_empty());
     let schema = serde_json::to_string(&(info.schema)()).unwrap();
     assert!(
-        schema.contains("16:10") && schema.contains("clips"),
+        schema.contains("16:10") && schema.contains("settings"),
         "{schema}"
     );
+}
+
+#[test]
+fn copied_clip_keeps_its_crop() {
+    let mut p = project(1);
+    crop(1, 0.1, 0.1, 0.5, 0.5).apply(&mut p).unwrap();
+    let mut half = p.clips[0].clone();
+    half.id = p.clip_ids.allocate();
+    p.clips.push(half);
+    assert_eq!(p.clips[1].crop, Rect::new(0.1, 0.1, 0.5, 0.5).unwrap());
+    assert!(p.problems().is_empty());
 }

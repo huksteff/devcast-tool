@@ -32,6 +32,7 @@ fn add_clip(
         trim: r(0.0, duration),
         cuts,
         speeds,
+        crop: crate::geom::Rect::FULL,
     });
     id
 }

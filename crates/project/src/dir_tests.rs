@@ -19,6 +19,7 @@ fn with_clip(mut project: Project) -> Project {
         trim: Range::new(SourceTime::ZERO, SourceTime::from_secs_f64(3.0)).unwrap(),
         cuts: Vec::new(),
         speeds: Vec::new(),
+        crop: dc_core::Rect::FULL,
     });
     project
 }
