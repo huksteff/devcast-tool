@@ -1,4 +1,4 @@
-//! `cargo xtask deps`: native build dependencies (FFmpeg, libclang) in `.deps/`, verified by SHA-256
+//! `cargo xtask deps`: native build dependencies (FFmpeg, libclang, CMake) in `.deps/`, verified by SHA-256
 //! (docs/decisions/003-video-decode.md). Downloads and unpacks with the system `curl` and `tar`.
 
 use std::path::{Path, PathBuf};
@@ -21,7 +21,7 @@ struct Archive {
     unpack: Unpack,
 }
 
-const ARCHIVES: [Archive; 2] = [
+const ARCHIVES: [Archive; 3] = [
     Archive {
         name: "ffmpeg",
         url: "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-full_build-shared.zip",
@@ -37,6 +37,15 @@ const ARCHIVES: [Archive; 2] = [
         unpack: Unpack::SingleFile {
             member: "libclang-18.1.1.data/platlib/clang/native/libclang.dll",
         },
+    },
+    // Builds whisper.cpp inside whisper-rs (decision 010); hash from the official
+    // cmake-4.4.5-SHA-256.txt of the release.
+    Archive {
+        name: "cmake",
+        url: "https://github.com/Kitware/CMake/releases/download/v4.4.5/cmake-4.4.5-windows-x86_64.zip",
+        file: "cmake-4.4.5-windows-x86_64.zip",
+        sha256: "326c826486d46a23cf9d5a1c9ee3a567d427bdd02c4a34071937a2a675cff004",
+        unpack: Unpack::StripTopDir,
     },
 ];
 

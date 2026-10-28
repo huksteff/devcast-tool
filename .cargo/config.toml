@@ -8,3 +8,4 @@ linker = "rust-lld.exe"
 [env]
 FFMPEG_DIR = { value = ".deps/ffmpeg", relative = true }
 LIBCLANG_PATH = { value = ".deps/libclang", relative = true }
+CMAKE = { value = ".deps/cmake/bin/cmake.exe", relative = true }
