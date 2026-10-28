@@ -120,20 +120,27 @@ fn decode_luma(encoder: &VideoEncoder, packets: &[Packet]) -> Result<Vec<f64>, f
         .video()?;
     let mut decoded = ffmpeg::frame::Video::empty();
     let mut lumas = Vec::new();
-    let mut take = |decoder: &mut ffmpeg::decoder::Video, lumas: &mut Vec<f64>| {
-        while decoder.receive_frame(&mut decoded).is_ok() {
-            let width = decoded.width() as usize;
-            let rows = decoded.data(0).chunks(decoded.stride(0)).take(16);
-            let sum: u64 = rows.flat_map(|r| &r[..width]).map(|&v| u64::from(v)).sum();
-            lumas.push(sum as f64 / (width * 16) as f64);
+    let mut take = |decoder: &mut ffmpeg::decoder::Video, lumas: &mut Vec<f64>| loop {
+        match decoder.receive_frame(&mut decoded) {
+            Ok(()) => {
+                let width = decoded.width() as usize;
+                let rows = decoded.data(0).chunks(decoded.stride(0)).take(16);
+                let sum: u64 = rows.flat_map(|r| &r[..width]).map(|&v| u64::from(v)).sum();
+                lumas.push(sum as f64 / (width * 16) as f64);
+            }
+            Err(ffmpeg::Error::Other {
+                errno: ffmpeg::util::error::EAGAIN,
+            })
+            | Err(ffmpeg::Error::Eof) => return Ok(()),
+            Err(e) => return Err(e),
         }
     };
     for packet in packets {
         decoder.send_packet(&packet.inner)?;
-        take(&mut decoder, &mut lumas);
+        take(&mut decoder, &mut lumas)?;
     }
     decoder.send_eof()?;
-    take(&mut decoder, &mut lumas);
+    take(&mut decoder, &mut lumas)?;
     Ok(lumas)
 }
 
