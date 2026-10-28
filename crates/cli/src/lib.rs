@@ -7,9 +7,12 @@ pub mod globals;
 mod help;
 mod help_args;
 mod ls;
+mod record;
+mod record_control;
 pub mod registry;
 pub mod run;
 mod skill;
+mod sources;
 pub mod workspace;
 
 #[cfg(test)]
@@ -18,6 +21,8 @@ mod e2e_tests;
 mod edit_tests;
 #[cfg(test)]
 mod ls_tests;
+#[cfg(test)]
+mod record_tests;
 #[cfg(test)]
 mod skill_tests;
 #[cfg(test)]

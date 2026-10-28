@@ -86,7 +86,7 @@ crates/
   transcribe/    модели (загрузка), whisper, слова с таймкодами, сегментация в реплики
   capture/       трейт Recorder, сегменты и manifest, восстановление; win/, позже mac/ и linux/
   ops/           реестр команд, пакетное применение, dry-run, однострочный diff, подсказки в ошибках
-  ipc/           протокол между CLI и редактором
+  ipc/           local socket между процессами devcast и редактором (управление записью, команды редактору)
   cli/           бинарник `devcast`
   ui-kit/        тема, шрифты, виджеты, строки на русском
   app/           бинарник редактора: HUD, выбор области, отсчёт, трей, хоткеи, редактор, таймлайн,
@@ -137,7 +137,8 @@ skill/           SKILL.md для Claude Code: монтаж через CLI
 
 ```
 devcast help [cmd] [--json]
-devcast record --source <screen:1|window:<id>|area:x,y,w,h> [--fps 60] [--duration 10] | record stop
+devcast record --source <screen:1|window:<id>|area:x,y,w,h> [--fps 60] [--duration 10] [--audio on|off] [--mic имя] [-o x.dcproj] | record stop|pause|resume|cancel
+devcast ls sources                               # мониторы, окна, микрофоны для record
 devcast new <video...> -o name.dcproj | clip add <video> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
 devcast info | save
 devcast ls <zooms|clips|annots|captions|tracks|clicks> [--from --to] [--fields]

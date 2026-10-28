@@ -53,7 +53,10 @@ fn ls_errors_name_what_exists() {
     let f = Recordings::new();
     let out = f.run("ls zoomz");
     assert_eq!(out.code, 2);
-    assert_eq!(out.stderr, "нет списка «zoomz»; есть: clips, zooms\n");
+    assert_eq!(
+        out.stderr,
+        "нет списка «zoomz»; есть: clips, zooms, sources\n"
+    );
     f.ok("zoom add --at 1 --duration 1");
     let out = f.run("ls zooms --fields scal");
     assert_eq!(out.code, 2);

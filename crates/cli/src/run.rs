@@ -13,7 +13,9 @@ use crate::error::CliError;
 use crate::globals::{self, Globals};
 use crate::help::help;
 use crate::ls::{self, Query};
-use crate::skill;
+use crate::record::{self, RecordArgs};
+use crate::record_control::Control;
+use crate::{skill, sources};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Outcome {
@@ -94,7 +96,9 @@ enum Builtin {
         after_help = "ls zooms --from 10 --to 1:20 --fields scale,mode"
     )]
     Ls {
-        #[arg(help = "Список: clips, zooms …")]
+        #[arg(
+            help = "Список: clips, zooms …; sources — мониторы, окна и микрофоны для devcast record"
+        )]
         list: String,
         #[arg(long, help = "Только объекты, которые идут после этого момента")]
         from: Option<String>,
@@ -106,6 +110,18 @@ enum Builtin {
         limit: usize,
         #[arg(long, default_value_t = 0, help = "Сколько строк пропустить")]
         offset: usize,
+    },
+    #[command(
+        about = "Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
+        after_help = "record --source screen:1 --duration 10 -o урок.dcproj"
+    )]
+    Record {
+        #[arg(
+            help = "stop, pause, resume или cancel (отмена удаляет проект записи); без него — начать запись"
+        )]
+        control: Option<Control>,
+        #[command(flatten)]
+        args: RecordArgs,
     },
     #[command(
         about = "Установить skill для Claude Code в ~/.claude/skills/devcast",
@@ -192,6 +208,19 @@ fn dispatch(
         Builtin::History => edit::history(&ctx),
         Builtin::Save => edit::save(&ctx),
         Builtin::Info => ls::info(&ctx),
+        Builtin::Ls {
+            list,
+            from,
+            to,
+            fields,
+            ..
+        } if list == sources::SOURCES => match (from, to, fields) {
+            (None, None, None) => sources::ls(),
+            _ => Err(CliError::Usage(
+                "у ls sources нет --from, --to и --fields: devcast ls sources".to_owned(),
+            )),
+        },
+        Builtin::Record { control, args } => record::record(&ctx, control, &args),
         Builtin::Ls {
             list,
             from,

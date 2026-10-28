@@ -27,7 +27,7 @@ pub use origin::source_origin;
 pub use preview::{preview_monitor, preview_window};
 pub use project::{ProjectRecording, RecordedProject};
 pub use recording::{Recording, RecordingSummary};
-pub use video::{VideoRecording, VideoStart, VideoSummary};
+pub use video::{VIDEO_TRACK, VideoRecording, VideoStart, VideoSummary};
 
 use crate::error::CaptureError;
 use crate::list::SourceList;

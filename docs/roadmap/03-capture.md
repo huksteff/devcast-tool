@@ -33,6 +33,8 @@
   - `devcast record --source ... --fps ... [--duration]`;
   - `record stop`, `record pause`;
   - `devcast ls sources`.
+
+  Код и тесты без записи готовы (решение 011, «Задача 3.15»); живой тест `crates/cli/tests/record_live.rs` ждёт ночного прогона.
 - [ ] **3.16** Фикстуры v2. Записать через CLI 6 коротких роликов (Git LFS):
   - клики;
   - печать с сочетаниями клавиш;

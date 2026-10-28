@@ -9,3 +9,9 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+interprocess = "2.4"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

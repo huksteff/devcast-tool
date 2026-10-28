@@ -103,7 +103,7 @@ pub(crate) fn ls(ctx: &Ctx<'_>, query: &Query) -> Result<Answer, CliError> {
     let known = lists(ctx.registry);
     if !known.contains(&query.list.as_str()) {
         return Err(CliError::Usage(format!(
-            "нет списка «{}»; есть: {}",
+            "нет списка «{}»; есть: {}, sources",
             query.list,
             known.join(", ")
         )));
