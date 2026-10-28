@@ -1,10 +1,10 @@
 //! Video frames from Windows Graphics Capture: no cursor, no yellow border where the system
 //! allows turning it off (Windows 11; on Windows 10 it is drawn on screen but not in frames).
+//! An area is a capture of its monitor cut on the GPU.
 
 use std::ops::ControlFlow;
 
 use windows::Win32::Foundation::HWND;
-use windows::Win32::Graphics::Direct3D11::ID3D11Texture2D;
 use windows::Win32::UI::WindowsAndMessaging::IsWindow;
 use windows_capture::capture::{
     CaptureControl, CaptureControlError, Context, GraphicsCaptureApiError,
@@ -19,9 +19,11 @@ use windows_capture::settings::{
 };
 use windows_capture::window::Window;
 
-use super::{d3d, monitors};
+use super::frame::{self, Crop, CropArea, VideoFrame};
+use super::monitors;
 use crate::error::CaptureError;
-use crate::preview::BgraImage;
+use crate::list::area_on_monitor;
+use crate::source::Source;
 
 /// Receives frames on the capture thread.
 pub trait FrameSink: Send + 'static {
@@ -32,32 +34,8 @@ pub trait FrameSink: Send + 'static {
     fn closed(&mut self);
 }
 
-/// One captured frame, valid only inside [`FrameSink::frame`].
-pub struct VideoFrame<'a> {
-    frame: &'a Frame<'a>,
-}
-
-impl VideoFrame<'_> {
-    /// The frame on the GPU, BGRA8.
-    pub fn texture(&self) -> &ID3D11Texture2D {
-        self.frame.as_raw_texture()
-    }
-
-    pub fn size(&self) -> (u32, u32) {
-        (self.frame.width(), self.frame.height())
-    }
-
-    /// Copies the frame to memory (slow: for previews and checks, not for every frame).
-    pub fn to_bgra(&self) -> Result<BgraImage, CaptureError> {
-        d3d::read_bgra(
-            self.frame.device(),
-            self.frame.device_context(),
-            self.texture(),
-        )
-    }
-}
-
-/// A running capture on its own thread.
+/// A running capture on its own thread. Frames come only when the picture changes, at most at
+/// the monitor refresh rate.
 pub struct VideoCapture<S: FrameSink> {
     control: CaptureControl<Handler<S>, CaptureError>,
 }
@@ -95,7 +73,29 @@ impl TryFrom<Target> for GraphicsCaptureItemType {
 }
 
 impl<S: FrameSink> VideoCapture<S> {
-    pub(crate) fn start(target: Target, sink: S) -> Result<Self, CaptureError> {
+    /// Starts capturing `source`; frames go to `sink` on the capture thread.
+    pub fn start(source: &Source, sink: S) -> Result<Self, CaptureError> {
+        match *source {
+            Source::Monitor(index) => Self::start_target(Target::monitor(index)?, None, sink),
+            Source::Window(id) => Self::start_target(Target::window(id)?, None, sink),
+            Source::Area(area) => {
+                let monitors = monitors::list()?;
+                let (monitor, local) = area_on_monitor(&monitors, area)?;
+                let target = Target::monitor(monitor.index)?;
+                let crop = CropArea {
+                    local,
+                    desktop: area,
+                };
+                Self::start_target(target, Some(crop), sink)
+            }
+        }
+    }
+
+    pub(crate) fn start_target(
+        target: Target,
+        crop: Option<CropArea>,
+        sink: S,
+    ) -> Result<Self, CaptureError> {
         let supported = GraphicsCaptureApi::is_border_settings_supported().map_err(|e| {
             CaptureError::platform("проверить возможности захвата")(
                 e.to_string(),
@@ -114,7 +114,7 @@ impl<S: FrameSink> VideoCapture<S> {
             MinimumUpdateIntervalSettings::Default,
             DirtyRegionSettings::Default,
             ColorFormat::Bgra8,
-            sink,
+            Job { sink, crop },
         );
         let control = Handler::start_free_threaded(settings).map_err(api_error)?;
         Ok(Self { control })
@@ -131,18 +131,27 @@ impl<S: FrameSink> VideoCapture<S> {
     }
 }
 
+/// What the capture thread gets at start.
+struct Job<S> {
+    sink: S,
+    crop: Option<CropArea>,
+}
+
 struct Handler<S> {
     sink: S,
+    crop: Option<Crop>,
 }
 
 impl<S: FrameSink> GraphicsCaptureApiHandler for Handler<S> {
-    type Flags = S;
+    type Flags = Job<S>;
     type Error = CaptureError;
 
-    fn new(context: Context<S>) -> Result<Self, CaptureError> {
-        Ok(Self {
-            sink: context.flags,
-        })
+    fn new(context: Context<Job<S>>) -> Result<Self, CaptureError> {
+        let Job { sink, crop } = context.flags;
+        let crop = crop
+            .map(|area| Crop::new(area, &context.device))
+            .transpose()?;
+        Ok(Self { sink, crop })
     }
 
     fn on_frame_arrived(
@@ -150,7 +159,8 @@ impl<S: FrameSink> GraphicsCaptureApiHandler for Handler<S> {
         frame: &mut Frame<'_>,
         control: InternalCaptureControl,
     ) -> Result<(), CaptureError> {
-        if self.sink.frame(&VideoFrame { frame })?.is_break() {
+        let view = frame::view(frame, self.crop.as_ref())?;
+        if self.sink.frame(&view)?.is_break() {
             control.stop();
         }
         Ok(())

@@ -12,12 +12,18 @@
     reason = "test helpers: a failed step must fail the test"
 )]
 
+use std::ops::ControlFlow;
 use std::path::PathBuf;
 use std::process::{Child, Command};
+use std::sync::mpsc::{self, Sender};
 use std::time::{Duration, Instant};
 
-use dc_capture::win::{list_sources, preview_monitor, preview_window};
-use dc_capture::{MonitorInfo, Preview, WindowInfo};
+use dc_capture::win::{
+    FrameSink, VideoCapture, VideoFrame, list_sources, now, preview_monitor, preview_window,
+};
+use dc_capture::{
+    Area, BgraImage, CaptureError, HostTime, MonitorInfo, Preview, Source, WindowInfo,
+};
 use windows_capture::encoder::{ImageEncoder, ImageEncoderPixelFormat, ImageFormat};
 
 const TITLE: &str = "devcast-live-test";
@@ -176,4 +182,123 @@ fn previews_monitor_and_window() {
         &window.rgba,
         ImageEncoderPixelFormat::Rgba8,
     );
+}
+
+/// Frames of one capture: times, sizes, delay behind the clock, one picture.
+#[derive(Default)]
+struct Recorded {
+    times: Vec<HostTime>,
+    sizes: Vec<(u32, u32)>,
+    /// `now − frame time` when the frame arrived, ms.
+    delays: Vec<f64>,
+    picture: Option<BgraImage>,
+}
+
+struct Collect {
+    seconds: i64,
+    recorded: Recorded,
+    done: Sender<Recorded>,
+}
+
+impl FrameSink for Collect {
+    fn frame(&mut self, frame: &VideoFrame<'_>) -> Result<ControlFlow<()>, CaptureError> {
+        let r = &mut self.recorded;
+        r.delays
+            .push((now()?.micros() - frame.time().micros()) as f64 / 1000.0);
+        r.times.push(frame.time());
+        r.sizes.push(frame.size());
+        if r.times.len() == 60 {
+            r.picture = Some(frame.to_bgra()?);
+        }
+        if frame.time().micros() - r.times[0].micros() < self.seconds * 1_000_000 {
+            return Ok(ControlFlow::Continue(()));
+        }
+        let _ = self.done.send(std::mem::take(r));
+        Ok(ControlFlow::Break(()))
+    }
+
+    fn closed(&mut self) {}
+}
+
+fn record(source: &Source, seconds: i64) -> Recorded {
+    let (done, finished) = mpsc::channel();
+    let recorded = Recorded::default();
+    let sink = Collect {
+        seconds,
+        recorded,
+        done,
+    };
+    let capture = VideoCapture::start(source, sink).unwrap();
+    let recorded = finished.recv().unwrap();
+    capture.wait().unwrap();
+    recorded
+}
+
+/// Prints the measurements and returns the average frame rate.
+fn report(name: &str, r: &Recorded) -> f64 {
+    let ms = |w: &[HostTime]| (w[1].micros() - w[0].micros()) as f64 / 1000.0;
+    let mut intervals: Vec<f64> = r.times.windows(2).map(ms).collect();
+    assert!(
+        intervals.iter().all(|d| *d > 0.0),
+        "{name}: times are not increasing"
+    );
+    intervals.sort_by(f64::total_cmp);
+    let mut delays = r.delays.clone();
+    delays.sort_by(f64::total_cmp);
+    let span = (r.times[r.times.len() - 1].micros() - r.times[0].micros()) as f64 / 1e6;
+    let fps = (r.times.len() - 1) as f64 / span;
+    println!(
+        "{name}: {} frames in {span:.2} s = {fps:.1} fps; interval min/p50/max {:.1}/{:.1}/{:.1} ms; delay behind clock p50/min/max {:.1}/{:.1}/{:.1} ms; size {:?}",
+        r.times.len(),
+        intervals[0],
+        intervals[intervals.len() / 2],
+        intervals[intervals.len() - 1],
+        delays[delays.len() / 2],
+        delays[0],
+        delays[delays.len() - 1],
+        r.sizes[0],
+    );
+    assert!(
+        delays.iter().all(|d| d.abs() < 100.0),
+        "{name}: frame time is not on the QPC clock"
+    );
+    fps
+}
+
+fn check(name: &str, r: &Recorded, size: (u32, u32)) {
+    let fps = report(name, r);
+    assert!(fps > 50.0, "{name}: {fps:.1} fps for a 60 fps picture");
+    assert!(
+        r.sizes.iter().all(|s| *s == size),
+        "{name}: frame size is not {size:?}"
+    );
+    let picture = r.picture.as_ref().unwrap();
+    assert_eq!((picture.width, picture.height), size);
+    let file = format!("capture-{name}.png");
+    save_png(
+        &file,
+        picture.width,
+        picture.height,
+        &picture.bgra,
+        ImageEncoderPixelFormat::Bgra8,
+    );
+}
+
+#[test]
+#[ignore = "records the screen: needs DEVCAST_TEST_MONITOR"]
+fn records_monitor_window_and_area() {
+    let monitor = test_monitor();
+    let picture = TestPicture::show(&monitor, 45);
+    let b = monitor.bounds;
+
+    let screen = record(&monitor.source(), 12);
+    check("monitor", &screen, (b.width(), b.height()));
+
+    let window = record(&picture.window.source(), 12);
+    check("window", &window, (1280, 720));
+
+    // The middle of the test picture, which starts 100 px from the monitor corner.
+    let area = Area::new(b.x() + 100 + 320, b.y() + 100 + 180, 640, 360).unwrap();
+    let cut = record(&Source::Area(area), 12);
+    check("area", &cut, (640, 360));
 }

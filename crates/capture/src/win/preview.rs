@@ -7,7 +7,8 @@ use std::time::Duration;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::WindowsAndMessaging::IsIconic;
 
-use super::capture::{FrameSink, Target, VideoCapture, VideoFrame};
+use super::capture::{FrameSink, Target, VideoCapture};
+use super::frame::VideoFrame;
 use crate::error::CaptureError;
 use crate::preview::{BgraImage, Preview};
 
@@ -44,7 +45,7 @@ impl FrameSink for FirstFrame {
 
 fn grab(target: Target) -> Result<BgraImage, CaptureError> {
     let (sender, receiver) = mpsc::channel();
-    let capture = VideoCapture::start(target, FirstFrame(sender))?;
+    let capture = VideoCapture::start_target(target, None, FirstFrame(sender))?;
     if let Ok(image) = receiver.recv_timeout(FIRST_FRAME) {
         capture.wait()?;
         return Ok(image);
