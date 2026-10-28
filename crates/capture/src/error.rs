@@ -33,6 +33,12 @@ pub enum CaptureError {
     )]
     BadSettings { path: PathBuf, message: String },
 
+    #[error("запись уже на паузе: продолжи её, прежде чем ставить паузу снова")]
+    AlreadyPaused,
+
+    #[error("запись не на паузе: продолжать нечего")]
+    NotPaused,
+
     #[error("в папке {0} уже есть запись: выбери пустую папку")]
     RecordingExists(PathBuf),
 

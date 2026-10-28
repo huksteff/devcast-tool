@@ -22,11 +22,11 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use common::test_monitor;
-use dc_capture::HostTime;
 use dc_capture::input::{
     Button, CursorEvent, CursorKind, KeyEvent, Modifiers, Timed, image_file, read_cursor, read_keys,
 };
 use dc_capture::win::{InputRecording, now};
+use dc_capture::{HostTime, PauseClock};
 use target::Target;
 use windows::Win32::Foundation::POINT;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -188,7 +188,9 @@ fn records_mouse_without_losses() {
     let (_target, x, y) = show_target();
     let dir = folder("input-mouse");
     let input = InputRecording::start().unwrap();
-    input.begin(now().unwrap(), &dir).unwrap();
+    input
+        .begin(now().unwrap(), &dir, &PauseClock::default())
+        .unwrap();
     let (path, pressed) = act(x, y);
     let (end_x, end_y) = *path.last().unwrap();
     // The user's last action is well before the stop.
@@ -244,7 +246,9 @@ fn records_cursor_shapes_and_pictures() {
     let (_target, x, y) = show_target();
     let dir = folder("input-shapes");
     let input = InputRecording::start().unwrap();
-    input.begin(now().unwrap(), &dir).unwrap();
+    input
+        .begin(now().unwrap(), &dir, &PauseClock::default())
+        .unwrap();
     for _ in 0..3 {
         for px in [x + 100, x + 300] {
             send(&[move_to(px, y + 150)]);
@@ -329,7 +333,9 @@ fn typed_text_is_not_recorded_and_shortcuts_are() {
     );
     let dir = folder("input-keys");
     let input = InputRecording::start().unwrap();
-    input.begin(now().unwrap(), &dir).unwrap();
+    input
+        .begin(now().unwrap(), &dir, &PauseClock::default())
+        .unwrap();
     for c in *b"ABC" {
         chord(&[u16::from(c)]);
     }

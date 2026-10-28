@@ -15,12 +15,14 @@ use super::capture::{FrameSink, VideoCapture};
 use super::clock::now;
 use super::frame::VideoFrame;
 use super::nv12::{Nv12Converter, even_size};
+use super::video_encode::{Message, encode, encoder_gone, release};
 use crate::config::Fps;
 use crate::error::CaptureError;
 use crate::event::HostTime;
 use crate::grid::FrameGrid;
 use crate::lead::{FrameLead, LeadFilter};
 use crate::manifest::{SharedManifest, Track};
+use crate::pause::PauseClock;
 use crate::source::Source;
 use crate::track::TrackWriter;
 
@@ -66,19 +68,14 @@ pub struct VideoRecording {
     info: VideoStart,
 }
 
-enum Message {
-    /// A frame at a slot, and how far its time is ahead of its arrival (µs).
-    Frame(Nv12Frame, i64, i64),
-    /// Recording stopped at `at`; no more frames will come.
-    End { grid: FrameGrid, at: HostTime },
-}
-
 impl VideoRecording {
-    /// Starts recording `source` at `fps` as the track `video` of `manifest`.
+    /// Starts recording `source` at `fps` as the track `video` of `manifest`; what `clock`
+    /// says is paused is cut out.
     pub fn start(
         source: &Source,
         fps: Fps,
         manifest: &SharedManifest,
+        clock: &PauseClock,
     ) -> Result<Self, CaptureError> {
         let (width, height) = even_size(frame_size(source)?);
         let settings = VideoSettings {
@@ -92,9 +89,18 @@ impl VideoRecording {
         let (writer_tx, writer_rx) = mpsc::channel();
         let (frames_tx, frames_rx) = mpsc::sync_channel(IN_FLIGHT);
         let (returned_tx, returned_rx) = mpsc::channel();
+        let encoder_clock = clock.clone();
         let encoder = std::thread::Builder::new()
             .name("devcast-encode".to_owned())
-            .spawn(move || encode(&frames_rx, &returned_tx, encoder, &writer_rx))
+            .spawn(move || {
+                encode(
+                    &frames_rx,
+                    &returned_tx,
+                    encoder,
+                    &writer_rx,
+                    &encoder_clock,
+                )
+            })
             .map_err(|e| {
                 CaptureError::platform("запустить кодирование")(e.to_string())
             })?;
@@ -106,6 +112,8 @@ impl VideoRecording {
             started: None,
             lead: LeadFilter::default(),
             last: None,
+            clock: clock.clone(),
+            held: None,
             frames: frames_tx.clone(),
             spare: (0..IN_FLIGHT)
                 .map(|_| Nv12Frame::new(width, height))
@@ -181,10 +189,6 @@ fn failure<S: FrameSink>(capture: VideoCapture<S>) -> CaptureError {
     }
 }
 
-fn encoder_gone() -> CaptureError {
-    CaptureError::platform("записать видео")("кодирование остановилось".to_owned())
-}
-
 /// Size of the source's frames, from one captured frame.
 fn frame_size(source: &Source) -> Result<(u32, u32), CaptureError> {
     struct Size(Sender<(u32, u32)>);
@@ -223,6 +227,9 @@ struct EncodeSink {
     started: Option<(Nv12Converter, FrameGrid)>,
     lead: LeadFilter,
     last: Option<i64>,
+    clock: PauseClock,
+    /// Capture time of the picture held during a pause, until it is released.
+    held: Option<HostTime>,
     frames: SyncSender<Message>,
     spare: Vec<Nv12Frame>,
     returned: Receiver<Nv12Frame>,
@@ -245,65 +252,43 @@ impl FrameSink for EncodeSink {
             }
         };
         let lead = frame.time().micros() - arrived.micros();
-        let Some(slot) = grid.place(self.last, time) else {
-            return Ok(ControlFlow::Continue(()));
+        if let Some(held) = self.held
+            && let Some(slot) = release(&self.clock, grid, self.last, held, time)?
+        {
+            send(&self.frames, Message::Release(slot))?;
+            self.last = Some(slot);
+            self.held = None;
+        }
+        let placed = self.clock.place(time)?;
+        let slot = match placed.paused {
+            true => None,
+            false => match grid.place(self.last, placed.time) {
+                Some(slot) => Some(slot),
+                None => return Ok(ControlFlow::Continue(())),
+            },
         };
-        self.last = Some(slot);
         let mut buffer = match self.spare.pop() {
             Some(buffer) => buffer,
             None => self.returned.recv().map_err(|_| encoder_gone())?,
         };
         converter.convert(frame, &mut buffer)?;
-        self.frames
-            .send(Message::Frame(buffer, slot, lead))
-            .map_err(|_| encoder_gone())?;
+        let message = match slot {
+            Some(slot) => {
+                self.last = Some(slot);
+                Message::Frame(buffer, slot, lead)
+            }
+            None => {
+                self.held = Some(time);
+                Message::Held(buffer, lead, time)
+            }
+        };
+        send(&self.frames, message)?;
         Ok(ControlFlow::Continue(()))
     }
 
     fn closed(&mut self) {}
 }
 
-/// The encoder thread: frames → packets → segments, until [`Message::End`]. The writer comes
-/// once the first frame has fixed the start time.
-fn encode(
-    frames: &Receiver<Message>,
-    returned: &Sender<Nv12Frame>,
-    mut encoder: VideoEncoder,
-    writer: &Receiver<TrackWriter>,
-) -> Result<VideoSummary, CaptureError> {
-    let mut track = writer.recv().map_err(|_| encoder_gone())?;
-    let mut packets = Vec::new();
-    let mut count = 0;
-    let mut leads = Vec::new();
-    let mut last = 0;
-    for message in frames {
-        match message {
-            Message::Frame(mut frame, slot, lead) => {
-                leads.push((slot, lead));
-                encoder.encode(&mut frame, slot, &mut packets)?;
-                for packet in packets.drain(..) {
-                    track.push(packet)?;
-                }
-                count += 1;
-                last = slot;
-                // After capture stops the remaining buffers are not needed any more.
-                let _ = returned.send(frame);
-            }
-            Message::End { grid, at } => {
-                encoder.finish(&mut packets)?;
-                for packet in packets.drain(..) {
-                    track.push(packet)?;
-                }
-                let end = grid.end(last, at);
-                track.finish(end)?;
-                return Ok(VideoSummary {
-                    frames: count,
-                    end,
-                    lead: FrameLead::measure(leads.iter().map(|l| l.1).collect()),
-                    leads,
-                });
-            }
-        }
-    }
-    Err(encoder_gone())
+fn send(frames: &SyncSender<Message>, message: Message) -> Result<(), CaptureError> {
+    frames.send(message).map_err(|_| encoder_gone())
 }

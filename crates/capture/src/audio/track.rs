@@ -15,6 +15,7 @@ use super::timeline::{AudioTimeline, RATE, TimelineStats};
 use crate::error::CaptureError;
 use crate::event::HostTime;
 use crate::manifest::{SharedManifest, Track};
+use crate::pause::PauseClock;
 use crate::track::TrackWriter;
 
 /// Name of the system sound track in the manifest and of its files.
@@ -48,7 +49,7 @@ pub struct AudioRecording {
 enum Message {
     Packet(HostTime, Vec<f32>),
     Failed(cpal::Error),
-    Begin(HostTime, SharedManifest),
+    Begin(HostTime, SharedManifest, PauseClock),
     Stop(HostTime),
     Abort,
 }
@@ -82,10 +83,16 @@ impl AudioRecording {
         })
     }
 
-    /// The track starts at host time `start` and is written into `manifest`'s folder.
-    pub fn begin(&self, start: HostTime, manifest: &SharedManifest) -> Result<(), CaptureError> {
+    /// The track starts at host time `start` and is written into `manifest`'s folder; what
+    /// `clock` says is paused is cut out.
+    pub fn begin(
+        &self,
+        start: HostTime,
+        manifest: &SharedManifest,
+        clock: &PauseClock,
+    ) -> Result<(), CaptureError> {
         self.control
-            .send(Message::Begin(start, manifest.clone()))
+            .send(Message::Begin(start, manifest.clone(), clock.clone()))
             .map_err(|_| self.gone())
     }
 
@@ -161,6 +168,7 @@ struct Worker {
 /// Where the sound goes once the track has begun.
 struct Output {
     timeline: AudioTimeline,
+    clock: PauseClock,
     encoder: AudioEncoder,
     writer: TrackWriter,
     samples: Vec<f32>,
@@ -178,8 +186,8 @@ impl Worker {
             match messages.recv() {
                 Ok(Message::Packet(time, samples)) => early.push((time, samples)),
                 Ok(Message::Failed(error)) => self.failed(&error, None)?,
-                Ok(Message::Begin(start, manifest)) => {
-                    break self.output(track, start, &manifest)?;
+                Ok(Message::Begin(start, manifest, clock)) => {
+                    break self.output(track, start, &manifest, clock)?;
                 }
                 Ok(Message::Stop(_) | Message::Abort) | Err(_) => return Err(aborted()),
             }
@@ -206,6 +214,7 @@ impl Worker {
         track: &'static str,
         start: HostTime,
         manifest: &SharedManifest,
+        clock: PauseClock,
     ) -> Result<Output, CaptureError> {
         let encoder = AudioEncoder::open(AudioSettings {
             rate: RATE,
@@ -218,6 +227,7 @@ impl Worker {
         )?;
         Ok(Output {
             timeline: AudioTimeline::new(start, self.device.rate())?,
+            clock,
             encoder,
             writer,
             samples: Vec::new(),
@@ -270,7 +280,7 @@ impl Worker {
     ) -> Result<AudioSummary, CaptureError> {
         // Dropping the stream waits for its callbacks, so every captured packet is queued.
         drop(self.stream.take());
-        output.timeline.stop_at(at);
+        output.timeline.stop_at(output.clock.place(at)?.time);
         for message in messages.try_iter() {
             if let Message::Packet(time, samples) = message {
                 output.push(time, &samples)?;
@@ -289,8 +299,14 @@ impl Worker {
 }
 
 impl Output {
+    /// Places a packet on the recording clock; a packet that begins in a pause is dropped.
     fn push(&mut self, time: HostTime, samples: &[f32]) -> Result<(), CaptureError> {
-        self.timeline.push(time, samples, &mut self.samples)?;
+        let placed = self.clock.place(time)?;
+        if placed.paused {
+            return Ok(());
+        }
+        self.timeline
+            .push(placed.time, samples, &mut self.samples)?;
         self.encode()
     }
 

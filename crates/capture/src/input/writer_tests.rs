@@ -30,6 +30,14 @@ fn shape(micros: i64, handle: isize, kind: CursorKind, image: Option<CursorImage
     })
 }
 
+fn begin(micros: i64, dir: &std::path::Path, clock: &PauseClock) -> InputMessage {
+    InputMessage::Begin {
+        start: HostTime::from_micros(micros),
+        dir: dir.to_path_buf(),
+        clock: clock.clone(),
+    }
+}
+
 fn at(micros: i64, event: CursorEvent) -> InputMessage {
     InputMessage::Mouse(Timed {
         at: HostTime::from_micros(micros),
@@ -50,7 +58,7 @@ fn starts_at_the_last_position_and_skips_still_moves() {
     for message in [
         at(10, CursorEvent::Move { x: 1, y: 1 }),
         at(20, still),
-        InputMessage::Begin(HostTime::from_micros(100), dir.path().to_path_buf()),
+        begin(100, dir.path(), &PauseClock::default()),
         at(90, CursorEvent::Move { x: 3, y: 3 }),
         at(110, still),
         at(120, down),
@@ -105,7 +113,7 @@ fn shapes_start_with_the_recording_and_share_equal_pictures() {
     for message in [
         shape(10, 1, arrow, Some(picture(0))),
         shape(20, 2, text, Some(picture(9))),
-        InputMessage::Begin(HostTime::from_micros(100), dir.path().to_path_buf()),
+        begin(100, dir.path(), &PauseClock::default()),
         shape(110, 3, custom, Some(picture(0))),
         shape(120, 1, arrow, None),
         shape(130, 0, arrow, None),
@@ -135,4 +143,49 @@ fn shapes_start_with_the_recording_and_share_equal_pictures() {
     let saved = std::fs::read(dir.path().join(image_file(1))).unwrap();
     assert_eq!(saved, picture(0).rgba);
     assert!(!dir.path().join(image_file(2)).exists());
+}
+
+#[test]
+fn pauses_are_cut_out_and_the_pointer_catches_up_on_resume() {
+    let dir = tempfile::tempdir().unwrap();
+    let (send, receive) = mpsc::channel();
+    let clock = PauseClock::default();
+    let micros = HostTime::from_micros;
+    let (x, y, button) = (5, 5, Button::Left);
+    let key = |at| {
+        InputMessage::Key(Timed {
+            at: micros(at),
+            event: KeyEvent {
+                key: 0x1B,
+                modifiers: crate::input::Modifiers::default(),
+            },
+        })
+    };
+    send.send(begin(100, dir.path(), &clock)).unwrap();
+    send.send(at(150, CursorEvent::Move { x, y })).unwrap();
+    clock.pause(micros(200)).unwrap();
+    send.send(at(250, CursorEvent::Down { button, x, y }))
+        .unwrap();
+    send.send(at(260, CursorEvent::Move { x: 9, y: 9 }))
+        .unwrap();
+    send.send(key(270)).unwrap();
+    clock.resume(micros(1200)).unwrap();
+    send.send(InputMessage::Resumed(micros(1200))).unwrap();
+    send.send(at(1300, CursorEvent::Up { button, x: 9, y: 9 }))
+        .unwrap();
+    send.send(key(1310)).unwrap();
+    drop(send);
+    write(&receive, fake_png).unwrap();
+    let expected = [
+        (150, CursorEvent::Move { x, y }),
+        (200, CursorEvent::Move { x: 9, y: 9 }),
+        (300, CursorEvent::Up { button, x: 9, y: 9 }),
+    ]
+    .map(|(micros, event)| Timed {
+        at: HostTime::from_micros(micros),
+        event,
+    });
+    assert_eq!(read_cursor(dir.path()).unwrap(), expected);
+    let keys = crate::input::read_keys(dir.path()).unwrap();
+    assert_eq!(keys.iter().map(|k| k.at).collect::<Vec<_>>(), [micros(310)]);
 }

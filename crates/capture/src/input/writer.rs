@@ -6,6 +6,10 @@
 //! cursor picture is saved as PNG when a shape first shows it, before its records. Shortcuts
 //! (already filtered in the hook) go to their own file from the start on. The thread ends
 //! when every sender is gone: the hooks stopped and the recording dropped its handle.
+//!
+//! Times are written on the recording clock ([`crate::pause`]): events of a pause are not
+//! written (only the position and shape are followed), and when the recording goes on, the
+//! position and shape changed during the pause are written at that moment.
 
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
@@ -18,6 +22,7 @@ use super::keys::{KEYS_FILE, KeyEvent};
 use super::shapes::{SeenShape, Shapes};
 use crate::error::CaptureError;
 use crate::event::HostTime;
+use crate::pause::PauseClock;
 
 pub enum InputMessage {
     Mouse(Timed<CursorEvent>),
@@ -25,8 +30,15 @@ pub enum InputMessage {
     Shape(Timed<SeenShape>),
     /// A shortcut that passed the privacy filter.
     Key(Timed<KeyEvent>),
-    /// The recording starts at this host time and is written into this folder.
-    Begin(HostTime, PathBuf),
+    /// The recording starts at host time `start` and is written into the folder `dir`; what
+    /// `clock` says is paused is not written.
+    Begin {
+        start: HostTime,
+        dir: PathBuf,
+        clock: PauseClock,
+    },
+    /// The recording went on after a pause at this host time.
+    Resumed(HostTime),
     /// A hook could not do its work; the recording of input ends with this error.
     Failed(CaptureError),
 }
@@ -51,6 +63,7 @@ pub type EncodePng = fn(&CursorImage) -> Result<Vec<u8>, CaptureError>;
 
 struct Open {
     start: HostTime,
+    clock: PauseClock,
     dir: PathBuf,
     records: RecordWriter<Timed<CursorEvent>>,
     keys: RecordWriter<Timed<KeyEvent>>,
@@ -84,7 +97,8 @@ pub fn write(
             Ok(InputMessage::Mouse(event)) => writer.mouse(event)?,
             Ok(InputMessage::Shape(shape)) => writer.shape(shape)?,
             Ok(InputMessage::Key(key)) => writer.key(&key)?,
-            Ok(InputMessage::Begin(start, dir)) => writer.begin(start, dir)?,
+            Ok(InputMessage::Begin { start, dir, clock }) => writer.begin(start, dir, clock)?,
+            Ok(InputMessage::Resumed(at)) => writer.resumed(at)?,
             Ok(InputMessage::Failed(error)) => return Err(error),
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
@@ -99,11 +113,17 @@ pub fn write(
 }
 
 impl Writer {
-    fn begin(&mut self, start: HostTime, dir: PathBuf) -> Result<(), CaptureError> {
+    fn begin(
+        &mut self,
+        start: HostTime,
+        dir: PathBuf,
+        clock: PauseClock,
+    ) -> Result<(), CaptureError> {
         let records = RecordWriter::create(&dir.join(CURSOR_FILE))?;
         let keys = RecordWriter::create(&dir.join(KEYS_FILE))?;
         self.file = Some(Open {
             start,
+            clock,
             dir,
             records,
             keys,
@@ -117,25 +137,32 @@ impl Writer {
         self.put_shape(start)
     }
 
-    /// The event is part of the recording: it began, and not later than the event.
-    fn records(&self, at: HostTime) -> bool {
-        self.file.as_ref().is_some_and(|open| at >= open.start)
+    /// Where an event at host time `at` goes on the recording clock; `None` if it is not part
+    /// of the recording: before its start or in a pause.
+    fn place(&self, at: HostTime) -> Result<Option<HostTime>, CaptureError> {
+        let Some(open) = self.file.as_ref().filter(|open| at >= open.start) else {
+            return Ok(None);
+        };
+        let placed = open.clock.place(at)?;
+        Ok((!placed.paused).then_some(placed.time))
     }
 
     fn mouse(&mut self, event: Timed<CursorEvent>) -> Result<(), CaptureError> {
-        if self.records(event.at) {
-            self.put(event)
-        } else {
-            self.position = event.event.position();
-            Ok(())
+        match self.place(event.at)? {
+            Some(at) => self.put(Timed { at, ..event }),
+            None => {
+                self.position = event.event.position();
+                Ok(())
+            }
         }
     }
 
     fn key(&mut self, key: &Timed<KeyEvent>) -> Result<(), CaptureError> {
-        match &mut self.file {
-            Some(open) if key.at >= open.start => {
+        let at = self.place(key.at)?;
+        match (&mut self.file, at) {
+            (Some(open), Some(at)) => {
                 self.summary.keys += 1;
-                open.keys.write(key)
+                open.keys.write(&Timed { at, ..*key })
             }
             _ => Ok(()),
         }
@@ -143,10 +170,24 @@ impl Writer {
 
     fn shape(&mut self, shape: Timed<SeenShape>) -> Result<(), CaptureError> {
         self.shapes.see(shape.event)?;
-        if self.records(shape.at) {
-            self.put_shape(shape.at)?;
+        if let Some(at) = self.place(shape.at)? {
+            self.put_shape(at)?;
         }
         Ok(())
+    }
+
+    /// Writes where the pointer moved and what the cursor became during the pause.
+    fn resumed(&mut self, at: HostTime) -> Result<(), CaptureError> {
+        let Some(at) = self.place(at)? else {
+            return Ok(());
+        };
+        if let Some((x, y)) = self.position {
+            self.put(Timed {
+                at,
+                event: CursorEvent::Move { x, y },
+            })?;
+        }
+        self.put_shape(at)
     }
 
     /// Writes the current shape if it is not the written one, its new picture first.

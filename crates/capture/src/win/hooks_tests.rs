@@ -172,7 +172,11 @@ fn typed_text_never_leaves_the_hook_and_shortcuts_reach_the_file() {
 
     let dir = tempfile::tempdir().unwrap();
     let (send, receive) = mpsc::channel();
-    let begin = InputMessage::Begin(HostTime::from_micros(0), dir.path().to_path_buf());
+    let begin = InputMessage::Begin {
+        start: HostTime::from_micros(0),
+        dir: dir.path().to_path_buf(),
+        clock: crate::pause::PauseClock::default(),
+    };
     for message in std::iter::once(begin).chain(queued) {
         send.send(message).unwrap();
     }

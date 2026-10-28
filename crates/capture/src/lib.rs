@@ -1,6 +1,7 @@
 //! Recorder trait, segmented recording with manifest, crash recovery, platform capture backends.
 
 pub mod audio;
+pub mod cancel;
 pub mod config;
 pub mod error;
 pub mod event;
@@ -10,6 +11,7 @@ pub mod input;
 pub mod lead;
 pub mod list;
 pub mod manifest;
+pub mod pause;
 pub mod preview;
 pub mod recorder;
 pub mod recover;
@@ -22,6 +24,7 @@ pub mod track;
 )]
 pub mod win;
 
+pub use cancel::remove_recording;
 pub use config::{ConfigError, Fps, RecordingConfig};
 pub use error::CaptureError;
 pub use event::{HostTime, RecordingEvent};
@@ -30,6 +33,7 @@ pub use grid::FrameGrid;
 pub use lead::{FrameLead, LeadFilter};
 pub use list::{MonitorInfo, SourceList, WindowInfo};
 pub use manifest::{Manifest, Segment, SharedManifest, Track};
+pub use pause::{Pause, PauseClock, Pauses, Placed};
 pub use preview::{BgraImage, Preview};
 pub use recorder::Recorder;
 pub use recover::recover;

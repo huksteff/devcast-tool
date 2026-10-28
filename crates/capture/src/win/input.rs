@@ -10,6 +10,7 @@ use super::hooks::Hooks;
 use crate::error::CaptureError;
 use crate::event::HostTime;
 use crate::input::{InputMessage, InputSummary, write};
+use crate::pause::PauseClock;
 
 pub struct InputRecording {
     hooks: Option<Hooks>,
@@ -35,9 +36,27 @@ impl InputRecording {
         })
     }
 
-    /// Input is recorded from host time `start` into the folder `dir`.
-    pub fn begin(&self, start: HostTime, dir: &Path) -> Result<(), CaptureError> {
-        let message = InputMessage::Begin(start, dir.to_path_buf());
+    /// Input is recorded from host time `start` into the folder `dir`, without what `clock`
+    /// says is paused.
+    pub fn begin(
+        &self,
+        start: HostTime,
+        dir: &Path,
+        clock: &PauseClock,
+    ) -> Result<(), CaptureError> {
+        self.send(InputMessage::Begin {
+            start,
+            dir: dir.to_path_buf(),
+            clock: clock.clone(),
+        })
+    }
+
+    /// The recording went on after a pause at host time `at`.
+    pub fn resumed(&self, at: HostTime) -> Result<(), CaptureError> {
+        self.send(InputMessage::Resumed(at))
+    }
+
+    fn send(&self, message: InputMessage) -> Result<(), CaptureError> {
         self.events
             .as_ref()
             .ok_or_else(Self::gone)?

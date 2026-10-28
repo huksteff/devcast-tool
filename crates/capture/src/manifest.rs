@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::CaptureError;
 use crate::event::HostTime;
+use crate::pause::{Pause, Pauses};
 
 pub const MANIFEST: &str = "manifest.json";
 
@@ -22,6 +23,10 @@ pub const VERSION: u32 = 1;
 pub struct Manifest {
     pub version: u32,
     pub tracks: Vec<Track>,
+    /// Pauses on the host clock. They are cut out of every track: tick `n` of a track is at
+    /// `start + n / rate` on the recording clock, which is the host clock minus the pauses
+    /// before that moment (see [`crate::pause`]).
+    pub pauses: Vec<Pause>,
 }
 
 /// One recorded stream: video, system sound or microphone.
@@ -83,6 +88,7 @@ impl Manifest {
         Self {
             version: VERSION,
             tracks,
+            pauses: Vec::new(),
         }
     }
 
@@ -155,6 +161,13 @@ impl SharedManifest {
         manifest.write(&self.dir)
     }
 
+    /// Records the pauses so far and writes the file.
+    pub fn set_pauses(&self, pauses: &Pauses) -> Result<(), CaptureError> {
+        let mut manifest = self.lock()?;
+        pauses.list().clone_into(&mut manifest.pauses);
+        manifest.write(&self.dir)
+    }
+
     /// The manifest as it is now.
     pub fn get(&self) -> Result<Manifest, CaptureError> {
         Ok(self.lock()?.clone())
@@ -189,7 +202,7 @@ mod tests {
         let json = serde_json::to_string(&manifest).unwrap();
         assert_eq!(
             json,
-            r#"{"version":1,"tracks":[{"name":"video","rate":60,"start":5000000,"segments":[{"file":"video-000001.mp4","start":0,"end":120}],"file":null}]}"#
+            r#"{"version":1,"tracks":[{"name":"video","rate":60,"start":5000000,"segments":[{"file":"video-000001.mp4","start":0,"end":120}],"file":null}],"pauses":[]}"#
         );
         assert_eq!(serde_json::from_str::<Manifest>(&json).unwrap(), manifest);
     }
@@ -215,6 +228,12 @@ mod tests {
         let read = Manifest::read(dir.path()).unwrap();
         assert_eq!(read, Manifest::new(vec![video, system]));
         assert_eq!(shared.get().unwrap(), read);
+        let mut pauses = Pauses::default();
+        pauses.pause(HostTime::from_micros(100)).unwrap();
+        shared.set_pauses(&pauses).unwrap();
+        let read = Manifest::read(dir.path()).unwrap();
+        assert_eq!(read.pauses, pauses.list());
+        assert_eq!(read.tracks.len(), 2);
     }
 
     #[test]

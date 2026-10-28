@@ -14,6 +14,7 @@ mod nv12;
 mod preview;
 mod recording;
 mod video;
+mod video_encode;
 mod window_list;
 
 pub use capture::{FrameSink, VideoCapture};
