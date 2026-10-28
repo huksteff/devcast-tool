@@ -2,7 +2,7 @@
 //! cut entirely leaves the track.
 
 use dc_core::time::{Output, Source};
-use dc_core::{ClipId, Command, CommandError, Diff, Op, Project, Range, RangeListArg};
+use dc_core::{ClipId, Command, CommandError, Diff, Op, Project, Range, RangesArg};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -12,7 +12,7 @@ use crate::track::{range_of, source_spans};
 #[serde(deny_unknown_fields)]
 pub struct Cut {
     /// Что вырезать, время выхода: 10.2-12.5,20-21.
-    pub ranges: RangeListArg<Output>,
+    pub ranges: RangesArg<Output>,
 }
 
 impl Command for Cut {

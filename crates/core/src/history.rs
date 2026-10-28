@@ -68,6 +68,9 @@ fn diff(before: &Project, after: &Project) -> (Parts, Parts) {
     (old, new)
 }
 
+/// How many undo steps a project keeps by default.
+pub const LIMIT: usize = 1000;
+
 /// Undo and redo stacks. `limit` caps how many steps are kept.
 #[derive(Debug, Clone)]
 pub struct History {
@@ -78,7 +81,7 @@ pub struct History {
 
 impl Default for History {
     fn default() -> Self {
-        Self::new(1000)
+        Self::new(LIMIT)
     }
 }
 

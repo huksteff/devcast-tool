@@ -11,7 +11,7 @@ mod test_util;
 
 use dc_core::OpInfo;
 
-pub use clip::{ClipMove, ClipRm, ClipSplit};
+pub use clip::{ClipMove, ClipRm};
 pub use cut::Cut;
 pub use speed::Speed;
 
@@ -20,7 +20,6 @@ pub fn ops() -> Vec<OpInfo> {
     vec![
         OpInfo::of::<Cut>(),
         OpInfo::of::<Speed>(),
-        OpInfo::of::<ClipSplit>(),
         OpInfo::of::<ClipRm>(),
         OpInfo::of::<ClipMove>(),
     ]
