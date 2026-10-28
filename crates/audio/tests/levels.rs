@@ -170,3 +170,24 @@ fn muted_clip_next_to_a_loud_one_fades() {
     let slope = common::project::sharpest(&left, join - 480, join + 480);
     assert!(slope < 2.0 * 0.05 * (2.0 * std::f32::consts::PI * 440.0 / RATE as f32).powi(2) + 1e-4);
 }
+
+#[test]
+fn denoise_is_a_filter_of_the_channel() {
+    let dir = tempfile::tempdir().unwrap();
+    clip(
+        dir.path(),
+        "hiss.mp4",
+        "anoisesrc=color=pink:amplitude=0.03:r=48000:seed=3:d=3",
+        &["-ac", "2"],
+    );
+    let mut project = Project::default();
+    add_clip(&mut project, "hiss.mp4", 3.0);
+    let clip = project.clips[0].id;
+    let as_is = clip_levels(clip, "audio-1", level(1.0, 1.0, false));
+    let denoised = clip_levels(clip, "audio-1", level(1.0, 1.0, false).with_denoise(true));
+    let plain = render_all(&mut mixer(dir.path(), &project, &as_is), 4096);
+    let clean = render_all(&mut mixer(dir.path(), &project, &denoised), 4096);
+    let tail = |s: &[f32]| rms(&s[RATE as usize * CHANNELS..]);
+    let change = 20.0 * (tail(&clean) / tail(&plain)).log10();
+    assert!(change < -20.0, "hiss after the warm-up: {change:.1} dB");
+}

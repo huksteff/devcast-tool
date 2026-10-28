@@ -21,6 +21,7 @@ pub struct ChannelLevel {
     gain: f32,
     muted: bool,
     normalized: bool,
+    denoised: bool,
 }
 
 impl Default for ChannelLevel {
@@ -30,6 +31,7 @@ impl Default for ChannelLevel {
             gain: 1.0,
             muted: false,
             normalized: false,
+            denoised: false,
         }
     }
 }
@@ -67,6 +69,12 @@ impl ChannelLevel {
         Self { normalized, ..self }
     }
 
+    /// Noise suppressed (RNNoise) before everything else; normalization is still measured on
+    /// the track as recorded.
+    pub fn with_denoise(self, denoised: bool) -> Self {
+        Self { denoised, ..self }
+    }
+
     pub fn volume(&self) -> f32 {
         self.volume
     }
@@ -81,6 +89,10 @@ impl ChannelLevel {
 
     pub fn normalized(&self) -> bool {
         self.normalized
+    }
+
+    pub fn denoised(&self) -> bool {
+        self.denoised
     }
 
     /// The factor of volume, gain and mute (normalization is measured by the mix).

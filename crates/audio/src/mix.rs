@@ -61,6 +61,7 @@ impl Mixer {
                 };
                 parts.push(Part {
                     gain: level.factor() * normalization,
+                    denoise: level.denoised(),
                     track: track.clone(),
                     start: frame_at(segment.output_start.micros()),
                     end: frame_at(segment.output_end().micros()),

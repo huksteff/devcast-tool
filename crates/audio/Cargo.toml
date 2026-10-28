@@ -16,6 +16,7 @@ dc-core = { path = "../core" }
 dc-media = { path = "../media" }
 dc-project = { path = "../project" }
 ebur128 = "0.1"
+nnnoiseless = { version = "0.5", default-features = false }
 ffmpeg-next = "9"
 rubato = "5"
 thiserror.workspace = true

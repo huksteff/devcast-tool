@@ -4,6 +4,7 @@
 //! Every track is brought to one format: [`RATE`] Hz, [`CHANNELS`] interleaved `f32` channels.
 //! A position in it is a frame index ([`frame_at`]).
 
+mod denoise;
 pub mod error;
 pub mod levels;
 pub mod loudness;

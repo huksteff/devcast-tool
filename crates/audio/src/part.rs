@@ -6,8 +6,8 @@
 //! next one starts before its start fading in. Timing stays exact, and the two halves add up
 //! to one, so a join inside continuous sound (a speed change, a split clip) is not heard.
 
+use crate::denoise::SourceReader;
 use crate::error::AudioError;
-use crate::reader::TrackReader;
 use crate::tempo::Tempo;
 use crate::track::SourceTrack;
 use crate::{CHANNELS, RATE};
@@ -29,6 +29,8 @@ pub(crate) struct Part {
     pub track: SourceTrack,
     /// Level factor of the track in this clip; 0 is muted.
     pub gain: f32,
+    /// Noise suppressed before the speed change.
+    pub denoise: bool,
     /// Output frames of the segment, `start..end`.
     pub start: i64,
     pub end: i64,
@@ -71,7 +73,7 @@ impl Part {
 /// Reads a [`Part`] in output frames: speed 1 straight from the track, other speeds through
 /// `atempo` (output frame `start + j` plays source `source + j · speed`).
 pub(crate) struct PartStream {
-    reader: TrackReader,
+    reader: SourceReader,
     tempo: Option<TempoRun>,
 }
 
@@ -88,7 +90,7 @@ struct TempoRun {
 impl PartStream {
     pub fn open(part: &Part) -> Result<Self, AudioError> {
         Ok(Self {
-            reader: TrackReader::open(&part.track)?,
+            reader: SourceReader::open(&part.track, part.denoise)?,
             tempo: None,
         })
     }
@@ -108,7 +110,7 @@ impl PartStream {
 
 impl TempoRun {
     /// A new `atempo` run whose next output frame is `start`.
-    fn start(part: &Part, start: i64, reader: &mut TrackReader) -> Result<Self, AudioError> {
+    fn start(part: &Part, start: i64, reader: &mut SourceReader) -> Result<Self, AudioError> {
         let first = start - TEMPO_WARMUP;
         let offset = ((first - part.start) as f64 * part.speed).round() as i64;
         let mut run = Self {
@@ -122,7 +124,7 @@ impl TempoRun {
         Ok(run)
     }
 
-    fn read(&mut self, reader: &mut TrackReader, out: &mut [f32]) -> Result<(), AudioError> {
+    fn read(&mut self, reader: &mut SourceReader, out: &mut [f32]) -> Result<(), AudioError> {
         while self.ready.len() < out.len() {
             reader.fill(self.source_next, &mut self.feed)?;
             self.tempo.push(&self.feed, &mut self.ready)?;
