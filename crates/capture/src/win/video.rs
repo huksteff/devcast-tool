@@ -12,12 +12,14 @@ use std::time::Duration;
 use dc_encode::{Codec, Nv12Frame, VideoEncoder, VideoSettings};
 
 use super::capture::{FrameSink, VideoCapture};
+use super::clock::now;
 use super::frame::VideoFrame;
 use super::nv12::{Nv12Converter, even_size};
 use crate::config::Fps;
 use crate::error::CaptureError;
 use crate::event::HostTime;
 use crate::grid::FrameGrid;
+use crate::lead::{FrameLead, LeadFilter};
 use crate::manifest::{SharedManifest, Track};
 use crate::source::Source;
 use crate::track::TrackWriter;
@@ -50,6 +52,8 @@ pub struct VideoSummary {
     pub frames: u64,
     /// Slot where the video ends (exclusive); its duration is `end / fps` seconds.
     pub end: i64,
+    /// How far frame times were ahead of their arrival; `None` without frames.
+    pub lead: Option<FrameLead>,
 }
 
 pub struct VideoRecording {
@@ -61,12 +65,10 @@ pub struct VideoRecording {
 }
 
 enum Message {
-    Frame(Nv12Frame, i64),
+    /// A frame at a slot, and how far its time is ahead of its arrival (µs).
+    Frame(Nv12Frame, i64, i64),
     /// Recording stopped at `at`; no more frames will come.
-    End {
-        grid: FrameGrid,
-        at: HostTime,
-    },
+    End { grid: FrameGrid, at: HostTime },
 }
 
 impl VideoRecording {
@@ -100,6 +102,7 @@ impl VideoRecording {
             fps,
             first: Some(first_tx),
             started: None,
+            lead: LeadFilter::default(),
             last: None,
             frames: frames_tx.clone(),
             spare: (0..IN_FLIGHT)
@@ -216,6 +219,7 @@ struct EncodeSink {
     first: Option<Sender<HostTime>>,
     /// Set at the first frame, which needs the capture's device and time.
     started: Option<(Nv12Converter, FrameGrid)>,
+    lead: LeadFilter,
     last: Option<i64>,
     frames: SyncSender<Message>,
     spare: Vec<Nv12Frame>,
@@ -224,11 +228,13 @@ struct EncodeSink {
 
 impl FrameSink for EncodeSink {
     fn frame(&mut self, frame: &VideoFrame<'_>) -> Result<ControlFlow<()>, CaptureError> {
+        let arrived = now()?;
+        let time = self.lead.place(frame.time(), arrived);
         let (converter, grid) = match &mut self.started {
             Some(started) => started,
             None => {
                 let converter = Nv12Converter::new(frame, self.size)?;
-                let grid = FrameGrid::new(frame.time(), self.fps);
+                let grid = FrameGrid::new(time, self.fps);
                 if let Some(first) = self.first.take() {
                     // Without a receiver `start` gave up waiting and stops the capture.
                     let _ = first.send(grid.start());
@@ -236,7 +242,8 @@ impl FrameSink for EncodeSink {
                 self.started.insert((converter, grid))
             }
         };
-        let Some(slot) = grid.place(self.last, frame.time()) else {
+        let lead = frame.time().micros() - arrived.micros();
+        let Some(slot) = grid.place(self.last, time) else {
             return Ok(ControlFlow::Continue(()));
         };
         self.last = Some(slot);
@@ -246,7 +253,7 @@ impl FrameSink for EncodeSink {
         };
         converter.convert(frame, &mut buffer)?;
         self.frames
-            .send(Message::Frame(buffer, slot))
+            .send(Message::Frame(buffer, slot, lead))
             .map_err(|_| encoder_gone())?;
         Ok(ControlFlow::Continue(()))
     }
@@ -265,10 +272,12 @@ fn encode(
     let mut track = writer.recv().map_err(|_| encoder_gone())?;
     let mut packets = Vec::new();
     let mut count = 0;
+    let mut leads = Vec::new();
     let mut last = 0;
     for message in frames {
         match message {
-            Message::Frame(mut frame, slot) => {
+            Message::Frame(mut frame, slot, lead) => {
+                leads.push(lead);
                 encoder.encode(&mut frame, slot, &mut packets)?;
                 for packet in packets.drain(..) {
                     track.push(packet)?;
@@ -285,7 +294,11 @@ fn encode(
                 }
                 let end = grid.end(last, at);
                 track.finish(end)?;
-                return Ok(VideoSummary { frames: count, end });
+                return Ok(VideoSummary {
+                    frames: count,
+                    end,
+                    lead: FrameLead::measure(leads),
+                });
             }
         }
     }

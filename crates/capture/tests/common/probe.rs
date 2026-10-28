@@ -5,7 +5,7 @@ use std::process::Command;
 
 use serde_json::Value;
 
-fn tool(name: &str) -> PathBuf {
+pub fn tool(name: &str) -> PathBuf {
     PathBuf::from(env!("FFMPEG_DIR"))
         .join("bin")
         .join(format!("{name}.exe"))

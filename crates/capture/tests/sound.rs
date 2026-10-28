@@ -170,10 +170,9 @@ fn records_system_sound_on_the_video_clock() {
     audio.check_common();
     let sound = &summary.audio[0];
     assert!((audio.duration - sound.frames as f64 / f64::from(RATE)).abs() < 1e-6);
-    // Both end at the stop; the video's end is rounded to its frame slots and its last frame
-    // may be stamped ahead of the clock (decision 007, up to ~30 ms).
+    // Both end at the stop; the video's end is rounded to its frame slots.
     assert!(
-        (-0.05 - 1.0 / 30.0..=1.0 / 30.0).contains(&(audio.duration - probe.duration)),
+        (audio.duration - probe.duration).abs() <= 1.0 / 30.0,
         "{} vs {}",
         audio.duration,
         probe.duration
