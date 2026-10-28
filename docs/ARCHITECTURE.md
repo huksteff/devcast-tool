@@ -56,7 +56,7 @@
 |---|---|
 | [001](decisions/001-hud-window.md) HUD | Прозрачных окон нет. HUD — непрозрачное окно по размеру панели со скруглением от DWM, исключённое из захвата. Выбор области — по стоп-кадру. |
 | [002](decisions/002-multi-window.md) Окна | Deferred viewports eframe, перерисовка только по запросу (в простое CPU 0%). Баг egui #8466 проверяется в 7.26. |
-| [003](decisions/003-video-decode.md) Видео | FFmpeg 9 (BtbN shared) + ffmpeg-next 9. Декодирование программное. **Наши записи пишутся с GOP 1 с.** Пока тянут указатель — ближайший ключевой кадр, на отпускании — точный кадр. |
+| [003](decisions/003-video-decode.md) Видео | FFmpeg 9 shared (проба на BtbN; `xtask deps` качает GyanD 9.0.2) + ffmpeg-next 9. Декодирование программное. **Наши записи пишутся с GOP 1 с.** Пока тянут указатель — ближайший ключевой кадр, на отпускании — точный кадр. |
 | [004](decisions/004-overlays-wgsl.md) Эффекты | Свои WGSL-шейдеры: SDF-фигуры, двухпроходное размытие с уменьшением разрешения, свечение. 4K-кадр — 0,5 мс на RTX 3060 Ti. |
 | [005](decisions/005-text.md) Текст | glyphon + cosmic-text. В `FontSystem` загружаются **только наши шрифты** (`assets/fonts`: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono, Noto Color Emoji), чтобы кадры совпадали на всех ПК. |
 | [006](decisions/006-export.md) Экспорт | RGB→NV12 на GPU, кольцо буферов. Кодек по производителю GPU → MF → x264, только после самопроверки. **Цветовые метки BT.709 в файле обязательны.** |
@@ -138,7 +138,7 @@ skill/           SKILL.md для Claude Code: монтаж через CLI
 ```
 devcast help [cmd] [--json]
 devcast record --source <screen:1|window:<id>|area:x,y,w,h> [--fps 60] [--duration 10] | record stop
-devcast new <video...> -o name.dcproj | clip add <video> | clip ls | clip move c2 --to 1
+devcast new <video...> -o name.dcproj | clip add <video> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
 devcast info | save
 devcast ls <zooms|clips|annots|captions|tracks|clicks> [--from --to] [--fields]
 devcast transcript [--from --to] [--words]       # текст с таймкодами и id слов
@@ -146,7 +146,7 @@ devcast silences [--min 0.5] [--db -30]
 devcast events <clicks|keys|activity> [--from --to]
 devcast cut <10.2-12.5,...|w120-w135> [--dry-run]
 devcast speed <from-to> <x>
-devcast zoom suggest | zoom add --at <сек|clicks> [--scale 1.8] [--follow] | zoom set z3 scale=2 | zoom rm z3
+devcast zoom suggest | zoom add --at <сек|clicks> [--duration 1] [--scale 1.8] [--mode follow|fixed] | zoom set z3 --scale 2 | zoom motion --preset smooth | zoom rm z3
 devcast annot add <text|shape|image|blur|draw> --from --to --rect x,y,w,h [--rotate 15] [опции]
 devcast key add a3 --at 12.0 [параметры] | key rm
 devcast callout add ... | keys show on|off
