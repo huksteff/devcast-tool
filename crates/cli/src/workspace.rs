@@ -57,6 +57,10 @@ impl Workspace {
         })
     }
 
+    pub fn dir(&self) -> &ProjectDir {
+        &self.dir
+    }
+
     /// Folder name, e.g. `Урок 1.dcproj`.
     pub fn name(&self) -> &str {
         self.dir.name()

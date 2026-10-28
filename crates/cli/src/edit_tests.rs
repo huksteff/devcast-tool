@@ -12,7 +12,7 @@ fn plan_is_one_step_and_undo_redo_restore_it() {
     let file = plan(
         &f,
         "план.json",
-        r#"[{"op":"clip add","secs":2},{"op":"clip add","secs":1},{"op":"clip rm","id":"c1"}]"#,
+        r#"[{"op":"test add","secs":2},{"op":"test add","secs":1},{"op":"test rm","id":"c1"}]"#,
     );
     assert_eq!(
         f.run(&format!("apply {file} --dry-run")),
@@ -26,11 +26,11 @@ fn plan_is_one_step_and_undo_redo_restore_it() {
         done("клипы +2 c1,c2; клипы -1 c1; длительность 0:00.000→0:01.000")
     );
     let saved = f.dir.load().unwrap();
-    assert_eq!(f.run("clip add --secs 3").code, 0);
+    assert_eq!(f.run("test add --secs 3").code, 0);
     assert_eq!(
         f.run("history"),
         done(
-            "отменить (devcast undo N):\n  1  clip add  клипы +1 c3\n  2  apply     клипы +2 c1,c2; клипы -1 c1"
+            "отменить (devcast undo N):\n  1  test add  клипы +1 c3\n  2  apply     клипы +2 c1,c2; клипы -1 c1"
         )
     );
     assert_eq!(
@@ -46,7 +46,7 @@ fn plan_is_one_step_and_undo_redo_restore_it() {
     assert_eq!(
         f.run("history"),
         done(
-            "отменить (devcast undo N):\n  1  apply     клипы +2 c1,c2; клипы -1 c1\nвернуть (devcast redo):\n  1  clip add  клипы +1 c3"
+            "отменить (devcast undo N):\n  1  apply     клипы +2 c1,c2; клипы -1 c1\nвернуть (devcast redo):\n  1  test add  клипы +1 c3"
         )
     );
 }
@@ -60,7 +60,7 @@ fn history_survives_between_runs_and_limits_are_explained() {
         (out.code, out.stderr.as_str()),
         (1, "нечего отменять: таких шагов в истории нет\n")
     );
-    f.run("clip add --secs 1");
+    f.run("test add --secs 1");
     let out = f.run("undo 3");
     assert_eq!(out.code, 1);
     assert!(out.stderr.contains("доступно шагов — 1"), "{}", out.stderr);
@@ -75,7 +75,7 @@ fn history_survives_between_runs_and_limits_are_explained() {
     let json: serde_json::Value = serde_json::from_str(&f.run("history --json").stdout).unwrap();
     assert_eq!(
         json,
-        serde_json::json!({"undo": [{"name": "clip add", "summary": "клипы +1 c1"}], "redo": []})
+        serde_json::json!({"undo": [{"name": "test add", "summary": "клипы +1 c1"}], "redo": []})
     );
 }
 
@@ -85,7 +85,7 @@ fn bad_plans_change_nothing() {
     let file = plan(
         &f,
         "bad.json",
-        r#"[{"op":"clip add","secs":1},{"op":"clip rm","id":"c7"}]"#,
+        r#"[{"op":"test add","secs":1},{"op":"test rm","id":"c7"}]"#,
     );
     let out = f.run(&format!("apply {file}"));
     assert_eq!(out.code, 1);
@@ -110,7 +110,7 @@ fn save_commits_unsaved_editor_state() {
         done("нечего сохранять: несохранённых изменений нет")
     );
     f.dir.save_session(&dc_core::Project::default()).unwrap();
-    f.run("clip add --secs 1");
+    f.run("test add --secs 1");
     assert_eq!(f.clips(), 0);
     assert_eq!(
         f.run("save --dry-run"),
@@ -130,10 +130,10 @@ fn save_commits_unsaved_editor_state() {
 fn history_numbers_stay_in_one_column() {
     let f = Fixture::new();
     for _ in 0..10 {
-        f.run("clip add --secs 1");
+        f.run("test add --secs 1");
     }
     let out = f.run("history").stdout;
     let lines: Vec<&str> = out.lines().collect();
-    assert_eq!(lines[1], "   1  clip add  клипы +1 c10");
-    assert_eq!(lines[10], "  10  clip add  клипы +1 c1");
+    assert_eq!(lines[1], "   1  test add  клипы +1 c10");
+    assert_eq!(lines[10], "  10  test add  клипы +1 c1");
 }

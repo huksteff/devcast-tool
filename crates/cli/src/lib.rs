@@ -6,6 +6,7 @@ pub mod find;
 pub mod globals;
 mod help;
 mod help_args;
+mod import;
 mod ls;
 mod record;
 mod record_args;
@@ -20,6 +21,8 @@ pub mod workspace;
 mod e2e_tests;
 #[cfg(test)]
 mod edit_tests;
+#[cfg(test)]
+mod import_tests;
 #[cfg(test)]
 mod ls_tests;
 #[cfg(test)]

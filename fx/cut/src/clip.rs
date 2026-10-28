@@ -1,7 +1,8 @@
-//! Clips on the magnetic main track: remove, reorder. The track has no gaps, so removing
-//! or moving a clip only changes `project.clips`.
+//! Clips on the magnetic main track: add, remove, reorder. The track has no gaps, so adding,
+//! removing or moving a clip only changes `project.clips`.
 
-use dc_core::{ClipId, Command, CommandError, Diff, Op, Project};
+use dc_core::project::{Clip, Media};
+use dc_core::{ClipId, Command, CommandError, Diff, Op, Project, Range, Rect, SourceTime};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -11,6 +12,43 @@ fn index_of(project: &Project, id: ClipId) -> Result<usize, CommandError> {
         .iter()
         .position(|c| c.id == id)
         .ok_or_else(|| CommandError::not_found(id, project.clips.iter().map(|c| c.id)))
+}
+
+/// Adds a clip of the whole `media` at the end of the track. Not an [`Op`]: the media file must
+/// be in the project's `media/` first, so the CLI copies and probes it and then applies this.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClipAdd {
+    pub media: Media,
+}
+
+impl ClipAdd {
+    pub const NAME: &'static str = "clip add";
+}
+
+impl Command for ClipAdd {
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
+
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+        let end = SourceTime::ZERO + self.media.duration;
+        let trim = Range::new(SourceTime::ZERO, end).map_err(|_| {
+            CommandError::new(format!(
+                "у видео {} отрицательная длина: файл повреждён, перекодируй его",
+                self.media.path
+            ))
+        })?;
+        let id = project.clip_ids.allocate();
+        project.clips.push(Clip {
+            id,
+            media: self.media.clone(),
+            trim,
+            cuts: Vec::new(),
+            speeds: Vec::new(),
+            crop: Rect::FULL,
+        });
+        Ok(Diff::added(id))
+    }
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

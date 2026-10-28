@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use dc_core::{Change, History, Project, TimeMap};
+use dc_core::{Change, Command, History, Project, TimeMap};
 use dc_ops::{Applied, Registry, Step, duration_change};
 use dc_project::history_log::Event;
 use serde_json::{Value, json};
@@ -69,6 +69,29 @@ fn apply_steps(ctx: &Ctx<'_>, steps: &[Step]) -> Result<Answer, CliError> {
         steps,
         ctx.globals.dry_run,
     )?;
+    finish(&mut workspace, &applied)
+}
+
+/// Applies `commands` built by the caller (after it prepared files in `workspace`) as one undo
+/// step named `name`, like an op.
+pub(crate) fn apply_commands(
+    ctx: &Ctx<'_>,
+    workspace: &mut Workspace,
+    name: &str,
+    commands: &[&dyn Command],
+) -> Result<Answer, CliError> {
+    let applied = dc_ops::apply_commands(
+        &mut workspace.project,
+        &mut workspace.history,
+        name,
+        commands,
+        ctx.globals.dry_run,
+    )?;
+    finish(workspace, &applied)
+}
+
+/// Writes an applied change (history event, then the project) and makes the answer.
+fn finish(workspace: &mut Workspace, applied: &Applied) -> Result<Answer, CliError> {
     if applied.changed && !applied.dry_run {
         let change = workspace.history.changes().last().cloned();
         let change = change.ok_or_else(|| {
@@ -79,11 +102,11 @@ fn apply_steps(ctx: &Ctx<'_>, steps: &[Step]) -> Result<Answer, CliError> {
         })?;
         workspace.record(&[Event::Do(change)])?;
     }
-    let json = applied_json(&applied);
-    Ok(answer(&mut workspace, applied.to_string(), json))
+    let json = applied_json(applied);
+    Ok(answer(workspace, applied.to_string(), json))
 }
 
-fn applied_json(applied: &Applied) -> Value {
+pub(crate) fn applied_json(applied: &Applied) -> Value {
     let (before, after) = applied.duration;
     json!({
         "changed": applied.changed,

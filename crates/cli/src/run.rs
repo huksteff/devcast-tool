@@ -16,7 +16,7 @@ use crate::ls::{self, Query};
 use crate::record;
 use crate::record_args::RecordArgs;
 use crate::record_control::Control;
-use crate::{skill, sources};
+use crate::{import, skill, sources};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Outcome {
@@ -113,6 +113,25 @@ enum Builtin {
         offset: usize,
     },
     #[command(
+        about = "Новый проект из видео mp4/mov/mkv/webm: копии в media/, по клипу на файл",
+        after_help = "new демо.mp4 вступление.mov -o урок.dcproj"
+    )]
+    New {
+        #[arg(
+            required = true,
+            help = "Видео mp4, mov, mkv или webm; клипы идут в этом порядке"
+        )]
+        videos: Vec<PathBuf>,
+        #[arg(short = 'o', long, help = "Папка нового проекта *.dcproj")]
+        out: PathBuf,
+    },
+    /// `clip add`; the other `clip …` commands are ops of the registry.
+    #[command(disable_help_subcommand = true)]
+    Clip {
+        #[command(subcommand)]
+        command: ClipCommand,
+    },
+    #[command(
         about = "Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
         after_help = "record --source screen:1 --duration 10 -o урок.dcproj"
     )]
@@ -133,6 +152,24 @@ enum Builtin {
         action: SkillAction,
     },
     /// An op from the registry, e.g. `zoom add --at 12.5`.
+    #[command(external_subcommand)]
+    Op(Vec<String>),
+}
+
+#[derive(Debug, Subcommand)]
+enum ClipCommand {
+    #[command(
+        about = "Добавить видео mp4/mov/mkv/webm клипами в конец главной дорожки (копия в media/)",
+        after_help = "clip add демо.mp4"
+    )]
+    Add {
+        #[arg(
+            required = true,
+            help = "Видео mp4, mov, mkv или webm; клипы идут в этом порядке"
+        )]
+        videos: Vec<PathBuf>,
+    },
+    /// `clip move`, `clip split` … from the registry.
     #[command(external_subcommand)]
     Op(Vec<String>),
 }
@@ -221,6 +258,13 @@ fn dispatch(
                 "у ls sources нет --from, --to и --fields: devcast ls sources".to_owned(),
             )),
         },
+        Builtin::New { videos, out } => import::new(&ctx, &videos, &out),
+        Builtin::Clip {
+            command: ClipCommand::Add { videos },
+        } => import::clip_add(&ctx, &videos),
+        Builtin::Clip {
+            command: ClipCommand::Op(words),
+        } => edit::op(&ctx, &[vec!["clip".to_owned()], words].concat()),
         Builtin::Record { control, args } => record::record(&ctx, control, &args),
         Builtin::Ls {
             list,

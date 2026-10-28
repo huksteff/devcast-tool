@@ -12,7 +12,7 @@ mod test_util;
 
 use dc_core::OpInfo;
 
-pub use clip::{ClipMove, ClipRm};
+pub use clip::{ClipAdd, ClipMove, ClipRm};
 pub use cut::Cut;
 pub use speed::Speed;
 pub use split::ClipSplit;

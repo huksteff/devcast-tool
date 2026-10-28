@@ -35,8 +35,8 @@ fn ls_clips_and_info_summarise_the_project() {
     f.ok("zoom add --at 20 --duration 2");
     assert_eq!(
         f.ok("ls clips"),
-        "c1  0:00.000–0:19.000  cuts=1  media=media/a.mp4  speeds=0  trim=0:00.000–0:20.000\n\
-         c2  0:19.000–0:29.000  cuts=0  media=media/b.mp4  speeds=0  trim=0:00.000–0:10.000"
+        "c1  0:00.000–0:19.000  cuts=1  kind=recording  media=media/a.mp4  speeds=0  trim=0:00.000–0:20.000\n\
+         c2  0:19.000–0:29.000  cuts=0  kind=recording  media=media/b.mp4  speeds=0  trim=0:00.000–0:10.000"
     );
     assert_eq!(
         f.ok("info"),

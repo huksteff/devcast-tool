@@ -43,6 +43,7 @@ fn rows(list: &str, project: &Project, registry: &Registry) -> Result<Vec<Row>, 
         for clip in &project.clips {
             let mut fields = Map::new();
             fields.insert("media".into(), clip.media.path.clone().into());
+            fields.insert("kind".into(), json!(clip.media.kind));
             let trim = format!("{}–{}", clip.trim.start(), clip.trim.end());
             fields.insert("trim".into(), trim.into());
             fields.insert("cuts".into(), clip.cuts.len().into());

@@ -19,6 +19,7 @@ dc-fx-crop = { path = "../../fx/crop" }
 dc-fx-cut = { path = "../../fx/cut" }
 dc-fx-zoom = { path = "../../fx/zoom" }
 dc-ipc = { path = "../ipc" }
+dc-media = { path = "../media" }
 dc-ops = { path = "../ops" }
 dc-project = { path = "../project" }
 schemars.workspace = true

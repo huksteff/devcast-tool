@@ -480,6 +480,7 @@ dependencies = [
  "dc-fx-cut",
  "dc-fx-zoom",
  "dc-ipc",
+ "dc-media",
  "dc-ops",
  "dc-project",
  "insta",

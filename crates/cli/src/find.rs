@@ -1,11 +1,30 @@
 //! Which project a command works on: `--project`, else the `*.dcproj` folder the current folder is
-//! in, else the only `*.dcproj` folder inside the current folder.
+//! in, else the only `*.dcproj` folder inside the current folder. And the folder of a new project.
 
 use std::path::{Path, PathBuf};
 
 use dc_project::ProjectDir;
 
 use crate::error::CliError;
+
+/// The folder `out` (relative to `cwd`) of a project that is about to be created: named
+/// `*.dcproj` and not there yet.
+pub fn new_folder(cwd: &Path, out: &Path) -> Result<PathBuf, CliError> {
+    if out.extension().is_none_or(|e| e != "dcproj") {
+        return Err(CliError::Usage(format!(
+            "-o {}: папка проекта должна называться *.dcproj, например -o урок.dcproj",
+            out.display()
+        )));
+    }
+    let root = cwd.join(out);
+    if root.exists() {
+        return Err(CliError::Failed(format!(
+            "{} уже есть: команда создаёт новый проект, выбери другое имя",
+            root.display()
+        )));
+    }
+    Ok(root)
+}
 
 pub fn find_project(explicit: Option<&Path>, cwd: &Path) -> Result<ProjectDir, CliError> {
     if let Some(path) = explicit {

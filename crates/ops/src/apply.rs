@@ -32,9 +32,22 @@ pub fn apply(
     let commands = build(registry, steps)?;
     let commands: Vec<&dyn Command> = commands.iter().map(AsRef::as_ref).collect();
     let name = match steps {
-        [single] => single.op.clone(),
-        _ => "apply".to_owned(),
+        [single] => single.op.as_str(),
+        _ => "apply",
     };
+    apply_commands(project, history, name, &commands, dry_run)
+}
+
+/// Applies ready `commands` as one step of history named `name`, like [`apply`]: for commands
+/// that need files prepared first (an imported video is copied into the project before its
+/// clip is added).
+pub fn apply_commands(
+    project: &mut Project,
+    history: &mut History,
+    name: &str,
+    commands: &[&dyn Command],
+    dry_run: bool,
+) -> Result<Applied, OpsError> {
     let original = project.clone();
     let before = TimeMap::build(project).duration();
     let (mut draft, mut draft_history);
@@ -46,7 +59,7 @@ pub fn apply(
         (project, history)
     };
     let diff = target_history
-        .apply_batch(target, &name, &commands)
+        .apply_batch(target, name, commands)
         .map_err(|e| OpsError::Failed(e.to_string()))?;
     let changed = *target != original;
     Ok(Applied {

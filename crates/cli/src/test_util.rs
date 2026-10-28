@@ -59,9 +59,9 @@ impl Command for ClipAdd {
 }
 
 impl Op for ClipAdd {
-    const NAME: &'static str = "clip add";
+    const NAME: &'static str = "test add";
     const ABOUT: &'static str = "Добавить клип";
-    const EXAMPLE: &'static str = "clip add --secs 2";
+    const EXAMPLE: &'static str = "test add --secs 2";
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -85,13 +85,13 @@ impl Command for ClipRm {
 }
 
 impl Op for ClipRm {
-    const NAME: &'static str = "clip rm";
+    const NAME: &'static str = "test rm";
     const ABOUT: &'static str = "Удалить клип";
-    const EXAMPLE: &'static str = "clip rm c1";
+    const EXAMPLE: &'static str = "test rm c1";
     const POSITIONAL: &'static [&'static str] = &["id"];
 }
 
-/// An empty project `Мои видео/Урок 1.dcproj` with the test commands `clip add` and `clip rm`.
+/// An empty project `Мои видео/Урок 1.dcproj` with the test commands `test add` and `test rm`.
 pub(crate) struct Fixture {
     pub(crate) _tmp: tempfile::TempDir,
     pub(crate) cwd: PathBuf,
@@ -168,4 +168,20 @@ pub(crate) fn done(stdout: &str) -> Outcome {
         ),
         stderr: String::new(),
     }
+}
+
+/// A 320×240 `testsrc2` video `secs` long at 30 fps, made by the FFmpeg command line from `.deps`.
+pub(crate) fn test_video(path: &Path, secs: f64) {
+    let exe = Path::new(env!("FFMPEG_DIR"))
+        .join("bin")
+        .join(format!("ffmpeg{}", std::env::consts::EXE_SUFFIX));
+    let source = "testsrc2=size=320x240:rate=30";
+    let status = std::process::Command::new(exe)
+        .args(["-v", "error", "-y", "-f", "lavfi", "-i", source, "-t"])
+        .arg(secs.to_string())
+        .args(["-c:v", "libx264", "-pix_fmt", "yuv420p"])
+        .arg(path)
+        .status()
+        .unwrap();
+    assert!(status.success(), "ffmpeg → {}", path.display());
 }

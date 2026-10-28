@@ -10,6 +10,12 @@ pub enum MediaError {
         source: ffmpeg_next::Error,
     },
 
+    #[error("файл «{}» не найден: проверь путь", path.display())]
+    NotFound { path: PathBuf },
+
+    #[error("«{}» — не видео в поддерживаемом формате: импортируются mp4, mov, mkv и webm. Перекодируй файл в mp4", path.display())]
+    NotAVideo { path: PathBuf },
+
     #[error("в файле «{}» нет видео: нужен файл с видеодорожкой (mp4, mov, mkv, webm)", path.display())]
     NoVideo { path: PathBuf },
 

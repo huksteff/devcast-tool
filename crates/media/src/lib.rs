@@ -2,6 +2,7 @@
 
 pub mod cache;
 pub mod error;
+pub mod import;
 pub mod probe;
 
 #[cfg(test)]
@@ -9,6 +10,7 @@ mod test_util;
 
 pub use cache::{cached_probe, probe_cache_path};
 pub use error::MediaError;
+pub use import::{VIDEO_EXTENSIONS, import, import_dry_run};
 pub use probe::{Probe, StreamInfo, StreamKind, probe};
 
 /// Initializes FFmpeg once per process and keeps its log to errors only: failures come back as

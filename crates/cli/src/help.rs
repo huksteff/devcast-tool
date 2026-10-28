@@ -41,8 +41,35 @@ pub(crate) fn help(topic: &[String], registry: &Registry) -> Result<Answer, CliE
 
 fn entries(registry: &Registry) -> Vec<Entry<'_>> {
     let cli = Cli::command();
-    let builtins = cli.get_subcommands().map(|command| Entry {
-        name: command.get_name().to_owned(),
+    let builtins = cli.get_subcommands().flat_map(|command| {
+        let children: Vec<Entry<'_>> = command
+            .get_subcommands()
+            .map(|child| {
+                builtin(
+                    format!("{} {}", command.get_name(), child.get_name()),
+                    child,
+                )
+            })
+            .collect();
+        match children.is_empty() {
+            true => vec![builtin(command.get_name().to_owned(), command)],
+            false => children,
+        }
+    });
+    let ops = registry.ops().iter().map(|op| Entry {
+        name: op.name.to_owned(),
+        about: op.about.to_owned(),
+        example: op.example.to_owned(),
+        args: op_args(op),
+        op: Some(op),
+    });
+    builtins.chain(ops).collect()
+}
+
+/// A built-in command; a group like `clip` is listed by its subcommands (`clip add`).
+fn builtin(name: String, command: &clap::Command) -> Entry<'static> {
+    Entry {
+        name,
         about: command
             .get_about()
             .map(ToString::to_string)
@@ -53,15 +80,7 @@ fn entries(registry: &Registry) -> Vec<Entry<'_>> {
             .unwrap_or_default(),
         args: clap_args(command),
         op: None,
-    });
-    let ops = registry.ops().iter().map(|op| Entry {
-        name: op.name.to_owned(),
-        about: op.about.to_owned(),
-        example: op.example.to_owned(),
-        args: op_args(op),
-        op: Some(op),
-    });
-    builtins.chain(ops).collect()
+    }
 }
 
 fn list_text(entries: &[Entry<'_>]) -> String {

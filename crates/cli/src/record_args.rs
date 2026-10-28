@@ -7,6 +7,7 @@ use std::time::Duration;
 use dc_capture::{Fps, RecordingConfig, Source};
 
 use crate::error::CliError;
+use crate::find::new_folder;
 
 /// Settings of `devcast record` as typed.
 #[derive(Debug, Default, clap::Args)]
@@ -117,18 +118,5 @@ pub(crate) fn project_folder(cwd: &Path, out: Option<&Path>) -> Result<PathBuf, 
             n += 1;
         }
     };
-    if out.extension().is_none_or(|e| e != "dcproj") {
-        return Err(CliError::Usage(format!(
-            "-o {}: папка проекта должна называться *.dcproj, например -o урок.dcproj",
-            out.display()
-        )));
-    }
-    let root = cwd.join(out);
-    if root.exists() {
-        return Err(CliError::Failed(format!(
-            "{} уже есть: запись создаёт новый проект, выбери другое имя",
-            root.display()
-        )));
-    }
-    Ok(root)
+    new_folder(cwd, out)
 }
