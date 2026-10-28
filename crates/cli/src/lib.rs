@@ -77,6 +77,8 @@ pub fn main_outcome(args: Vec<OsString>) -> Outcome {
     }
 }
 #[cfg(test)]
+mod pauses_e2e_tests;
+#[cfg(test)]
 mod silences_tests;
 #[cfg(test)]
 mod transcript_tests;

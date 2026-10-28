@@ -31,13 +31,13 @@ const WORDS: [(&str, f64, f64); 16] = [
     ("минут.", 8.78, 9.40),
 ];
 
-struct Speech {
+pub(crate) struct Speech {
     _tmp: tempfile::TempDir,
     root: PathBuf,
 }
 
 impl Speech {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let tmp = tempfile::tempdir().unwrap();
         let video = tmp.path().join("речь.mp4");
         let speech = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/audio/tts-ru.flac");
@@ -55,13 +55,7 @@ impl Speech {
             ])
             .arg(&speech)
             .args([
-                "-shortest",
-                "-c:v",
-                "libx264",
-                "-pix_fmt",
-                "yuv420p",
-                "-c:a",
-                "aac",
+                "-t", "10", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "flac",
             ])
             .arg(&video)
             .status()
@@ -101,11 +95,11 @@ impl Speech {
         Self { _tmp: tmp, root }
     }
 
-    fn run(&self, line: &str) -> Outcome {
+    pub(crate) fn run(&self, line: &str) -> Outcome {
         run_line(line, &self.root, &registry().unwrap())
     }
 
-    fn ok(&self, line: &str) -> String {
+    pub(crate) fn ok(&self, line: &str) -> String {
         let out = self.run(line);
         assert_eq!(out.code, 0, "{line}: {}", out.stderr);
         out.stdout.trim_end().to_owned()
