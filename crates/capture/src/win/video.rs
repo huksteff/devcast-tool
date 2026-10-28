@@ -54,6 +54,8 @@ pub struct VideoSummary {
     pub end: i64,
     /// How far frame times were ahead of their arrival; `None` without frames.
     pub lead: Option<FrameLead>,
+    /// Every kept frame: its slot and how far its WGC time was ahead of its arrival (µs).
+    pub leads: Vec<(i64, i64)>,
 }
 
 pub struct VideoRecording {
@@ -277,7 +279,7 @@ fn encode(
     for message in frames {
         match message {
             Message::Frame(mut frame, slot, lead) => {
-                leads.push(lead);
+                leads.push((slot, lead));
                 encoder.encode(&mut frame, slot, &mut packets)?;
                 for packet in packets.drain(..) {
                     track.push(packet)?;
@@ -297,7 +299,8 @@ fn encode(
                 return Ok(VideoSummary {
                     frames: count,
                     end,
-                    lead: FrameLead::measure(leads),
+                    lead: FrameLead::measure(leads.iter().map(|l| l.1).collect()),
+                    leads,
                 });
             }
         }

@@ -1,40 +1,45 @@
 //! Video and sound do not drift apart: a flash every second on the screen and a beep every
-//! second in the speakers, both on the host clock, must keep their distance in the recording
-//! within a frame from the first minutes to the last.
+//! second in the speakers, both at the start of each second of the host clock (QPC), must keep
+//! their distance in the recording within a frame from the first minutes to the last.
 //!
-//! The two come from independent sources, so that neither follows the other: ffplay shows the
-//! flashes by its clock (video only, so it has no A/V sync of its own), the test plays the
-//! beeps through cpal, placing each at its host time by the playback timestamps. Their distance
-//! is an arbitrary constant; what is checked is that it stays put.
+//! The reference is on the recording's clock: the test's own window turns white for 50 ms at
+//! every QPC second (`common/flash.rs`), and the test plays the beeps through cpal, placing
+//! each at its QPC second by the playback timestamps. The distance «beep − flash» is what the
+//! screen and the speakers add (a vsync or two, the output latency); it must stay put. The
+//! WGC lead of every frame is printed with the shifts, to tell them apart.
 //!
-//! `#[ignore]`: records an ffplay window on monitor `DEVCAST_TEST_MONITOR` with system sound
-//! (beeps 17 kHz, 50 ms, −30 dBFS). Length `DEVCAST_SYNC_SECONDS` (90 by default; the nightly check is
-//! 1800). The beep is found by its frequency, so other sound on the computer does not matter.
-//! `DEVCAST_TEST_MONITOR=<n> cargo nextest run -p dc-capture --run-ignored=all --no-capture stays_in_sync`
+//! `#[ignore]`: draws on and records monitor `DEVCAST_TEST_MONITOR` with system sound (beeps
+//! 17 kHz, 50 ms, −30 dBFS). Length `DEVCAST_SYNC_SECONDS` (90 by default; the nightly check
+//! is 1800). The beep is found by its frequency, so other sound on the computer does not
+//! matter.
+//! `DEVCAST_TEST_MONITOR=<n> DEVCAST_SYNC_SECONDS=1800 cargo nextest run -p dc-capture --run-ignored=all --no-capture stays_in_sync`
 //! The folder is deleted at the end; only the numbers are printed.
 
 #![cfg(windows)]
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
-    reason = "test helpers: a failed step must fail the test"
+    unsafe_code,
+    reason = "test helpers: a failed step must fail the test; the flash window is Win32"
 )]
 
 mod common;
+#[path = "common/flash.rs"]
+mod flash;
 
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use common::probe::{Probe, tool};
 use common::{Running, test_monitor};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use dc_capture::audio::RATE;
-use dc_capture::win::{Recording, list_sources};
-use dc_capture::{Fps, Manifest, RecordingConfig, Source};
+use dc_capture::win::{Recording, VideoSummary};
+use dc_capture::{Area, Fps, Manifest, RecordingConfig, Source};
+use flash::Flasher;
 
-const TITLE: &str = "devcast-sync-test";
 /// High enough that music and speech barely have it (lossy audio stops at ~16 kHz).
 const BEEP: f64 = 17_000.0;
 /// Beep length, s.
@@ -43,55 +48,7 @@ const BEEP_LENGTH: f64 = 0.05;
 const WINDOW: usize = 240;
 /// Envelope above this is a beep or other sound at its frequency (the beeps reach ~0.03).
 const THRESHOLD: f64 = 0.005;
-
-/// ffplay window with a flash in the first 50 ms of every second and a 30 ms beep with it.
-fn show_flashes(monitor: &dc_capture::MonitorInfo, seconds: u64) -> (Running, Source) {
-    let graph = format!(
-        "color=c=black:s=320x240:r=60,drawbox=c=white:t=fill:enable='lt(mod(t,1),0.05)'[out0];\
-         aevalsrc='0.0316*sin(2*PI*{BEEP}*t)*lt(mod(t,1),0.03)':s=48000[out1]"
-    );
-    let process = Running(
-        Command::new(tool("ffplay"))
-            .args([
-                "-loglevel",
-                "quiet",
-                "-noborder",
-                "-alwaysontop",
-                "-autoexit",
-            ])
-            .args([
-                "-sync",
-                "ext",
-                "-window_title",
-                TITLE,
-                "-f",
-                "lavfi",
-                "-i",
-                &graph,
-            ])
-            .args(["-left", &(monitor.bounds.x() + 100).to_string()])
-            .args(["-top", &(monitor.bounds.y() + 100).to_string()])
-            .args(["-t", &(seconds + 15).to_string()])
-            .spawn()
-            .unwrap(),
-    );
-    let started = Instant::now();
-    loop {
-        if let Some(window) = list_sources()
-            .unwrap()
-            .windows
-            .into_iter()
-            .find(|w| w.title == TITLE)
-        {
-            return (process, window.source());
-        }
-        assert!(
-            started.elapsed() < Duration::from_secs(10),
-            "no ffplay window"
-        );
-        std::thread::sleep(Duration::from_millis(100));
-    }
-}
+const FPS: f64 = 60.0;
 
 /// Plays a 50 ms beep at the start of every second of the host clock (QPC) on the default
 /// output, at −30 dBFS.
@@ -208,15 +165,60 @@ fn mean(values: &[f64]) -> f64 {
     values.iter().sum::<f64>() / values.len() as f64
 }
 
-/// Beep minus the flash before it, ms, for every flash followed by a beep within a second.
-fn offsets(flashes: &[f64], beeps: &[f64]) -> Vec<f64> {
+/// One flash with the beep after it.
+struct Pair {
+    /// Flash time in the video, s.
+    at: f64,
+    /// Beep − flash of the same QPC second, ms, with the frame placed at its arrival (as
+    /// recorded).
+    arrival: f64,
+    /// The same with the frame at its WGC time (arrival + its lead).
+    shown: f64,
+    /// WGC lead of the flash frame, ms.
+    lead: f64,
+}
+
+fn pairs(flashes: &[f64], beeps: &[f64], video: &VideoSummary) -> Vec<Pair> {
     flashes
         .iter()
         .filter_map(|f| {
             let b = beeps.iter().find(|b| *b >= f)?;
-            (b - f < 1.0).then_some((b - f) * 1000.0)
+            let slot = (f * FPS).round() as i64;
+            let lead = video.leads.iter().find(|l| l.0 == slot)?.1 as f64 / 1000.0;
+            // The beep before the flash is the same second: −0.5…0.5 s.
+            let arrival = ((b - f + 0.5).rem_euclid(1.0) - 0.5) * 1000.0;
+            (b - f < 1.0).then_some(Pair {
+                at: *f,
+                arrival,
+                shown: arrival - lead,
+                lead,
+            })
         })
         .collect()
+}
+
+/// Mean of the first and of the last quarter.
+fn quarters(values: &[f64]) -> (f64, f64) {
+    let quarter = values.len() / 4;
+    (
+        mean(&values[..quarter]),
+        mean(&values[values.len() - quarter..]),
+    )
+}
+
+/// Prints where the lead of the flash frames changed by a vsync or more.
+fn print_lead_changes(pairs: &[Pair]) {
+    let mut level = None;
+    for p in pairs {
+        let now = (p.lead / (1000.0 / FPS)).round();
+        if level != Some(now) {
+            println!(
+                "  {:7.1} s: lead {:5.1} ms, beep − flash {:+6.1} (arrival) {:+6.1} (shown)",
+                p.at, p.lead, p.arrival, p.shown
+            );
+            level = Some(now);
+        }
+    }
 }
 
 #[test]
@@ -224,7 +226,8 @@ fn offsets(flashes: &[f64], beeps: &[f64]) -> Vec<f64> {
 fn stays_in_sync() {
     let seconds: u64 = std::env::var("DEVCAST_SYNC_SECONDS").map_or(90, |s| s.parse().unwrap());
     let monitor = test_monitor();
-    let (_player, source) = show_flashes(&monitor, seconds);
+    let (x, y) = (monitor.bounds.x() + 100, monitor.bounds.y() + 100);
+    let _flasher = Flasher::show(x, y, 320, 240);
     let _beeps = play_beeps();
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("sync");
     if dir.exists() {
@@ -232,7 +235,7 @@ fn stays_in_sync() {
     }
     let config = RecordingConfig {
         fps: Fps::Fps60,
-        ..RecordingConfig::new(source)
+        ..RecordingConfig::new(Source::Area(Area::new(x, y, 320, 240).unwrap()))
     };
     let recording = Recording::start(&config, &dir).unwrap();
     std::thread::sleep(Duration::from_secs(seconds));
@@ -247,31 +250,36 @@ fn stays_in_sync() {
     );
     std::fs::remove_dir_all(&dir).unwrap();
 
-    let values = offsets(&flashes, &beeps);
-    let quarter = values.len() / 4;
-    let (first, last) = (
-        mean(&values[..quarter]),
-        mean(&values[values.len() - quarter..]),
-    );
-    let spread = values
-        .iter()
-        .fold((f64::MAX, f64::MIN), |(lo, hi), v| (lo.min(*v), hi.max(*v)));
+    let pairs = pairs(&flashes, &beeps, &summary.video);
+    let arrival: Vec<f64> = pairs.iter().map(|p| p.arrival).collect();
+    let shown: Vec<f64> = pairs.iter().map(|p| p.shown).collect();
+    let (a_first, a_last) = quarters(&arrival);
+    let (s_first, s_last) = quarters(&shown);
     println!(
-        "{seconds} s: video {:.3} s, sound {:.3} s; {} flashes, {} beeps, {} pairs\n\
-         beep − flash (an arbitrary constant): mean {:+.1} ms, min {:+.1}, max {:+.1}; first quarter {first:+.1}, last quarter {last:+.1}\n\
-         frame lead {:?}\nsound {:?}",
+        "{seconds} s: video {:.3} s, sound {:.3} s; {} flashes, {} beeps, {} pairs
+         beep − flash, frame at arrival: mean {:+.1} ms, quarters {a_first:+.1} → {a_last:+.1}
+         beep − flash, frame at WGC time: mean {:+.1} ms, quarters {s_first:+.1} → {s_last:+.1}
+         frame lead {:?}
+sound {:?}",
         durations.0,
         durations.1,
         flashes.len(),
         beeps.len(),
-        values.len(),
-        mean(&values),
-        spread.0,
-        spread.1,
+        pairs.len(),
+        mean(&arrival),
+        mean(&shown),
         summary.video.lead,
         summary.audio[0].stats,
     );
-    assert!(values.len() as u64 >= seconds * 9 / 10, "{values:?}");
-    let frame = 1000.0 / 60.0;
-    assert!((last - first).abs() < frame, "drifted {first} → {last}");
+    print_lead_changes(&pairs);
+    assert!(
+        pairs.len() as u64 >= seconds * 9 / 10,
+        "{} pairs",
+        pairs.len()
+    );
+    let frame = 1000.0 / FPS;
+    assert!(
+        (a_last - a_first).abs() < frame,
+        "drifted {a_first} → {a_last}"
+    );
 }

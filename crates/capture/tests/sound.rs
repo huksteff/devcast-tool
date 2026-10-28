@@ -157,7 +157,7 @@ fn records_system_sound_on_the_video_clock() {
     std::thread::sleep(Duration::from_secs(4));
     drop(player);
     let summary = recording.stop().unwrap();
-    println!("{dir:?}\n{summary:#?}");
+    println!("{dir:?}\n{:#?}", summary.audio);
 
     let manifest = Manifest::read(&dir).unwrap();
     let [video, system] = &manifest.tracks[..] else {
