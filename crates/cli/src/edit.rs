@@ -25,7 +25,7 @@ pub(crate) struct Ctx<'a> {
 impl Ctx<'_> {
     pub(crate) fn open(&self, write: bool) -> Result<Workspace, CliError> {
         let dir = find_project(self.globals.project.as_deref(), self.cwd)?;
-        Workspace::open(dir, write && !self.globals.dry_run)
+        Workspace::open(dir, write && !self.globals.dry_run, self.globals.dry_run)
     }
 
     fn prefix(&self) -> &'static str {

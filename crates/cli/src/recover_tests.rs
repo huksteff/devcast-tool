@@ -105,3 +105,22 @@ fn a_recording_still_held_by_its_process_is_left_alone() {
     drop(recording);
     assert!(devcast(&dir, "info").stderr.contains("клип c1"));
 }
+
+#[test]
+fn dry_run_only_reports_the_recording() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = killed_recording(&tmp.path().join("Запись 4.dcproj"), 200);
+    let folder = dir.media_dir().join("recording-1");
+    let before = std::fs::read(Manifest::path(&folder)).unwrap();
+    let out = devcast(&dir, "info --dry-run");
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert_eq!(
+        out.stderr,
+        "внимание: есть прерванная запись media/recording-1, будет восстановлена при открытии без --dry-run\n"
+    );
+    assert!(dir.load().unwrap().clips.is_empty());
+    assert_eq!(std::fs::read(Manifest::path(&folder)).unwrap(), before);
+    assert!(!folder.join("video.mp4").exists());
+    assert!(!dir.root().join("lock-owner.json").exists());
+    assert!(devcast(&dir, "info").stderr.contains("клип c1"));
+}

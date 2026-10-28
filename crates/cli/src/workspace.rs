@@ -25,13 +25,14 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    /// With `write`, holds the project lock until the workspace is dropped.
-    pub fn open(dir: ProjectDir, write: bool) -> Result<Self, CliError> {
+    /// With `write`, holds the project lock until the workspace is dropped. Under `dry_run`
+    /// nothing is written, killed recordings are only reported.
+    pub fn open(dir: ProjectDir, write: bool, dry_run: bool) -> Result<Self, CliError> {
         let lock = match write {
             true => Some(ProjectLock::acquire(&dir, "devcast")?),
             false => None,
         };
-        let recovered = recover(&dir, lock.is_some())?;
+        let recovered = recover(&dir, lock.is_some(), dry_run)?;
         let session = dir.load_session()?;
         let unsaved = session.is_some();
         let project = match session {
@@ -87,10 +88,18 @@ impl Workspace {
 /// Finishes the recordings of `dir` whose process died and adds them to its working state;
 /// returns a warning line for each. Skipped while another process holds the project: that may
 /// be the recording itself.
-fn recover(dir: &ProjectDir, locked: bool) -> Result<Vec<String>, CliError> {
+fn recover(dir: &ProjectDir, locked: bool, dry_run: bool) -> Result<Vec<String>, CliError> {
     let failed = |e: dc_capture::CaptureError| CliError::Failed(e.to_string());
     let media = dir.media_dir();
     let folders = unfinished_recordings(&media).map_err(failed)?;
+    if dry_run {
+        return Ok(folders
+            .iter()
+            .map(|f| {
+                format!("есть прерванная запись media/{f}, будет восстановлена при открытии без --dry-run")
+            })
+            .collect());
+    }
     if folders.is_empty() {
         return Ok(Vec::new());
     }
