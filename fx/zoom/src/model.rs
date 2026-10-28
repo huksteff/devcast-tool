@@ -1,7 +1,7 @@
 //! Zoom regions and motion settings as stored in `project.effects["zoom"]`.
 
 use dc_core::time::Source;
-use dc_core::{ClipId, Effect, Id, IdCounter, IdKind, Point, Range, TimeDelta};
+use dc_core::{Effect, Id, IdCounter, IdKind, Point, Range, TimeDelta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -46,12 +46,13 @@ pub enum Mode {
     Fixed,
 }
 
-/// A zoom region of one clip.
+/// A zoom region of one recording.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Zoom {
     pub id: ZoomId,
-    /// Clip whose source time `range` is in.
-    pub clip: ClipId,
+    /// Recording (`Media.path`) whose source time `range` is in. Clips split from one recording
+    /// share it, so splitting and reordering clips keeps the zoom on the same frames.
+    pub media: String,
     pub range: Range<Source>,
     /// Magnification, `SCALE_MIN..=SCALE_MAX`.
     pub scale: f64,
@@ -134,7 +135,7 @@ impl ZoomSettings {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 pub struct ZoomState {
-    /// In the order they were added; overlapping is not allowed within a clip.
+    /// In the order they were added; overlapping is not allowed within a recording.
     pub zooms: Vec<Zoom>,
     pub ids: IdCounter<ZoomKind>,
     pub settings: ZoomSettings,

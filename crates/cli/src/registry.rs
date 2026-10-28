@@ -5,9 +5,20 @@ use dc_ops::Registry;
 use crate::error::CliError;
 
 pub fn registry() -> Result<Registry, CliError> {
-    Registry::new(Vec::new(), Vec::new()).map_err(|e| {
+    let ops = [dc_fx_cut::ops(), dc_fx_crop::ops(), dc_fx_zoom::ops()].concat();
+    let effects = vec![dc_fx_crop::effect(), dc_fx_zoom::effect()];
+    Registry::new(ops, effects).map_err(|e| {
         CliError::Failed(format!(
             "внутренняя ошибка: реестр команд собран неверно ({e}). Это баг, сообщи о нём"
         ))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn every_op_follows_the_rules() {
+        let registry = super::registry().unwrap();
+        assert!(registry.ops().len() >= 10);
+    }
 }

@@ -239,6 +239,9 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "dc-core",
+ "dc-fx-crop",
+ "dc-fx-cut",
+ "dc-fx-zoom",
  "dc-ops",
  "dc-project",
  "schemars",

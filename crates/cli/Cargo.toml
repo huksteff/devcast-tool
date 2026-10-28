@@ -14,6 +14,9 @@ path = "src/main.rs"
 [dependencies]
 clap.workspace = true
 dc-core = { path = "../core" }
+dc-fx-crop = { path = "../../fx/crop" }
+dc-fx-cut = { path = "../../fx/cut" }
+dc-fx-zoom = { path = "../../fx/zoom" }
 dc-ops = { path = "../ops" }
 dc-project = { path = "../project" }
 schemars.workspace = true

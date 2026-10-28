@@ -52,7 +52,7 @@ impl Command for ZoomAdd {
         let timeline = Timeline::new(project)?;
         let start = timeline.start(self.at.0)?;
         let end = timeline.end(self.at.0 + TimeDelta::from_secs_f64(self.duration))?;
-        let (clip, range) = timeline.span(start, end)?;
+        let (media, range) = timeline.span(start, end)?;
         check_scale(self.scale)?;
         let focus = Point {
             x: check_focus("x", self.x)?,
@@ -61,7 +61,7 @@ impl Command for ZoomAdd {
         let mut state = project.state::<ZoomEffect>()?;
         let zoom = Zoom {
             id: state.ids.allocate(),
-            clip,
+            media,
             range,
             scale: self.scale,
             focus,
@@ -111,13 +111,13 @@ impl Command for ZoomSet {
             let timeline = Timeline::new(project)?;
             let start = match self.from {
                 Some(TimeArg(t)) => timeline.start(t)?,
-                None => (zoom.clip, zoom.range.start()),
+                None => (zoom.media.clone(), zoom.range.start()),
             };
             let end = match self.to {
                 Some(TimeArg(t)) => timeline.end(t)?,
-                None => (zoom.clip, zoom.range.end()),
+                None => (zoom.media.clone(), zoom.range.end()),
             };
-            (zoom.clip, zoom.range) = timeline.span(start, end)?;
+            (zoom.media, zoom.range) = timeline.span(start, end)?;
         }
         if let Some(scale) = self.scale {
             zoom.scale = check_scale(scale)?;
@@ -201,7 +201,7 @@ fn check_focus(axis: &str, value: f64) -> Result<f64, CommandError> {
 
 fn check_overlap(state: &ZoomState, zoom: &Zoom) -> Result<(), CommandError> {
     let other = state.zooms.iter().find(|z| {
-        z.id != zoom.id && z.clip == zoom.clip && z.range.intersect(&zoom.range).is_some()
+        z.id != zoom.id && z.media == zoom.media && z.range.intersect(&zoom.range).is_some()
     });
     match other {
         Some(other) => Err(CommandError::new(format!(

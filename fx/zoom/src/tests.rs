@@ -15,7 +15,7 @@ fn clip(project: &mut Project, length: f64) -> &mut Clip {
     project.clips.push(Clip {
         id,
         media: Media {
-            path: "media/screen.mp4".to_owned(),
+            path: format!("media/{id}.mp4"),
             kind: MediaKind::Recording,
             duration,
             size: dc_core::PixelSize {
@@ -76,7 +76,7 @@ fn add_uses_defaults_and_source_time() {
     assert_eq!(run(&mut p, &add(2.0, 1.0)), "зумы +1 z1");
     let zoom = &state(&p).zooms[0];
     assert_eq!(zoom.id.to_string(), "z1");
-    assert_eq!(zoom.clip, p.clips[0].id);
+    assert_eq!(zoom.media, p.clips[0].media.path);
     assert_eq!(zoom.range, Range::new(secs(2.0), secs(3.0)).unwrap());
     assert!((zoom.scale - 1.5).abs() < 1e-9);
     assert_eq!(zoom.mode, Mode::Follow);
@@ -154,9 +154,9 @@ fn add_rejects_crossing_a_clip_joint() {
     run(&mut p, &add(5.0, 1.0));
     run(&mut p, &add(4.0, 1.0));
     let zooms = state(&p).zooms;
-    assert_eq!(zooms[0].clip, p.clips[1].id);
+    assert_eq!(zooms[0].media, p.clips[1].media.path);
     assert_eq!(zooms[0].range.start(), SourceTime::ZERO);
-    assert_eq!(zooms[1].clip, p.clips[0].id);
+    assert_eq!(zooms[1].media, p.clips[0].media.path);
     assert_eq!(zooms[1].range, Range::new(secs(4.0), secs(5.0)).unwrap());
 }
 
@@ -224,6 +224,20 @@ fn set_moves_one_edge_and_checks_it() {
     assert!(fail(&mut p, &set(serde_json::json!({"id": "z1", "from": 4}))).contains("больше нуля"));
     assert!(fail(&mut p, &set(serde_json::json!({"id": "z1", "to": 5.5}))).contains("z2"));
     assert!(fail(&mut p, &set(serde_json::json!({"id": "z1", "x": 1.5}))).contains("0..1"));
+}
+
+#[test]
+fn zoom_spans_the_joint_of_clips_split_from_one_recording() {
+    let mut p = project(&[10.0]);
+    let mut right = p.clips[0].clone();
+    right.id = p.clip_ids.allocate();
+    p.clips[0].trim = Range::new(secs(0.0), secs(5.0)).unwrap();
+    right.trim = Range::new(secs(5.0), secs(10.0)).unwrap();
+    p.clips.push(right);
+    assert_eq!(run(&mut p, &add(4.5, 1.0)), "зумы +1 z1");
+    let zoom = &state(&p).zooms[0];
+    assert_eq!(zoom.media, p.clips[0].media.path);
+    assert_eq!(zoom.range, Range::new(secs(4.5), secs(5.5)).unwrap());
 }
 
 #[test]

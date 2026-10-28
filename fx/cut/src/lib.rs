@@ -4,6 +4,7 @@
 mod clip;
 mod cut;
 mod speed;
+mod split;
 mod track;
 
 #[cfg(test)]
@@ -14,6 +15,7 @@ use dc_core::OpInfo;
 pub use clip::{ClipMove, ClipRm};
 pub use cut::Cut;
 pub use speed::Speed;
+pub use split::ClipSplit;
 
 /// Every command of the effect, for the ops registry.
 pub fn ops() -> Vec<OpInfo> {
@@ -22,5 +24,6 @@ pub fn ops() -> Vec<OpInfo> {
         OpInfo::of::<Speed>(),
         OpInfo::of::<ClipRm>(),
         OpInfo::of::<ClipMove>(),
+        OpInfo::of::<ClipSplit>(),
     ]
 }

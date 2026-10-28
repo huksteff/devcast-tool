@@ -1,15 +1,16 @@
-//! Times from commands are seconds of the output video; zooms are stored in a clip's source time.
+//! Times from commands are seconds of the output video; zooms are stored in a recording's source
+//! time, so clips split from one recording share their zooms.
 
 use dc_core::time::Source;
 use dc_core::{ClipId, CommandError, OutputTime, Project, Range, SourceTime, TimeDelta, TimeMap};
 
-/// A moment of one clip.
-pub type Edge = (ClipId, SourceTime);
+/// A moment of one recording: `Media.path` and source time.
+pub type Edge = (String, SourceTime);
 
 /// The output timeline of a project, for turning command times into zoom edges.
 pub struct Timeline {
     map: TimeMap,
-    order: Vec<ClipId>,
+    media: Vec<(ClipId, String)>,
 }
 
 impl Timeline {
@@ -22,8 +23,20 @@ impl Timeline {
         }
         Ok(Self {
             map,
-            order: project.clips.iter().map(|c| c.id).collect(),
+            media: project
+                .clips
+                .iter()
+                .map(|c| (c.id, c.media.path.clone()))
+                .collect(),
         })
+    }
+
+    /// Recording of `clip`; every clip of the time map is in `media`.
+    fn media_of(&self, clip: ClipId) -> &str {
+        self.media
+            .iter()
+            .find(|(id, _)| *id == clip)
+            .map_or("", |(_, path)| path.as_str())
     }
 
     fn end_of_video(&self) -> OutputTime {
@@ -42,12 +55,13 @@ impl Timeline {
     /// The source moment shown at `t`.
     pub fn start(&self, t: OutputTime) -> Result<Edge, CommandError> {
         let t = Self::output(t)?;
-        self.map.to_source(t).ok_or_else(|| {
+        let (clip, source) = self.map.to_source(t).ok_or_else(|| {
             CommandError::new(format!(
                 "начало зума {t} не раньше конца видео ({}): укажи время меньше",
                 self.end_of_video()
             ))
-        })
+        })?;
+        Ok((self.media_of(clip).to_owned(), source))
     }
 
     /// The exclusive source end of what is shown before `t`: at the end of a segment it stays in
@@ -61,34 +75,33 @@ impl Timeline {
             )));
         }
         if let Some(segment) = self.map.segments().iter().find(|s| s.output_end() == t) {
-            return Ok((segment.clip, segment.source.end()));
+            return Ok((self.media_of(segment.clip).to_owned(), segment.source.end()));
         }
         self.start(t)
     }
 
-    /// Range of one clip from `start` to `end`.
-    pub fn span(&self, start: Edge, end: Edge) -> Result<(ClipId, Range<Source>), CommandError> {
-        let position = |clip| self.order.iter().position(|c| *c == clip);
-        let (clip, from) = start;
-        if end.0 != clip && position(end.0) > position(clip) {
+    /// Range of one recording from `start` to `end`.
+    pub fn span(&self, start: Edge, end: Edge) -> Result<(String, Range<Source>), CommandError> {
+        let (media, from) = start;
+        if end.0 != media {
             let joint = self
                 .map
                 .segments()
                 .iter()
-                .skip_while(|s| s.clip != clip)
-                .find(|s| s.clip != clip)
+                .skip_while(|s| self.media_of(s.clip) != media || !s.source.contains(from))
+                .find(|s| self.media_of(s.clip) != media)
                 .map_or(self.end_of_video(), |s| s.output_start);
             return Err(CommandError::new(format!(
-                "зум переходит через стык клипов в {joint}: раздели его на два зума"
+                "зум переходит через стык клипов разных записей в {joint}: раздели его на два зума"
             )));
         }
-        if end.0 != clip || end.1 <= from {
+        if end.1 <= from {
             return Err(CommandError::new(
                 "длительность зума должна быть больше нуля: конец позже начала",
             ));
         }
         Range::new(from, end.1)
-            .map(|range| (clip, range))
+            .map(|range| (media, range))
             .map_err(|e| CommandError::new(e.to_string()))
     }
 }
