@@ -11,6 +11,11 @@ use serde::de::DeserializeOwned;
 use crate::id::{IdKind, is_valid_prefix};
 use crate::project::{ClipKind, Project};
 
+/// Field of an effect state that holds its user settings (style, smoothness, format …), as opposed
+/// to content (zoom regions, captions). App defaults copy only this field between projects, so an
+/// effect with settings declares `#[serde(default)] settings: …Settings` in its state.
+pub const SETTINGS_FIELD: &str = "settings";
+
 /// An effect (zoom, cursor, captions, …). Implemented by a unit type in the effect's crate.
 pub trait Effect: 'static {
     /// Key in `project.effects` and in CLI commands, e.g. `"zoom"`.

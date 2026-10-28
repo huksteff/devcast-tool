@@ -138,7 +138,7 @@ fn check(project: &Project) -> Result<()> {
     }
 }
 
-fn read_project(path: &Path) -> Result<Project> {
+pub(crate) fn read_project(path: &Path) -> Result<Project> {
     let corrupt = |message: String| ProjectError::Corrupt {
         path: path.to_path_buf(),
         message,
