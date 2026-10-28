@@ -23,6 +23,8 @@ pub struct ClipKind;
 impl IdKind for ClipKind {
     const PREFIX: &'static str = "c";
     const NOUN: &'static str = "клипа";
+    const PLURAL: &'static str = "клипы";
+    const LIST: &'static str = "ls clips";
 }
 pub type ClipId = Id<ClipKind>;
 

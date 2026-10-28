@@ -6,7 +6,9 @@ use std::fmt;
 use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 
+use crate::diff::{Diff, id_list};
 use crate::effect::StateError;
+use crate::id::{Id, IdKind};
 use crate::project::Project;
 
 /// Why a command could not be applied. The message says what is wrong and what to do instead.
@@ -22,6 +24,21 @@ impl CommandError {
             message: message.into(),
         }
     }
+
+    /// `z99 не найден (есть z1..z14); список: devcast ls zooms`.
+    pub fn not_found<K: IdKind>(id: Id<K>, existing: impl IntoIterator<Item = Id<K>>) -> Self {
+        let mut numbers: Vec<u32> = existing.into_iter().map(Id::number).collect();
+        numbers.sort_unstable();
+        numbers.dedup();
+        let present = match numbers.as_slice() {
+            [] => format!("нет ни одного {}", K::NOUN),
+            _ => format!("есть {}", id_list(K::PREFIX, &numbers)),
+        };
+        Self::new(format!(
+            "{id} не найден ({present}); список: devcast {}",
+            K::LIST
+        ))
+    }
 }
 
 impl From<StateError> for CommandError {
@@ -34,10 +51,10 @@ pub trait Command: fmt::Debug + Send + Sync {
     /// CLI-style name, e.g. `"zoom add"`; shown in history.
     fn name(&self) -> &'static str;
 
-    /// Changes `project`. Returns a one-line summary of what changed, e.g. `"+1 zoom z3"`.
-    /// Must leave the project consistent ([`Project::problems`] empty); otherwise the change is
+    /// Changes `project` and says what changed. Must leave the project consistent
+    /// ([`Project::problems`] empty) and describe every change it made; otherwise the change is
     /// rolled back and reported as a bug in the command.
-    fn apply(&self, project: &mut Project) -> Result<String, CommandError>;
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError>;
 }
 
 /// A command the CLI and plans can name. Its fields are its arguments, so one type serves the

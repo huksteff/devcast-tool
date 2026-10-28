@@ -1,6 +1,7 @@
 use super::*;
+use crate::diff::Diff;
 use crate::effect::Effect;
-use crate::project::{Media, MediaKind};
+use crate::project::{ClipId, Media, MediaKind};
 use crate::time::{Range, SourceTime, TimeDelta};
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, schemars::JsonSchema)]
@@ -21,11 +22,11 @@ impl Command for Push {
     fn name(&self) -> &'static str {
         "test push"
     }
-    fn apply(&self, project: &mut Project) -> Result<String, CommandError> {
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
         let mut state = project.state::<Test>()?;
         state.items.push(self.0);
         project.set_state::<Test>(&state)?;
-        Ok(format!("+{}", self.0))
+        Ok(Diff::note(format!("+{}", self.0)))
     }
 }
 
@@ -35,7 +36,7 @@ impl Command for Fail {
     fn name(&self) -> &'static str {
         "test fail"
     }
-    fn apply(&self, _: &mut Project) -> Result<String, CommandError> {
+    fn apply(&self, _: &mut Project) -> Result<Diff, CommandError> {
         Err(CommandError::new("нельзя"))
     }
 }
@@ -47,7 +48,7 @@ impl Command for BrokenClip {
     fn name(&self) -> &'static str {
         "test broken"
     }
-    fn apply(&self, project: &mut Project) -> Result<String, CommandError> {
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
         let id = project.clip_ids.allocate();
         let end = SourceTime::from_secs_f64(5.0);
         project.clips.push(Clip {
@@ -62,7 +63,7 @@ impl Command for BrokenClip {
             cuts: Vec::new(),
             speeds: Vec::new(),
         });
-        Ok("+clip".to_owned())
+        Ok(Diff::added(id))
     }
 }
 
@@ -74,7 +75,7 @@ fn items(p: &Project) -> Vec<u32> {
 fn undo_and_redo_restore_exact_states() {
     let mut p = Project::default();
     let mut h = History::default();
-    assert_eq!(h.apply(&mut p, &Push(1)).unwrap(), "+1");
+    assert_eq!(h.apply(&mut p, &Push(1)).unwrap().to_string(), "+1");
     h.apply(&mut p, &Push(2)).unwrap();
     assert_eq!(items(&p), vec![1, 2]);
     assert_eq!(h.undo(&mut p).unwrap().summary, "+2");
@@ -104,7 +105,8 @@ fn batch_is_one_step_and_all_or_nothing() {
     let mut h = History::default();
     assert_eq!(
         h.apply_batch(&mut p, "apply", &[&Push(1), &Push(2)])
-            .unwrap(),
+            .unwrap()
+            .to_string(),
         "+1; +2"
     );
     assert_eq!(h.changes().len(), 1);
@@ -144,14 +146,51 @@ fn no_op_is_not_recorded() {
         fn name(&self) -> &'static str {
             "nothing"
         }
-        fn apply(&self, _: &mut Project) -> Result<String, CommandError> {
-            Ok("без изменений".to_owned())
+        fn apply(&self, _: &mut Project) -> Result<Diff, CommandError> {
+            Ok(Diff::note("без изменений"))
         }
     }
     let mut p = Project::default();
     let mut h = History::default();
     h.apply(&mut p, &Nothing).unwrap();
     assert!(!h.can_undo());
+}
+
+#[test]
+fn change_without_diff_is_rolled_back() {
+    #[derive(Debug)]
+    struct Silent;
+    impl Command for Silent {
+        fn name(&self) -> &'static str {
+            "silent"
+        }
+        fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+            project
+                .effects
+                .insert("test".to_owned(), serde_json::json!({"items": [1]}));
+            Ok(Diff::default())
+        }
+    }
+    let mut p = Project::default();
+    let mut h = History::default();
+    let error = h.apply(&mut p, &Silent).unwrap_err().to_string();
+    assert!(error.contains("не описала изменение"), "{error}");
+    assert!(p.effects.is_empty() && !h.can_undo());
+}
+
+#[test]
+fn not_found_lists_existing_ids_and_how_to_see_them() {
+    let id = |n| ClipId::from_number(n);
+    let error = CommandError::not_found(id(99), (1..=14).map(id)).to_string();
+    assert_eq!(
+        error,
+        "c99 не найден (есть c1..c14); список: devcast ls clips"
+    );
+    let error = CommandError::not_found(id(2), []).to_string();
+    assert_eq!(
+        error,
+        "c2 не найден (нет ни одного клипа); список: devcast ls clips"
+    );
 }
 
 #[test]

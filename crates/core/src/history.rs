@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::command::{Command, CommandError};
+use crate::diff::Diff;
 use crate::id::IdCounter;
 use crate::project::{Clip, ClipKind, Project};
 
@@ -103,20 +104,20 @@ impl History {
         &mut self,
         project: &mut Project,
         command: &dyn Command,
-    ) -> Result<String, CommandError> {
+    ) -> Result<Diff, CommandError> {
         self.apply_batch(project, command.name(), &[command])
     }
 
-    /// Applies all commands as one step, all or nothing. Returns the joined summary.
+    /// Applies all commands as one step, all or nothing. Returns their merged diff.
     /// A batch that changes nothing is not recorded.
     pub fn apply_batch(
         &mut self,
         project: &mut Project,
         name: &str,
         commands: &[&dyn Command],
-    ) -> Result<String, CommandError> {
+    ) -> Result<Diff, CommandError> {
         let mut draft = project.clone();
-        let mut summaries = Vec::new();
+        let mut summary = Diff::default();
         // In a batch, errors name the failing step: «шаг 3 (zoom add): …».
         let step = |index: usize, error: CommandError| match commands.len() {
             1 => error,
@@ -127,7 +128,18 @@ impl History {
             )),
         };
         for (index, command) in commands.iter().enumerate() {
-            summaries.push(command.apply(&mut draft).map_err(|e| step(index, e))?);
+            let before = draft.clone();
+            let diff = command.apply(&mut draft).map_err(|e| step(index, e))?;
+            if diff.is_empty() && draft != before {
+                return Err(step(
+                    index,
+                    CommandError::new(format!(
+                        "внутренняя ошибка команды «{}»: она изменила проект, но не описала изменение. Изменения отменены; это баг, сообщи о нём",
+                        command.name()
+                    )),
+                ));
+            }
+            summary = summary.and(diff);
             let problems = draft.problems();
             if !problems.is_empty() {
                 return Err(step(
@@ -140,7 +152,6 @@ impl History {
                 ));
             }
         }
-        let summary = summaries.join("; ");
         let (before, after) = diff(project, &draft);
         if before == after {
             return Ok(summary);
@@ -148,7 +159,7 @@ impl History {
         *project = draft;
         self.undo.push(Change {
             name: name.to_owned(),
-            summary: summary.clone(),
+            summary: summary.to_string(),
             before,
             after,
         });

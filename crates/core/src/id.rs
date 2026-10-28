@@ -19,6 +19,10 @@ pub trait IdKind:
     const PREFIX: &'static str;
     /// Russian noun in the genitive case for error messages, e.g. `"зума"`.
     const NOUN: &'static str;
+    /// Russian plural in the nominative case for change summaries, e.g. `"зумы"`.
+    const PLURAL: &'static str;
+    /// CLI command without `devcast` that lists objects of this kind, e.g. `"ls zooms"`.
+    const LIST: &'static str;
 }
 
 /// Id of an object of kind `K`, shown and stored as `<prefix><number>`.
@@ -184,6 +188,8 @@ mod tests {
     impl IdKind for Zoom {
         const PREFIX: &'static str = "z";
         const NOUN: &'static str = "зума";
+        const PLURAL: &'static str = "зумы";
+        const LIST: &'static str = "ls zooms";
     }
 
     #[test]

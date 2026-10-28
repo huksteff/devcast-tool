@@ -1,4 +1,4 @@
-use dc_core::{Command, CommandError};
+use dc_core::{Command, CommandError, Diff};
 
 use super::*;
 
@@ -8,9 +8,9 @@ impl Command for Set {
     fn name(&self) -> &'static str {
         "test set"
     }
-    fn apply(&self, project: &mut Project) -> std::result::Result<String, CommandError> {
+    fn apply(&self, project: &mut Project) -> std::result::Result<Diff, CommandError> {
         project.effects.insert("test".to_owned(), self.0.into());
-        Ok(format!("test={}", self.0))
+        Ok(Diff::note(format!("test={}", self.0)))
     }
 }
 
