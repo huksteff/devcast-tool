@@ -26,6 +26,15 @@ jobs:
         with:
           tool: cargo-nextest
 
+      # FFmpeg и libclang (решение 003); архивы проверяются по SHA-256 внутри xtask.
+      - uses: actions/cache@v4
+        with:
+          path: .deps
+          key: deps-${{ hashFiles('xtask/src/native.rs') }}
+
+      - name: native deps
+        run: cargo xtask deps
+
       - name: verify
         if: github.event_name != 'schedule'
         run: cargo xtask verify --full

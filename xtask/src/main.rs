@@ -6,6 +6,7 @@ mod features;
 mod hook;
 mod limits;
 mod metadata;
+mod native;
 mod run;
 mod sources;
 mod todo;
@@ -23,7 +24,10 @@ const USAGE: &str = "\
       и для крейтов, которые от них зависят. --include-ignored добавляет долгие тесты.
   hook-stop
       Stop-хук Claude Code (.claude/settings.json): если менялся код и verify красный,
-      не даёт сессии закончиться и передаёт отчёт агенту.";
+      не даёт сессии закончиться и передаёт отчёт агенту.
+  deps
+      Скачать и проверить по SHA-256 нативные зависимости сборки (FFmpeg, libclang) в .deps/
+      и скопировать DLL FFmpeg рядом с собираемыми exe.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -41,6 +45,18 @@ fn main() -> ExitCode {
             Err(message) => usage_error(&message),
         },
         "hook-stop" => hook::stop(),
+        "deps" => {
+            // xtask lives in <root>/xtask, so the workspace root is its parent.
+            let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent();
+            match root.map(native::run) {
+                Some(Ok(())) => ExitCode::SUCCESS,
+                Some(Err(message)) => {
+                    eprintln!("deps: {message}");
+                    ExitCode::FAILURE
+                }
+                None => usage_error("не найден корень workspace"),
+            }
+        }
         "help" | "--help" | "-h" => {
             println!("{USAGE}");
             ExitCode::SUCCESS

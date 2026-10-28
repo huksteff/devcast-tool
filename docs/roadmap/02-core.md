@@ -3,7 +3,7 @@
 **Цель:** модель проекта, команды, история, папка проекта и CLI. Всё проверяется на синтетических проектах из `fixtures/projects/`.
 
 **Инструменты**
-- [ ] **2.0** `cargo xtask deps`: скачать FFmpeg (BtbN, датированный тег) и libclang (PyPI) в `.deps/` с проверкой SHA-256, прописать `FFMPEG_DIR` и `LIBCLANG_PATH` в `.cargo/config.toml`, копировать DLL рядом с собранными exe. CI делает то же (решение 003).
+- [x] **2.0** `cargo xtask deps`: скачать FFmpeg (BtbN, датированный тег) и libclang (PyPI) в `.deps/` с проверкой SHA-256, прописать `FFMPEG_DIR` и `LIBCLANG_PATH` в `.cargo/config.toml`, копировать DLL рядом с собранными exe. CI делает то же (решение 003).
 
 **core**
 - [ ] **2.1** Время: `SourceTime`, `OutputTime` (микросекунды, i64), `Range`, арифметика без переполнений.

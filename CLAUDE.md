@@ -32,7 +32,7 @@ Stop-хук (`.claude/settings.json`) сам запускает `cargo xtask hoo
 - Rust — версия закреплена в `rust-toolchain.toml`, rustup ставит её сам.
 - cargo-nextest: `cargo install cargo-nextest --locked` или готовый бинарник с https://get.nexte.st.
 - Git LFS — для `fixtures/`.
-- FFmpeg (shared) и libclang лежат в `.deps/` (не в git), см. docs/decisions/003-video-decode.md. Скачивание с проверкой хэша — `cargo xtask deps` (задача 2.0).
+- FFmpeg (GyanD 9.0.2 shared) и libclang: `cargo xtask deps` скачивает их в `.deps/` с проверкой SHA-256 и копирует DLL к exe. Пути прописаны в `.cargo/config.toml` (`[env]`). См. docs/decisions/003-video-decode.md.
 
 ## Где что лежит
 
