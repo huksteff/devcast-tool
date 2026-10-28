@@ -9,7 +9,7 @@
 use std::path::Path;
 
 use dc_capture::track::VideoTrackWriter;
-use dc_capture::{HostTime, Manifest, Track, finalize};
+use dc_capture::{HostTime, Manifest, Track, finalize, recover};
 use dc_encode::{Codec, Mp4Reader, Nv12Frame, VideoEncoder, VideoSettings};
 
 const FPS: u32 = 30;
@@ -17,6 +17,12 @@ const FPS: u32 = 30;
 /// Encodes frames at `slots` (a moving dot, so frames differ a little) into a track writer in
 /// `dir`; returns the manifest after `finish(end)`.
 fn write_track(dir: &Path, slots: &[i64], end: i64) -> Manifest {
+    let writer = write_frames(dir, slots);
+    writer.finish(end).unwrap()
+}
+
+/// Encodes and pushes frames at `slots` without finishing: the last segment stays open.
+fn write_frames(dir: &Path, slots: &[i64]) -> VideoTrackWriter {
     let settings = VideoSettings {
         width: 160,
         height: 90,
@@ -41,7 +47,7 @@ fn write_track(dir: &Path, slots: &[i64], end: i64) -> Manifest {
     for packet in packets.drain(..) {
         writer.push(packet).unwrap();
     }
-    writer.finish(end).unwrap()
+    writer
 }
 
 fn read_all(path: &Path) -> Vec<(i64, i64, bool)> {
@@ -103,4 +109,39 @@ fn segments_cover_the_track_and_join_into_one_file() {
     let finished = Manifest::read(&dir).unwrap();
     assert!(finished.is_finished());
     assert!(finished.tracks[0].segments.is_empty());
+}
+
+/// The process died: the open segment is half written and not in the manifest, a manifest
+/// replacement was cut off. Recovery keeps the complete segments only.
+#[test]
+fn recovery_keeps_complete_segments_and_drops_the_rest() {
+    let dir = tempfile::tempdir().unwrap();
+    let dir = dir.path().join("вылет");
+    std::fs::create_dir(&dir).unwrap();
+    let slots: Vec<i64> = (0..200).collect();
+    // Dropped without `finish`: files are closed (as the system does for a killed process)
+    // but the open segment is not completed and not listed.
+    drop(write_frames(&dir, &slots));
+    let open = dir.join("video-000004.mp4");
+    let bytes = std::fs::read(&open).unwrap();
+    std::fs::write(&open, &bytes[..bytes.len() / 2]).unwrap();
+    std::fs::write(dir.join("manifest.json.tmp"), "{\"vers").unwrap();
+    std::fs::write(dir.join("notes.txt"), "чужой файл").unwrap();
+    let before = Manifest::read(&dir).unwrap();
+    assert_eq!(before.tracks[0].end(), 180);
+
+    let files = recover(&dir).unwrap();
+    let packets = read_all(&files[0]);
+    let times: Vec<i64> = packets.iter().map(|p| p.0).collect();
+    assert_eq!(times, (0..180).collect::<Vec<_>>());
+    let mut names: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    names.sort();
+    assert_eq!(names, ["manifest.json", "notes.txt", "video.mp4"]);
+    assert!(Manifest::read(&dir).unwrap().is_finished());
+    // Running it again on a finished recording changes nothing.
+    assert_eq!(recover(&dir).unwrap(), files);
+    assert_eq!(read_all(&files[0]), packets);
 }
