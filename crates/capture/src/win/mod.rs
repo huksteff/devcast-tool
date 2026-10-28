@@ -5,13 +5,16 @@ mod clock;
 mod d3d;
 mod frame;
 mod monitors;
+mod nv12;
 mod preview;
+mod video;
 mod window_list;
 
 pub use capture::{FrameSink, VideoCapture};
 pub use clock::now;
 pub use frame::VideoFrame;
 pub use preview::{preview_monitor, preview_window};
+pub use video::{VideoRecording, VideoStart, VideoSummary};
 
 use crate::error::CaptureError;
 use crate::list::SourceList;

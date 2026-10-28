@@ -9,3 +9,10 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+ffmpeg-next = "9"
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
