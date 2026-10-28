@@ -2,7 +2,8 @@
 
 use std::sync::mpsc::Sender;
 
-use crate::config::{ConfigError, RecordingConfig};
+use crate::config::RecordingConfig;
+use crate::error::CaptureError;
 use crate::event::RecordingEvent;
 
 /// A running recording. Each platform implements it; callers see only this trait.
@@ -24,11 +25,4 @@ pub trait Recorder: Sized {
 
     /// Stops and deletes everything recorded.
     fn cancel(self) -> Result<(), CaptureError>;
-}
-
-/// Why recording could not start or continue. Every message says what to do.
-#[derive(Debug, thiserror::Error)]
-pub enum CaptureError {
-    #[error(transparent)]
-    Config(#[from] ConfigError),
 }
