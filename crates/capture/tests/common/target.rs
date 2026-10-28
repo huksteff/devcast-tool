@@ -1,18 +1,21 @@
 //! A window of the test process on the test monitor: the only place synthetic input goes.
-//! The cursor is the arrow over its left half and the I-beam over its right half.
+//! The cursor is the arrow over its left half and the I-beam over its right half. Text typed
+//! into it is kept, to tell that the keys really arrived here and nowhere else.
 
-use std::sync::mpsc;
+use std::sync::{Mutex, mpsc};
 use std::thread::JoinHandle;
 
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::ScreenToClient;
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetCursorPos,
-    GetMessageW, HTCLIENT, IDC_ARROW, IDC_IBEAM, LoadCursorW, MSG, PostMessageW, PostQuitMessage,
-    RegisterClassW, SetCursor, TranslateMessage, WM_CLOSE, WM_DESTROY, WM_SETCURSOR, WNDCLASSW,
-    WS_BORDER, WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
+    GetForegroundWindow, GetMessageW, HTCLIENT, IDC_ARROW, IDC_IBEAM, LoadCursorW, MSG,
+    PostMessageW, PostQuitMessage, RegisterClassW, SetCursor, TranslateMessage, WM_CHAR, WM_CLOSE,
+    WM_DESTROY, WM_SETCURSOR, WNDCLASSW, WS_BORDER, WS_EX_TOPMOST, WS_POPUP, WS_VISIBLE,
 };
 use windows::core::w;
+
+static TYPED: Mutex<String> = Mutex::new(String::new());
 
 /// Shows the window until dropped.
 pub struct Target {
@@ -23,12 +26,24 @@ pub struct Target {
 impl Target {
     /// A `width`×`height` window at desktop pixel (`x`, `y`), above other windows.
     pub fn show(x: i32, y: i32, width: i32, height: i32) -> Self {
+        TYPED.lock().unwrap().clear();
         let (created, window) = mpsc::channel();
         let thread = std::thread::spawn(move || run(x, y, width, height, &created));
         Self {
             hwnd: window.recv().unwrap(),
             thread: Some(thread),
         }
+    }
+
+    /// Keyboard input goes to this window now.
+    pub fn is_foreground(&self) -> bool {
+        // SAFETY: reads which window is in the foreground.
+        unsafe { GetForegroundWindow() }.0 as isize == self.hwnd
+    }
+
+    /// Characters typed into the window so far.
+    pub fn typed() -> String {
+        TYPED.lock().unwrap().clone()
     }
 }
 
@@ -56,6 +71,12 @@ extern "system" fn window_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     match message {
+        WM_CHAR => {
+            if let Some(c) = char::from_u32(wparam.0 as u32) {
+                TYPED.lock().unwrap().push(c);
+            }
+            LRESULT(0)
+        }
         WM_SETCURSOR if (lparam.0 & 0xFFFF) as u32 == HTCLIENT => {
             // SAFETY: reads the pointer and our window's size; shared cursors need no release.
             unsafe {

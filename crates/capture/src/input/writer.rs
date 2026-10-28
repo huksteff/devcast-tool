@@ -3,7 +3,8 @@
 //! Hooks start before the video and send events from then on; until [`InputMessage::Begin`]
 //! (and for events older than the start) only the pointer position and the cursor shape are
 //! kept, and they are written at the start time, so the file always begins with them. A
-//! cursor picture is saved as PNG when a shape first shows it, before its records. The thread ends
+//! cursor picture is saved as PNG when a shape first shows it, before its records. Shortcuts
+//! (already filtered in the hook) go to their own file from the start on. The thread ends
 //! when every sender is gone: the hooks stopped and the recording dropped its handle.
 
 use std::path::{Path, PathBuf};
@@ -13,6 +14,7 @@ use std::time::Instant;
 use super::cursor::{CURSOR_FILE, CursorEvent, image_file};
 use super::file::{FLUSH, RecordWriter, Timed};
 use super::image::CursorImage;
+use super::keys::{KEYS_FILE, KeyEvent};
 use super::shapes::{SeenShape, Shapes};
 use crate::error::CaptureError;
 use crate::event::HostTime;
@@ -21,6 +23,8 @@ pub enum InputMessage {
     Mouse(Timed<CursorEvent>),
     /// The cursor shape changed (or this is the first look at it).
     Shape(Timed<SeenShape>),
+    /// A shortcut that passed the privacy filter.
+    Key(Timed<KeyEvent>),
     /// The recording starts at this host time and is written into this folder.
     Begin(HostTime, PathBuf),
     /// A hook could not do its work; the recording of input ends with this error.
@@ -38,6 +42,8 @@ pub struct InputSummary {
     pub shapes: u64,
     /// Distinct cursor pictures saved.
     pub images: u64,
+    /// Shortcuts written.
+    pub keys: u64,
 }
 
 /// Encodes a cursor picture as PNG.
@@ -47,6 +53,7 @@ struct Open {
     start: HostTime,
     dir: PathBuf,
     records: RecordWriter<Timed<CursorEvent>>,
+    keys: RecordWriter<Timed<KeyEvent>>,
 }
 
 struct Writer {
@@ -76,6 +83,7 @@ pub fn write(
         match messages.recv_timeout(FLUSH) {
             Ok(InputMessage::Mouse(event)) => writer.mouse(event)?,
             Ok(InputMessage::Shape(shape)) => writer.shape(shape)?,
+            Ok(InputMessage::Key(key)) => writer.key(&key)?,
             Ok(InputMessage::Begin(start, dir)) => writer.begin(start, dir)?,
             Ok(InputMessage::Failed(error)) => return Err(error),
             Err(RecvTimeoutError::Timeout) => {}
@@ -93,10 +101,12 @@ pub fn write(
 impl Writer {
     fn begin(&mut self, start: HostTime, dir: PathBuf) -> Result<(), CaptureError> {
         let records = RecordWriter::create(&dir.join(CURSOR_FILE))?;
+        let keys = RecordWriter::create(&dir.join(KEYS_FILE))?;
         self.file = Some(Open {
             start,
             dir,
             records,
+            keys,
         });
         if let Some((x, y)) = self.position {
             self.put(Timed {
@@ -118,6 +128,16 @@ impl Writer {
         } else {
             self.position = event.event.position();
             Ok(())
+        }
+    }
+
+    fn key(&mut self, key: &Timed<KeyEvent>) -> Result<(), CaptureError> {
+        match &mut self.file {
+            Some(open) if key.at >= open.start => {
+                self.summary.keys += 1;
+                open.keys.write(key)
+            }
+            _ => Ok(()),
         }
     }
 
@@ -178,7 +198,7 @@ impl Writer {
 
     fn flush(&mut self) -> Result<(), CaptureError> {
         match &mut self.file {
-            Some(open) => open.records.flush(),
+            Some(open) => open.records.flush().and_then(|()| open.keys.flush()),
             None => Ok(()),
         }
     }

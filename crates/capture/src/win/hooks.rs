@@ -5,7 +5,8 @@
 //! with the host clock and hands it to the writer thread. Cursor shape changes come to the
 //! same loop as accessibility events of the cursor object (`OBJID_CURSOR`: shown, hidden,
 //! «name» changed = new shape); the picture of a cursor handle is read the first time it is
-//! seen, while the handle is surely alive, and encoded by the writer.
+//! seen, while the handle is surely alive, and encoded by the writer. Keys go through the
+//! privacy filter right in the keyboard hook; what it drops is not stored anywhere.
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -19,16 +20,17 @@ use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWi
 use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EVENT_OBJECT_HIDE, EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_SHOW, GetMessageW,
     GetPhysicalCursorPos, HHOOK, MSG, OBJID_CURSOR, PM_NOREMOVE, PeekMessageW, PostThreadMessageW,
-    SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, WH_MOUSE_LL, WINEVENT_OUTOFCONTEXT,
-    WM_QUIT,
+    SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, WH_KEYBOARD_LL, WH_MOUSE_LL,
+    WINEVENT_OUTOFCONTEXT, WM_QUIT,
 };
 
 use super::clock::now;
 use super::cursor::{SystemCursors, current, picture};
+use super::keys::keyboard_proc;
 use super::mouse::mouse_proc;
 use crate::error::CaptureError;
 use crate::event::HostTime;
-use crate::input::{CursorEvent, InputMessage, SeenShape, Timed};
+use crate::input::{CursorEvent, InputMessage, KeyFilter, SeenShape, Timed};
 
 thread_local! {
     /// What the hooks of this thread need; set while the hooks are installed.
@@ -42,6 +44,7 @@ struct State {
     seen: HashSet<isize>,
     /// The last cursor handle sent and whether it was shown.
     last: Option<(isize, bool)>,
+    keys: KeyFilter,
 }
 
 impl State {
@@ -131,8 +134,8 @@ fn run(events: Sender<InputMessage>, ready: &Sender<Result<u32, CaptureError>>) 
     STATE.set(None);
 }
 
-/// The mouse hook and the two cursor event hooks (shown/hidden, shape).
-type Installed = (HHOOK, [HWINEVENTHOOK; 2]);
+/// The mouse and keyboard hooks and the two cursor event hooks (shown/hidden, shape).
+type Installed = ([HHOOK; 2], [HWINEVENTHOOK; 2]);
 
 fn install(events: Sender<InputMessage>) -> Result<Installed, CaptureError> {
     STATE.set(Some(State {
@@ -140,15 +143,27 @@ fn install(events: Sender<InputMessage>) -> Result<Installed, CaptureError> {
         cursors: SystemCursors::load()?,
         seen: HashSet::new(),
         last: None,
+        keys: KeyFilter::default(),
     }));
-    // SAFETY: a low-level hook with a procedure of this module; removed by `unhook` on this
+    let failed = |e: windows::core::Error| {
+        CaptureError::platform("установить хук ввода")(e.to_string())
+    };
+    // SAFETY: low-level hooks with procedures of this module; removed by `unhook` on this
     // thread.
-    let mouse = unsafe {
-        GetModuleHandleW(None).and_then(|module| {
-            SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), Some(module.into()), 0)
-        })
-    }
-    .map_err(|e| CaptureError::platform("установить хук мыши")(e.to_string()))?;
+    let module = unsafe { GetModuleHandleW(None) }.map_err(failed)?;
+    let mouse = unsafe { SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), Some(module.into()), 0) }
+        .map_err(failed)?;
+    // SAFETY: as above.
+    let keyboard =
+        unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_proc), Some(module.into()), 0) };
+    let keyboard = match keyboard {
+        Ok(keyboard) => keyboard,
+        Err(e) => {
+            unhook_one(mouse);
+            return Err(failed(e));
+        }
+    };
+    let input = [mouse, keyboard];
     let ranges = [
         (EVENT_OBJECT_SHOW, EVENT_OBJECT_HIDE),
         (EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE),
@@ -167,23 +182,29 @@ fn install(events: Sender<InputMessage>) -> Result<Installed, CaptureError> {
         )
     });
     if cursor.iter().any(|hook| hook.is_invalid()) {
-        unhook((mouse, cursor));
+        unhook((input, cursor));
         return Err(CaptureError::platform("следить за курсором")(
             "SetWinEventHook отказал".to_owned(),
         ));
     }
-    Ok((mouse, cursor))
+    Ok((input, cursor))
 }
 
-fn unhook((mouse, cursor): Installed) {
+fn unhook((input, cursor): Installed) {
     for hook in cursor.into_iter().filter(|hook| !hook.is_invalid()) {
         // SAFETY: an event hook set on this thread, removed once. It fails only for a hook
         // that is already gone, which leaves nothing to remove.
         let _ = unsafe { UnhookWinEvent(hook) };
     }
+    for hook in input {
+        unhook_one(hook);
+    }
+}
+
+fn unhook_one(hook: HHOOK) {
     // SAFETY: the hook was set on this thread and is removed once.
-    if let Err(e) = unsafe { UnhookWindowsHookEx(mouse) } {
-        post(Err(CaptureError::platform("снять хук мыши")(
+    if let Err(e) = unsafe { UnhookWindowsHookEx(hook) } {
+        post(Err(CaptureError::platform("снять хук ввода")(
             e.to_string(),
         )));
     }
@@ -217,6 +238,15 @@ pub fn send_mouse(event: Result<CursorEvent, CaptureError>) {
     post(now().and_then(|at| Ok(InputMessage::Mouse(Timed { at, event: event? }))));
 }
 
+/// Passes key `key` going down or up through the privacy filter; only a shortcut is stamped
+/// and sent.
+pub fn send_key(key: u16, down: bool) {
+    let kept = STATE.with_borrow_mut(|state| state.as_mut().and_then(|s| s.keys.key(key, down)));
+    if let Some(event) = kept {
+        post(now().map(|at| InputMessage::Key(Timed { at, event })));
+    }
+}
+
 /// Sends the cursor shape if it changed.
 fn look_at_cursor() {
     let looked = now().and_then(|at| {
@@ -243,3 +273,7 @@ unsafe extern "system" fn cursor_proc(
         look_at_cursor();
     }
 }
+
+#[cfg(test)]
+#[path = "hooks_tests.rs"]
+mod tests;

@@ -23,15 +23,18 @@ use std::time::Duration;
 
 use common::test_monitor;
 use dc_capture::HostTime;
-use dc_capture::input::{Button, CursorEvent, CursorKind, Timed, image_file, read_cursor};
+use dc_capture::input::{
+    Button, CursorEvent, CursorKind, KeyEvent, Modifiers, Timed, image_file, read_cursor, read_keys,
+};
 use dc_capture::win::{InputRecording, now};
 use target::Target;
 use windows::Win32::Foundation::POINT;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    INPUT, INPUT_0, INPUT_MOUSE, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_HWHEEL,
-    MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP,
-    MOUSEEVENTF_MOVE, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_VIRTUALDESK,
-    MOUSEEVENTF_WHEEL, MOUSEINPUT, SendInput,
+    INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_KEYUP,
+    MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_HWHEEL, MOUSEEVENTF_LEFTDOWN,
+    MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_MOVE,
+    MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_VIRTUALDESK, MOUSEEVENTF_WHEEL,
+    MOUSEINPUT, SendInput, VIRTUAL_KEY,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     GetPhysicalCursorPos, GetSystemMetrics, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN,
@@ -279,5 +282,78 @@ fn records_cursor_shapes_and_pictures() {
         })
         .collect();
     assert_eq!(ids, (0..ids.len() as u32).collect::<Vec<_>>());
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+fn key(vk: u16, up: bool) -> INPUT {
+    let flags = if up {
+        KEYEVENTF_KEYUP
+    } else {
+        KEYBD_EVENT_FLAGS(0)
+    };
+    INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: VIRTUAL_KEY(vk),
+                dwFlags: flags,
+                ..Default::default()
+            },
+        },
+    }
+}
+
+/// Presses `chord` in order and releases it in reverse, in one `SendInput`.
+fn chord(keys: &[u16]) {
+    let downs = keys.iter().map(|&k| key(k, false));
+    let ups = keys.iter().rev().map(|&k| key(k, true));
+    send(&downs.chain(ups).collect::<Vec<_>>());
+    pause(30);
+}
+
+#[test]
+#[ignore = "types into the test window on monitor DEVCAST_TEST_MONITOR"]
+fn typed_text_is_not_recorded_and_shortcuts_are() {
+    const CTRL: u16 = 0x11;
+    const SHIFT: u16 = 0x10;
+    const F5: u8 = 0x74;
+    let _back = PointerBack::save();
+    let (target, x, y) = show_target();
+    send(&at_point(x + 100, y + 150, MOUSEEVENTF_LEFTDOWN, 0));
+    send(&at_point(x + 100, y + 150, MOUSEEVENTF_LEFTUP, 0));
+    pause(200);
+    // Typing anywhere else would type into the owner's windows.
+    assert!(
+        target.is_foreground(),
+        "the test window did not get the keyboard"
+    );
+    let dir = folder("input-keys");
+    let input = InputRecording::start().unwrap();
+    input.begin(now().unwrap(), &dir).unwrap();
+    for c in *b"ABC" {
+        chord(&[u16::from(c)]);
+    }
+    chord(&[SHIFT, u16::from(b'A')]);
+    chord(&[CTRL, SHIFT, u16::from(b'P')]);
+    chord(&[u16::from(F5)]);
+    // The user's last action is well before the stop.
+    pause(200);
+    let summary = input.join().unwrap();
+    let keys: Vec<KeyEvent> = read_keys(&dir).unwrap().iter().map(|k| k.event).collect();
+    println!(
+        "typed into the window: {:?}; keys.bin: {keys:?}; {summary:?}",
+        Target::typed()
+    );
+    assert_eq!(Target::typed(), "abcA");
+    let with = |key: u8, ctrl, shift| KeyEvent {
+        key: u16::from(key),
+        modifiers: Modifiers {
+            ctrl,
+            shift,
+            alt: false,
+            win: false,
+        },
+    };
+    assert_eq!(keys, [with(b'P', true, true), with(F5, false, false)]);
     std::fs::remove_dir_all(&dir).unwrap();
 }

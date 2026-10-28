@@ -7,6 +7,7 @@ mod d3d;
 mod frame;
 mod hooks;
 mod input;
+mod keys;
 mod monitors;
 mod mouse;
 mod nv12;
