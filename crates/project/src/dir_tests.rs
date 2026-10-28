@@ -38,6 +38,8 @@ fn create_then_open_and_load() {
     }
     let reopened = ProjectDir::open(dir.root()).unwrap();
     assert_eq!(reopened.load().unwrap(), Project::default());
+    let from_inside = ProjectDir::open(dir.media_dir().join("..")).unwrap();
+    assert_eq!(from_inside.name(), "Мой проект с пробелами.dcproj");
 }
 
 #[test]

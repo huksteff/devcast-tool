@@ -50,12 +50,8 @@ impl Workspace {
     }
 
     /// Folder name, e.g. `Урок 1.dcproj`.
-    pub fn name(&self) -> String {
-        self.dir
-            .root()
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default()
+    pub fn name(&self) -> &str {
+        self.dir.name()
     }
 
     /// True when the editor left unsaved changes and this run edits them.
