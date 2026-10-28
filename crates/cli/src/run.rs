@@ -16,7 +16,7 @@ use crate::ls::{self, Query};
 use crate::record;
 use crate::record_args::RecordArgs;
 use crate::record_control::Control;
-use crate::{import, skill, sources};
+use crate::{events, import, skill, sources};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Outcome {
@@ -111,6 +111,21 @@ enum Builtin {
         limit: usize,
         #[arg(long, default_value_t = 0, help = "Сколько строк пропустить")]
         offset: usize,
+    },
+    #[command(
+        about = "События записей по готовому видео: клики, сочетания клавиш, отрезки активности",
+        after_help = "events clicks --from 10 --to 1:20"
+    )]
+    Events {
+        #[arg(
+            value_enum,
+            help = "clicks — нажатия кнопок мыши, keys — сочетания и спецклавиши, activity — отрезки, где был ввод (паузы до 1 с внутри)"
+        )]
+        kind: events::Kind,
+        #[arg(long, help = "Только события с этого момента")]
+        from: Option<String>,
+        #[arg(long, help = "Только события раньше этого момента")]
+        to: Option<String>,
     },
     #[command(
         about = "Новый проект из видео mp4/mov/mkv/webm: копии в media/, по клипу на файл",
@@ -258,6 +273,9 @@ fn dispatch(
                 "у ls sources нет --from, --to и --fields: devcast ls sources".to_owned(),
             )),
         },
+        Builtin::Events { kind, from, to } => {
+            events::events(&ctx, kind, from.as_ref(), to.as_ref())
+        }
         Builtin::New { videos, out } => import::new(&ctx, &videos, &out),
         Builtin::Clip {
             command: ClipCommand::Add { videos },

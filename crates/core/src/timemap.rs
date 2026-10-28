@@ -23,6 +23,12 @@ impl Segment {
         self.output_start + self.output_len
     }
 
+    /// Output time of source moment `t` of this segment, clamped into it.
+    pub fn output_at(&self, t: SourceTime) -> OutputTime {
+        let offset = scaled(t.since(self.source.start()), self.speed);
+        (self.output_start + offset).min(self.output_end() - TimeDelta::from_micros(1))
+    }
+
     /// Source moment shown at output time `t` of this segment, clamped into it.
     pub fn source_at(&self, t: OutputTime) -> SourceTime {
         let offset = t.since(self.output_start).micros() as f64 * self.speed;
@@ -97,8 +103,17 @@ impl TimeMap {
             .segments
             .iter()
             .find(|s| s.clip == clip && s.source.contains(t))?;
-        let offset = scaled(t.since(segment.source.start()), segment.speed);
-        Some((segment.output_start + offset).min(segment.output_end() - TimeDelta::from_micros(1)))
+        Some(segment.output_at(t))
+    }
+
+    /// Where source moment `t` of recording `media` plays: its segment and output time; `None`
+    /// if it is cut out or the recording is not on the track there.
+    pub fn locate(&self, media: &str, t: SourceTime) -> Option<(&Segment, OutputTime)> {
+        let segment = self
+            .segments
+            .iter()
+            .find(|s| s.media == media && s.source.contains(t))?;
+        Some((segment, segment.output_at(t)))
     }
 
     /// The segment playing at output time `t`; `None` outside `0..duration`.

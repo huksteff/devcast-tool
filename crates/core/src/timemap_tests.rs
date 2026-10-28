@@ -183,4 +183,16 @@ fn output_span_follows_the_recording_through_cuts_splits_and_order() {
     assert_eq!(span(4.0, 6.0), Some((o(3.0), o(5.0))), "across the split");
     assert_eq!(span(2.0, 3.0), None, "all cut out");
     assert_eq!(map.output_span("media/none.mp4", r(0.0, 1.0)), None);
+    let at = |secs| {
+        map.locate(&media, t(secs))
+            .map(|(segment, out)| (segment.clip, out))
+    };
+    assert_eq!(at(1.0), Some((p.clips[0].id, o(1.0))));
+    assert_eq!(at(2.5), None, "cut out");
+    assert_eq!(
+        at(6.0),
+        Some((p.clips[1].id, o(5.0))),
+        "second half after the split"
+    );
+    assert_eq!(map.locate("media/none.mp4", t(1.0)), None);
 }

@@ -120,6 +120,7 @@ fn help_lists_every_command_on_one_line() {
             "save      Сохранить несохранённые изменения редактора в project.json",
             "info      Сводка проекта: длительность, сохранён ли, сколько объектов в каждом списке",
             "ls        Список объектов (clips, zooms …) с временем по готовому видео",
+            "events    События записей по готовому видео: клики, сочетания клавиш, отрезки активности",
             "new       Новый проект из видео mp4/mov/mkv/webm: копии в media/, по клипу на файл",
             "clip add  Добавить видео mp4/mov/mkv/webm клипами в конец главной дорожки (копия в media/)",
             "record    Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
@@ -190,8 +191,8 @@ fn help_json_has_schemas_of_ops_project_and_effects() {
     assert_eq!(
         names,
         [
-            "help", "apply", "undo", "redo", "history", "save", "info", "ls", "new", "clip add",
-            "record", "skill", "test add", "test rm"
+            "help", "apply", "undo", "redo", "history", "save", "info", "ls", "events", "new",
+            "clip add", "record", "skill", "test add", "test rm"
         ]
     );
     assert!(json["project"]["properties"]["clips"].is_object());

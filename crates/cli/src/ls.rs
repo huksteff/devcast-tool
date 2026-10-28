@@ -92,7 +92,7 @@ fn clip_span(map: &TimeMap, clip: dc_core::ClipId) -> Option<Range<Output>> {
     Range::new(first.output_start, last.output_end()).ok()
 }
 
-fn time(text: Option<&String>, flag: &str) -> Result<Option<OutputTime>, CliError> {
+pub(crate) fn time(text: Option<&String>, flag: &str) -> Result<Option<OutputTime>, CliError> {
     text.map(|t| {
         t.parse::<OutputTime>()
             .map_err(|e| CliError::Usage(format!("{flag}: {e}")))

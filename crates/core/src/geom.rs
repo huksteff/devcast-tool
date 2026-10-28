@@ -104,6 +104,16 @@ impl Rect {
         p.x >= self.x && p.x < self.x + self.w && p.y >= self.y && p.y < self.y + self.h
     }
 
+    /// Point `p` of the outer frame in fractions of this rectangle: (0, 0) its top-left corner,
+    /// (1, 1) the bottom-right; outside it the values leave 0..1. The rectangle must not be
+    /// empty (a crop has sides of at least `CROP_MIN`).
+    pub fn to_local(&self, p: Point) -> Point {
+        Point {
+            x: (p.x - self.x) / self.w,
+            y: (p.y - self.y) / self.h,
+        }
+    }
+
     /// Pixel rectangle `(x, y, w, h)` in a frame of `size`, as floats (no rounding).
     pub fn to_pixels(&self, size: PixelSize) -> [f64; 4] {
         let (fw, fh) = (f64::from(size.width), f64::from(size.height));
@@ -278,6 +288,19 @@ mod tests {
         assert!(error.to_string().contains("не отрицательными"), "{error}");
         let error = serde_json::from_str::<Rect>("5").unwrap_err();
         assert!(error.to_string().contains("x,y,w,h"), "{error}");
+    }
+
+    #[test]
+    fn local_point_is_a_fraction_of_the_rectangle() {
+        let crop = Rect::new(0.25, 0.5, 0.5, 0.25).unwrap();
+        let local = |x, y| crop.to_local(Point { x, y });
+        assert_eq!(local(0.25, 0.5), Point { x: 0.0, y: 0.0 });
+        assert_eq!(local(0.5, 0.625), Point { x: 0.5, y: 0.5 });
+        assert_eq!(local(0.0, 1.0), Point { x: -0.5, y: 2.0 }, "outside");
+        assert_eq!(
+            Rect::FULL.to_local(Point { x: 0.3, y: 0.7 }),
+            Point { x: 0.3, y: 0.7 }
+        );
     }
 
     #[test]

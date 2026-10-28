@@ -2,6 +2,7 @@
 
 mod edit;
 pub mod error;
+mod events;
 pub mod find;
 pub mod globals;
 mod help;
@@ -15,12 +16,15 @@ pub mod registry;
 pub mod run;
 mod skill;
 mod sources;
+mod telemetry;
 pub mod workspace;
 
 #[cfg(test)]
 mod e2e_tests;
 #[cfg(test)]
 mod edit_tests;
+#[cfg(test)]
+mod events_tests;
 #[cfg(test)]
 mod import_tests;
 #[cfg(test)]

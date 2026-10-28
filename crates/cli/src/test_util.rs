@@ -2,6 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
+use dc_capture::input::{
+    CURSOR_FILE, CursorEvent, KEYS_FILE, KeyEvent, Record, RecordWriter, Timed,
+};
+use dc_capture::{HostTime, Manifest, Track, VIDEO_TRACK};
 use dc_core::project::{Media, MediaKind};
 use dc_core::{Clip, ClipId, Command, CommandError, Diff, Op, OpInfo, PixelSize, Project, Range};
 use dc_core::{Rect, SourceTime, TimeDelta};
@@ -135,17 +139,60 @@ pub(crate) struct Recordings {
 
 impl Recordings {
     pub(crate) fn new() -> Self {
+        Self::of(&[("media/a.mp4", 20.0), ("media/b.mp4", 10.0)])
+    }
+
+    fn of(clips: &[(&str, f64)]) -> Self {
         let tmp = tempfile::tempdir().unwrap();
         let dir = ProjectDir::create(tmp.path().join("Урок 2.dcproj")).unwrap();
         let mut project = Project::default();
-        for (name, secs) in [("a", 20.0), ("b", 10.0)] {
+        for (path, secs) in clips {
             let id = project.clip_ids.allocate();
-            project
-                .clips
-                .push(recording(id, format!("media/{name}.mp4"), secs));
+            project.clips.push(recording(id, (*path).to_owned(), *secs));
         }
         dir.save(&project).unwrap();
         Self { _tmp: tmp, dir }
+    }
+
+    /// Recordings `media/recording-N/video.mp4` (from 1) of these lengths in seconds, each with
+    /// a manifest (video from host time 0) and empty telemetry; fill it with [`Self::cursor`]
+    /// and [`Self::keys`].
+    pub(crate) fn with_telemetry(lengths: &[f64]) -> Self {
+        let paths: Vec<String> = (1..=lengths.len())
+            .map(|n| format!("media/recording-{n}/video.mp4"))
+            .collect();
+        let clips: Vec<(&str, f64)> = paths
+            .iter()
+            .map(String::as_str)
+            .zip(lengths.iter().copied())
+            .collect();
+        let this = Self::of(&clips);
+        for (n, secs) in (1..).zip(lengths) {
+            let folder = this.folder(n);
+            std::fs::create_dir_all(&folder).unwrap();
+            let mut video = Track::new(VIDEO_TRACK, 60, HostTime::from_micros(0));
+            video.file = Some(video.final_file());
+            video.length = (secs * 60.0) as i64;
+            video.size = Some((1920, 1080));
+            Manifest::new(vec![video]).write(&folder).unwrap();
+            this.cursor(n, &[]);
+            this.keys(n, &[]);
+        }
+        this
+    }
+
+    fn folder(&self, n: usize) -> PathBuf {
+        self.dir.media_dir().join(format!("recording-{n}"))
+    }
+
+    /// Replaces `cursor.bin` of recording `n` with `events` at source seconds.
+    pub(crate) fn cursor(&self, n: usize, events: &[(f64, CursorEvent)]) {
+        write(&self.folder(n).join(CURSOR_FILE), events);
+    }
+
+    /// Replaces `keys.bin` of recording `n` with `events` at source seconds.
+    pub(crate) fn keys(&self, n: usize, events: &[(f64, KeyEvent)]) {
+        write(&self.folder(n).join(KEYS_FILE), events);
     }
 
     pub(crate) fn run(&self, line: &str) -> Outcome {
@@ -157,6 +204,18 @@ impl Recordings {
         assert_eq!(out.code, 0, "{line}: {}", out.stderr);
         out.stdout.trim_end().to_owned()
     }
+}
+
+fn write<E: Copy>(path: &Path, events: &[(f64, E)])
+where
+    Timed<E>: Record,
+{
+    let mut writer = RecordWriter::create(path).unwrap();
+    for &(secs, event) in events {
+        let at = HostTime::from_micros((secs * 1e6).round() as i64);
+        writer.write(&Timed { at, event }).unwrap();
+    }
+    writer.flush().unwrap();
 }
 
 pub(crate) fn done(stdout: &str) -> Outcome {
