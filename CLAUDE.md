@@ -29,6 +29,8 @@ Stop-хук (`.claude/settings.json`) сам запускает `cargo xtask hoo
 
 ## Инструменты
 
+**Новый компьютер или не собирается — сначала пройди [docs/SETUP.md](docs/SETUP.md):** там полный список, что поставить и как проверить.
+
 - Rust — версия закреплена в `rust-toolchain.toml`, rustup ставит её сам.
 - cargo-nextest: `cargo install cargo-nextest --locked` или готовый бинарник с https://get.nexte.st.
 - Git LFS — для `fixtures/`.
