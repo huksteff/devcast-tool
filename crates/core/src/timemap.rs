@@ -128,16 +128,15 @@ fn pieces(clip: &Clip) -> Vec<(Range<Source>, f64)> {
     let mut out = Vec::new();
     for part in kept {
         let mut at = part.start();
-        for speed in clip
+        let overlaps = clip
             .speeds
             .iter()
-            .filter(|s| s.range.intersect(&part).is_some())
-        {
-            let overlap = speed.range.intersect(&part).unwrap_or(part);
+            .filter_map(|s| Some((s.range.intersect(&part)?, s.factor)));
+        for (overlap, factor) in overlaps {
             if overlap.start() > at {
                 push_piece(&mut out, at, overlap.start(), 1.0);
             }
-            push_piece(&mut out, overlap.start(), overlap.end(), speed.factor);
+            push_piece(&mut out, overlap.start(), overlap.end(), factor);
             at = overlap.end();
         }
         push_piece(&mut out, at, part.end(), 1.0);
