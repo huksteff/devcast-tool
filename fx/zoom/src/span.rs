@@ -30,19 +30,18 @@ impl Timeline {
         OutputTime::ZERO + self.map.duration()
     }
 
-    fn output(secs: f64) -> Result<OutputTime, CommandError> {
-        let t = OutputTime::from_secs_f64(secs);
+    fn output(t: OutputTime) -> Result<OutputTime, CommandError> {
         if t < OutputTime::ZERO {
             return Err(CommandError::new(format!(
-                "время {secs} с раньше начала видео: укажи 0 или больше"
+                "время {t} раньше начала видео: укажи 0 или больше"
             )));
         }
         Ok(t)
     }
 
-    /// The source moment shown at `secs`.
-    pub fn start(&self, secs: f64) -> Result<Edge, CommandError> {
-        let t = Self::output(secs)?;
+    /// The source moment shown at `t`.
+    pub fn start(&self, t: OutputTime) -> Result<Edge, CommandError> {
+        let t = Self::output(t)?;
         self.map.to_source(t).ok_or_else(|| {
             CommandError::new(format!(
                 "начало зума {t} не раньше конца видео ({}): укажи время меньше",
@@ -51,10 +50,10 @@ impl Timeline {
         })
     }
 
-    /// The exclusive source end of what is shown before `secs`: at the end of a segment it stays in
+    /// The exclusive source end of what is shown before `t`: at the end of a segment it stays in
     /// that segment's clip instead of jumping to the next one.
-    pub fn end(&self, secs: f64) -> Result<Edge, CommandError> {
-        let t = Self::output(secs)?;
+    pub fn end(&self, t: OutputTime) -> Result<Edge, CommandError> {
+        let t = Self::output(t)?;
         if t > self.end_of_video() {
             return Err(CommandError::new(format!(
                 "конец зума {t} позже конца видео ({}): укороти зум",
@@ -64,7 +63,7 @@ impl Timeline {
         if let Some(segment) = self.map.segments().iter().find(|s| s.output_end() == t) {
             return Ok((segment.clip, segment.source.end()));
         }
-        self.start(secs)
+        self.start(t)
     }
 
     /// Range of one clip from `start` to `end`.

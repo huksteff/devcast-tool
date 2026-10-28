@@ -1,6 +1,7 @@
 //! `zoom add`, `zoom set`, `zoom rm`: zoom regions.
 
-use dc_core::{Command, CommandError, Diff, Op, Point, Project};
+use dc_core::time::Output;
+use dc_core::{Command, CommandError, Diff, Op, Point, Project, TimeArg, TimeDelta};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -24,8 +25,8 @@ fn center() -> f64 {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ZoomAdd {
-    /// Start, seconds of the output video.
-    pub at: f64,
+    /// Start on the output video.
+    pub at: TimeArg<Output>,
     /// Length, seconds of the output video.
     #[serde(default = "one_second")]
     pub duration: f64,
@@ -49,8 +50,8 @@ impl Command for ZoomAdd {
 
     fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
         let timeline = Timeline::new(project)?;
-        let start = timeline.start(self.at)?;
-        let end = timeline.end(self.at + self.duration)?;
+        let start = timeline.start(self.at.0)?;
+        let end = timeline.end(self.at.0 + TimeDelta::from_secs_f64(self.duration))?;
         let (clip, range) = timeline.span(start, end)?;
         check_scale(self.scale)?;
         let focus = Point {
@@ -76,7 +77,7 @@ impl Command for ZoomAdd {
 
 impl Op for ZoomAdd {
     const NAME: &'static str = "zoom add";
-    const ABOUT: &'static str = "Добавить зум (время — секунды готового видео)";
+    const ABOUT: &'static str = "Добавить зум (время — по готовому видео)";
     const EXAMPLE: &'static str = "zoom add --at 12.5 --duration 2 --scale 1.8";
 }
 
@@ -84,10 +85,10 @@ impl Op for ZoomAdd {
 #[serde(deny_unknown_fields)]
 pub struct ZoomSet {
     pub id: ZoomId,
-    /// New start, seconds of the output video.
-    pub from: Option<f64>,
-    /// New end, seconds of the output video.
-    pub to: Option<f64>,
+    /// New start on the output video.
+    pub from: Option<TimeArg<Output>>,
+    /// New end on the output video.
+    pub to: Option<TimeArg<Output>>,
     /// Magnification, 1..5.
     pub scale: Option<f64>,
     pub mode: Option<Mode>,
@@ -109,11 +110,11 @@ impl Command for ZoomSet {
         if self.from.is_some() || self.to.is_some() {
             let timeline = Timeline::new(project)?;
             let start = match self.from {
-                Some(secs) => timeline.start(secs)?,
+                Some(TimeArg(t)) => timeline.start(t)?,
                 None => (zoom.clip, zoom.range.start()),
             };
             let end = match self.to {
-                Some(secs) => timeline.end(secs)?,
+                Some(TimeArg(t)) => timeline.end(t)?,
                 None => (zoom.clip, zoom.range.end()),
             };
             (zoom.clip, zoom.range) = timeline.span(start, end)?;

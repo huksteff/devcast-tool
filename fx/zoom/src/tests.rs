@@ -79,6 +79,18 @@ fn add_uses_defaults_and_source_time() {
 }
 
 #[test]
+fn times_accept_clock_format() {
+    let mut p = project(&[100.0]);
+    let command: ZoomAdd = serde_json::from_value(serde_json::json!({"at": "1:02.5"})).unwrap();
+    run(&mut p, &command);
+    run(&mut p, &set(serde_json::json!({"id": "z1", "to": "1:05"})));
+    assert_eq!(
+        state(&p).zooms[0].range,
+        Range::new(secs(62.5), secs(65.0)).unwrap()
+    );
+}
+
+#[test]
 fn add_duration_defaults_to_one_second() {
     let mut p = project(&[10.0]);
     let command: ZoomAdd = serde_json::from_value(serde_json::json!({"at": 4})).unwrap();
