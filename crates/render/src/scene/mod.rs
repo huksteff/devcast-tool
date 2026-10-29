@@ -6,6 +6,7 @@
 
 mod blur;
 mod drawing;
+mod motion;
 mod shape;
 mod sprite;
 mod text;
@@ -18,6 +19,7 @@ use serde::{Deserialize, Serialize};
 
 pub use blur::Blur;
 pub use drawing::{BrushStroke, Drawing, Tool};
+pub use motion::Motion;
 pub use shape::{
     Geometry, Glow, Gradient, GradientColors, GradientCount, Paint, ParseRgbaError, Rgba, Shape,
     Stroke,
@@ -32,6 +34,9 @@ pub use video::{PxRect, Video, VideoSource};
 pub struct Scene {
     pub size: PixelSize,
     pub camera: Camera,
+    /// Motion blur of the camera: `from` is the camera at the shutter opening. It smears the
+    /// video only, as in v1; what lies over the video stays sharp.
+    pub camera_motion: Option<Motion<Camera>>,
     pub layers: BTreeMap<Band, Vec<Layer>>,
 }
 
@@ -41,6 +46,7 @@ impl Scene {
         Self {
             size,
             camera: Camera::IDENTITY,
+            camera_motion: None,
             layers: BTreeMap::new(),
         }
     }
@@ -173,7 +179,7 @@ mod tests {
         let json = serde_json::to_string(&scene).unwrap();
         assert_eq!(
             json,
-            r#"{"size":{"width":1920,"height":1080},"camera":{"scale":1.0,"x":0.0,"y":0.0},"layers":{}}"#
+            r#"{"size":{"width":1920,"height":1080},"camera":{"scale":1.0,"x":0.0,"y":0.0},"camera_motion":null,"layers":{}}"#
         );
         assert_eq!(serde_json::from_str::<Scene>(&json).unwrap(), scene);
     }

@@ -22,8 +22,8 @@ pub use gpu::{AdapterChoice, BACKEND, FORMAT, Gpu, SRGB_VIEW};
 pub use readback::Image;
 pub use scene::{
     Align, Band, Blur, BrushStroke, Camera, Drawing, Font, Geometry, Glow, Gradient,
-    GradientColors, ImageKey, Layer, Paint, Plate, PxRect, Rgba, Scene, Shape, Sprite, Stroke,
-    Text, TextRun, Tool, Video, VideoSource,
+    GradientColors, ImageKey, Layer, Motion, Paint, Plate, PxRect, Rgba, Scene, Shape, Sprite,
+    Stroke, Text, TextRun, Tool, Video, VideoSource,
 };
 pub use sprites::{Bitmap, IMAGE_BUDGET};
 pub use video::Nv12;

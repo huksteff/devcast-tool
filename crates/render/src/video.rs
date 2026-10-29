@@ -5,11 +5,11 @@ use dc_core::{ColorRange, PixelSize, SourceTime, VideoColor};
 
 use crate::error::RenderError;
 use crate::gpu::{Gpu, SRGB_VIEW};
-use crate::scene::{Camera, Video};
+use crate::scene::{Camera, Motion, Video};
 use crate::uniform::{self, Uniform};
 
 /// Floats of `Video` of video.wgsl.
-const FLOATS: usize = 24;
+const FLOATS: usize = 40;
 
 /// A decoded frame as `dc_media::Frame` gives it: the Y plane, then interleaved UV of
 /// `ceil(width/2)` pairs per row and `ceil(height/2)` rows; rows without padding. `color` is how
@@ -109,7 +109,11 @@ impl VideoPass {
                 module: &module,
                 entry_point: Some("fs"),
                 compilation_options: Default::default(),
-                targets: &[Some(SRGB_VIEW.into())],
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: SRGB_VIEW,
+                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -194,21 +198,32 @@ impl VideoPass {
         }
     }
 
-    /// Places `video` in a `frame`-sized output through `camera`.
+    /// Places `video` in a `frame`-sized output drawn into `target` through `camera`, smeared
+    /// along `motion` of the camera.
     pub(crate) fn prepare(
         gpu: &Gpu,
         textures: &VideoFrame,
         video: &Video,
         camera: Camera,
-        frame: PixelSize,
+        motion: Option<Motion<Camera>>,
+        [frame, target]: [PixelSize; 2],
     ) {
+        let from = motion.map_or(camera, |m| m.from);
+        let samples = motion.map_or(1, |m| m.samples.get());
+        let step = motion.map_or(0.0, |m| m.step());
         let r = video.rect;
-        let [left, top] = camera.apply([r.x, r.y]);
-        let [right, bottom] = camera.apply([r.x + r.w, r.y + r.h]);
         let (fw, fh) = (frame.width as f32, frame.height as f32);
-        let ndc = |x: f32, y: f32| [x / fw * 2.0 - 1.0, 1.0 - y / fh * 2.0];
-        let [x0, y0] = ndc(left, top);
-        let [x1, y1] = ndc(right, bottom);
+        let corners = [camera, from].map(|c| {
+            let [left, top] = c.apply([r.x, r.y]);
+            let [right, bottom] = c.apply([r.x + r.w, r.y + r.h]);
+            [left, top, right, bottom]
+        });
+        let quad = [
+            corners[0][0].min(corners[1][0]) / fw * 2.0 - 1.0,
+            1.0 - corners[0][1].min(corners[1][1]) / fh * 2.0,
+            corners[0][2].max(corners[1][2]) / fw * 2.0 - 1.0,
+            1.0 - corners[0][3].max(corners[1][3]) / fh * 2.0,
+        ];
         let c = video.crop;
         let crop = [c.x(), c.y(), c.x() + c.w(), c.y() + c.h()].map(|v| v as f32);
         // Chroma sample i covers luma pixels 2i and 2i + 1, shifted by the siting; odd sizes have
@@ -217,28 +232,26 @@ impl VideoPass {
         let (cw, ch) = ((half.width * 2) as f32, (half.height * 2) as f32);
         let (w, h) = (textures.size.width as f32, textures.size.height as f32);
         let (dx, dy) = textures.color.chroma.offset();
-        let [r, g, b] = yuv_to_rgb(textures.color);
-        let head = [
-            x0,
-            y0,
-            x1,
-            y1,
-            crop[0],
-            crop[1],
-            crop[2],
-            crop[3],
-            w / cw,
-            h / ch,
-            -dx / cw,
-            -dy / ch,
+        let [red, green, blue] = yuv_to_rgb(textures.color);
+        let rows: [[f32; 4]; 10] = [
+            [r.x, r.y, r.w, r.h],
+            crop,
+            [w / cw, h / ch, -dx / cw, -dy / ch],
+            red,
+            green,
+            blue,
+            [camera.scale, camera.x, camera.y, fw / target.width as f32],
+            [
+                from.scale - camera.scale,
+                from.x - camera.x,
+                from.y - camera.y,
+                samples as f32,
+            ],
+            quad,
+            [step, 0.0, 0.0, 0.0],
         ];
         let mut values = [0.0; FLOATS];
-        for (value, v) in values
-            .iter_mut()
-            .zip(head.iter().chain(&r).chain(&g).chain(&b))
-        {
-            *value = *v;
-        }
+        values.copy_from_slice(rows.as_flattened());
         textures.uniform.write(gpu, &values);
     }
 

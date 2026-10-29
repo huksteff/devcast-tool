@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::PxRect;
+use super::{Motion, PxRect};
 
 /// The whole picture stretched over `rect` (evaluate keeps its proportions), turned by
 /// `rotation` degrees clockwise around the centre.
@@ -13,6 +13,8 @@ pub struct Sprite {
     pub rotation: f32,
     /// 0..1.
     pub opacity: f32,
+    /// Motion blur; `from` is the top-left of `rect` at the shutter opening (the cursor).
+    pub motion: Option<Motion<[f32; 2]>>,
 }
 
 /// Which uploaded picture a sprite shows: a file of the project and a frame of its animation.

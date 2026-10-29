@@ -22,7 +22,7 @@ use mips::Mips;
 pub const IMAGE_BUDGET: u64 = 512 * 1024 * 1024;
 
 /// Floats of `Sprite` of sprites.wgsl.
-const FLOATS: usize = 12;
+const FLOATS: usize = 16;
 
 /// A picture as `dc_media::Picture` gives a frame of it: RGBA with straight alpha, rows without
 /// padding.
@@ -174,20 +174,29 @@ impl SpritesPass {
         let (sin, cos) = sprite.rotation.to_radians().sin_cos();
         let (fw, fh) = (frame.width as f32, frame.height as f32);
         let per_target = fw / target.width as f32;
-        let values = [
-            cx,
-            cy,
-            half_w,
-            half_h,
-            cos,
-            sin,
-            sprite.opacity,
-            per_target,
-            fw,
-            fh,
-            0.0,
-            0.0,
+        let (back, step, samples) = sprite.motion.map_or(([0.0; 2], 0.0, 1), |m| {
+            let back = [
+                (m.from[0] - r.x) * camera.scale,
+                (m.from[1] - r.y) * camera.scale,
+            ];
+            (back, m.step(), m.samples.get())
+        });
+        let reach_x = (half_w * cos).abs() + (half_h * sin).abs() + per_target;
+        let reach_y = (half_w * sin).abs() + (half_h * cos).abs() + per_target;
+        let quad = [
+            (cx - reach_x + back[0].min(0.0)) / fw * 2.0 - 1.0,
+            1.0 - (cy - reach_y + back[1].min(0.0)) / fh * 2.0,
+            (cx + reach_x + back[0].max(0.0)) / fw * 2.0 - 1.0,
+            1.0 - (cy + reach_y + back[1].max(0.0)) / fh * 2.0,
         ];
+        let rows = [
+            [cx, cy, half_w, half_h],
+            [cos, sin, sprite.opacity, per_target],
+            [back[0], back[1], step, samples as f32],
+            quad,
+        ];
+        let mut values = [0.0; FLOATS];
+        values.copy_from_slice(rows.as_flattened());
         Ok(self.slots.push(&values))
     }
 

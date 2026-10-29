@@ -162,7 +162,9 @@ impl Compositor {
             match layer {
                 Layer::Video(video) => {
                     let frame = self.frame(&video.source)?;
-                    VideoPass::prepare(gpu, frame, video, camera, scene.size);
+                    let motion = scene.camera_motion.filter(|_| band.under_camera());
+                    let sizes = [scene.size, target];
+                    VideoPass::prepare(gpu, frame, video, camera, motion, sizes);
                     self.steps.push(Step::Video(video.source.media.clone()));
                 }
                 Layer::Shapes(shapes) => self.push_shapes(shapes, camera),

@@ -27,6 +27,7 @@ fn sprite(image: ImageKey, rect: PxRect) -> Sprite {
         rect,
         rotation: 0.0,
         opacity: 1.0,
+        motion: None,
     }
 }
 
