@@ -160,11 +160,11 @@ fn default_aspect_leaves_no_state() {
     .apply(&mut p)
     .unwrap();
     let diff = SetAspect {
-        aspect: Aspect::Source,
+        aspect: Aspect::Free,
     }
     .apply(&mut p)
     .unwrap();
-    assert_eq!(diff.to_string(), "формат source");
+    assert_eq!(diff.to_string(), "формат free");
     assert!(p.effects.is_empty());
 }
 

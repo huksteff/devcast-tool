@@ -6,11 +6,11 @@ use serde::{Deserialize, Serialize};
 /// Aspect of the output frame. Clips of another aspect are fitted into it with black bars.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 pub enum Aspect {
-    /// The crop frame of the first clip.
+    /// The crop frame of the first clip (default, like Cap's "Auto").
+    #[default]
     #[serde(rename = "free")]
     Free,
     /// The source frame of the first clip.
-    #[default]
     #[serde(rename = "source")]
     Source,
     #[serde(rename = "16:9")]
