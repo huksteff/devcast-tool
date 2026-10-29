@@ -30,6 +30,8 @@ pub mod workspace;
 #[cfg(test)]
 mod autozoom_tests;
 #[cfg(test)]
+mod cut_e2e_tests;
+#[cfg(test)]
 mod e2e_tests;
 #[cfg(test)]
 mod edit_tests;
