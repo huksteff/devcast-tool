@@ -36,6 +36,7 @@ fn text(line: &str) -> Text {
         plate: None,
         opacity: 1.0,
         beside: None,
+        shadow: None,
     }
 }
 

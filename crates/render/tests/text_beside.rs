@@ -54,6 +54,7 @@ fn bubble(line: &str, point: [f32; 2], paint: Paint, glow: Option<Glow>) -> Text
             offset: OFFSET,
             margin: MARGIN,
         }),
+        shadow: None,
     }
 }
 

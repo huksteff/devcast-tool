@@ -111,6 +111,7 @@ devcast clip rm c1
 - `devcast ls captions` — реплики с временем и текстом.
 - `devcast captions set s3 --text "Новый текст"` — неизменённые слова сохраняют время; `--from 12.5 --to 15` — границы.
 - `devcast captions split s3 --at 14.2` (в паузе между словами у этого момента), `devcast captions merge s3` (со следующей), `devcast captions rm s3`, `devcast captions clear`.
+- Вид: `devcast captions style --size 36 --rows 2 --animation pop` — шрифт (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono), размер в px при 1080p, `--color` сказанных слов, `--highlight` текущего, `--inactive` несказанных (#rrggbbaa), `--shadow`, `--bottom` и `--width` в % кадра, `--radius`, `--background` (прозрачность плашки 0–1), `--show false` — скрыть.
 - Перевод: `devcast captions export -o субтитры.txt` → в файле строка `s3 текст` на реплику; переведи текст, id не трогай → `devcast captions import субтитры.txt`. Время реплик не меняется, реплики не из файла остаются как были.
 
 ## План: много правок одним шагом отмены

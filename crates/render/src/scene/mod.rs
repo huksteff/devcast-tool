@@ -25,7 +25,7 @@ pub use shape::{
     Stroke,
 };
 pub use sprite::{ImageKey, Sprite};
-pub use text::{Align, Beside, Font, Plate, Text, TextRun};
+pub use text::{Align, Beside, FAMILIES, Font, Plate, Shadow, Text, TextRun};
 pub use video::{PxRect, Video, VideoSource};
 
 /// Everything drawn in one output frame. The frame starts black (the fields around a clip, SCOPE

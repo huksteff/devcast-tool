@@ -12,7 +12,7 @@ use dc_encode::{AudioSettings, EncodeError, Sources};
 use dc_media::cached_probe;
 use dc_ops::Evaluator;
 use dc_project::ProjectDir;
-use dc_render::{Compositor, Gpu};
+use dc_render::{Compositor, Gpu, TextMeasure};
 use serde::{Deserialize, Serialize};
 
 use crate::export_args::{Format, Settings};
@@ -44,8 +44,10 @@ pub(crate) fn run(
     let project = &spec.project;
     let (cursors, keys) = crate::telemetry::tracks(&spec.root, project)
         .map_err(|e| EncodeError::Scene(Box::new(e)))?;
-    let evaluator =
-        Evaluator::new(project, cursors, keys).map_err(|e| EncodeError::Scene(Box::new(e)))?;
+    let mut measure = TextMeasure::new();
+    measure.load_builtin_fonts()?;
+    let evaluator = Evaluator::new(project, cursors, keys, &mut measure)
+        .map_err(|e| EncodeError::Scene(Box::new(e)))?;
     let mut source_fps = 0.0_f64;
     for clip in &project.clips {
         source_fps = source_fps.max(cached_probe(&dir, &clip.media.path)?.fps);

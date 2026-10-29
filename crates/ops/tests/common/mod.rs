@@ -11,7 +11,7 @@ use dc_core::{
 };
 use dc_ops::Evaluator;
 use dc_render::golden::Golden;
-use dc_render::{AdapterChoice, Bitmap, Compositor, Gpu, Layer, Nv12, Scene};
+use dc_render::{AdapterChoice, Bitmap, Compositor, Gpu, Layer, Nv12, Scene, TextMeasure};
 
 pub type TestResult = Result<(), Box<dyn Error>>;
 
@@ -74,7 +74,7 @@ pub fn size(width: u32, height: u32) -> PixelSize {
 /// Renders the project's scene at output second `at` with bars as every video and pictures of
 /// `clicks_fixture()` as sprites, and checks it against reference `name`.
 pub fn check(name: &str, project: &Project, cursors: CursorTracks, at: f64) -> TestResult {
-    let evaluator = Evaluator::new(project, cursors, KeyTracks::new())?;
+    let evaluator = Evaluator::new(project, cursors, KeyTracks::new(), &mut measure()?)?;
     render(
         name,
         project,
@@ -85,12 +85,19 @@ pub fn check(name: &str, project: &Project, cursors: CursorTracks, at: f64) -> T
 /// [`check`] of a project without a cursor and with shortcuts `keys`, text in the fonts of
 /// `.deps/fonts`.
 pub fn check_keys(name: &str, project: &Project, keys: KeyTracks, at: f64) -> TestResult {
-    let evaluator = Evaluator::new(project, CursorTracks::new(), keys)?;
+    let evaluator = Evaluator::new(project, CursorTracks::new(), keys, &mut measure()?)?;
     render(
         name,
         project,
         &evaluator.evaluate(OutputTime::from_secs_f64(at)),
     )
+}
+
+/// The fonts of `.deps/fonts`, as the frames are drawn with.
+fn measure() -> Result<TextMeasure, Box<dyn Error>> {
+    let mut measure = TextMeasure::new();
+    measure.load_fonts(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.deps/fonts"))?;
+    Ok(measure)
 }
 
 fn render(name: &str, project: &Project, scene: &Scene) -> TestResult {

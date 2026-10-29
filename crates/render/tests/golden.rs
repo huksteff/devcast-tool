@@ -250,6 +250,7 @@ fn golden_text() -> TestResult {
         }),
         opacity: 1.0,
         beside: None,
+        shadow: None,
     };
     scene.push(Band::Overlay, Layer::Text(text));
     check("text", &scene)

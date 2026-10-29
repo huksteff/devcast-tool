@@ -18,9 +18,6 @@ use crate::sprites::{Bitmap, SpritesPass};
 use crate::text::TextPass;
 use crate::video::{Nv12, VideoFrame, VideoPass};
 
-/// Folder of the built-in fonts next to the program.
-pub const BUILTIN_FONTS: &str = "fonts";
-
 /// The renderer of preview, export and the CLI.
 pub struct Compositor {
     video: VideoPass,
@@ -77,9 +74,7 @@ impl Compositor {
     /// Loads the built-in fonts: the `fonts` folder next to the running program (`cargo xtask
     /// deps` puts them next to the built programs and tests).
     pub fn load_builtin_fonts(&mut self) -> Result<(), RenderError> {
-        let exe = std::env::current_exe().map_err(RenderError::NoBuiltinFonts)?;
-        let dir = exe.parent().unwrap_or(&exe).join(BUILTIN_FONTS);
-        self.load_fonts(&dir)
+        self.load_fonts(&crate::text::builtin_dir()?)
     }
 
     /// Hands over a picture (a frame of a decoded image file) that sprites show as `key`. It
@@ -126,8 +121,9 @@ impl Compositor {
                 Step::Video(media) => self.video.record(recorder.pass(), &self.frames[media]),
                 Step::Shapes(range) => self.shapes.record(recorder.pass(), range.clone()),
                 Step::Blur(i) => {
+                    let passes = (&self.shapes, &self.text);
                     self.blur
-                        .record(&mut recorder, &source, &self.shapes, &self.ops[*i]);
+                        .record(&mut recorder, &source, passes, &self.ops[*i])?;
                 }
                 Step::Text(i) => self.text.record(recorder.pass(), *i)?,
                 Step::Sprite { image, slot } => {
@@ -224,8 +220,19 @@ impl Compositor {
     }
 
     fn push_text(&mut self, gpu: &Gpu, text: &Text, camera: Camera) -> Result<(), RenderError> {
-        let (renderer, decor) = self.text.push(gpu, text, camera)?;
+        let (renderer, decor, placed) = self.text.push(gpu, text, camera)?;
         self.push_shapes(&decor.plates, Camera::IDENTITY);
+        if let Some(shadow) = &text.shadow {
+            let bounds = self.text.shadow_bounds(renderer, shadow, &placed);
+            let pass = &mut self.text;
+            let prepare = |area: &_| pass.push_shadow(gpu, text, shadow, &placed, area);
+            if let Some(op) =
+                self.blur
+                    .push_text_shadow(bounds, shadow.sigma * placed.k, prepare)?
+            {
+                self.push_op(op);
+            }
+        }
         self.steps.push(Step::Text(renderer));
         let underlines = self.shapes.push(&decor.underlines, Camera::IDENTITY);
         self.steps.push(Step::Shapes(underlines));

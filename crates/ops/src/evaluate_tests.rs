@@ -3,7 +3,7 @@ use dc_core::{
     Clip, CursorPicture, CursorPoint, CursorShape, CursorTrack, CursorTracks, KeyPress, KeyTracks,
     OutputTime, PixelSize, Point, Project, Range, Rect, SourceTime, TimeDelta, TimeMap,
 };
-use dc_render::{Band, Layer, Scene};
+use dc_render::{Band, Layer, Scene, TextMeasure};
 use serde_json::json;
 
 use crate::{EvaluateError, Evaluator};
@@ -43,16 +43,27 @@ fn two_clips() -> Project {
 
 #[test]
 fn project_without_clips_has_no_scene() {
-    let error =
-        Evaluator::new(&Project::default(), CursorTracks::new(), KeyTracks::new()).unwrap_err();
-    assert_eq!(error, EvaluateError::Empty);
+    let error = Evaluator::new(
+        &Project::default(),
+        CursorTracks::new(),
+        KeyTracks::new(),
+        &mut TextMeasure::new(),
+    )
+    .unwrap_err();
+    assert!(matches!(error, EvaluateError::Empty), "{error}");
     assert!(error.to_string().contains("devcast clip add"), "{error}");
 }
 
 #[test]
 fn every_scene_has_the_canvas_size_and_is_black_outside_the_video() {
     let p = two_clips();
-    let evaluator = Evaluator::new(&p, CursorTracks::new(), KeyTracks::new()).unwrap();
+    let evaluator = Evaluator::new(
+        &p,
+        CursorTracks::new(),
+        KeyTracks::new(),
+        &mut TextMeasure::new(),
+    )
+    .unwrap();
     let canvas = evaluator.canvas();
     assert_eq!(evaluator.duration(), TimeMap::build(&p).duration());
     assert_eq!(evaluator.map(), &TimeMap::build(&p));
@@ -73,7 +84,13 @@ fn every_scene_has_the_canvas_size_and_is_black_outside_the_video() {
 #[test]
 fn project_scenes_at_the_cut_and_the_join() {
     let p = two_clips();
-    let evaluator = Evaluator::new(&p, CursorTracks::new(), KeyTracks::new()).unwrap();
+    let evaluator = Evaluator::new(
+        &p,
+        CursorTracks::new(),
+        KeyTracks::new(),
+        &mut TextMeasure::new(),
+    )
+    .unwrap();
     let scenes: Vec<_> = [0.0, 0.999_999, 1.0, 2.999_999, 3.0, 4.999_999, 5.0]
         .iter()
         .map(|&t| json!({ "t": t, "scene": evaluator.evaluate(OutputTime::from_secs_f64(t)) }))
@@ -86,7 +103,13 @@ fn broken_effect_state_is_reported_once_before_any_frame() {
     let mut p = two_clips();
     p.effects
         .insert("crop".to_owned(), json!({"settings": {"aspect": "9:16"}}));
-    let error = Evaluator::new(&p, CursorTracks::new(), KeyTracks::new()).unwrap_err();
+    let error = Evaluator::new(
+        &p,
+        CursorTracks::new(),
+        KeyTracks::new(),
+        &mut TextMeasure::new(),
+    )
+    .unwrap_err();
     assert!(matches!(error, EvaluateError::State(_)), "{error}");
     assert!(error.to_string().contains("«crop»"), "{error}");
 }
@@ -96,7 +119,13 @@ fn clips_of_other_proportions_are_fitted_into_the_aspect_frame() {
     let mut p = two_clips();
     p.effects
         .insert("crop".to_owned(), json!({"settings": {"aspect": "4:3"}}));
-    let evaluator = Evaluator::new(&p, CursorTracks::new(), KeyTracks::new()).unwrap();
+    let evaluator = Evaluator::new(
+        &p,
+        CursorTracks::new(),
+        KeyTracks::new(),
+        &mut TextMeasure::new(),
+    )
+    .unwrap();
     let scenes: Vec<_> = [0.5, 3.5]
         .iter()
         .map(|&t| json!({ "t": t, "scene": evaluator.evaluate(OutputTime::from_secs_f64(t)) }))
@@ -114,7 +143,13 @@ fn zoom_camera_moves_the_scene_over_a_cut() {
             "scale": 2.0, "focus": {"x": 0.25, "y": 0.75}, "mode": "fixed"
         }]}),
     );
-    let evaluator = Evaluator::new(&p, CursorTracks::new(), KeyTracks::new()).unwrap();
+    let evaluator = Evaluator::new(
+        &p,
+        CursorTracks::new(),
+        KeyTracks::new(),
+        &mut TextMeasure::new(),
+    )
+    .unwrap();
     let scenes: Vec<_> = [0.0, 1.0, 1.9, 2.5, 4.0]
         .iter()
         .map(|&t| json!({ "t": t, "scene": evaluator.evaluate(OutputTime::from_secs_f64(t)) }))
@@ -148,7 +183,8 @@ fn cursors() -> CursorTracks {
 #[test]
 fn cursor_of_the_recording_lies_over_its_video() {
     let p = two_clips();
-    let evaluator = Evaluator::new(&p, cursors(), KeyTracks::new()).unwrap();
+    let evaluator =
+        Evaluator::new(&p, cursors(), KeyTracks::new(), &mut TextMeasure::new()).unwrap();
     let scene = evaluator.evaluate(OutputTime::from_secs_f64(0.5));
     let bands: Vec<_> = scene.painted().map(|(band, _)| band).collect();
     assert_eq!(bands, [Band::Video, Band::Cursor]);
@@ -166,7 +202,8 @@ fn broken_cursor_state_is_reported_before_any_frame() {
     let mut p = two_clips();
     p.effects
         .insert("cursor".to_owned(), json!({"settings": {"size": "big"}}));
-    let error = Evaluator::new(&p, cursors(), KeyTracks::new()).unwrap_err();
+    let error =
+        Evaluator::new(&p, cursors(), KeyTracks::new(), &mut TextMeasure::new()).unwrap_err();
     assert!(error.to_string().contains("«cursor»"), "{error}");
 }
 
@@ -180,7 +217,7 @@ fn pressed_keys_lie_over_everything_once_shown() {
         name: "Ctrl+S".to_owned(),
     };
     let keys = KeyTracks::from([("media/recording-1/video.mp4".to_owned(), vec![press])]);
-    let evaluator = Evaluator::new(&p, cursors(), keys).unwrap();
+    let evaluator = Evaluator::new(&p, cursors(), keys, &mut TextMeasure::new()).unwrap();
     let scene = evaluator.evaluate(OutputTime::from_secs_f64(0.5));
     let bands: Vec<_> = scene.painted().map(|(band, _)| band).collect();
     assert_eq!(bands, [Band::Video, Band::Cursor, Band::Overlay]);

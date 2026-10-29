@@ -1,15 +1,25 @@
 //! Captions: cues, style, animation.
 
 mod edit;
+mod evaluate;
 mod generate;
+mod layout;
 mod model;
 mod retime;
 mod span;
+mod style;
+mod style_diff;
 mod text;
 
 pub use edit::{CaptionsClear, CaptionsMerge, CaptionsRm, CaptionsSet, CaptionsSplit};
+pub use evaluate::evaluate;
 pub use generate::{CaptionsGen, NewCue, merge_tracks};
+pub use layout::Prepared;
 pub use model::{CaptionsEffect, CaptionsState, Cue, CueId, CueKind, Word};
+pub use style::{
+    Animation, BOTTOM_MAX, CaptionsSettings, CaptionsStyle, RADIUS_MAX, ROWS_MAX, SIZE_MAX,
+    SIZE_MIN, WIDTH_MAX, WIDTH_MIN,
+};
 pub use text::{CaptionsImport, export_text, parse_text};
 
 use dc_core::{EffectInfo, IdKind, OpInfo};
@@ -23,6 +33,7 @@ pub fn ops() -> Vec<OpInfo> {
         OpInfo::of::<CaptionsMerge>(),
         OpInfo::of::<CaptionsRm>(),
         OpInfo::of::<CaptionsClear>(),
+        OpInfo::of::<CaptionsStyle>(),
     ]
 }
 

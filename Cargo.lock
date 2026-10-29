@@ -755,6 +755,7 @@ name = "dc-fx-captions"
 version = "0.1.0"
 dependencies = [
  "dc-core",
+ "dc-render",
  "schemars",
  "serde",
  "serde_json",
@@ -865,6 +866,7 @@ dependencies = [
  "dc-capture",
  "dc-core",
  "dc-fx-callout",
+ "dc-fx-captions",
  "dc-fx-crop",
  "dc-fx-cursor",
  "dc-fx-cut",

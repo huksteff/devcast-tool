@@ -2,6 +2,8 @@
 
 use dc_core::time::Source;
 use dc_core::{CommandError, Effect, Id, IdCounter, IdKind, Item, Range};
+
+use crate::style::CaptionsSettings;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -119,6 +121,8 @@ pub struct CaptionsState {
     /// Sorted by recording, then start; cues may overlap.
     pub cues: Vec<Cue>,
     pub ids: IdCounter<CueKind>,
+    /// Look of all captions (`SETTINGS_FIELD`: copied into new projects by `Defaults`).
+    pub settings: CaptionsSettings,
 }
 
 impl CaptionsState {

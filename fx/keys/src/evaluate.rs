@@ -78,6 +78,7 @@ pub fn evaluate(prepared: &Prepared, t: OutputTime, scene: &mut Scene) {
         }),
         opacity: opacity(shown, t),
         beside: None,
+        shadow: None,
     };
     scene.push(Band::Overlay, Layer::Text(layer));
 }

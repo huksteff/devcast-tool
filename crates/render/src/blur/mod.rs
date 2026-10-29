@@ -10,11 +10,13 @@ mod scratch;
 
 use dc_core::PixelSize;
 
+use crate::error::RenderError;
 use crate::gpu::Gpu;
 use crate::pipeline::pipeline;
 use crate::recorder::Recorder;
 use crate::scene::Blur;
 use crate::shapes::{ShapesPass, View};
+use crate::text::{ShadowArea, TextPass};
 use crate::uniform::Slots;
 
 use scratch::{ONE, Scratch, bind_group, scratch, scratch_pass};
@@ -39,6 +41,10 @@ enum Kind {
     Glow {
         instance: u32,
         view: u32,
+    },
+    /// Shadow `renderer` of the text pass drawn into the scratch texture.
+    TextShadow {
+        renderer: usize,
     },
 }
 
@@ -178,6 +184,36 @@ impl BlurPass {
         })
     }
 
+    /// A text shadow over target-px `bounds` blurred by `sigma` target px: `prepare` lays the
+    /// glyphs out for the scratch area it is given and returns the shadow renderer. `None` when
+    /// the shadow is outside the target.
+    pub(crate) fn push_text_shadow(
+        &mut self,
+        bounds: [f32; 4],
+        sigma: f32,
+        prepare: impl FnOnce(&ShadowArea) -> Result<usize, RenderError>,
+    ) -> Result<Option<Op>, RenderError> {
+        let Some(area) = self.area(bounds, sigma) else {
+            return Ok(None);
+        };
+        let renderer = prepare(&ShadowArea {
+            origin: area.origin,
+            down: area.down,
+        })?;
+        let quad = [
+            area.origin[0],
+            area.origin[1],
+            area.origin[0] + area.texels[0] as f32 * area.down,
+            area.origin[1] + area.texels[1] as f32 * area.down,
+        ];
+        let values = self.values(&area, quad, [0.0; 4], [0.0; 2], [0.0; 2], 0.0);
+        Ok(Some(Op {
+            slot: self.params.push(&values),
+            texels: area.texels,
+            kind: Kind::TextShadow { renderer },
+        }))
+    }
+
     /// Sends the prepared parameters; makes scratch textures of the target's size when the frame
     /// has blurs (`any`) and they are of another size.
     pub(crate) fn upload(&mut self, gpu: &Gpu, any: bool) {
@@ -198,9 +234,9 @@ impl BlurPass {
         &self,
         recorder: &mut Recorder<'_>,
         source: &wgpu::BindGroup,
-        shapes: &ShapesPass,
+        (shapes, text): (&ShapesPass, &TextPass),
         op: &Op,
-    ) {
+    ) -> Result<(), RenderError> {
         let [a, b] = &self.scratch.views;
         let [bind_a, bind_b] = &self.scratch.binds;
         let encoder = recorder.encoder();
@@ -214,6 +250,15 @@ impl BlurPass {
                 shapes.record_mask(&mut pass, instance, view);
                 &self.glow
             }
+            Kind::TextShadow { renderer } => {
+                let mut pass = scratch_pass(encoder, a, op.texels, true);
+                // glyphon places glyphs by the viewport of the whole texture (target size); the
+                // scissor keeps them in the area.
+                let (w, h) = (self.target.width as f32, self.target.height as f32);
+                pass.set_viewport(0.0, 0.0, w, h, 0.0, 1.0);
+                text.record_shadow(&mut pass, renderer)?;
+                &self.glow
+            }
         };
         self.step(encoder, b, &self.horizontal, bind_a, op);
         self.step(encoder, a, &self.vertical, bind_b, op);
@@ -221,6 +266,7 @@ impl BlurPass {
         pass.set_pipeline(composite);
         pass.set_bind_group(0, bind_a, &[op.slot]);
         pass.draw(0..4, 0..1);
+        Ok(())
     }
 
     /// A bind group sampling `view` (the target) for [`Self::record`].

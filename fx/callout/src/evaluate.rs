@@ -84,6 +84,7 @@ pub fn evaluate(
             offset: OFFSET.map(|o| (o * anchor.arrow) as f32),
             margin: (MARGIN * k) as f32,
         }),
+        shadow: None,
     };
     scene.push(Band::Cursor, Layer::Text(layer));
 }

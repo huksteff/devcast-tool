@@ -7,15 +7,15 @@ use crate::{
     CaptionsSet, CaptionsSplit, Cue, NewCue, Word, export_text, merge_tracks, parse_text,
 };
 
-fn secs(s: f64) -> SourceTime {
+pub(crate) fn secs(s: f64) -> SourceTime {
     SourceTime::from_secs_f64(s)
 }
 
-fn span(a: f64, b: f64) -> Range<Source> {
+pub(crate) fn span(a: f64, b: f64) -> Range<Source> {
     Range::new(secs(a), secs(b)).unwrap()
 }
 
-fn clip(project: &mut Project, length: f64) -> &mut Clip {
+pub(crate) fn clip(project: &mut Project, length: f64) -> &mut Clip {
     let id = project.clip_ids.allocate();
     let duration = TimeDelta::from_secs_f64(length);
     project.clips.push(Clip {
@@ -38,7 +38,7 @@ fn clip(project: &mut Project, length: f64) -> &mut Clip {
 }
 
 /// A cue of `media` with one word per second-pair `(text, start, end)`, padded by 0.1 s.
-fn new_cue(media: &str, words: &[(&str, f64, f64)]) -> NewCue {
+pub(crate) fn new_cue(media: &str, words: &[(&str, f64, f64)]) -> NewCue {
     let words: Vec<Word> = words
         .iter()
         .map(|(text, a, b)| Word {
@@ -57,7 +57,7 @@ fn new_cue(media: &str, words: &[(&str, f64, f64)]) -> NewCue {
 
 /// Two recordings of 10 s; `s1` «Привет, это видео.» and `s2` «Пока!» in the first, `s3` in
 /// the second.
-fn project() -> Project {
+pub(crate) fn project() -> Project {
     let mut p = Project::default();
     clip(&mut p, 10.0);
     clip(&mut p, 10.0);
@@ -94,7 +94,7 @@ fn texts(p: &Project) -> Vec<String> {
         .collect()
 }
 
-fn run(p: &mut Project, command: &dyn Command) -> String {
+pub(crate) fn run(p: &mut Project, command: &dyn Command) -> String {
     command.apply(p).unwrap().to_string()
 }
 

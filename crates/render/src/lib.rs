@@ -20,16 +20,17 @@ mod text;
 mod uniform;
 mod video;
 
-pub use compositor::{BUILTIN_FONTS, Compositor};
+pub use compositor::Compositor;
 pub use error::{GpuError, RenderError};
 pub use gpu::{AdapterChoice, BACKEND, FORMAT, Gpu, SRGB_VIEW};
 pub use nv12_readback::{Nv12Readback, Planes};
 pub use offscreen::SHEET_GAP;
 pub use readback::Image;
 pub use scene::{
-    Align, Band, Beside, Blur, BrushStroke, Camera, Drawing, Font, Geometry, Glow, Gradient,
-    GradientColors, ImageKey, Layer, Motion, Paint, Plate, PxRect, Rgba, Scene, Shape, Sprite,
-    Stroke, Text, TextRun, Tool, Video, VideoSource,
+    Align, Band, Beside, Blur, BrushStroke, Camera, Drawing, FAMILIES, Font, Geometry, Glow,
+    Gradient, GradientColors, ImageKey, Layer, Motion, Paint, Plate, PxRect, Rgba, Scene, Shadow,
+    Shape, Sprite, Stroke, Text, TextRun, Tool, Video, VideoSource,
 };
 pub use sprites::{Bitmap, IMAGE_BUDGET};
+pub use text::{BUILTIN_FONTS, TextMeasure};
 pub use video::Nv12;

@@ -43,6 +43,7 @@ expression: frames
           "text": "Ctrl+S"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 1.0
@@ -83,6 +84,7 @@ expression: frames
           "text": "Ctrl+S"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 1.05
@@ -123,6 +125,7 @@ expression: frames
           "text": "Ctrl+S"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 1.5
@@ -163,6 +166,7 @@ expression: frames
           "text": "Ctrl+S"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 2.3
@@ -207,6 +211,7 @@ expression: frames
           "text": "Ctrl+Z"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 3.0
@@ -247,6 +252,7 @@ expression: frames
           "text": "Ctrl+Z"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 3.1
@@ -287,6 +293,7 @@ expression: frames
           "text": "Ctrl+Z ×2"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 3.2
@@ -327,6 +334,7 @@ expression: frames
           "text": "Ctrl+Z ×3"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 3.45
@@ -367,6 +375,7 @@ expression: frames
           "text": "Alt+Tab"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 3.7
@@ -407,6 +416,7 @@ expression: frames
           "text": "Alt+Tab"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 4.0
@@ -447,6 +457,7 @@ expression: frames
           "text": "Alt+Tab"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 5.1
@@ -491,6 +502,7 @@ expression: frames
           "text": "F5"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 6.5
@@ -539,6 +551,7 @@ expression: frames
           "text": "Esc"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 9.5
@@ -579,6 +592,7 @@ expression: frames
           "text": "Esc"
         }
       ],
+      "shadow": null,
       "underline": false
     },
     "t": 10.2

@@ -25,6 +25,17 @@ pub struct Text {
     pub opacity: f32,
     /// One line put next to a point instead of centred in `rect` (the cursor callout).
     pub beside: Option<Beside>,
+    pub shadow: Option<Shadow>,
+}
+
+/// Soft shadow of the letters (captions): their shape in `color`, moved by `offset` and blurred
+/// by a gaussian of `sigma`, under the glyphs and over the plates. Px of the frame; the camera
+/// scales them with the text. v1: canvas `shadowBlur` = 2σ.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Shadow {
+    pub color: Rgba,
+    pub sigma: f32,
+    pub offset: [f32; 2],
 }
 
 /// Places one line (no wrapping) by a point. Its box — the ink grown by the plate's `pad`, or by
@@ -55,6 +66,15 @@ pub struct Font {
     pub bold: bool,
     pub italic: bool,
 }
+
+/// Families of the built-in fonts (decision 000), the same for captions and annotations.
+pub const FAMILIES: [&str; 5] = [
+    "Inter",
+    "Montserrat",
+    "Roboto",
+    "PT Serif",
+    "JetBrains Mono",
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
