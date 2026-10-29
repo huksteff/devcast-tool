@@ -3,6 +3,10 @@
 
 use crate::state::Smoothing;
 
+/// Spring multipliers `[k, c, m]` of the motion presets (cursor.md §15).
+const FOCUSED: [f64; 3] = [1.35, 0.79, 1.29];
+const SMOOTH: [f64; 3] = [0.92, 1.36, 1.29];
+
 /// Mass-spring-damper; at rest when both the distance to the target and the speed are small.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Spring {
@@ -52,8 +56,26 @@ impl Smoothing {
     pub(crate) fn spring(self) -> Option<Spring> {
         match self {
             Self::Exact => None,
-            Self::Focused => Some(config(0.67, [1.35, 0.79, 1.29])),
-            Self::Smooth => Some(config(0.67, [0.92, 1.36, 1.29])),
+            Self::Focused => Some(config(0.67, FOCUSED)),
+            Self::Smooth => Some(config(0.67, SMOOTH)),
+        }
+    }
+
+    /// The spring of the sway angle (v1 `swayCfg`, §10): a little softer than the motion one.
+    /// The exact motion is v1 `smoothing` 0 with the Focused multipliers.
+    pub(crate) fn sway_spring(self) -> Spring {
+        let (smoothing, multipliers) = match self {
+            Self::Exact => (0.0, FOCUSED),
+            Self::Focused => (0.67, FOCUSED),
+            Self::Smooth => (0.67, SMOOTH),
+        };
+        let base = config((smoothing * 0.7 + 0.18_f64).clamp(0.15, 2.0), multipliers);
+        Spring {
+            c: base.c * 0.9,
+            m: (base.m * 0.8).max(0.55),
+            rest_delta: 0.0005,
+            rest_speed: 0.02,
+            ..base
         }
     }
 }
@@ -113,6 +135,16 @@ mod tests {
         assert!(close(focused.m, 1.8073));
         let smooth = config(0.67, [0.92, 1.36, 1.29]);
         assert!(close(smooth.k, 329.3158) && close(smooth.c, 82.2709));
+    }
+
+    #[test]
+    fn sway_springs_match_v1() {
+        // docs/porting/cursor.md §10.
+        let focused = Smoothing::Focused.sway_spring();
+        assert!(close(focused.k, 487.0454) && close(focused.c, 42.7918));
+        assert!(close(focused.m, 1.4393));
+        let smooth = Smoothing::Smooth.sway_spring();
+        assert!(close(smooth.k, 331.9124) && close(smooth.c, 73.6668));
     }
 
     #[test]

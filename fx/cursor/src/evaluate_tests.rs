@@ -1,4 +1,4 @@
-use dc_core::{Range, Rect, TimeMap};
+use dc_core::{CursorTracks, Range, Rect};
 use dc_render::Sprite;
 use serde_json::json;
 
@@ -6,9 +6,13 @@ use super::*;
 use crate::state::Smoothing;
 use crate::test_util::{HAND, HD, o, project, s, tracks};
 
+/// Without bounce, sway and blur: the picture stands upright on the path.
 fn settings(smoothing: Smoothing) -> CursorSettings {
     CursorSettings {
         smoothing,
+        blur: 0.0,
+        bounce: 0.0,
+        sway: 0.0,
         ..CursorSettings::default()
     }
 }

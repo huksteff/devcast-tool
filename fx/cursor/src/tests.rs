@@ -62,6 +62,30 @@ fn size_outside_the_range_is_refused() {
 }
 
 #[test]
+fn motion_settings_are_checked_and_listed() {
+    let mut p = project();
+    let diff = set(json!({"blur": 0, "bounce": 5, "bounce_time": 0.06, "sway": 2, "loop": true}))
+        .apply(&mut p)
+        .unwrap();
+    assert_eq!(
+        diff.to_string(),
+        "курсор: blur 0.60→0.00, отскок 2.00→5.00, время отскока (с) 0.35→0.06, покачивание 0.40→2.00, loop вкл"
+    );
+    let s = settings(&p);
+    assert!(s.looped && s.sway == 2.0 && s.bounce_time.as_secs_f64() == 0.06);
+    for bad in [
+        json!({"blur": 2.1}),
+        json!({"bounce": -0.1}),
+        json!({"bounce_time": 0.05}),
+        json!({"bounce_time": 0.51}),
+        json!({"sway": 2.5}),
+    ] {
+        let error = set(bad.clone()).apply(&mut p).unwrap_err().to_string();
+        assert!(error.contains("нужно от"), "{bad}: {error}");
+    }
+}
+
+#[test]
 fn undo_and_redo_return_the_same_settings() {
     let mut p = project();
     let mut history = History::default();

@@ -27,20 +27,20 @@ fn with(mut project: Project, settings: CursorSettings) -> Result<Project, Box<d
     Ok(project)
 }
 
-/// Output second 0.4 s after click `n` (the fixture has no cuts).
-fn after(clicks: &[SourceTime], n: usize) -> Result<f64, Box<dyn Error>> {
+/// Output second `secs` after click `n` (the fixture has no cuts).
+fn after(clicks: &[SourceTime], n: usize, secs: f64) -> Result<f64, Box<dyn Error>> {
     Ok(clicks
         .get(n)
         .ok_or("fixture without that click")?
         .as_secs_f64()
-        + 0.4)
+        + secs)
 }
 
 #[test]
 fn golden_arrow_at_rest_after_a_click() -> TestResult {
     let (project, tracks, clicks) = fixture()?;
     let project = with(project, CursorSettings::default())?;
-    crate::common::check("cursor/arrow", &project, tracks, after(&clicks, 0)?)
+    crate::common::check("cursor/arrow", &project, tracks, after(&clicks, 0, 0.4)?)
 }
 
 #[test]
@@ -53,5 +53,45 @@ fn golden_large_hand_in_a_cropped_clip() -> TestResult {
         ..CursorSettings::default()
     };
     let project = with(project, settings)?;
-    crate::common::check("cursor/hand_large", &project, tracks, after(&clicks, 1)?)
+    crate::common::check(
+        "cursor/hand_large",
+        &project,
+        tracks,
+        after(&clicks, 1, 0.4)?,
+    )
+}
+
+#[test]
+fn golden_blurred_tilted_cursor_on_its_way() -> TestResult {
+    let (project, tracks, clicks) = fixture()?;
+    let settings = CursorSettings {
+        blur: 1.0,
+        sway: 1.0,
+        ..CursorSettings::default()
+    };
+    let project = with(project, settings)?;
+    // Mouse events come only while it moves: the middle one between two clicks is on the way.
+    let (first, second) = (after(&clicks, 0, 0.0)?, after(&clicks, 1, 0.0)?);
+    let moves: Vec<_> = tracks
+        .values()
+        .flat_map(|t| &t.moves)
+        .map(|m| m.at.as_secs_f64())
+        .filter(|&at| at > first && at < second)
+        .collect();
+    let on_the_way = *moves
+        .get(moves.len() / 2)
+        .ok_or("no moves between the clicks")?;
+    crate::common::check("cursor/motion", &project, tracks, on_the_way)
+}
+
+#[test]
+fn golden_cursor_squeezed_by_a_click() -> TestResult {
+    let (project, tracks, clicks) = fixture()?;
+    let settings = CursorSettings {
+        bounce: 5.0,
+        ..CursorSettings::default()
+    };
+    let project = with(project, settings)?;
+    // Half of the 350 ms bounce: the deepest squeeze, 72 %.
+    crate::common::check("cursor/bounce", &project, tracks, after(&clicks, 2, 0.175)?)
 }

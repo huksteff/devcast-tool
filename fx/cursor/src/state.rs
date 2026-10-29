@@ -1,8 +1,14 @@
+use dc_core::TimeDelta;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub const SIZE_MIN: f64 = 0.5;
 pub const SIZE_MAX: f64 = 10.0;
+pub const BLUR_MAX: f64 = 2.0;
+pub const BOUNCE_MAX: f64 = 5.0;
+pub const BOUNCE_TIME_MIN: TimeDelta = TimeDelta::from_millis(60);
+pub const BOUNCE_TIME_MAX: TimeDelta = TimeDelta::from_millis(500);
+pub const SWAY_MAX: f64 = 2.0;
 
 /// How the drawn cursor follows the recorded one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
@@ -38,6 +44,17 @@ pub struct CursorSettings {
     /// Size, `SIZE_MIN..=SIZE_MAX`: 1 draws the arrow 28 px tall in a clip 1920 px wide.
     pub size: f64,
     pub smoothing: Smoothing,
+    /// Motion blur, `0..=BLUR_MAX`: the trail of the last `blur / 30` s of output; 0 is off.
+    pub blur: f64,
+    /// How much a click squeezes the cursor, `0..=BOUNCE_MAX` (×8 % of its height, down to 72 %).
+    pub bounce: f64,
+    /// Length of the squeeze on the output timeline, `BOUNCE_TIME_MIN..=BOUNCE_TIME_MAX`.
+    pub bounce_time: TimeDelta,
+    /// Tilt in the direction of motion, `0..=SWAY_MAX`: up to `sway · 30°` at speed.
+    pub sway: f64,
+    /// The last 670 ms of the video bring the cursor back to where it starts, for a looped video.
+    #[serde(rename = "loop")]
+    pub looped: bool,
 }
 
 impl Default for CursorSettings {
@@ -46,6 +63,11 @@ impl Default for CursorSettings {
             show: true,
             size: 2.5,
             smoothing: Smoothing::Focused,
+            blur: 0.6,
+            bounce: 2.0,
+            bounce_time: TimeDelta::from_millis(350),
+            sway: 0.4,
+            looped: false,
         }
     }
 }
