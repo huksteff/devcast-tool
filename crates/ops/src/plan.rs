@@ -23,7 +23,6 @@ impl Step {
 
 const PLAN_HINT: &str = r#"план — JSON-массив шагов вида {"op": "zoom add", "at": 12.5}"#;
 
-/// Parses a plan file.
 pub fn parse_plan(text: &str) -> Result<Vec<Step>, OpsError> {
     let value: Value = serde_json::from_str(text)
         .map_err(|e| OpsError::Usage(format!("план не читается как JSON ({e}); {PLAN_HINT}")))?;
