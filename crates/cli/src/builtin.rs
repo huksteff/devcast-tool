@@ -15,7 +15,7 @@ use crate::record;
 use crate::record_args::RecordArgs;
 use crate::record_control::Control;
 use crate::run::Answer;
-use crate::{autozoom, events, import, silences, skill, sources, transcript};
+use crate::{autozoom, captions, events, import, silences, skill, sources, transcript};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -140,6 +140,12 @@ enum Builtin {
         #[command(subcommand)]
         command: ZoomCommand,
     },
+    /// `captions gen`, `export`, `import`; the other `captions …` commands are ops of the registry.
+    #[command(disable_help_subcommand = true)]
+    Captions {
+        #[command(subcommand)]
+        command: CaptionsCommand,
+    },
     #[command(
         about = "Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
         after_help = "record --source screen:1 --duration 10 -o урок.dcproj"
@@ -209,6 +215,34 @@ enum ZoomCommand {
     Op(Vec<String>),
 }
 
+#[derive(Debug, Subcommand)]
+enum CaptionsCommand {
+    #[command(
+        about = "Субтитры из речи записей: заменяет все реплики; первый раз распознаёт речь, как transcript",
+        after_help = "captions gen --tracks mic,system --language ru"
+    )]
+    Gen(captions::GenArgs),
+    #[command(
+        about = "Текст всех реплик в файл для перевода: строка «s3 текст» на реплику, по порядку видео",
+        after_help = "captions export -o субтитры.txt"
+    )]
+    Export {
+        #[arg(short = 'o', long, help = "Текстовый файл, куда писать")]
+        out: PathBuf,
+    },
+    #[command(
+        about = "Новый текст реплик из файла captions export; время реплик не меняется",
+        after_help = "captions import субтитры.txt"
+    )]
+    Import {
+        #[arg(help = "Файл со строками «s3 текст»; реплики, которых в нём нет, не меняются")]
+        file: PathBuf,
+    },
+    /// `captions set`, `captions split` … from the registry.
+    #[command(external_subcommand)]
+    Op(Vec<String>),
+}
+
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum SkillAction {
     Install,
@@ -254,6 +288,14 @@ impl Cli {
             Builtin::Zoom {
                 command: ZoomCommand::Op(words),
             } => autozoom::op(ctx, &[vec!["zoom".to_owned()], words].concat()),
+            Builtin::Captions { command } => match command {
+                CaptionsCommand::Gen(args) => captions::generate(ctx, &args),
+                CaptionsCommand::Export { out } => captions::export(ctx, &out),
+                CaptionsCommand::Import { file } => captions::import(ctx, &file),
+                CaptionsCommand::Op(words) => {
+                    edit::op(ctx, &[vec!["captions".to_owned()], words].concat())
+                }
+            },
             Builtin::Record { control, args } => record::record(ctx, control, &args),
             Builtin::Export { action, id, args } => {
                 export::export(ctx, action, id.as_deref(), &args, &export::channel()?)

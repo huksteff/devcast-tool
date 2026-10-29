@@ -2,6 +2,7 @@
 
 mod autozoom;
 mod builtin;
+mod captions;
 mod edit;
 pub mod error;
 mod events;
@@ -29,6 +30,8 @@ pub mod workspace;
 
 #[cfg(test)]
 mod autozoom_tests;
+#[cfg(test)]
+mod captions_tests;
 #[cfg(test)]
 mod cut_e2e_tests;
 #[cfg(test)]

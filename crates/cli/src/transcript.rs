@@ -222,7 +222,7 @@ pub(crate) fn transcript(ctx: &Ctx<'_>, args: &Args) -> Result<Answer, CliError>
 }
 
 /// Cues of `words` (the shown words of one recording), split also at its silences.
-fn media_cues(media: &MediaWords, words: &[Word]) -> Result<Vec<Cue>, CliError> {
+pub(crate) fn media_cues(media: &MediaWords, words: &[Word]) -> Result<Vec<Cue>, CliError> {
     let Some(end) = media.words.last().map(|w| w.end) else {
         return Ok(Vec::new());
     };

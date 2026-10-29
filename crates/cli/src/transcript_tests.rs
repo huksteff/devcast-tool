@@ -33,7 +33,7 @@ const WORDS: [(&str, f64, f64); 16] = [
 
 pub(crate) struct Speech {
     _tmp: tempfile::TempDir,
-    root: PathBuf,
+    pub(crate) root: PathBuf,
 }
 
 impl Speech {

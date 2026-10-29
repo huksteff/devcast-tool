@@ -9,3 +9,9 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+dc-core = { path = "../../crates/core" }
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true

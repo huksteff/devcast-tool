@@ -5,8 +5,18 @@ use dc_ops::Registry;
 use crate::error::CliError;
 
 pub fn registry() -> Result<Registry, CliError> {
-    let ops = [dc_fx_cut::ops(), dc_fx_crop::ops(), dc_fx_zoom::ops()].concat();
-    let effects = vec![dc_fx_crop::effect(), dc_fx_zoom::effect()];
+    let ops = [
+        dc_fx_cut::ops(),
+        dc_fx_crop::ops(),
+        dc_fx_zoom::ops(),
+        dc_fx_captions::ops(),
+    ]
+    .concat();
+    let effects = vec![
+        dc_fx_crop::effect(),
+        dc_fx_zoom::effect(),
+        dc_fx_captions::effect(),
+    ];
     Registry::new(ops, effects).map_err(|e| {
         CliError::Failed(format!(
             "внутренняя ошибка: реестр команд собран неверно ({e}). Это баг, сообщи о нём"

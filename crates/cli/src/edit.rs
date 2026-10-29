@@ -28,7 +28,7 @@ impl Ctx<'_> {
         Workspace::open(dir, write && !self.globals.dry_run, self.globals.dry_run)
     }
 
-    fn prefix(&self) -> &'static str {
+    pub(crate) fn prefix(&self) -> &'static str {
         if self.globals.dry_run { DRY_RUN } else { "" }
     }
 }

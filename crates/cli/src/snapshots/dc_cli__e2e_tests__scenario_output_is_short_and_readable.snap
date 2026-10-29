@@ -4,7 +4,7 @@ expression: log
 ---
 $ devcast info
 Урок 2.dcproj: длительность 0:30.000, всё сохранено
-списки: clips 2, zooms 0; подробно: devcast ls <список>
+списки: captions 0, clips 2, zooms 0; подробно: devcast ls <список>
 → 0
 
 $ devcast ls clips
@@ -78,5 +78,5 @@ $ devcast history
 
 $ devcast info
 Урок 2.dcproj: длительность 0:27.000, всё сохранено
-списки: clips 3, zooms 2; подробно: devcast ls <список>
+списки: captions 0, clips 3, zooms 2; подробно: devcast ls <список>
 → 0
