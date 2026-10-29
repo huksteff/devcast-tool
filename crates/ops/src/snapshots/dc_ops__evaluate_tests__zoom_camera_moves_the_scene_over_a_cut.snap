@@ -49,7 +49,14 @@ expression: scenes
         "x": 0.0,
         "y": -1062.687744140625
       },
-      "camera_motion": null,
+      "camera_motion": {
+        "from": {
+          "scale": 1.981645107269287,
+          "x": 0.0,
+          "y": -1060.1767578125
+        },
+        "samples": 13
+      },
       "layers": {
         "video": [
           {
@@ -88,7 +95,14 @@ expression: scenes
         "x": 0.0,
         "y": -591.6193237304688
       },
-      "camera_motion": null,
+      "camera_motion": {
+        "from": {
+          "scale": 1.6137689352035522,
+          "x": 0.0,
+          "y": -662.8704223632813
+        },
+        "samples": 13
+      },
       "layers": {
         "video": [
           {
@@ -127,7 +141,14 @@ expression: scenes
         "x": 0.0,
         "y": -19.738384246826172
       },
-      "camera_motion": null,
+      "camera_motion": {
+        "from": {
+          "scale": 1.020926833152771,
+          "x": 0.0,
+          "y": -22.601049423217773
+        },
+        "samples": 13
+      },
       "layers": {
         "video": [
           {

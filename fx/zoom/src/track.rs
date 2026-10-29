@@ -2,8 +2,10 @@
 //! simulated once with a fixed step, so the preview, the export and `devcast frame` show the
 //! same frame at any frame rate and after any seek. `evaluate` reads it between two steps.
 
-use dc_core::{CursorTracks, OutputTime, PixelSize, Point, Project, TimeMap};
-use dc_render::{Camera, Scene};
+use std::num::NonZeroU32;
+
+use dc_core::{CursorTracks, OutputTime, PixelSize, Point, Project, TimeDelta, TimeMap};
+use dc_render::{Camera, Motion, Scene};
 
 use crate::aim::Pulls;
 use crate::follow::Follow;
@@ -14,6 +16,12 @@ use crate::spring::Spring;
 
 /// Simulation step, seconds of the output video.
 pub const STEP: f64 = 1.0 / 240.0;
+
+/// Motion blur at strength 1 opens the shutter for this long (v1: the motion of 1/60 s, ×4 for
+/// a long exposure); the strength scales it.
+const SHUTTER: f64 = 4.0 / 60.0;
+/// Samples of the camera blur (v1 kernel size).
+const BLUR_SAMPLES: NonZeroU32 = NonZeroU32::new(13).unwrap();
 
 /// Consecutive simulation steps where the camera is not at rest.
 #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +35,8 @@ struct Run {
 pub struct CameraTrack {
     canvas: PixelSize,
     runs: Vec<Run>,
+    /// How long the shutter of the camera blur is open; zero without blur.
+    shutter: TimeDelta,
 }
 
 impl CameraTrack {
@@ -59,6 +69,7 @@ impl CameraTrack {
         Self {
             canvas,
             runs: simulate(pulls, spring, steps, cursor),
+            shutter: TimeDelta::from_secs_f64(SHUTTER * state.settings.motion_blur),
         }
     }
 
@@ -79,9 +90,15 @@ impl CameraTrack {
         }
     }
 
-    /// Puts the camera of output moment `t` into `scene`.
+    /// Puts the camera of output moment `t` into `scene`, smeared over its path during the
+    /// shutter (§9: the video only; zoom and pan alike) if it moved.
     pub fn evaluate(&self, t: OutputTime, scene: &mut Scene) {
         scene.camera = self.camera(t);
+        let from = self.camera((t - self.shutter).max(OutputTime::ZERO));
+        scene.camera_motion = (from != scene.camera).then_some(Motion {
+            from,
+            samples: BLUR_SAMPLES,
+        });
     }
 
     fn shot(&self, step: usize) -> Shot {
@@ -116,7 +133,7 @@ fn aim(
     } else {
         None
     };
-    let focus = follow.focus(index, zoom, strength, pointer);
+    let focus = follow.focus(pulls.get(index).chain, zoom, strength, pointer);
     Shot::toward(zoom.scale, focus, strength)
 }
 

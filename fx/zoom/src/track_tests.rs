@@ -258,3 +258,114 @@ fn follow_zoom_without_a_cursor_stays_on_its_focus() {
     let fixed = CameraTrack::simulate(&one_zoom(2.0, 5.0), &map, HD, sweep);
     assert_eq!(blind, fixed);
 }
+
+/// Two 2× zooms 0.5 s apart: (0.3, 0.4) over 2–4 s and (0.7, 0.6) over 4.5–6.5 s.
+fn close_pair(connect: bool) -> ZoomState {
+    let mut state = one_zoom(2.0, 4.0);
+    zoom(&mut state, 4.5, 6.5, 2.0, (0.7, 0.6));
+    state.settings.connect = connect;
+    state
+}
+
+fn lowest_scale(track: &CameraTrack, from_ms: i64, to_ms: i64) -> f32 {
+    (from_ms..to_ms)
+        .step_by(10)
+        .map(|ms| track.camera(OutputTime::from_micros(ms * 1000)).scale)
+        .fold(f32::MAX, f32::min)
+}
+
+#[test]
+fn connected_zooms_pan_without_zooming_out() {
+    let p = project(10.0);
+    let connected = track(&p, &close_pair(true));
+    assert!(lowest_scale(&connected, 3_000, 5_500) > 1.99);
+    let apart = track(&p, &close_pair(false));
+    assert!(lowest_scale(&apart, 3_000, 5_500) < 1.6);
+    let held = connected.camera(at(6.0));
+    let [x, y] = held.apply([0.7 * 1920.0, 0.6 * 1080.0]);
+    assert!(
+        (x - 960.0).abs() < 1.0 && (y - 540.0).abs() < 1.0,
+        "{held:?}"
+    );
+}
+
+#[test]
+fn far_zooms_are_not_connected() {
+    let p = project(12.0);
+    let mut state = one_zoom(2.0, 4.0);
+    zoom(&mut state, 5.4, 7.0, 2.0, (0.7, 0.6));
+    assert!(lowest_scale(&track(&p, &state), 3_000, 6_000) < 1.1);
+}
+
+#[test]
+fn connected_zooms_as_snapshots() {
+    let p = project(10.0);
+    let track = track(&p, &close_pair(true));
+    let moments = [3.6, 3.8, 4.0, 4.1, 4.2, 4.3, 4.5, 4.8, 5.2, 6.4];
+    let cameras: Vec<_> = moments
+        .iter()
+        .map(|&t| json!({ "t": t, "camera": rounded(track.camera(at(t))) }))
+        .collect();
+    insta::assert_json_snapshot!(cameras);
+}
+
+#[test]
+fn connected_follow_zooms_keep_following() {
+    let p = project(10.0);
+    let map = TimeMap::build(&p);
+    let mut state = close_pair(true);
+    state.zooms[0].mode = Mode::Follow;
+    state.zooms[1].mode = Mode::Follow;
+    state.zooms[1].focus = Point { x: 0.2, y: 0.5 };
+    let right = |_: f64| Some(Point { x: 0.8, y: 0.5 });
+    let chained = CameraTrack::simulate(&state, &map, HD, right);
+    let [x, _] = chained.camera(at(6.0)).apply([0.75 * 1920.0, 0.5 * 1080.0]);
+    assert!((x - 960.0).abs() < 1.0, "{x}");
+    state.zooms[1].mode = Mode::Fixed;
+    let fixed = CameraTrack::simulate(&state, &map, HD, right);
+    let [x, _] = fixed.camera(at(6.0)).apply([0.25 * 1920.0, 0.5 * 1080.0]);
+    assert!((x - 960.0).abs() < 1.0, "{x}");
+}
+
+#[test]
+fn smooth_preset_as_snapshots() {
+    let p = project(10.0);
+    let mut state = one_zoom(2.0, 5.0);
+    (state.settings.zoom_in, state.settings.zoom_out) = Preset::Smooth.durations();
+    let track = track(&p, &state);
+    let moments = [
+        1.6, 1.8, 2.0, 2.4, 2.8, 3.2, 3.6, 4.6, 4.8, 5.0, 5.3, 5.6, 6.0, 6.5, 7.0,
+    ];
+    let cameras: Vec<_> = moments
+        .iter()
+        .map(|&t| json!({ "t": t, "camera": rounded(track.camera(at(t))) }))
+        .collect();
+    insta::assert_json_snapshot!(cameras);
+}
+
+#[test]
+fn moving_camera_is_blurred_over_its_shutter() {
+    let p = project(10.0);
+    let track = track(&p, &one_zoom(2.0, 5.0));
+    let mut scene = Scene::new(HD);
+    track.evaluate(at(1.8), &mut scene);
+    let motion = scene.camera_motion.expect("zooming in is blurred");
+    let shutter = TimeDelta::from_secs_f64(4.0 / 60.0 * 0.35);
+    assert_eq!(motion.from, track.camera(at(1.8) - shutter));
+    assert_eq!(motion.samples.get(), 13);
+    for t in [0.5, 9.0] {
+        let mut still = Scene::new(HD);
+        track.evaluate(at(t), &mut still);
+        assert_eq!(still.camera_motion, None, "{t} s");
+    }
+    let mut held = Scene::new(HD);
+    track.evaluate(at(3.5), &mut held);
+    let from = held.camera_motion.map_or(held.camera, |m| m.from);
+    assert!((from.x - held.camera.x).abs() < 0.05, "{from:?}");
+    let mut state = one_zoom(2.0, 5.0);
+    state.settings.motion_blur = 0.0;
+    let sharp = super::CameraTrack::new(&p, &state, &TimeMap::build(&p), HD, &CursorTracks::new());
+    let mut scene = Scene::new(HD);
+    sharp.evaluate(at(1.8), &mut scene);
+    assert_eq!(scene.camera_motion, None);
+}

@@ -24,7 +24,7 @@ pub(crate) struct Follow {
 }
 
 impl Follow {
-    /// The focus of zoom number `index` at `strength` (0..1) with the cursor at `cursor`, if
+    /// The focus of zoom chain `index` (connected follow zooms share one) at `strength` (0..1) with the cursor at `cursor`, if
     /// the recording has one there.
     pub(crate) fn focus(
         &mut self,

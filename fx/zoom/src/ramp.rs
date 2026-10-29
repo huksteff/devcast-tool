@@ -50,6 +50,16 @@ impl Ramp {
         (self.in0, self.out0 + self.exit)
     }
 
+    /// When the zoom-out starts.
+    pub(crate) fn exit_start(&self) -> f64 {
+        self.out0
+    }
+
+    /// The strength held between the zoom-in and the zoom-out; 1 unless the zoom is short.
+    pub(crate) fn peak(&self) -> f64 {
+        self.peak
+    }
+
     pub(crate) fn strength(&self, t: f64) -> f64 {
         if t < self.in0 || t >= self.out0 + self.exit {
             0.0

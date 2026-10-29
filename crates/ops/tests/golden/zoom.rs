@@ -78,3 +78,31 @@ fn golden_follow_zoom_starts_at_the_cursor() -> TestResult {
 fn golden_follow_zoom_moves_to_the_cursor() -> TestResult {
     follow(2.0, "follow_moved")
 }
+
+/// Task 5.19: halfway through the pan between two connected zooms, the camera stays zoomed in.
+#[test]
+fn golden_connected_zooms_pan_between_their_points() -> TestResult {
+    let mut project = zoomed(2.0, 0.25, 0.25)?;
+    if let Some(zoom) = project.effects.get_mut("zoom") {
+        zoom["zooms"][0]["range"]["end"] = 1_500_000.into();
+        let second = serde_json::json!({
+            "id": "z2", "media": "media/a.mp4", "range": {"start": 2_000_000, "end": 3_000_000},
+            "scale": 2.0, "focus": {"x": 0.75, "y": 0.75}, "mode": "fixed"
+        });
+        zoom["zooms"]
+            .as_array_mut()
+            .ok_or("zooms is a list")?
+            .push(second);
+    }
+    check("connected", &project, 1.8)
+}
+
+/// Task 5.19: the zoom-in at the strongest motion blur smears the video.
+#[test]
+fn golden_zoom_in_is_blurred() -> TestResult {
+    let mut project = zoomed(3.0, 0.25, 0.75)?;
+    if let Some(zoom) = project.effects.get_mut("zoom") {
+        zoom["settings"] = serde_json::json!({ "motion_blur": 2.0 });
+    }
+    check("blurred", &project, 0.3)
+}
