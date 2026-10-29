@@ -1,12 +1,16 @@
 //! Zoom regions, follow mode, motion, auto zooms.
 
+mod aim;
 mod classify;
 mod ease;
+mod follow;
 mod frame;
 mod model;
 mod motion;
+mod pointer;
 mod ramp;
 mod region;
+mod shot;
 mod span;
 mod spring;
 mod suggest;

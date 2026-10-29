@@ -36,7 +36,13 @@ impl<'p> Evaluator<'p> {
         let crop = project.state::<Crop>()?;
         let canvas = dc_fx_crop::canvas(project, &crop.settings).ok_or(EvaluateError::Empty)?;
         let map = TimeMap::build(project);
-        let camera = CameraTrack::new(&project.state::<ZoomEffect>()?, &map, canvas);
+        let camera = CameraTrack::new(
+            project,
+            &project.state::<ZoomEffect>()?,
+            &map,
+            canvas,
+            &cursors,
+        );
         let cursor = project.state::<Cursor>()?;
         Ok(Self {
             project,

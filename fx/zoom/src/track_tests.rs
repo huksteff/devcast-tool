@@ -1,6 +1,7 @@
 use dc_core::project::{Media, MediaKind, SpeedRange};
 use dc_core::{
-    Clip, OutputTime, PixelSize, Point, Project, Range, Rect, SourceTime, TimeDelta, TimeMap,
+    Clip, CursorTracks, OutputTime, PixelSize, Point, Project, Range, Rect, SourceTime, TimeDelta,
+    TimeMap,
 };
 use dc_render::{Camera, Scene};
 use serde_json::json;
@@ -63,7 +64,7 @@ fn one_zoom(from: f64, to: f64) -> ZoomState {
 }
 
 fn track(p: &Project, state: &ZoomState) -> CameraTrack {
-    CameraTrack::new(state, &TimeMap::build(p), HD)
+    CameraTrack::new(p, state, &TimeMap::build(p), HD, &CursorTracks::new())
 }
 
 fn rounded(camera: Camera) -> serde_json::Value {
@@ -204,4 +205,56 @@ fn evaluate_sets_the_camera_of_the_scene() {
     track.evaluate(at(3.0), &mut scene);
     assert_eq!(scene.camera, track.camera(at(3.0)));
     assert_eq!(scene.layers.len(), 0);
+}
+
+fn follow_zoom(from: f64, to: f64) -> ZoomState {
+    let mut state = one_zoom(from, to);
+    state.zooms[0].mode = Mode::Follow;
+    state
+}
+
+/// The cursor sweeps the frame left to right over 2–5 s, at mid height.
+fn sweep(t: f64) -> Option<Point> {
+    let x = (0.1 + (t - 2.0) / 3.0 * 0.8).clamp(0.1, 0.9);
+    Some(Point { x, y: 0.5 })
+}
+
+#[test]
+fn follow_zoom_moves_with_the_cursor() {
+    let p = project(10.0);
+    let track = CameraTrack::simulate(&follow_zoom(2.0, 5.0), &TimeMap::build(&p), HD, sweep);
+    let moments = [
+        1.7, 1.8, 2.0, 2.4, 2.8, 3.0, 3.2, 3.5, 3.8, 4.0, 4.3, 4.6, 4.8, 5.0, 5.5,
+    ];
+    let cameras: Vec<_> = moments
+        .iter()
+        .map(|&t| json!({ "t": t, "camera": rounded(track.camera(at(t))) }))
+        .collect();
+    insta::assert_json_snapshot!(cameras);
+}
+
+#[test]
+fn followed_cursor_never_leaves_the_frame() {
+    let p = project(10.0);
+    let track = CameraTrack::simulate(&follow_zoom(2.0, 5.0), &TimeMap::build(&p), HD, sweep);
+    for ms in (1_700..5_000).step_by(10) {
+        let t = f64::from(ms) / 1000.0;
+        let cursor = sweep(t).unwrap();
+        let [x, y] = track
+            .camera(at(t))
+            .apply([(cursor.x * 1920.0) as f32, (cursor.y * 1080.0) as f32]);
+        assert!(
+            (0.0..=1920.0).contains(&x) && (0.0..=1080.0).contains(&y),
+            "{ms} ms: {x} {y}"
+        );
+    }
+}
+
+#[test]
+fn follow_zoom_without_a_cursor_stays_on_its_focus() {
+    let p = project(10.0);
+    let map = TimeMap::build(&p);
+    let blind = CameraTrack::simulate(&follow_zoom(2.0, 5.0), &map, HD, |_| None);
+    let fixed = CameraTrack::simulate(&one_zoom(2.0, 5.0), &map, HD, sweep);
+    assert_eq!(blind, fixed);
 }
