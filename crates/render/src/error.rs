@@ -51,4 +51,14 @@ pub enum RenderError {
     Text(glyphon::PrepareError),
     #[error("текст не нарисовался: {0}. Это ошибка программы: сообщи разработчику")]
     TextDraw(glyphon::RenderError),
+    #[error(
+        "картинка {width}×{height} не той длины: {len} байт RGBA. Это ошибка программы: сообщи разработчику"
+    )]
+    Bitmap { width: u32, height: u32, len: usize },
+    #[error("картинка «{path}» больше {max} px по стороне: уменьши её")]
+    BitmapTooBig { path: String, max: u32 },
+    #[error(
+        "картинка «{path}» (кадр {frame}) не загружена в рендер перед рисованием сцены. Это ошибка программы: сообщи разработчику"
+    )]
+    NoImage { path: String, frame: u32 },
 }

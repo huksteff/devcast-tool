@@ -10,6 +10,7 @@ mod readback;
 mod recorder;
 pub mod scene;
 mod shapes;
+mod sprites;
 mod text;
 mod uniform;
 mod video;
@@ -19,7 +20,8 @@ pub use error::{GpuError, RenderError};
 pub use gpu::{AdapterChoice, BACKEND, FORMAT, Gpu, SRGB_VIEW};
 pub use readback::Image;
 pub use scene::{
-    Align, Band, Blur, Camera, Font, Geometry, Glow, Gradient, GradientColors, Layer, Paint, Plate,
-    PxRect, Rgba, Scene, Shape, Stroke, Text, TextRun, Video, VideoSource,
+    Align, Band, Blur, Camera, Font, Geometry, Glow, Gradient, GradientColors, ImageKey, Layer,
+    Paint, Plate, PxRect, Rgba, Scene, Shape, Sprite, Stroke, Text, TextRun, Video, VideoSource,
 };
+pub use sprites::{Bitmap, IMAGE_BUDGET};
 pub use video::Nv12;

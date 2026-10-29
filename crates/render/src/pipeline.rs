@@ -7,12 +7,24 @@ pub(crate) fn pipeline(
     device: &wgpu::Device,
     module: &wgpu::ShaderModule,
     layout: &wgpu::BindGroupLayout,
+    stages: [&str; 2],
+    blend: Option<wgpu::BlendState>,
+) -> wgpu::RenderPipeline {
+    pipeline_with(device, module, &[layout], stages, blend)
+}
+
+/// [`pipeline`] with bind groups of `layouts` in order.
+pub(crate) fn pipeline_with(
+    device: &wgpu::Device,
+    module: &wgpu::ShaderModule,
+    layouts: &[&wgpu::BindGroupLayout],
     [vs, fs]: [&str; 2],
     blend: Option<wgpu::BlendState>,
 ) -> wgpu::RenderPipeline {
+    let layouts: Vec<_> = layouts.iter().copied().map(Some).collect();
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some(fs),
-        bind_group_layouts: &[Some(layout)],
+        bind_group_layouts: &layouts,
         immediate_size: 0,
     });
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {

@@ -11,8 +11,9 @@ use crate::blur::{BlurPass, Op};
 use crate::error::RenderError;
 use crate::gpu::{Gpu, SRGB_VIEW};
 use crate::recorder::Recorder;
-use crate::scene::{Blur, Camera, Layer, PxRect, Scene, Shape, Text, VideoSource};
+use crate::scene::{Blur, Camera, ImageKey, Layer, PxRect, Scene, Shape, Text, VideoSource};
 use crate::shapes::{ShapesPass, glow_area};
+use crate::sprites::{Bitmap, SpritesPass};
 use crate::text::TextPass;
 use crate::video::{Nv12, VideoFrame, VideoPass};
 
@@ -22,6 +23,7 @@ pub struct Compositor {
     shapes: ShapesPass,
     blur: BlurPass,
     text: TextPass,
+    sprites: SpritesPass,
     /// Decoded frames by `Media::path`; a frame the drawn scene does not show is dropped.
     frames: HashMap<String, VideoFrame>,
     /// What the frame being drawn records, in paint order.
@@ -37,6 +39,10 @@ enum Step {
     Blur(usize),
     /// Glyphs of text renderer `i`.
     Text(usize),
+    Sprite {
+        image: ImageKey,
+        slot: u32,
+    },
 }
 
 impl Compositor {
@@ -46,6 +52,7 @@ impl Compositor {
             shapes: ShapesPass::new(gpu),
             blur: BlurPass::new(gpu),
             text: TextPass::new(gpu),
+            sprites: SpritesPass::new(gpu),
             frames: HashMap::new(),
             steps: Vec::new(),
             ops: Vec::new(),
@@ -57,6 +64,22 @@ impl Compositor {
     /// included (decision 005).
     pub fn load_fonts(&mut self, dir: &Path) -> Result<(), RenderError> {
         self.text.load_fonts(dir)
+    }
+
+    /// Hands over a picture (a frame of a decoded image file) that sprites show as `key`. It
+    /// stays until the pictures exceed [`crate::IMAGE_BUDGET`]; [`Self::has_image`] tells whether
+    /// it is still here.
+    pub fn upload_image(
+        &mut self,
+        gpu: &Gpu,
+        key: &ImageKey,
+        bitmap: Bitmap<'_>,
+    ) -> Result<(), RenderError> {
+        self.sprites.upload(gpu, key, bitmap)
+    }
+
+    pub fn has_image(&self, key: &ImageKey) -> bool {
+        self.sprites.contains(key)
     }
 
     /// Hands over the decoded frame of `source`, before [`Self::draw`] of a scene showing it.
@@ -91,6 +114,9 @@ impl Compositor {
                         .record(&mut recorder, &source, &self.shapes, &self.ops[*i]);
                 }
                 Step::Text(i) => self.text.record(recorder.pass(), *i)?,
+                Step::Sprite { image, slot } => {
+                    self.sprites.record(recorder.pass(), image, *slot);
+                }
             }
         }
         gpu.queue.submit([recorder.finish()]);
@@ -117,6 +143,7 @@ impl Compositor {
         self.shapes.clear(scene.size, target);
         self.blur.clear(scene.size, target);
         self.text.clear(gpu, scene.size, target);
+        self.sprites.clear();
         self.steps.clear();
         self.ops.clear();
         for (band, layer) in scene.painted() {
@@ -138,9 +165,15 @@ impl Compositor {
                     }
                 }
                 Layer::Text(text) => self.push_text(gpu, text, camera)?,
+                Layer::Sprite(sprite) => {
+                    let slot = self.sprites.push(sprite, camera, scene.size, target)?;
+                    let image = sprite.image.clone();
+                    self.steps.push(Step::Sprite { image, slot });
+                }
             }
         }
         self.shapes.upload(gpu);
+        self.sprites.upload_slots(gpu);
         self.blur.upload(gpu, !self.ops.is_empty());
         Ok(())
     }

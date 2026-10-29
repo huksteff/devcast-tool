@@ -51,6 +51,15 @@ pub enum MediaError {
         source: ffmpeg_next::Error,
     },
 
+    #[error("не удалось прочитать картинку «{}»: {source}. Поддерживаются PNG, JPEG, WebP и GIF; пересохрани файл в PNG", path.display())]
+    Picture {
+        path: PathBuf,
+        source: ffmpeg_next::Error,
+    },
+
+    #[error("кадры картинки «{}» занимают больше {limit_mb} МБ: уменьши её или сократи анимацию", path.display())]
+    PictureTooBig { path: PathBuf, limit_mb: usize },
+
     #[error("поток декодирования видео «{}» остановился: открой видео заново", path.display())]
     Stopped { path: PathBuf },
 

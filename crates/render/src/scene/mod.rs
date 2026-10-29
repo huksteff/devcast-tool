@@ -6,6 +6,7 @@
 
 mod blur;
 mod shape;
+mod sprite;
 mod text;
 mod video;
 
@@ -19,6 +20,7 @@ pub use shape::{
     Geometry, Glow, Gradient, GradientColors, GradientCount, Paint, ParseRgbaError, Rgba, Shape,
     Stroke,
 };
+pub use sprite::{ImageKey, Sprite};
 pub use text::{Align, Font, Plate, Text, TextRun};
 pub use video::{PxRect, Video, VideoSource};
 
@@ -104,6 +106,7 @@ pub enum Layer {
     Shapes(Vec<Shape>),
     Blur(Blur),
     Text(Text),
+    Sprite(Sprite),
 }
 
 #[cfg(test)]
