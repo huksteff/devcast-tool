@@ -2,6 +2,7 @@
 
 pub mod atomic;
 pub mod autosave;
+pub mod cache;
 pub mod defaults;
 pub mod dir;
 pub mod error;
@@ -11,6 +12,7 @@ pub mod migrate;
 pub mod settings;
 
 pub use autosave::Autosave;
+pub use cache::FileStamp;
 pub use defaults::Defaults;
 pub use dir::ProjectDir;
 pub use error::{ProjectError, Result};

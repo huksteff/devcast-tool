@@ -12,10 +12,10 @@
 use std::path::{Path, PathBuf};
 
 use dc_core::{PixelSize, Project, SourceTime};
-use dc_project::{ProjectDir, atomic};
+use dc_project::{FileStamp, ProjectDir, atomic};
 use ffmpeg_next as ffmpeg;
 
-use crate::cache::{cached_probe, stamp};
+use crate::cache::cached_probe;
 use crate::decoder::{Decoder, Frame, nv12_len};
 use crate::error::MediaError;
 use crate::pool::FramePool;
@@ -28,20 +28,17 @@ pub const PREVIEW_MAX: PixelSize = PixelSize {
 /// The preview of the project's media file `media` (path relative to the project, with `/`).
 pub fn preview(project: &ProjectDir, media: &str) -> Result<PathBuf, MediaError> {
     let file = project.root().join(media);
-    let stamp = stamp(&file)?;
-    let mut target = project.cache_dir();
-    target.extend(media.split('/'));
-    let name = target
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let prefix = format!("{name}.preview-");
-    let path = target.with_file_name(format!("{prefix}{}-{}.png", stamp.size, stamp.modified_ns));
+    let stamp = FileStamp::of(&file)?;
+    let stale = project.cache_file(Path::new(media), ".preview-");
+    let path = project.cache_file(
+        Path::new(media),
+        &format!(".preview-{}-{}.png", stamp.size, stamp.modified_ns),
+    );
     if path.is_file() {
         return Ok(path);
     }
     let png = render(project, media, &file)?;
-    remove_old(&path, &prefix)?;
+    remove_old(&stale)?;
     atomic::write(&path, &png)?;
     Ok(path)
 }
@@ -134,19 +131,21 @@ fn encode_png(rgb: &ffmpeg::frame::Video) -> Result<Vec<u8>, ffmpeg::Error> {
         .ok_or(ffmpeg::Error::InvalidData)
 }
 
-/// Deletes the previews of the same media made from an older version of the file.
-fn remove_old(path: &Path, prefix: &str) -> Result<(), MediaError> {
-    let Some(folder) = path.parent() else {
+/// Deletes the previews of the same media made from an older version of the file: the files
+/// whose path starts with `stale` (`cache/<media>.preview-`).
+fn remove_old(stale: &Path) -> Result<(), MediaError> {
+    let Some(folder) = stale.parent() else {
         return Ok(());
     };
     std::fs::create_dir_all(folder).map_err(MediaError::io("создать папку", folder))?;
+    let prefix = stale.as_os_str().to_string_lossy();
     let entries = std::fs::read_dir(folder).map_err(MediaError::io("прочитать папку", folder))?;
     for entry in entries {
         let old = entry
             .map_err(MediaError::io("прочитать папку", folder))?
             .path();
-        let name = old.file_name().map(|n| n.to_string_lossy().into_owned());
-        if name.is_some_and(|n| n.starts_with(prefix) && n.ends_with(".png")) {
+        let name = old.as_os_str().to_string_lossy();
+        if name.starts_with(prefix.as_ref()) && name.ends_with(".png") {
             std::fs::remove_file(&old).map_err(MediaError::io("удалить", &old))?;
         }
     }

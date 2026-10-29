@@ -2,11 +2,10 @@
 //! `media/recording-1/mic.mp4` → `cache/media/recording-1/mic.mp4.<stream>.<model>.<language>.words.json`.
 //! Valid while the file keeps its size, time and start; otherwise recognized again.
 
-use std::path::PathBuf;
-use std::time::UNIX_EPOCH;
+use std::path::{Path, PathBuf};
 
 use dc_audio::SourceTrack;
-use dc_project::{ProjectDir, atomic};
+use dc_project::{FileStamp, ProjectDir, atomic};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Result, TranscribeError};
@@ -17,7 +16,7 @@ use crate::recognize::Recognized;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct Stamp {
     size: u64,
-    modified_ns: u128,
+    modified_ns: i128,
     origin: i64,
 }
 
@@ -34,45 +33,28 @@ pub fn words_cache_path(
     model: Model,
     language: Option<&str>,
 ) -> PathBuf {
-    let relative = track
-        .path
-        .strip_prefix(project.root())
-        .unwrap_or(&track.path);
-    let mut path = project.cache_dir();
-    path.extend(relative.components().filter_map(|c| match c {
-        std::path::Component::Normal(part) => Some(part),
-        _ => None,
-    }));
     let model = match model {
         Model::Small => "small",
         Model::LargeV3Turbo => "turbo",
     };
-    let mut name = path.into_os_string();
-    name.push(format!(
-        ".{}.{model}.{}.words.json",
-        track.stream,
-        language.unwrap_or("auto")
-    ));
-    PathBuf::from(name)
+    let language = language.unwrap_or("auto");
+    project.cache_file(
+        &track.path,
+        &format!(".{}.{model}.{language}.words.json", track.stream),
+    )
 }
 
 fn stamp(track: &SourceTrack) -> Result<Stamp> {
-    let metadata =
-        std::fs::metadata(&track.path).map_err(TranscribeError::io("прочитать", &track.path))?;
-    let modified_ns = metadata
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-        .map_or(0, |d| d.as_nanos());
+    let file = FileStamp::of(&track.path)?;
     Ok(Stamp {
-        size: metadata.len(),
-        modified_ns,
+        size: file.size,
+        modified_ns: file.modified_ns,
         origin: track.origin,
     })
 }
 
 /// The cached words, if they were recognized from this very file.
-pub fn read_words(path: &std::path::Path, track: &SourceTrack) -> Result<Option<Recognized>> {
+pub fn read_words(path: &Path, track: &SourceTrack) -> Result<Option<Recognized>> {
     let stamp = stamp(track)?;
     let Ok(text) = std::fs::read_to_string(path) else {
         return Ok(None);
@@ -83,11 +65,7 @@ pub fn read_words(path: &std::path::Path, track: &SourceTrack) -> Result<Option<
         .map(|c| c.recognized))
 }
 
-pub fn write_words(
-    path: &std::path::Path,
-    track: &SourceTrack,
-    recognized: &Recognized,
-) -> Result<()> {
+pub fn write_words(path: &Path, track: &SourceTrack, recognized: &Recognized) -> Result<()> {
     if let Some(folder) = path.parent() {
         std::fs::create_dir_all(folder).map_err(TranscribeError::io("создать папку", folder))?;
     }

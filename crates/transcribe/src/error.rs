@@ -53,7 +53,7 @@ pub enum TranscribeError {
     Audio(String),
 
     #[error(transparent)]
-    Settings(#[from] dc_project::ProjectError),
+    Project(#[from] dc_project::ProjectError),
 }
 
 impl TranscribeError {

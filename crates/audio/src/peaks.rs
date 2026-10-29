@@ -4,9 +4,8 @@
 //! `cache/<track file>.<stream>.peaks`; the others are rebuilt on load.
 
 use std::path::{Path, PathBuf};
-use std::time::UNIX_EPOCH;
 
-use dc_project::{ProjectDir, atomic};
+use dc_project::{FileStamp, ProjectDir, atomic};
 
 use crate::error::AudioError;
 use crate::reader::TrackReader;
@@ -157,32 +156,15 @@ pub fn cached_peaks(project: &ProjectDir, track: &SourceTrack) -> Result<Peaks, 
 
 /// `cache/<track file relative to the project>.<stream>.peaks`.
 fn cache_path(project: &ProjectDir, track: &SourceTrack) -> PathBuf {
-    let relative = track
-        .path
-        .strip_prefix(project.root())
-        .unwrap_or(&track.path);
-    let mut path = project.cache_dir();
-    path.extend(relative.components().filter_map(|c| match c {
-        std::path::Component::Normal(part) => Some(part),
-        _ => None,
-    }));
-    let mut name = path.into_os_string();
-    name.push(format!(".{}.peaks", track.stream));
-    PathBuf::from(name)
+    project.cache_file(&track.path, &format!(".{}.peaks", track.stream))
 }
 
 /// What the cache was built from: format, file size and time, the track's start.
 fn header(track: &SourceTrack) -> Result<Vec<u8>, AudioError> {
-    let metadata = std::fs::metadata(&track.path).map_err(|e| AudioError::cache(&track.path, e))?;
-    let modified = metadata
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-        .map_or(0, |d| d.as_nanos());
+    let stamp = FileStamp::of(&track.path)?;
     let mut bytes = MAGIC.to_vec();
     bytes.extend_from_slice(&VERSION.to_le_bytes());
-    bytes.extend_from_slice(&metadata.len().to_le_bytes());
-    bytes.extend_from_slice(&modified.to_le_bytes());
+    bytes.extend_from_slice(&stamp.to_le_bytes());
     bytes.extend_from_slice(&track.origin.to_le_bytes());
     bytes.extend_from_slice(&RATE.to_le_bytes());
     Ok(bytes)
