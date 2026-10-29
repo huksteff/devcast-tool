@@ -17,6 +17,7 @@ dc-audio = { path = "../audio" }
 dc-capture = { path = "../capture" }
 dc-core = { path = "../core" }
 dc-encode = { path = "../encode" }
+dc-fx-callout = { path = "../../fx/callout" }
 dc-fx-captions = { path = "../../fx/captions" }
 dc-fx-crop = { path = "../../fx/crop" }
 dc-fx-cursor = { path = "../../fx/cursor" }

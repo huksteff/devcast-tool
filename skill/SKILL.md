@@ -76,6 +76,18 @@ devcast zoom add --at clicks              # все предложенные од
 ```
 Где зум уже стоит, автозум не ставится. `devcast record` ставит автозумы сам сразу после стопа (настройка зума `auto`, по умолчанию включена): не нужны — `devcast undo`.
 
+Облачко у курсора (id событий `co1`, `co2`; время — по готовому видео, печать и стирание идут с обычной скоростью и на ускоренных участках):
+```
+devcast callout style --text Смотри --gradient --glow 14
+devcast callout add on --at 1                          # показать с текстом из style
+devcast callout add text --at 3 --text Жми --duration 1.5  # напечатать за 1,5 с
+devcast callout add off --at 8                         # стереть и скрыть
+devcast callout set co2 --text Готово
+devcast ls callouts
+devcast callout rm co3
+```
+Текст с пробелами — в кавычках: `--text "Жми сюда"`, одна строка до 80 символов. Цвета — `#rrggbbaa` в кавычках (`--background "#14b8c4ff"`, `--colors "#14b8c4ff,#a855f7ff"` — 2–4 цвета градиента), размер `--size` 0.5–2, свечение `--glow` 0–40.
+
 Кроп клипа и формат кадра:
 ```
 devcast crop c2 0.1,0,0.8,1      # x,y,w,h в долях исходника; 0,0,1,1 снимает кроп

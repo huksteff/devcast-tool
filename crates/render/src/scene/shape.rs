@@ -80,6 +80,10 @@ pub struct Gradient {
 pub struct GradientColors(Vec<Rgba>);
 
 impl GradientColors {
+    pub fn two(from: Rgba, to: Rgba) -> Self {
+        Self(vec![from, to])
+    }
+
     pub fn colors(&self) -> &[Rgba] {
         &self.0
     }
@@ -105,6 +109,23 @@ impl TryFrom<Vec<Rgba>> for GradientColors {
 impl From<GradientColors> for Vec<Rgba> {
     fn from(colors: GradientColors) -> Self {
         colors.0
+    }
+}
+
+impl JsonSchema for GradientColors {
+    fn schema_name() -> Cow<'static, str> {
+        "GradientColors".into()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        let color = generator.subschema_for::<Rgba>();
+        json_schema!({
+            "type": "array",
+            "items": color,
+            "minItems": 2,
+            "maxItems": 4,
+            "description": "2 to 4 colours of a gradient"
+        })
     }
 }
 

@@ -7,5 +7,16 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[dependencies]
+dc-core = { path = "../../crates/core" }
+dc-render = { path = "../../crates/render" }
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+unicode-segmentation = "1.13"
+
+[dev-dependencies]
+insta.workspace = true
+
 [lints]
 workspace = true

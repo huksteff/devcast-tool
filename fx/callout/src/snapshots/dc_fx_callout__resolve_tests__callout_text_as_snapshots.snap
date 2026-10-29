@@ -1,0 +1,23 @@
+---
+source: fx/callout/src/resolve_tests.rs
+expression: "texts.join(\"\\n\")"
+---
+    0: None
+  0.5: Some("Старт")
+    1: Some("Старт")
+ 1.05: Some("П")
+  1.5: Some("Привет")
+    2: Some("Привет, мир")
+    3: Some("Привет, мир")
+  3.5: Some("🎬 ")
+    4: Some("🎬 Го")
+  4.5: Some("🎬 Гото")
+    5: Some("🎬 Готово")
+  5.5: Some("🎬 Готово")
+ 5.75: Some("🎬 Гото")
+    6: Some("🎬 Го")
+  6.5: None
+  7.6: None
+  8.5: Some("Старт")
+ 9.25: Some("Вто")
+ 11.9: Some("Второй")
