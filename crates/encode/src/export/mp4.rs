@@ -34,6 +34,9 @@ pub fn export_mp4(
     progress: &mut ProgressFn<'_>,
 ) -> Result<Exported, EncodeError> {
     settings.check(timeline.source_fps)?;
+    if timeline.duration <= dc_core::TimeDelta::ZERO {
+        return Err(EncodeError::NothingLeft);
+    }
     let size = settings.resolution.size(timeline.canvas);
     let fps = settings.fps;
     let video = VideoSettings {

@@ -68,6 +68,9 @@ pub enum EncodeError {
     #[error("в проекте нет клипов: добавь видео (devcast clip add <видео>) и экспортируй снова")]
     Empty,
 
+    #[error("готовое видео пустое: всё вырезано. Верни часть (devcast undo) и экспортируй снова")]
+    NothingLeft,
+
     #[error("частота {fps} кадров/с для {format} недоступна: выбери одну из {allowed}")]
     Fps {
         fps: u32,
@@ -86,6 +89,12 @@ pub enum EncodeError {
         path: PathBuf,
         source: std::io::Error,
     },
+
+    #[error("GIF не записался: {0}. Проверь, что диск не переполнен и папка доступна для записи")]
+    Gif(String),
+
+    #[error("GIF бывает 720p, 1080p или исходного размера: выбери один из них")]
+    GifResolution,
 
     #[error(transparent)]
     Gpu(#[from] dc_render::GpuError),
