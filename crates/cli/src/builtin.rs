@@ -7,6 +7,8 @@ use clap::{Parser, Subcommand};
 
 use crate::edit::{self, Ctx, Way};
 use crate::error::CliError;
+use crate::export::{self, Action};
+use crate::export_args::ExportArgs;
 use crate::help::help;
 use crate::ls::{self, Query};
 use crate::record;
@@ -151,6 +153,20 @@ enum Builtin {
         args: RecordArgs,
     },
     #[command(
+        about = "Экспорт в MP4 или GIF через очередь в фоне; export status — очередь, export cancel [e2] — отмена",
+        after_help = "export -o урок.mp4 --res 1080p --fps 60 --quality high"
+    )]
+    Export {
+        #[arg(
+            help = "status — что в очереди, cancel — отменить; без него — экспортировать и дождаться файла"
+        )]
+        action: Option<Action>,
+        #[arg(help = "Номер экспорта для cancel: e2; без него cancel отменяет все")]
+        id: Option<String>,
+        #[command(flatten)]
+        args: ExportArgs,
+    },
+    #[command(
         about = "Установить skill для Claude Code в ~/.claude/skills/devcast",
         after_help = "skill install"
     )]
@@ -239,6 +255,9 @@ impl Cli {
                 command: ZoomCommand::Op(words),
             } => autozoom::op(ctx, &[vec!["zoom".to_owned()], words].concat()),
             Builtin::Record { control, args } => record::record(ctx, control, &args),
+            Builtin::Export { action, id, args } => {
+                export::export(ctx, action, id.as_deref(), &args, &export::channel()?)
+            }
             Builtin::Ls {
                 list,
                 from,

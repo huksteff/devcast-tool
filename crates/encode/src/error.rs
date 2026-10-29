@@ -100,6 +100,9 @@ pub enum EncodeError {
     Gpu(#[from] dc_render::GpuError),
 
     #[error(transparent)]
+    Project(#[from] dc_project::ProjectError),
+
+    #[error(transparent)]
     Media(#[from] dc_media::MediaError),
 
     #[error(transparent)]

@@ -5,6 +5,10 @@ mod builtin;
 mod edit;
 pub mod error;
 mod events;
+mod export;
+mod export_args;
+mod export_job;
+mod export_queue;
 pub mod find;
 pub mod globals;
 mod help;
@@ -31,6 +35,8 @@ mod e2e_tests;
 mod edit_tests;
 #[cfg(test)]
 mod events_tests;
+#[cfg(test)]
+mod export_tests;
 #[cfg(test)]
 mod import_tests;
 #[cfg(test)]

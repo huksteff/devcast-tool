@@ -157,6 +157,11 @@ fn gif_plays_once_without_loop_and_refuses_what_scope_does_not_have() {
         }
     );
     assert_eq!(loops(&out), None, "plays once");
+    let video = &ffprobe(&out)["streams"][0];
+    assert_eq!(
+        (video["width"].clone(), video["height"].clone()),
+        (1280.into(), 720.into())
+    );
     for (resolution, fps) in [(Resolution::P2160, 15), (Resolution::P720, 60)] {
         let wrong = GifSettings {
             resolution,

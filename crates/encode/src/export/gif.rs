@@ -64,8 +64,9 @@ pub fn export_gif(
         gifski::Repeat::Finite(0)
     };
     let (collector, writer) = gifski::new(gifski::Settings {
-        width: None,
-        height: None,
+        // Without a size gifski shrinks frames larger than 800×600 on its own.
+        width: Some(size.width),
+        height: Some(size.height),
         quality: QUALITY,
         fast: false,
         repeat,

@@ -127,6 +127,7 @@ fn help_lists_every_command_on_one_line() {
             "clip add      Добавить видео mp4/mov/mkv/webm клипами в конец главной дорожки (копия в media/)",
             "zoom suggest  Предложить автозумы по группам кликов, ничего не меняя; добавить их — zoom add --at clicks",
             "record        Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
+            "export        Экспорт в MP4 или GIF через очередь в фоне; export status — очередь, export cancel [e2] — отмена",
             "skill         Установить skill для Claude Code в ~/.claude/skills/devcast",
             "test add      Добавить клип",
             "test rm       Удалить клип",
@@ -209,6 +210,7 @@ fn help_json_has_schemas_of_ops_project_and_effects() {
             "clip add",
             "zoom suggest",
             "record",
+            "export",
             "skill",
             "test add",
             "test rm"

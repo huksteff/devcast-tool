@@ -16,6 +16,7 @@ clap.workspace = true
 dc-audio = { path = "../audio" }
 dc-capture = { path = "../capture" }
 dc-core = { path = "../core" }
+dc-encode = { path = "../encode" }
 dc-fx-crop = { path = "../../fx/crop" }
 dc-fx-cut = { path = "../../fx/cut" }
 dc-fx-zoom = { path = "../../fx/zoom" }
@@ -23,6 +24,7 @@ dc-ipc = { path = "../ipc" }
 dc-media = { path = "../media" }
 dc-ops = { path = "../ops" }
 dc-project = { path = "../project" }
+dc-render = { path = "../render" }
 dc-transcribe = { path = "../transcribe" }
 schemars.workspace = true
 serde.workspace = true
@@ -30,7 +32,6 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-dc-encode = { path = "../encode" }
 insta.workspace = true
 tempfile.workspace = true
 
