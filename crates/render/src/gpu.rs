@@ -8,6 +8,15 @@ use crate::error::GpuError;
 /// Format of every frame and intermediate texture; egui shows it without a copy.
 pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
+/// The native API of the OS, one per platform (decision 004). On Windows DX12: the reference
+/// frames were made on it, WARP is a DX12 adapter, and decoded D3D frames reach it without a copy.
+#[cfg(windows)]
+pub const BACKEND: wgpu::Backends = wgpu::Backends::DX12;
+#[cfg(target_os = "macos")]
+pub const BACKEND: wgpu::Backends = wgpu::Backends::METAL;
+#[cfg(not(any(windows, target_os = "macos")))]
+pub const BACKEND: wgpu::Backends = wgpu::Backends::VULKAN;
+
 /// Which adapter [`Gpu::new`] takes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AdapterChoice {
@@ -28,11 +37,10 @@ pub struct Gpu {
 }
 
 impl Gpu {
-    /// Backends come from `WGPU_BACKEND` when it is set, otherwise the primary ones of the OS.
     pub fn new(choice: AdapterChoice) -> Result<Self, GpuError> {
         let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
-        desc.backends = wgpu::Backends::PRIMARY;
-        let instance = wgpu::Instance::new(desc.with_env());
+        desc.backends = BACKEND;
+        let instance = wgpu::Instance::new(desc);
         let adapter = match choice {
             AdapterChoice::Auto => request(&instance, false).or_else(|_| request(&instance, true)),
             AdapterChoice::Software => request(&instance, true),

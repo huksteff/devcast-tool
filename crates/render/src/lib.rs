@@ -6,5 +6,5 @@ mod gpu;
 mod readback;
 
 pub use error::GpuError;
-pub use gpu::{AdapterChoice, FORMAT, Gpu};
+pub use gpu::{AdapterChoice, BACKEND, FORMAT, Gpu};
 pub use readback::Image;

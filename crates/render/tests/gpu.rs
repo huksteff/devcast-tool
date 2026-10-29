@@ -1,5 +1,5 @@
 use dc_core::PixelSize;
-use dc_render::{AdapterChoice, Gpu, GpuError, Image};
+use dc_render::{AdapterChoice, BACKEND, Gpu, GpuError, Image};
 
 const COLOR: [u8; 4] = [51, 102, 204, 255];
 
@@ -42,7 +42,9 @@ fn assert_cleared(gpu: &Gpu) -> Result<(), GpuError> {
 #[test]
 fn auto_device_clears_and_reads_back() -> Result<(), GpuError> {
     let gpu = Gpu::new(AdapterChoice::Auto)?;
-    eprintln!("auto adapter: {:?}", gpu.info());
+    let info = gpu.info();
+    eprintln!("auto adapter: {info:?}");
+    assert_eq!(wgpu::Backends::from(info.backend), BACKEND);
     assert_cleared(&gpu)
 }
 
@@ -52,5 +54,6 @@ fn software_device_clears_and_reads_back() -> Result<(), GpuError> {
     let info = gpu.info();
     eprintln!("software adapter: {info:?}");
     assert_eq!(info.device_type, wgpu::DeviceType::Cpu);
+    assert_eq!(wgpu::Backends::from(info.backend), BACKEND);
     assert_cleared(&gpu)
 }
