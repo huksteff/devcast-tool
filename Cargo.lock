@@ -746,6 +746,7 @@ name = "dc-fx-crop"
 version = "0.1.0"
 dependencies = [
  "dc-core",
+ "insta",
  "schemars",
  "serde",
  "serde_json",

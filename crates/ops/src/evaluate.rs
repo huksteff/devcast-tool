@@ -3,6 +3,7 @@
 //! preview, the export and `devcast frame`/`sheet`.
 
 use dc_core::{OutputTime, PixelSize, Project, StateError, TimeDelta, TimeMap};
+use dc_fx_crop::Crop;
 use dc_render::Scene;
 
 /// The project's scene can not be built.
@@ -26,7 +27,8 @@ pub struct Evaluator<'p> {
 
 impl<'p> Evaluator<'p> {
     pub fn new(project: &'p Project) -> Result<Self, EvaluateError> {
-        let canvas = dc_fx_crop::canvas(project).ok_or(EvaluateError::Empty)?;
+        let crop = project.state::<Crop>()?;
+        let canvas = dc_fx_crop::canvas(project, &crop.settings).ok_or(EvaluateError::Empty)?;
         Ok(Self {
             project,
             map: TimeMap::build(project),

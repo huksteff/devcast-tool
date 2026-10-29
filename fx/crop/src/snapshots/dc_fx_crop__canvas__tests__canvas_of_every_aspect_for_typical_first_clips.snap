@@ -1,0 +1,126 @@
+---
+source: fx/crop/src/canvas_tests.rs
+expression: table
+---
+[
+  {
+    "aspect": "free",
+    "canvas": {
+      "height": 1080,
+      "width": 1920
+    },
+    "clip": "1920x1080"
+  },
+  {
+    "aspect": "source",
+    "canvas": {
+      "height": 1080,
+      "width": 1920
+    },
+    "clip": "1920x1080"
+  },
+  {
+    "aspect": "16:9",
+    "canvas": {
+      "height": 1080,
+      "width": 1920
+    },
+    "clip": "1920x1080"
+  },
+  {
+    "aspect": "16:10",
+    "canvas": {
+      "height": 1200,
+      "width": 1920
+    },
+    "clip": "1920x1080"
+  },
+  {
+    "aspect": "4:3",
+    "canvas": {
+      "height": 1440,
+      "width": 1920
+    },
+    "clip": "1920x1080"
+  },
+  {
+    "aspect": "free",
+    "canvas": {
+      "height": 1080,
+      "width": 1440
+    },
+    "clip": "1440x1080"
+  },
+  {
+    "aspect": "source",
+    "canvas": {
+      "height": 1080,
+      "width": 1440
+    },
+    "clip": "1440x1080"
+  },
+  {
+    "aspect": "16:9",
+    "canvas": {
+      "height": 1080,
+      "width": 1920
+    },
+    "clip": "1440x1080"
+  },
+  {
+    "aspect": "16:10",
+    "canvas": {
+      "height": 1080,
+      "width": 1728
+    },
+    "clip": "1440x1080"
+  },
+  {
+    "aspect": "4:3",
+    "canvas": {
+      "height": 1080,
+      "width": 1440
+    },
+    "clip": "1440x1080"
+  },
+  {
+    "aspect": "free",
+    "canvas": {
+      "height": 1080,
+      "width": 1280
+    },
+    "clip": "2560x1080 left half"
+  },
+  {
+    "aspect": "source",
+    "canvas": {
+      "height": 1080,
+      "width": 2560
+    },
+    "clip": "2560x1080 left half"
+  },
+  {
+    "aspect": "16:9",
+    "canvas": {
+      "height": 1080,
+      "width": 1920
+    },
+    "clip": "2560x1080 left half"
+  },
+  {
+    "aspect": "16:10",
+    "canvas": {
+      "height": 1080,
+      "width": 1728
+    },
+    "clip": "2560x1080 left half"
+  },
+  {
+    "aspect": "4:3",
+    "canvas": {
+      "height": 1080,
+      "width": 1440
+    },
+    "clip": "2560x1080 left half"
+  }
+]

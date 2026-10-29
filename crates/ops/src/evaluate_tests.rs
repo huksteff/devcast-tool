@@ -76,3 +76,26 @@ fn project_scenes_at_the_cut_and_the_join() {
         .collect();
     insta::assert_json_snapshot!(scenes);
 }
+
+#[test]
+fn broken_effect_state_is_reported_once_before_any_frame() {
+    let mut p = two_clips();
+    p.effects
+        .insert("crop".to_owned(), json!({"settings": {"aspect": "9:16"}}));
+    let error = Evaluator::new(&p).unwrap_err();
+    assert!(matches!(error, EvaluateError::State(_)), "{error}");
+    assert!(error.to_string().contains("«crop»"), "{error}");
+}
+
+#[test]
+fn clips_of_other_proportions_are_fitted_into_the_aspect_frame() {
+    let mut p = two_clips();
+    p.effects
+        .insert("crop".to_owned(), json!({"settings": {"aspect": "4:3"}}));
+    let evaluator = Evaluator::new(&p).unwrap();
+    let scenes: Vec<_> = [0.5, 3.5]
+        .iter()
+        .map(|&t| json!({ "t": t, "scene": evaluator.evaluate(OutputTime::from_secs_f64(t)) }))
+        .collect();
+    insta::assert_json_snapshot!(scenes);
+}

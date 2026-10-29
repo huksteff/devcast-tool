@@ -1,0 +1,84 @@
+---
+source: crates/ops/src/evaluate_tests.rs
+expression: scenes
+---
+[
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 180.0
+              },
+              "source": {
+                "media": "media/recording-1/video.mp4",
+                "time": 500000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1440,
+        "width": 1920
+      }
+    },
+    "t": 0.5
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1440.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/импорт 1.mp4",
+                "time": 500000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1440,
+        "width": 1920
+      }
+    },
+    "t": 3.5
+  }
+]

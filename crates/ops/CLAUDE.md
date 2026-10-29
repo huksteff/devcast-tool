@@ -16,7 +16,7 @@
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-ops`. Тестовая команда `note set` в `src/tests.rs`. `src/evaluate_tests.rs`: нет клипов, размер и чёрный кадр вне видео, insta-снимок сцены на вырезе и стыке (`src/snapshots/`; после намеренной смены — `INSTA_UPDATE=always` и просмотр diff).
+- `cargo nextest run -p dc-ops`. Тестовая команда `note set` в `src/tests.rs`. `src/evaluate_tests.rs`: нет клипов, размер и чёрный кадр вне видео, битое состояние, insta-снимки сцены на вырезе и стыке и клипов в кадре 4:3 (`src/snapshots/`; после намеренной смены — `INSTA_UPDATE=always` и просмотр diff). `tests/golden.rs`: эталоны сцен проекта на программном адаптере (`crop/*`: формат 16:9, свободный, второй клип с полями).
 
 ## Куда не лезть
 

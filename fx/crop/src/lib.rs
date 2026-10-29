@@ -1,5 +1,5 @@
 //! Output aspect and the command that crops a clip (the crop itself is `Clip::crop` in dc-core).
-//! Model and commands only; the frame is drawn by the render.
+//! The size of the output frame (`canvas`); clips are fitted into it by their video layer.
 
 mod canvas;
 mod commands;
