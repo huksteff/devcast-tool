@@ -34,7 +34,6 @@ impl Packet {
         self.inner.set_duration(ticks);
     }
 
-    /// Moves the packet in time by `ticks`.
     pub fn shift(&mut self, ticks: i64) {
         self.pts += ticks;
         self.inner.set_pts(Some(self.pts));
