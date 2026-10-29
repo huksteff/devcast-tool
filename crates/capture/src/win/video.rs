@@ -33,6 +33,8 @@ const FIRST_FRAME: Duration = Duration::from_secs(5);
 /// Frames converted but not yet encoded. When the encoder falls behind, capture waits and
 /// the system drops frames instead of memory growing.
 const IN_FLIGHT: usize = 4;
+/// Pictures the encoder holds besides the queue: the last one (for repeats) and a paused one.
+const HELD_BY_ENCODER: usize = 2;
 
 /// What the recording settled on when it started.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -120,12 +122,13 @@ impl VideoRecording {
                 return Err(e);
             }
         };
-        writer_tx.send(writer).map_err(|_| encoder_gone())?;
+        let grid = FrameGrid::new(start, fps);
+        writer_tx.send((writer, grid)).map_err(|_| encoder_gone())?;
         Ok(Self {
             capture,
             control: frames_tx,
             encoder,
-            grid: FrameGrid::new(start, fps),
+            grid,
             info: VideoStart {
                 codec: selection.codec,
                 speed: selection.speed,
@@ -242,7 +245,7 @@ impl EncodeSink {
             clock: clock.clone(),
             held: None,
             frames,
-            spare: (0..IN_FLIGHT)
+            spare: (0..IN_FLIGHT + HELD_BY_ENCODER)
                 .map(|_| Nv12Frame::new(size.0, size.1))
                 .collect::<Result<_, _>>()?,
             returned,
