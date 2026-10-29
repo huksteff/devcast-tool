@@ -1,4 +1,5 @@
-//! A recording's telemetry as the cursor effect reads it (`dc_core::CursorTrack`, decision 015).
+//! A recording's telemetry as the effects read it (`dc_core::CursorTrack`, `dc_core::KeyPress`,
+//! decision 015).
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -6,7 +7,7 @@ use std::io::Read;
 use std::path::Path;
 
 use dc_core::project::Media;
-use dc_core::{CursorPicture, CursorPoint, CursorShape, CursorTrack, PixelSize, Point};
+use dc_core::{CursorPicture, CursorPoint, CursorShape, CursorTrack, KeyPress, PixelSize, Point};
 
 use super::cursor::{CursorEvent, image_file};
 use super::telemetry::Telemetry;
@@ -66,6 +67,17 @@ impl Telemetry {
             }
         }
         Ok(track)
+    }
+
+    /// The shortcuts of the recording with their names (`Ctrl+Shift+P`), in time order.
+    pub fn key_presses(&self) -> Vec<KeyPress> {
+        self.keys
+            .iter()
+            .map(|k| KeyPress {
+                at: k.at,
+                name: k.event.name(),
+            })
+            .collect()
     }
 }
 

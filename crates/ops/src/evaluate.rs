@@ -2,9 +2,12 @@
 //! every effect adds its part to the scene in a fixed order. The one source of scenes for the
 //! preview, the export and `devcast frame`/`sheet`.
 
-use dc_core::{CursorTracks, OutputTime, PixelSize, Project, StateError, TimeDelta, TimeMap};
+use dc_core::{
+    CursorTracks, KeyTracks, OutputTime, PixelSize, Project, StateError, TimeDelta, TimeMap,
+};
 use dc_fx_crop::Crop;
 use dc_fx_cursor::Cursor;
+use dc_fx_keys::Keys;
 use dc_fx_zoom::{CameraTrack, ZoomEffect};
 use dc_render::Scene;
 
@@ -27,12 +30,17 @@ pub struct Evaluator<'p> {
     canvas: PixelSize,
     camera: CameraTrack,
     cursor: dc_fx_cursor::Prepared,
+    keys: dc_fx_keys::Prepared,
 }
 
 impl<'p> Evaluator<'p> {
-    /// `cursors` — the cursor telemetry of the recordings on the track (decision 015); the
+    /// `cursors` and `keys` — the telemetry of the recordings on the track (decision 015); the
     /// caller reads it from the project folder.
-    pub fn new(project: &'p Project, cursors: CursorTracks) -> Result<Self, EvaluateError> {
+    pub fn new(
+        project: &'p Project,
+        cursors: CursorTracks,
+        keys: KeyTracks,
+    ) -> Result<Self, EvaluateError> {
         let crop = project.state::<Crop>()?;
         let canvas = dc_fx_crop::canvas(project, &crop.settings).ok_or(EvaluateError::Empty)?;
         let map = TimeMap::build(project);
@@ -44,12 +52,14 @@ impl<'p> Evaluator<'p> {
             &cursors,
         );
         let cursor = project.state::<Cursor>()?;
+        let keys = dc_fx_keys::Prepared::new(project.state::<Keys>()?, &keys, &map);
         Ok(Self {
             project,
             map,
             canvas,
             camera,
             cursor: dc_fx_cursor::Prepared::new(project, cursor, cursors),
+            keys,
         })
     }
 
@@ -72,6 +82,7 @@ impl<'p> Evaluator<'p> {
         dc_fx_cut::evaluate(self.project, &self.map, t, &mut scene);
         self.camera.evaluate(t, &mut scene);
         dc_fx_cursor::evaluate(&self.cursor, self.project, &self.map, t, &mut scene);
+        dc_fx_keys::evaluate(&self.keys, t, &mut scene);
         scene
     }
 }

@@ -1,0 +1,534 @@
+---
+source: fx/keys/src/evaluate_tests.rs
+expression: frames
+---
+[
+  {
+    "keys": null,
+    "t": 0.5
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 0.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Ctrl+S"
+        }
+      ],
+      "underline": false
+    },
+    "t": 1.0
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 0.5,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Ctrl+S"
+        }
+      ],
+      "underline": false
+    },
+    "t": 1.05
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 1.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Ctrl+S"
+        }
+      ],
+      "underline": false
+    },
+    "t": 1.5
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 0.800000011920929,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Ctrl+S"
+        }
+      ],
+      "underline": false
+    },
+    "t": 2.3
+  },
+  {
+    "keys": null,
+    "t": 2.6
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 0.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Ctrl+Z"
+        }
+      ],
+      "underline": false
+    },
+    "t": 3.0
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 1.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Ctrl+Z"
+        }
+      ],
+      "underline": false
+    },
+    "t": 3.1
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 1.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Ctrl+Z ×2"
+        }
+      ],
+      "underline": false
+    },
+    "t": 3.2
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 1.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Ctrl+Z ×3"
+        }
+      ],
+      "underline": false
+    },
+    "t": 3.45
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 1.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Alt+Tab"
+        }
+      ],
+      "underline": false
+    },
+    "t": 3.7
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 1.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Alt+Tab"
+        }
+      ],
+      "underline": false
+    },
+    "t": 4.0
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 0.4000000059604645,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Alt+Tab"
+        }
+      ],
+      "underline": false
+    },
+    "t": 5.1
+  },
+  {
+    "keys": null,
+    "t": 5.3
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 0.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "F5"
+        }
+      ],
+      "underline": false
+    },
+    "t": 6.5
+  },
+  {
+    "keys": null,
+    "t": 8.0
+  },
+  {
+    "keys": null,
+    "t": 8.8
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 1.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Esc"
+        }
+      ],
+      "underline": false
+    },
+    "t": 9.5
+  },
+  {
+    "keys": {
+      "align": "center",
+      "font": {
+        "bold": true,
+        "family": "Inter",
+        "italic": false,
+        "size": 36.0
+      },
+      "line_height": 1.399999976158142,
+      "opacity": 1.0,
+      "padding": 18.0,
+      "plate": {
+        "color": "#111827d9",
+        "pad": [
+          18.0,
+          9.0
+        ],
+        "radius": 10.800000190734863
+      },
+      "rect": {
+        "h": 68.4000015258789,
+        "w": 1833.5999755859375,
+        "x": 43.20000076293945,
+        "y": 968.4000244140625
+      },
+      "runs": [
+        {
+          "color": "#ffffffff",
+          "text": "Esc"
+        }
+      ],
+      "underline": false
+    },
+    "t": 10.2
+  },
+  {
+    "keys": null,
+    "t": 11.0
+  }
+]

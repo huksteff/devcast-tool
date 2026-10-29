@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 
 use dc_core::project::{Media, MediaKind};
 use dc_core::{
-    Clip, CursorTracks, OutputTime, PixelSize, Project, Range, Rect, SourceTime, TimeDelta,
-    VideoColor,
+    Clip, CursorTracks, KeyTracks, OutputTime, PixelSize, Project, Range, Rect, SourceTime,
+    TimeDelta, VideoColor,
 };
 use dc_ops::Evaluator;
 use dc_render::golden::Golden;
@@ -74,9 +74,29 @@ pub fn size(width: u32, height: u32) -> PixelSize {
 /// Renders the project's scene at output second `at` with bars as every video and pictures of
 /// `clicks_fixture()` as sprites, and checks it against reference `name`.
 pub fn check(name: &str, project: &Project, cursors: CursorTracks, at: f64) -> TestResult {
-    let scene: Scene = Evaluator::new(project, cursors)?.evaluate(OutputTime::from_secs_f64(at));
+    let evaluator = Evaluator::new(project, cursors, KeyTracks::new())?;
+    render(
+        name,
+        project,
+        &evaluator.evaluate(OutputTime::from_secs_f64(at)),
+    )
+}
+
+/// [`check`] of a project without a cursor and with shortcuts `keys`, text in the fonts of
+/// `.deps/fonts`.
+pub fn check_keys(name: &str, project: &Project, keys: KeyTracks, at: f64) -> TestResult {
+    let evaluator = Evaluator::new(project, CursorTracks::new(), keys)?;
+    render(
+        name,
+        project,
+        &evaluator.evaluate(OutputTime::from_secs_f64(at)),
+    )
+}
+
+fn render(name: &str, project: &Project, scene: &Scene) -> TestResult {
     let gpu = Gpu::new(AdapterChoice::Software)?;
     let mut compositor = Compositor::new(&gpu);
+    compositor.load_fonts(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.deps/fonts"))?;
     for (_, layer) in scene.painted() {
         match layer {
             Layer::Video(video) => {
@@ -98,7 +118,7 @@ pub fn check(name: &str, project: &Project, cursors: CursorTracks, at: f64) -> T
             _ => {}
         }
     }
-    let image = compositor.render(&gpu, &scene)?;
+    let image = compositor.render(&gpu, scene)?;
     Golden::new(&gpu)?
         .check(name, &image)
         .map_err(|error| error.to_string())?;

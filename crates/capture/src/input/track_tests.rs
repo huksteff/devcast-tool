@@ -86,3 +86,31 @@ fn a_file_that_is_not_png_is_an_error() {
     assert!(error.to_string().contains("PNG"), "{error}");
     assert!(png_size(&dir.path().join("missing.png")).is_err());
 }
+
+#[test]
+fn key_presses_of_the_fixture_read_like_on_the_keyboard() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/recordings/typing.dcproj/media/recording-1");
+    let presses = Telemetry::read(&dir).unwrap().key_presses();
+    let names: Vec<&str> = presses.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "Enter",
+            "Ctrl+A",
+            "Ctrl+C",
+            "Ctrl+V",
+            "Ctrl+Z",
+            "Ctrl+Shift+P",
+            "Alt+Shift+F",
+            "F5",
+            "Left",
+            "Left",
+            "Left",
+            "Delete",
+            "Esc",
+        ]
+    );
+    assert!(presses.windows(2).all(|w| w[0].at <= w[1].at));
+    assert!(presses[0].at > SourceTime::ZERO);
+}

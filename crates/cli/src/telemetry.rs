@@ -7,7 +7,7 @@ use std::path::Path;
 use dc_capture::input::Telemetry;
 use dc_capture::project::recording_dir;
 use dc_core::project::{Media, MediaKind};
-use dc_core::{Clip, CursorTracks, OutputTime, Point, Project, SourceTime, TimeMap};
+use dc_core::{Clip, CursorTracks, KeyTracks, OutputTime, Point, Project, SourceTime, TimeMap};
 
 use crate::error::CliError;
 
@@ -33,18 +33,22 @@ pub(crate) fn read<'a>(root: &Path, project: &'a Project) -> Result<Vec<Recorded
     Ok(recorded)
 }
 
-/// The cursor of every recording on the track, for `dc_ops::Evaluator`.
-pub(crate) fn cursor_tracks(root: &Path, project: &Project) -> Result<CursorTracks, CliError> {
-    read(root, project)?
-        .into_iter()
-        .map(|r| {
-            let track = r
-                .telemetry
-                .cursor_track(&recording_dir(root, r.media), r.media)
-                .map_err(|e| CliError::Failed(e.to_string()))?;
-            Ok((r.media.path.clone(), track))
-        })
-        .collect()
+/// The cursor and the shortcuts of every recording on the track, for `dc_ops::Evaluator`.
+pub(crate) fn tracks(
+    root: &Path,
+    project: &Project,
+) -> Result<(CursorTracks, KeyTracks), CliError> {
+    let mut cursors = CursorTracks::new();
+    let mut keys = KeyTracks::new();
+    for r in read(root, project)? {
+        let cursor = r
+            .telemetry
+            .cursor_track(&recording_dir(root, r.media), r.media)
+            .map_err(|e| CliError::Failed(e.to_string()))?;
+        cursors.insert(r.media.path.clone(), cursor);
+        keys.insert(r.media.path.clone(), r.telemetry.key_presses());
+    }
+    Ok((cursors, keys))
 }
 
 /// Pixel (`x`, `y`) of the recorded picture as fractions of the frame of `media`.

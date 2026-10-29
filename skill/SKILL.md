@@ -88,6 +88,11 @@ devcast callout rm co3
 ```
 Текст с пробелами — в кавычках: `--text "Жми сюда"`, одна строка до 80 символов. Цвета — `#rrggbbaa` в кавычках (`--background "#14b8c4ff"`, `--colors "#14b8c4ff,#a855f7ff"` — 2–4 цвета градиента), размер `--size` 0.5–2, свечение `--glow` 0–40.
 
+Показ нажатых клавиш (по умолчанию выключен; места top_left, top, top_right, bottom_left, bottom, bottom_right):
+```
+devcast keys --show --position bottom_right --size 1.5
+```
+
 Кроп клипа и формат кадра:
 ```
 devcast crop c2 0.1,0,0.8,1      # x,y,w,h в долях исходника; 0,0,1,1 снимает кроп

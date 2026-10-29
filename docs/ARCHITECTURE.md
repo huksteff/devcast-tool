@@ -157,7 +157,7 @@ devcast speed <from-to> <x>
 devcast zoom suggest | zoom add --at <сек|clicks> [--duration 1] [--scale 1.8] [--mode follow|fixed] | zoom set z3 --scale 2 | zoom motion --preset smooth | zoom rm z3
 devcast annot add <text|shape|image|blur|draw> --from --to --rect x,y,w,h [--rotate 15] [опции]
 devcast key add a3 --at 12.0 [параметры] | key rm
-devcast callout add ... | keys show on|off
+devcast callout add ... | keys --show --position bottom_right
 devcast captions gen [--model fast|accurate] [--tracks mic] | export -o t.txt | import t.txt | clear
 devcast crop c1 x,y,w,h | aspect <free|source|16:9|16:10|4:3>
 devcast set <эффект>.<параметр>=<значение> ...   # стиль проекта: cursor.size=1.5 clicks.style=ripple
