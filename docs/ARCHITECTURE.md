@@ -87,7 +87,7 @@ crates/
                  (frame, sheet); позже экспорт MP4 и GIF,
                  очередь
   transcribe/    модели (загрузка), whisper, слова с таймкодами, сегментация в реплики
-  capture/       трейт Recorder, видео, звук, ввод (cursor.bin, keys.bin), пауза, сегменты и manifest,
+  capture/       модель записи, видео, звук, ввод (cursor.bin, keys.bin), пауза, сегменты и manifest,
                  восстановление, проект из записи; win/, позже mac/ и linux/
   ops/           реестр команд, пакетное применение, dry-run, однострочный diff, подсказки в ошибках
   ipc/           local socket и сообщения JSON с длиной; типы сообщений у отправителя

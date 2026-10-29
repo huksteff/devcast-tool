@@ -1,6 +1,6 @@
 [package]
 name = "dc-capture"
-description = "Recorder trait, segmented recording with manifest, crash recovery, platform capture backends."
+description = "Recording model, segmented recording with manifest, crash recovery, platform capture backends."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
