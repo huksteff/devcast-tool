@@ -2,11 +2,10 @@
 //! the preview and `devcast frame` (ARCHITECTURE, decision 4), then encoded.
 //!
 //! The export does not know effects: a [`Timeline`] hands it the scene of every output moment
-//! and the mixed sound. Until effects have `evaluate` (5.15+), the scene is [`clip_scene`].
+//! (`dc_ops::Evaluator`) and the mixed sound.
 
 mod gif;
 mod mp4;
-mod scene;
 mod settings;
 
 use std::ops::ControlFlow;
@@ -21,7 +20,6 @@ use crate::error::EncodeError;
 
 pub use gif::{GIF_FPS, GifSettings, export_gif};
 pub use mp4::export_mp4;
-pub use scene::{canvas, clip_scene};
 pub use settings::{MP4_FPS, Mp4Settings, Resolution};
 
 /// Fills interleaved samples of [`Timeline::sound`] from output sample `start`.

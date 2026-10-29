@@ -129,7 +129,7 @@ fn cancel_stops_the_running_job_and_skips_a_queued_one() {
 #[test]
 fn a_failed_job_keeps_its_message_and_the_next_one_runs() {
     let queue = ExportQueue::new();
-    let failing: Job = Box::new(|_| Err(EncodeError::Empty));
+    let failing: Job = Box::new(|_| Err(EncodeError::NothingLeft));
     let (events, heard) = channel();
     let (b, step_b) = stepped("b", 1, events);
     let id = queue.push("a".into(), failing);
@@ -140,6 +140,6 @@ fn a_failed_job_keeps_its_message_and_the_next_one_runs() {
     let Some(JobState::Failed(message)) = queue.wait(id) else {
         panic!("{:?}", queue.status());
     };
-    assert!(message.contains("нет клипов"), "{message}");
+    assert!(message.contains("всё вырезано"), "{message}");
     assert_eq!(states(&queue)[1], "b done");
 }

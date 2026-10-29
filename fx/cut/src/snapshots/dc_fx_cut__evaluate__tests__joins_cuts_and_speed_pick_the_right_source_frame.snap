@@ -1,0 +1,568 @@
+---
+source: fx/cut/src/evaluate_tests.rs
+expression: scenes
+---
+[
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 0
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 0.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 1900000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 1.9
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 3000000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 2.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 4999999
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 3.999999
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 5500000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 4.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 5900000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 4.4
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 6000000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 4.5
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 7000000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 5.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 7999998
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 5.499999
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 8000000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 5.5
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c1.mp4",
+                "time": 9999999
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 7.499999
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 0.5,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 720.0,
+                "x": 600.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c2.mp4",
+                "time": 0
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 7.5
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 0.5,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 720.0,
+                "x": 600.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c2.mp4",
+                "time": 1500000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 9.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 0.5,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 720.0,
+                "x": 600.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/c2.mp4",
+                "time": 3999999
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 11.499999
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {},
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 11.5
+  }
+]

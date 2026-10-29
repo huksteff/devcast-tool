@@ -1,6 +1,6 @@
 [package]
 name = "dc-ops"
-description = "Registry of all commands, batch apply, dry-run, one-line diff output, errors with hints."
+description = "Registry of all commands, batch apply, dry-run, one-line diff output, errors with hints, project evaluate."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,6 +9,9 @@ publish.workspace = true
 
 [dependencies]
 dc-core = { path = "../core" }
+dc-fx-crop = { path = "../../fx/crop" }
+dc-fx-cut = { path = "../../fx/cut" }
+dc-render = { path = "../render" }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -16,3 +19,6 @@ thiserror.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+insta.workspace = true

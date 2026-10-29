@@ -65,8 +65,8 @@ pub enum EncodeError {
     #[error("звук проекта не свёлся: {0}")]
     Sound(Box<dyn std::error::Error + Send + Sync>),
 
-    #[error("в проекте нет клипов: добавь видео (devcast clip add <видео>) и экспортируй снова")]
-    Empty,
+    #[error("{0}")]
+    Scene(Box<dyn std::error::Error + Send + Sync>),
 
     #[error("готовое видео пустое: всё вырезано. Верни часть (devcast undo) и экспортируй снова")]
     NothingLeft,

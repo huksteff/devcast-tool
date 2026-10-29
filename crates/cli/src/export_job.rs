@@ -1,16 +1,16 @@
-//! One export job: the project snapshot taken by `devcast export`, rendered and encoded by
-//! `dc_encode::export` with the project's sound mixed by `dc-audio`.
+//! One export job: the project snapshot taken by `devcast export`, evaluated by
+//! `dc_ops::Evaluator`, rendered and encoded by `dc_encode::export` with the project's sound mixed
+//! by `dc-audio`.
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use dc_audio::{CHANNELS, Levels, LoudnessCache, Mixer, RATE};
-use dc_core::{Project, TimeMap};
-use dc_encode::export::{
-    Exported, ProgressFn, Timeline, canvas, clip_scene, export_gif, export_mp4,
-};
+use dc_core::Project;
+use dc_encode::export::{Exported, ProgressFn, Timeline, export_gif, export_mp4};
 use dc_encode::{AudioSettings, EncodeError, Sources};
 use dc_media::cached_probe;
+use dc_ops::Evaluator;
 use dc_project::ProjectDir;
 use dc_render::{Compositor, Gpu};
 use serde::{Deserialize, Serialize};
@@ -42,24 +42,23 @@ pub(crate) fn run(
 ) -> Result<Exported, EncodeError> {
     let dir = ProjectDir::open(&spec.root)?;
     let project = &spec.project;
-    let canvas = canvas(project).ok_or(EncodeError::Empty)?;
+    let evaluator = Evaluator::new(project).map_err(|e| EncodeError::Scene(Box::new(e)))?;
     let mut source_fps = 0.0_f64;
     for clip in &project.clips {
         source_fps = source_fps.max(cached_probe(&dir, &clip.media.path)?.fps);
     }
-    let map = TimeMap::build(project);
     let mut loudness = LoudnessCache::default();
     let mut mixer = Mixer::new(&dir, project, &Levels::default(), &mut loudness)
         .map_err(|e| EncodeError::Sound(Box::new(e)))?;
-    let mut scene = |t| clip_scene(project, &map, canvas, t);
+    let mut scene = |t| evaluator.evaluate(t);
     let mut sound = |start, out: &mut [f32]| {
         mixer
             .render(start, out)
             .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })
     };
     let mut timeline = Timeline {
-        duration: map.duration(),
-        canvas,
+        duration: evaluator.duration(),
+        canvas: evaluator.canvas(),
         source_fps,
         scene: &mut scene,
         audio: AudioSettings {

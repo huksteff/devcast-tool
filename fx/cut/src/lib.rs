@@ -1,8 +1,9 @@
-//! Clips on the main track, cuts and speed ranges. Every time argument is output time; commands
-//! turn it into clip source time through the time map.
+//! Clips on the main track, cuts and speed ranges, and their picture in the scene. Every time
+//! argument is output time; commands turn it into clip source time through the time map.
 
 mod clip;
 mod cut;
+mod evaluate;
 mod speed;
 mod split;
 mod track;
@@ -14,6 +15,7 @@ use dc_core::OpInfo;
 
 pub use clip::{ClipAdd, ClipMove, ClipRm};
 pub use cut::Cut;
+pub use evaluate::evaluate;
 pub use speed::Speed;
 pub use split::ClipSplit;
 

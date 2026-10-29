@@ -1,9 +1,11 @@
 //! Output aspect and the command that crops a clip (the crop itself is `Clip::crop` in dc-core).
 //! Model and commands only; the frame is drawn by the render.
 
+mod canvas;
 mod commands;
 mod state;
 
+pub use canvas::canvas;
 pub use commands::{CropClip, SetAspect};
 pub use state::{Aspect, CropSettings, CropState};
 

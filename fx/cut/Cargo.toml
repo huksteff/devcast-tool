@@ -12,8 +12,10 @@ workspace = true
 
 [dependencies]
 dc-core = { path = "../../crates/core" }
+dc-render = { path = "../../crates/render" }
 schemars.workspace = true
 serde.workspace = true
 
 [dev-dependencies]
+insta.workspace = true
 serde_json.workspace = true

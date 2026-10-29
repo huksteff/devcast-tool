@@ -13,9 +13,9 @@ mod common;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 
-use common::{AUDIO, check_streams, speech, synthetic, tone};
+use common::{AUDIO, canvas, check_streams, clip_frame, speech, synthetic, tone};
 use dc_core::{OutputTime, PixelSize, Project, Rect, SourceTime, TimeMap};
-use dc_encode::export::{Mp4Settings, Resolution, Timeline, canvas, clip_scene, export_mp4};
+use dc_encode::export::{Mp4Settings, Resolution, Timeline, export_mp4};
 use dc_encode::{EncodeError, Quality, Sources};
 use dc_media::{Decoder, FramePool, nv12_len, probe};
 use dc_project::ProjectDir;
@@ -38,8 +38,8 @@ fn export(
     cancel_at: Option<u64>,
 ) -> Exported {
     let map = TimeMap::build(project);
-    let canvas = canvas(project).unwrap();
-    let mut scene = |t| clip_scene(project, &map, canvas, t);
+    let canvas = canvas(project);
+    let mut scene = |t| clip_frame(project, &map, t);
     let mut sound = |start, out: &mut [f32]| {
         tone(start, out);
         Ok(())
@@ -105,7 +105,7 @@ fn previewed(
     size: PixelSize,
 ) -> Image {
     let map = TimeMap::build(project);
-    let scene = clip_scene(project, &map, canvas(project).unwrap(), t);
+    let scene = clip_frame(project, &map, t);
     let mut compositor = Compositor::new(gpu);
     Sources::new(project_dir)
         .feed(gpu, &mut compositor, &scene)

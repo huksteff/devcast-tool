@@ -14,10 +14,11 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use dc_core::{PixelSize, Project, Rect, SourceTime};
+use dc_core::{OutputTime, PixelSize, Project, Rect, SourceTime, TimeMap};
 use dc_encode::AudioSettings;
 use dc_media::probe;
 use dc_project::ProjectDir;
+use dc_render::{Band, Layer, Scene, Video, VideoSource};
 use serde_json::Value;
 
 pub const AUDIO: AudioSettings = AudioSettings {
@@ -38,6 +39,26 @@ pub fn run(name: &str, args: &[&str]) -> String {
         String::from_utf8_lossy(&output.stderr)
     );
     String::from_utf8(output.stdout).unwrap()
+}
+
+/// The frame of the export tests' projects (one uncropped clip): its source size.
+pub fn canvas(project: &Project) -> PixelSize {
+    project.clips[0].media.size
+}
+
+/// What output moment `t` of a one-clip test project shows: its source frame filling the canvas.
+/// The real scenes of a project come from `dc_ops::Evaluator`, a layer above this crate.
+pub fn clip_frame(project: &Project, map: &TimeMap, t: OutputTime) -> Scene {
+    let mut scene = Scene::new(canvas(project));
+    if let Some(segment) = map.segment_at(t) {
+        let source = VideoSource {
+            media: segment.media.clone(),
+            time: segment.source_at(t),
+        };
+        let video = Video::fitted(source, canvas(project), Rect::FULL, scene.size);
+        scene.push(Band::Video, Layer::Video(video));
+    }
+    scene
 }
 
 /// A project of one moving `testsrc2` clip, 640×360 at 30 fps, 3 s, with a cut at 1–1.5 s.

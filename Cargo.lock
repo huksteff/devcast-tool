@@ -760,6 +760,8 @@ name = "dc-fx-cut"
 version = "0.1.0"
 dependencies = [
  "dc-core",
+ "dc-render",
+ "insta",
  "schemars",
  "serde",
  "serde_json",
@@ -823,6 +825,10 @@ name = "dc-ops"
 version = "0.1.0"
 dependencies = [
  "dc-core",
+ "dc-fx-crop",
+ "dc-fx-cut",
+ "dc-render",
+ "insta",
  "schemars",
  "serde",
  "serde_json",

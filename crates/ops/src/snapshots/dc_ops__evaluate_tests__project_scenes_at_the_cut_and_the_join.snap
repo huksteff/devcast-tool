@@ -1,0 +1,256 @@
+---
+source: crates/ops/src/evaluate_tests.rs
+expression: scenes
+---
+[
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/recording-1/video.mp4",
+                "time": 0
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 0.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/recording-1/video.mp4",
+                "time": 999999
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 0.999999
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/recording-1/video.mp4",
+                "time": 2000000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 1.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/recording-1/video.mp4",
+                "time": 3999999
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 2.999999
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1440.0,
+                "x": 240.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/импорт 1.mp4",
+                "time": 0
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 3.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1440.0,
+                "x": 240.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/импорт 1.mp4",
+                "time": 1999999
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 4.999999
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {},
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 5.0
+  }
+]

@@ -12,9 +12,9 @@ mod common;
 use std::ops::ControlFlow;
 use std::path::Path;
 
-use common::{AUDIO, ffprobe, synthetic, tone};
+use common::{AUDIO, canvas, clip_frame, ffprobe, synthetic, tone};
 use dc_core::{OutputTime, PixelSize, Project, TimeMap};
-use dc_encode::export::{GifSettings, Resolution, Timeline, canvas, clip_scene, export_gif};
+use dc_encode::export::{GifSettings, Resolution, Timeline, export_gif};
 use dc_encode::{EncodeError, Sources};
 use dc_media::decode_picture;
 use dc_project::ProjectDir;
@@ -29,8 +29,8 @@ fn export(
     out: &Path,
 ) -> Result<dc_encode::export::Exported, EncodeError> {
     let map = TimeMap::build(project);
-    let canvas = canvas(project).unwrap();
-    let mut scene = |t| clip_scene(project, &map, canvas, t);
+    let canvas = canvas(project);
+    let mut scene = |t| clip_frame(project, &map, t);
     let mut sound = |start, out: &mut [f32]| {
         tone(start, out);
         Ok(())
@@ -72,7 +72,7 @@ fn previewed(
     size: PixelSize,
 ) -> Image {
     let map = TimeMap::build(project);
-    let scene = clip_scene(project, &map, canvas(project).unwrap(), t);
+    let scene = clip_frame(project, &map, t);
     let mut compositor = Compositor::new(gpu);
     Sources::new(project_dir)
         .feed(gpu, &mut compositor, &scene)
