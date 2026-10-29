@@ -85,10 +85,18 @@ impl Listener {
         Ok(Connection(self.listener.accept()?))
     }
 
-    /// Connects to this listener and hangs up at once: wakes a thread waiting in
-    /// [`Self::accept`], so that it can see it is time to end.
+    /// Wakes the thread that waits in [`Self::accept`] or comes back to it, so that it can see
+    /// it is time to end: connects and stays until the listener drops the connection. A client
+    /// that hangs up before it is accepted is skipped by `accept` (interprocess), so hanging up
+    /// at once would leave that thread waiting forever. Nobody listening — nothing to wake.
     pub fn wake(name: &str) -> Result<(), IpcError> {
-        Stream::connect(ns_name(name)?)?;
+        let mut stream = match Stream::connect(ns_name(name)?) {
+            Ok(stream) => stream,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(e) => return Err(IpcError::Io(e)),
+        };
+        // The listener sends nothing: the read ends when it drops the connection.
+        let _ = stream.read(&mut [0; 1]);
         Ok(())
     }
 }
@@ -171,6 +179,41 @@ mod tests {
         let answer: String = request(&name, &"стоп").unwrap();
         assert_eq!(answer, "стоп: готово");
         server.join().unwrap();
+    }
+
+    /// The wake comes right after an answer, while the listener is not yet back in `accept`:
+    /// a wake that hung up at once was skipped there (interprocess drops clients that left
+    /// before being accepted), and the listener thread waited forever.
+    #[test]
+    fn wake_reaches_a_listener_that_is_still_answering() {
+        for round in 0..200 {
+            let name = test_name(&format!("wake-{round}"));
+            let listener = Listener::bind(&name).unwrap();
+            let closing = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let flag = std::sync::Arc::clone(&closing);
+            let (ended, end) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                loop {
+                    let connection = listener.accept();
+                    if flag.load(std::sync::atomic::Ordering::SeqCst) {
+                        break;
+                    }
+                    let mut connection = connection.unwrap();
+                    let question: String = connection.receive().unwrap();
+                    connection.send(&question).unwrap();
+                }
+                ended.send(()).unwrap();
+            });
+            let answer: String = request(&name, &"стоп").unwrap();
+            assert_eq!(answer, "стоп");
+            closing.store(true, std::sync::atomic::Ordering::SeqCst);
+            Listener::wake(&name).unwrap();
+            let waited = end.recv_timeout(std::time::Duration::from_secs(10));
+            assert!(
+                waited.is_ok(),
+                "round {round}: the listener did not wake up"
+            );
+        }
     }
 
     #[test]

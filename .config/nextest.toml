@@ -1,0 +1,8 @@
+# A hung test is killed instead of waiting forever (a night run once waited 8 hours).
+[profile.default]
+slow-timeout = { period = "60s", terminate-after = 10 }
+
+# The night sync run records for DEVCAST_SYNC_SECONDS (1800 at night).
+[[profile.default.overrides]]
+filter = "test(stays_in_sync)"
+slow-timeout = { period = "60s", terminate-after = 45 }
