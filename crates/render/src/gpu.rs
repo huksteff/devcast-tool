@@ -8,6 +8,11 @@ use crate::error::GpuError;
 /// Format of every frame and intermediate texture; egui shows it without a copy.
 pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
+/// View of [`FORMAT`] textures that passes render into and sample from (decision 004): the
+/// hardware decodes sRGB to linear on read and encodes on write, so blending and filtering happen
+/// in linear light while the stored bytes stay plain sRGB for PNG, egui and the NV12 export.
+pub const SRGB_VIEW: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+
 /// The native API of the OS, one per platform (decision 004). On Windows DX12: the reference
 /// frames were made on it, WARP is a DX12 adapter, and decoded D3D frames reach it without a copy.
 #[cfg(windows)]
@@ -67,7 +72,7 @@ impl Gpu {
         self.adapter.get_info()
     }
 
-    /// Texture a pass renders into and the readback copies from.
+    /// Texture a pass renders into (through [`SRGB_VIEW`]) and the readback copies from.
     pub fn target(&self, size: PixelSize) -> wgpu::Texture {
         self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("target"),
@@ -83,7 +88,7 @@ impl Gpu {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
+            view_formats: &[SRGB_VIEW],
         })
     }
 }

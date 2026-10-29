@@ -794,6 +794,8 @@ name = "dc-render"
 version = "0.1.0"
 dependencies = [
  "dc-core",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "wgpu",
 ]
