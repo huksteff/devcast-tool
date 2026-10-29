@@ -1,8 +1,10 @@
 //! Shape layer: SDF figures with a fill, an outline, opacity and rotation (decision 004).
 
+use std::borrow::Cow;
 use std::fmt;
 use std::str::FromStr;
 
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::{Deserialize, Serialize};
 
 use super::PxRect;
@@ -153,6 +155,21 @@ impl TryFrom<String> for Rgba {
 impl From<Rgba> for String {
     fn from(color: Rgba) -> Self {
         color.to_string()
+    }
+}
+
+/// Effect states keep colours too (click effects, callout), so the type has a schema.
+impl JsonSchema for Rgba {
+    fn schema_name() -> Cow<'static, str> {
+        "Rgba".into()
+    }
+
+    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+        json_schema!({
+            "type": "string",
+            "description": "sRGB colour with alpha, #rrggbbaa, e.g. #2563ebff",
+            "pattern": "^#[0-9a-fA-F]{8}$"
+        })
     }
 }
 

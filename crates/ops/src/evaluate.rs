@@ -49,7 +49,7 @@ impl<'p> Evaluator<'p> {
             map,
             canvas,
             camera,
-            cursor: dc_fx_cursor::Prepared::new(project, cursor.settings, cursors),
+            cursor: dc_fx_cursor::Prepared::new(project, cursor, cursors),
         })
     }
 

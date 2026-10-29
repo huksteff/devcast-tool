@@ -3,7 +3,7 @@ use dc_render::Sprite;
 use serde_json::json;
 
 use super::*;
-use crate::state::Smoothing;
+use crate::state::{CursorState, Smoothing};
 use crate::test_util::{HAND, HD, o, project, s, tracks};
 
 /// Without bounce, sway and blur: the picture stands upright on the path.
@@ -18,7 +18,7 @@ fn settings(smoothing: Smoothing) -> CursorSettings {
 }
 
 fn scene_at(project: &Project, settings: CursorSettings, secs: f64) -> Scene {
-    let prepared = Prepared::new(project, settings, tracks());
+    let prepared = Prepared::new(project, crate::test_util::state(settings), tracks());
     let mut scene = Scene::new(HD);
     evaluate(
         &prepared,
@@ -161,7 +161,7 @@ fn imported_clip_and_frames_outside_the_video_have_no_cursor() {
     let p = project();
     assert_eq!(scene_at(&p, CursorSettings::default(), 4.5), Scene::new(HD));
     assert_eq!(scene_at(&p, CursorSettings::default(), 7.0), Scene::new(HD));
-    let empty = Prepared::new(&p, CursorSettings::default(), CursorTracks::new());
+    let empty = Prepared::new(&p, CursorState::default(), CursorTracks::new());
     let mut scene = Scene::new(HD);
     evaluate(&empty, &p, &TimeMap::build(&p), o(1.0), &mut scene);
     assert_eq!(scene, Scene::new(HD));

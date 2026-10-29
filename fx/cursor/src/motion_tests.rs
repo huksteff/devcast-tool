@@ -19,7 +19,7 @@ fn exact() -> CursorSettings {
 }
 
 fn sprite_at(project: &Project, settings: CursorSettings, secs: f64) -> Option<Sprite> {
-    let prepared = Prepared::new(project, settings, tracks());
+    let prepared = Prepared::new(project, crate::test_util::state(settings), tracks());
     let mut scene = Scene::new(HD);
     evaluate(
         &prepared,

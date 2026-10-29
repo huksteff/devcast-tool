@@ -2,6 +2,8 @@ use dc_core::TimeDelta;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::click_state::{ClickChange, ClickStyle};
+
 pub const SIZE_MIN: f64 = 0.5;
 pub const SIZE_MAX: f64 = 10.0;
 pub const BLUR_MAX: f64 = 2.0;
@@ -55,6 +57,8 @@ pub struct CursorSettings {
     /// The last 670 ms of the video bring the cursor back to where it starts, for a looped video.
     #[serde(rename = "loop")]
     pub looped: bool,
+    /// The effect of every click; drawn even with the cursor hidden.
+    pub click: ClickStyle,
 }
 
 impl Default for CursorSettings {
@@ -68,6 +72,7 @@ impl Default for CursorSettings {
             bounce_time: TimeDelta::from_millis(350),
             sway: 0.4,
             looped: false,
+            click: ClickStyle::default(),
         }
     }
 }
@@ -77,4 +82,6 @@ impl Default for CursorSettings {
 #[serde(default, deny_unknown_fields)]
 pub struct CursorState {
     pub settings: CursorSettings,
+    /// Clicks shown otherwise than `settings.click`, at most one per press.
+    pub clicks: Vec<ClickChange>,
 }

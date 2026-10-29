@@ -5,7 +5,8 @@ use std::error::Error;
 
 use dc_capture::input::Telemetry;
 use dc_core::{CursorTracks, Project, Rect, SourceTime};
-use dc_fx_cursor::{Cursor, CursorSettings, CursorState};
+use dc_fx_cursor::{ClickChange, ClickKind, ClickStyle, Cursor, CursorSettings, CursorState};
+use dc_render::Rgba;
 
 use crate::common::{TestResult, clicks_fixture};
 
@@ -22,9 +23,28 @@ fn fixture() -> Result<(Project, CursorTracks, Vec<SourceTime>), Box<dyn Error>>
     Ok((project, tracks, clicks))
 }
 
-fn with(mut project: Project, settings: CursorSettings) -> Result<Project, Box<dyn Error>> {
-    project.set_state::<Cursor>(&CursorState { settings })?;
+fn with(project: Project, settings: CursorSettings) -> Result<Project, Box<dyn Error>> {
+    with_clicks(project, settings, Vec::new())
+}
+
+fn with_clicks(
+    mut project: Project,
+    settings: CursorSettings,
+    clicks: Vec<ClickChange>,
+) -> Result<Project, Box<dyn Error>> {
+    project.set_state::<Cursor>(&CursorState { settings, clicks })?;
     Ok(project)
+}
+
+/// Every click shows `kind`.
+fn clicking(kind: ClickKind) -> CursorSettings {
+    CursorSettings {
+        click: ClickStyle {
+            kind,
+            ..ClickStyle::default()
+        },
+        ..CursorSettings::default()
+    }
 }
 
 /// Output second `secs` after click `n` (the fixture has no cuts).
@@ -94,4 +114,70 @@ fn golden_cursor_squeezed_by_a_click() -> TestResult {
     let project = with(project, settings)?;
     // Half of the 350 ms bounce: the deepest squeeze, 72 %.
     crate::common::check("cursor/bounce", &project, tracks, after(&clicks, 2, 0.175)?)
+}
+
+/// 0.4 s after a press its effect is 225 ms into its 600 ms (it starts half a bounce later).
+#[test]
+fn golden_ripple_of_a_click() -> TestResult {
+    let (project, tracks, clicks) = fixture()?;
+    let project = with(project, clicking(ClickKind::Ripple))?;
+    crate::common::check(
+        "cursor/click_ripple",
+        &project,
+        tracks,
+        after(&clicks, 0, 0.4)?,
+    )
+}
+
+#[test]
+fn golden_echo_of_a_click() -> TestResult {
+    let (project, tracks, clicks) = fixture()?;
+    let project = with(project, clicking(ClickKind::Echo))?;
+    crate::common::check(
+        "cursor/click_echo",
+        &project,
+        tracks,
+        after(&clicks, 1, 0.4)?,
+    )
+}
+
+#[test]
+fn golden_flash_of_a_click() -> TestResult {
+    let (project, tracks, clicks) = fixture()?;
+    let project = with(project, clicking(ClickKind::Flash))?;
+    crate::common::check(
+        "cursor/click_flash",
+        &project,
+        tracks,
+        after(&clicks, 2, 0.4)?,
+    )
+}
+
+/// Ripple for all, but this click is a red spotlight.
+#[test]
+fn golden_one_click_changed_to_a_spotlight() -> TestResult {
+    let (project, tracks, clicks) = fixture()?;
+    let media = project
+        .clips
+        .first()
+        .ok_or("fixture without clips")?
+        .media
+        .path
+        .clone();
+    let change = ClickChange {
+        media,
+        at: *clicks.get(3).ok_or("fixture without that click")?,
+        kind: Some(ClickKind::Spotlight),
+        color: Some(Rgba([0xef, 0x44, 0x44, 0xff])),
+        scale: None,
+        opacity: None,
+        duration: None,
+    };
+    let project = with_clicks(project, clicking(ClickKind::Ripple), vec![change])?;
+    crate::common::check(
+        "cursor/click_changed",
+        &project,
+        tracks,
+        after(&clicks, 3, 0.4)?,
+    )
 }

@@ -8,10 +8,10 @@ use std::num::NonZeroU32;
 use dc_core::{OutputTime, Project, TimeDelta, TimeMap};
 use dc_render::{Band, ImageKey, Layer, Motion, PxRect, Scene, Sprite};
 
-use crate::clicks;
 use crate::pose::{Pose, pose_at};
 use crate::prepared::Prepared;
 use crate::state::CursorSettings;
+use crate::{clicks, effects};
 
 /// Picture height over the height of the arrow in it: a Windows arrow is 19.0625 px of its 32 px
 /// box (v1 `k_style`), so every picture is drawn this many times taller than `h`.
@@ -40,6 +40,12 @@ pub fn evaluate(
     scene: &mut Scene,
 ) {
     let settings = &prepared.settings;
+    if let Some(place) = prepared.place(project, map, t, scene.size) {
+        let shapes = effects::shapes(prepared, &place, map, t);
+        if !shapes.is_empty() {
+            scene.push(Band::Cursor, Layer::Shapes(shapes));
+        }
+    }
     if !settings.show {
         return;
     }

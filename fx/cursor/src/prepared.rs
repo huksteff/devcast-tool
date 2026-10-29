@@ -5,12 +5,13 @@ use std::collections::BTreeMap;
 
 use dc_core::{
     CursorPoint, CursorShape, CursorTracks, OutputTime, PixelSize, Point, Project, Rect,
-    SourceTime, TimeMap,
+    SourceTime, TimeDelta, TimeMap,
 };
 use dc_render::{PxRect, Video, VideoSource};
 
+use crate::click_state::{ClickChange, ClickStyle};
 use crate::path::{Path, Sway};
-use crate::state::CursorSettings;
+use crate::state::{CursorSettings, CursorState};
 
 /// Arrow height in px at size 1 in a clip 1920 px wide (v1 `h = 28 · size · W / 1920`).
 const ARROW_PX: f64 = 28.0;
@@ -31,12 +32,16 @@ pub(crate) struct Recording {
 pub struct Prepared {
     pub(crate) settings: CursorSettings,
     pub(crate) recordings: BTreeMap<String, Recording>,
+    changes: Vec<ClickChange>,
+    /// The longest click effect, of all clicks and of the changed ones.
+    pub(crate) longest_click: TimeDelta,
 }
 
 impl Prepared {
     /// Paths of every recording on the track that has mouse events; imported videos have none
     /// and show no cursor.
-    pub fn new(project: &Project, settings: CursorSettings, tracks: CursorTracks) -> Self {
+    pub fn new(project: &Project, state: CursorState, tracks: CursorTracks) -> Self {
+        let CursorState { settings, clicks } = state;
         let spring = settings.smoothing.spring();
         let sway = (settings.sway > 0.0).then(|| Sway {
             spring: settings.smoothing.sway_spring(),
@@ -66,10 +71,25 @@ impl Prepared {
             };
             recordings.insert(media, recording);
         }
+        let longest_click = clicks
+            .iter()
+            .filter_map(|c| c.duration)
+            .fold(settings.click.duration, TimeDelta::max);
         Self {
             settings,
             recordings,
+            changes: clicks,
+            longest_click,
         }
+    }
+
+    /// The effect of the press of `media` at `at`: the common style with its change, if any.
+    pub(crate) fn click_style(&self, media: &str, at: SourceTime) -> ClickStyle {
+        let style = &self.settings.click;
+        self.changes
+            .iter()
+            .find(|c| c.is_for(media, at))
+            .map_or_else(|| style.clone(), |c| c.applied_to(style))
     }
 
     /// Where the recording playing at output moment `t` is shown in a `frame`-sized scene;

@@ -6,6 +6,16 @@ use dc_core::{
     PixelSize, Point, Project, Range, Rect, SourceTime, TimeDelta,
 };
 
+use crate::{CursorSettings, CursorState};
+
+/// A state of these settings without changed clicks.
+pub fn state(settings: CursorSettings) -> CursorState {
+    CursorState {
+        settings,
+        clicks: Vec::new(),
+    }
+}
+
 pub const RECORDING: &str = "media/recording-1/video.mp4";
 pub const ARROW: &str = "media/recording-1/cursor-0000.png";
 pub const HAND: &str = "media/recording-1/cursor-0001.png";
