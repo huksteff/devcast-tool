@@ -64,12 +64,13 @@ pub(crate) struct Request {
     pub reply: Sender<Reply>,
 }
 
-fn channel() -> Result<String, CliError> {
+/// The channel of the user's recording, `devcast-record-<user>`.
+pub(crate) fn channel() -> Result<String, CliError> {
     dc_ipc::socket_name("record").map_err(|e| CliError::Failed(e.to_string()))
 }
 
-/// `devcast record <control>`.
-pub(crate) fn send(control: Control, dry_run: bool) -> Result<Answer, CliError> {
+/// `devcast record <control>` to the recording listening on `channel`.
+pub(crate) fn send(channel: &str, control: Control, dry_run: bool) -> Result<Answer, CliError> {
     if dry_run {
         let text = format!(
             "dry-run: запись не тронута; команда — {} её",
@@ -80,7 +81,7 @@ pub(crate) fn send(control: Control, dry_run: bool) -> Result<Answer, CliError> 
             json!({"dry_run": true, "control": control}),
         ));
     }
-    match dc_ipc::request(&channel()?, &control) {
+    match dc_ipc::request(channel, &control) {
         Ok(Reply::Done { text, json }) => Ok(Answer::new(text, json)),
         Ok(Reply::Failed { message }) => Err(CliError::Failed(message)),
         Err(IpcError::NotRunning(_)) => Err(CliError::Failed(
@@ -105,9 +106,8 @@ pub(crate) struct Server {
 }
 
 impl Server {
-    pub(crate) fn start() -> Result<Self, CliError> {
-        let name = channel()?;
-        let listener = Listener::bind(&name).map_err(|e| {
+    pub(crate) fn start(name: &str) -> Result<Self, CliError> {
+        let listener = Listener::bind(name).map_err(|e| {
             CliError::Failed(format!(
                 "{e}: запись уже идёт — останови её (devcast record stop) или отмени (devcast record cancel)"
             ))
@@ -125,7 +125,7 @@ impl Server {
                 CliError::Failed(format!("не удалось запустить управление записью: {e}"))
             })?;
         Ok(Self {
-            name,
+            name: name.to_owned(),
             closing,
             thread,
             sender: requests,

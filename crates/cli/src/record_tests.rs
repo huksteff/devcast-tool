@@ -96,21 +96,26 @@ fn dry_run_records_nothing_and_names_the_project() {
     );
 }
 
-/// The only test that uses the real channel `devcast-record-<user>`, so that nothing else in
-/// the run takes it at the same time.
+/// A channel of its own per test process: the user's real recording and parallel runs are
+/// never touched.
 #[test]
 fn control_reaches_the_recording_process_and_fails_without_one() {
-    let f = Fixture::new();
-    let out = f.run("record stop");
-    assert_eq!(out.code, 1);
-    assert!(out.stderr.contains("запись не идёт"), "{}", out.stderr);
+    let name = dc_ipc::socket_name(&format!("test-record-{}", std::process::id())).unwrap();
+    let error = record_control::send(&name, Control::Stop, false)
+        .err()
+        .unwrap();
+    assert_eq!(error.code(), 1);
+    assert!(error.to_string().contains("запись не идёт"), "{error}");
 
-    let server = Server::start().unwrap();
+    let server = Server::start(&name).unwrap();
     assert!(
-        Server::start().is_err(),
+        Server::start(&name).is_err(),
         "a second recording must not start"
     );
-    let caller = std::thread::spawn(|| record_control::send(Control::Pause, false));
+    let caller = std::thread::spawn({
+        let name = name.clone();
+        move || record_control::send(&name, Control::Pause, false)
+    });
     let request = server
         .requests
         .recv_timeout(Duration::from_secs(10))
@@ -125,8 +130,13 @@ fn control_reaches_the_recording_process_and_fails_without_one() {
     assert_eq!(answer.text, "пауза: записано 0:05.000");
     assert!(server.close().unwrap().is_empty());
 
-    let out = f.run("record resume");
-    assert_eq!(out.code, 1, "the channel is free again: {out:?}");
+    let error = record_control::send(&name, Control::Resume, false)
+        .err()
+        .unwrap();
+    assert!(
+        error.to_string().contains("запись не идёт"),
+        "the channel is free again: {error}"
+    );
 }
 
 #[test]

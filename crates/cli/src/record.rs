@@ -31,7 +31,9 @@ pub(crate) fn record(
         ));
     }
     match control {
-        Some(control) if args.is_empty() => record_control::send(control, ctx.globals.dry_run),
+        Some(control) if args.is_empty() => {
+            record_control::send(&record_control::channel()?, control, ctx.globals.dry_run)
+        }
         Some(control) => Err(CliError::Usage(format!(
             "record {} управляет идущей записью и не берёт настроек: devcast record {}",
             name(control),
@@ -75,7 +77,7 @@ fn start(ctx: &Ctx<'_>, args: &RecordArgs) -> Result<Answer, CliError> {
         return Ok(Answer::new(text, json));
     }
     let defaults = Defaults::load(&settings::defaults_file()?)?;
-    let server = Server::start()?;
+    let server = Server::start(&record_control::channel()?)?;
     if let Err(e) = on_console_stop(server.stopper()) {
         server.close()?;
         return Err(CliError::Failed(e.to_string()));
