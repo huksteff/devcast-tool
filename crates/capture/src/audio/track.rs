@@ -5,8 +5,9 @@
 //! work runs on the track's thread, which also reconnects system sound when the default output
 //! device changes (the gap is filled with silence by the timeline).
 
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use dc_encode::{AudioEncoder, AudioSettings};
 
@@ -23,6 +24,16 @@ pub const SYSTEM_TRACK: &str = "system";
 
 /// Name of the microphone track.
 pub const MIC_TRACK: &str = "mic";
+
+/// The host clock (QPC on Windows): this module has no platform code, the recording hands it in.
+pub type Clock = fn() -> Result<HostTime, CaptureError>;
+
+/// With no packet for this long the track checks whether the sound fell behind the clock.
+const TICK: Duration = Duration::from_millis(250);
+
+/// Silence is filled only this far behind the clock: no packet is this late (decision 008:
+/// they come within ~1 ms of their place), so filling never cuts real sound.
+const QUIET_MICROS: i64 = 500_000;
 
 /// What was written.
 #[derive(Debug, Clone, PartialEq)]
@@ -56,7 +67,11 @@ enum Message {
 
 impl AudioRecording {
     /// Opens the device of `source` and starts listening; sound is kept from [`Self::begin`].
-    pub fn start(source: AudioSource, track: &'static str) -> Result<Self, CaptureError> {
+    pub fn start(
+        source: AudioSource,
+        track: &'static str,
+        now: Clock,
+    ) -> Result<Self, CaptureError> {
         let device = Device::find(&source)?;
         let (control, messages) = mpsc::channel();
         let (stream, spare) = open(&device, &control)?;
@@ -70,6 +85,7 @@ impl AudioRecording {
                     stream: Some(stream),
                     spare,
                     link,
+                    now,
                     reconnects: 0,
                     problems: Vec::new(),
                 };
@@ -161,6 +177,7 @@ struct Worker {
     spare: Sender<Vec<f32>>,
     /// For the callbacks of a reconnected stream.
     link: Sender<Message>,
+    now: Clock,
     reconnects: u32,
     problems: Vec<String>,
 }
@@ -196,15 +213,24 @@ impl Worker {
             output.push(time, &samples)?;
         }
         loop {
-            match messages.recv() {
-                Ok(Message::Packet(time, samples)) => {
+            let message = match messages.recv_timeout(TICK) {
+                Ok(message) => message,
+                Err(RecvTimeoutError::Timeout) => {
+                    let now = (self.now)()?;
+                    output.quiet(HostTime::from_micros(now.micros() - QUIET_MICROS))?;
+                    continue;
+                }
+                Err(RecvTimeoutError::Disconnected) => return Err(aborted()),
+            };
+            match message {
+                Message::Packet(time, samples) => {
                     output.push(time, &samples)?;
                     // Without the stream nobody takes buffers back; then it is not needed.
                     let _ = self.spare.send(samples);
                 }
-                Ok(Message::Failed(error)) => self.failed(&error, Some(&mut output.timeline))?,
-                Ok(Message::Stop(at)) => return self.stop(track, output, at, messages),
-                Ok(Message::Begin(..) | Message::Abort) | Err(_) => return Err(aborted()),
+                Message::Failed(error) => self.failed(&error, Some(&mut output.timeline))?,
+                Message::Stop(at) => return self.stop(track, output, at, messages),
+                Message::Begin(..) | Message::Abort => return Err(aborted()),
             }
         }
     }
@@ -307,6 +333,17 @@ impl Output {
         }
         self.timeline
             .push(placed.time, samples, &mut self.samples)?;
+        self.encode()
+    }
+
+    /// Silence up to host time `time` if no sound reached it (see [`AudioTimeline::fill_to`]);
+    /// nothing in a pause.
+    fn quiet(&mut self, time: HostTime) -> Result<(), CaptureError> {
+        let placed = self.clock.place(time)?;
+        if placed.paused {
+            return Ok(());
+        }
+        self.timeline.fill_to(placed.time, &mut self.samples)?;
         self.encode()
     }
 

@@ -91,6 +91,45 @@ fn silence_is_filled_before_between_and_after_packets() {
     assert!((stats.silence - 2.8).abs() < 0.001, "{stats:?}");
 }
 
+/// A silent system sends no packets at all: the clock fills the track, so it grows (and its
+/// segments close) without sound, and sound coming later still lands in its place.
+#[test]
+fn silence_grows_the_track_without_packets() {
+    let device = Device {
+        rate: 44_100.0,
+        drift: 0.0,
+        clicks: vec![2.6],
+    };
+    let mut timeline = AudioTimeline::new(host(0.0), 44_100).unwrap();
+    let mut out = Vec::new();
+    timeline.fill_to(host(2.0), &mut out).unwrap();
+    // Whatever the resampler still holds, the track has grown to about 2 s already.
+    let made = out.len() as i64 / CHANNELS as i64;
+    assert!(made > at(1.8) && timeline.frames() <= at(2.0), "{made}");
+    timeline.fill_to(host(1.5), &mut out).unwrap();
+    assert_eq!(
+        out.len() as i64 / CHANNELS as i64,
+        made,
+        "an older time adds nothing"
+    );
+    device.play(&mut timeline, 2.5, 3.0, &mut out);
+    timeline.stop_at(host(3.0));
+    timeline.finish(&mut out).unwrap();
+    assert_eq!(timeline.frames(), at(3.0));
+    // Two fills in whole 44.1 kHz frames (half a track frame each) and the filter delay.
+    let clicks = find_clicks(&out);
+    assert!(
+        clicks.len() == 1 && (clicks[0] - at(2.6)).abs() <= 4,
+        "{clicks:?} vs {}",
+        at(2.6)
+    );
+    assert!(
+        out.iter()
+            .take(at(2.0) as usize * CHANNELS)
+            .all(|s| s.abs() < 1e-6)
+    );
+}
+
 #[test]
 fn sound_before_the_start_and_after_the_stop_is_cut() {
     let device = Device {

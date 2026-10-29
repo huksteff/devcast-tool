@@ -143,6 +143,21 @@ impl AudioTimeline {
         self.feed(samples, out)
     }
 
+    /// Silence up to host time `time`, if the sound has not reached it: loopback sends nothing
+    /// while the system is silent, and the track (and its segments, so a killed recording can
+    /// be recovered) must still grow. A packet that comes later for that time is cut as an
+    /// overlap, so `time` must be older than any packet still on its way.
+    pub fn fill_to(&mut self, time: HostTime, out: &mut Vec<f32>) -> Result<(), CaptureError> {
+        let missing = self.place(time) - self.position();
+        if missing <= 0.0 {
+            return Ok(());
+        }
+        let frames = (missing / self.ratio()).round() as usize;
+        self.stats.gaps += 1;
+        self.stats.silence += frames as f64 / f64::from(self.input_rate);
+        self.silence(frames, out)
+    }
+
     /// The device changed: sound continues from the next packet, at `input_rate`. What the old
     /// resampler still held becomes part of the gap.
     pub fn restart(&mut self, input_rate: u32) -> Result<(), CaptureError> {

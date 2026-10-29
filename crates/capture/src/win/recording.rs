@@ -56,11 +56,15 @@ impl Recording {
         // Sound streams open first, so the beginning is not lost while the codec is checked.
         let mut audio = Vec::new();
         if config.system_audio {
-            audio.push(AudioRecording::start(AudioSource::System, SYSTEM_TRACK)?);
+            audio.push(AudioRecording::start(
+                AudioSource::System,
+                SYSTEM_TRACK,
+                super::now,
+            )?);
         }
         if let Some(name) = &config.microphone {
             let source = AudioSource::Microphone(name.clone());
-            audio.push(AudioRecording::start(source, MIC_TRACK)?);
+            audio.push(AudioRecording::start(source, MIC_TRACK, super::now)?);
         }
         let origin = source_origin(&config.source)?;
         let input = InputRecording::start()?;
