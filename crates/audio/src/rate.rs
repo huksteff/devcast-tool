@@ -69,7 +69,6 @@ impl RateConverter {
         aligned * i64::from(RATE) / i64::from(self.rate)
     }
 
-    /// Converts `input` and appends what is ready to `out`.
     pub fn push(&mut self, input: &[f32], out: &mut Vec<f32>) -> Result<(), AudioError> {
         self.pending.extend_from_slice(input);
         self.input_frames += (input.len() / CHANNELS) as u64;
