@@ -30,7 +30,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .deps
-          key: deps-${{ hashFiles('xtask/src/native.rs') }}
+          key: deps-${{ hashFiles('xtask/src/native.rs', 'xtask/src/fonts.rs') }}
 
       - name: native deps
         run: cargo xtask deps

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use dc_core::SourceTime;
 use thiserror::Error;
 
@@ -36,4 +38,17 @@ pub enum RenderError {
         y: usize,
         uv: usize,
     },
+    #[error("шрифты из «{}» не загрузились: {source}. Проверь, что папка есть и файлы .ttf/.otf целые", path.display())]
+    Fonts {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    #[error(
+        "шрифт «{family}» не загружен. Выбери встроенный шрифт (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono) или положи файл шрифта в assets/ проекта"
+    )]
+    NoFont { family: String },
+    #[error("текст не подготовился к рисованию: {0}. Уменьши размер или количество текста в кадре")]
+    Text(glyphon::PrepareError),
+    #[error("текст не нарисовался: {0}. Это ошибка программы: сообщи разработчику")]
+    TextDraw(glyphon::RenderError),
 }

@@ -89,13 +89,15 @@ impl ShapesPass {
         self.views.push(&globals(whole));
     }
 
-    /// Adds `shapes` seen through `camera` as the next instances.
-    pub(crate) fn push(&mut self, shapes: &[Shape], camera: Camera) {
+    /// Adds `shapes` seen through `camera` as the next instances; returns them.
+    pub(crate) fn push(&mut self, shapes: &[Shape], camera: Camera) -> Range<u32> {
+        let first = (self.bytes.len() as u64 / BYTES) as u32;
         for shape in shapes {
             let floats = pack(shape, camera);
             self.bytes
                 .extend_from_slice(floats.map(f32::to_le_bytes).as_flattened());
         }
+        first..first + shapes.len() as u32
     }
 
     /// Adds a view for a glow mask; returns its slot.

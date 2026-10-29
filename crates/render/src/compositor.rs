@@ -1,7 +1,9 @@
-//! `draw`: paints a [`Scene`] into a target texture. Pipelines and per-media textures live here
-//! between frames, so a frame only uploads new pixels.
+//! `draw`: paints a [`Scene`] into a target texture. Pipelines, fonts and per-media textures live
+//! here between frames, so a frame only uploads new pixels.
 
 use std::collections::HashMap;
+use std::ops::Range;
+use std::path::Path;
 
 use dc_core::PixelSize;
 
@@ -9,8 +11,9 @@ use crate::blur::{BlurPass, Op};
 use crate::error::RenderError;
 use crate::gpu::{Gpu, SRGB_VIEW};
 use crate::recorder::Recorder;
-use crate::scene::{Blur, Camera, Layer, PxRect, Scene, Shape, VideoSource};
+use crate::scene::{Blur, Camera, Layer, PxRect, Scene, Shape, Text, VideoSource};
 use crate::shapes::{ShapesPass, glow_area};
+use crate::text::TextPass;
 use crate::video::{Nv12, VideoFrame, VideoPass};
 
 /// The renderer of preview, export and the CLI.
@@ -18,11 +21,22 @@ pub struct Compositor {
     video: VideoPass,
     shapes: ShapesPass,
     blur: BlurPass,
+    text: TextPass,
     /// Decoded frames by `Media::path`; a frame the drawn scene does not show is dropped.
     frames: HashMap<String, VideoFrame>,
-    /// Blurs of the frame being drawn in paint order (region blurs and glows); `None` for one
-    /// that is off the frame.
-    ops: Vec<Option<Op>>,
+    /// What the frame being drawn records, in paint order.
+    steps: Vec<Step>,
+    ops: Vec<Op>,
+}
+
+/// One draw of a frame.
+enum Step {
+    Video(String),
+    Shapes(Range<u32>),
+    /// A region blur or a glow: `ops[i]`.
+    Blur(usize),
+    /// Glyphs of text renderer `i`.
+    Text(usize),
 }
 
 impl Compositor {
@@ -31,9 +45,18 @@ impl Compositor {
             video: VideoPass::new(gpu),
             shapes: ShapesPass::new(gpu),
             blur: BlurPass::new(gpu),
+            text: TextPass::new(gpu),
             frames: HashMap::new(),
+            steps: Vec::new(),
             ops: Vec::new(),
         }
+    }
+
+    /// Loads the `.ttf` and `.otf` files of `dir`: the built-in fonts (`assets/fonts` of the
+    /// program) and those of a project's `assets/`. No other fonts are used, the system's
+    /// included (decision 005).
+    pub fn load_fonts(&mut self, dir: &Path) -> Result<(), RenderError> {
+        self.text.load_fonts(dir)
     }
 
     /// Hands over the decoded frame of `source`, before [`Self::draw`] of a scene showing it.
@@ -59,33 +82,19 @@ impl Compositor {
         });
         let source = self.blur.bind(gpu, &view);
         let mut recorder = Recorder::new(gpu, &view);
-        let mut ops = self.ops.iter();
-        // Shape layers were pushed in paint order, so their instances follow one another.
-        let mut next = 0;
-        for (_band, layer) in scene.painted() {
-            match layer {
-                Layer::Video(video) => {
-                    let frame = self.frame(&video.source)?;
-                    self.video.record(recorder.pass(), frame);
+        for step in &self.steps {
+            match step {
+                Step::Video(media) => self.video.record(recorder.pass(), &self.frames[media]),
+                Step::Shapes(range) => self.shapes.record(recorder.pass(), range.clone()),
+                Step::Blur(i) => {
+                    self.blur
+                        .record(&mut recorder, &source, &self.shapes, &self.ops[*i]);
                 }
-                Layer::Shapes(shapes) => {
-                    // A glow goes under its figure: the figures before it are drawn first.
-                    let end = next + shapes.len() as u32;
-                    let mut run = next;
-                    for (i, shape) in (next..).zip(shapes) {
-                        if shape.glow.is_some() {
-                            self.shapes.record(recorder.pass(), run..i);
-                            run = i;
-                            self.record_op(&mut recorder, &source, ops.next());
-                        }
-                    }
-                    self.shapes.record(recorder.pass(), run..end);
-                    next = end;
-                }
-                Layer::Blur(_) => self.record_op(&mut recorder, &source, ops.next()),
+                Step::Text(i) => self.text.record(recorder.pass(), *i)?,
             }
         }
         gpu.queue.submit([recorder.finish()]);
+        self.text.trim();
         self.frames.retain(|media, _| {
             scene
                 .painted()
@@ -94,18 +103,7 @@ impl Compositor {
         Ok(())
     }
 
-    fn record_op(
-        &self,
-        recorder: &mut Recorder<'_>,
-        source: &wgpu::BindGroup,
-        op: Option<&Option<Op>>,
-    ) {
-        if let Some(Some(op)) = op {
-            self.blur.record(recorder, source, &self.shapes, op);
-        }
-    }
-
-    /// Writes what the layers need into GPU buffers before the render pass.
+    /// Writes what the layers need into GPU buffers and plans the draws.
     fn prepare(
         &mut self,
         gpu: &Gpu,
@@ -118,8 +116,9 @@ impl Compositor {
         };
         self.shapes.clear(scene.size, target);
         self.blur.clear(scene.size, target);
+        self.text.clear(gpu, scene.size, target);
+        self.steps.clear();
         self.ops.clear();
-        let mut instance = 0;
         for (band, layer) in scene.painted() {
             let camera = if band.under_camera() {
                 scene.camera
@@ -130,32 +129,54 @@ impl Compositor {
                 Layer::Video(video) => {
                     let frame = self.frame(&video.source)?;
                     VideoPass::prepare(gpu, frame, video, camera, scene.size);
+                    self.steps.push(Step::Video(video.source.media.clone()));
                 }
-                Layer::Shapes(shapes) => {
-                    self.shapes.push(shapes, camera);
-                    for shape in shapes {
-                        self.push_glow(shape, camera, instance);
-                        instance += 1;
+                Layer::Shapes(shapes) => self.push_shapes(shapes, camera),
+                Layer::Blur(blur) => {
+                    if let Some(op) = self.blur.push_region(&through(blur, camera)) {
+                        self.push_op(op);
                     }
                 }
-                Layer::Blur(blur) => {
-                    let op = self.blur.push_region(&through(blur, camera));
-                    self.ops.push(op);
-                }
+                Layer::Text(text) => self.push_text(gpu, text, camera)?,
             }
         }
         self.shapes.upload(gpu);
-        self.blur.upload(gpu, self.ops.iter().any(Option::is_some));
+        self.blur.upload(gpu, !self.ops.is_empty());
         Ok(())
     }
 
-    fn push_glow(&mut self, shape: &Shape, camera: Camera, instance: u32) {
-        if let Some((bounds, sigma)) = glow_area(shape, camera) {
-            let op = self
+    /// Figures in runs; the glow of a figure goes between the run before it and the figure.
+    fn push_shapes(&mut self, shapes: &[Shape], camera: Camera) {
+        let mut run = self.shapes.push(shapes, camera);
+        for (instance, shape) in run.clone().zip(shapes) {
+            let Some((bounds, sigma)) = glow_area(shape, camera) else {
+                continue;
+            };
+            if let Some(op) = self
                 .blur
-                .push_glow(&mut self.shapes, instance, bounds, sigma);
-            self.ops.push(op);
+                .push_glow(&mut self.shapes, instance, bounds, sigma)
+            {
+                self.steps.push(Step::Shapes(run.start..instance));
+                self.push_op(op);
+                run.start = instance;
+            }
         }
+        self.steps.push(Step::Shapes(run));
+    }
+
+    fn push_text(&mut self, gpu: &Gpu, text: &Text, camera: Camera) -> Result<(), RenderError> {
+        let (renderer, decor) = self.text.push(gpu, text, camera)?;
+        let plates = self.shapes.push(&decor.plates, Camera::IDENTITY);
+        self.steps.push(Step::Shapes(plates));
+        self.steps.push(Step::Text(renderer));
+        let underlines = self.shapes.push(&decor.underlines, Camera::IDENTITY);
+        self.steps.push(Step::Shapes(underlines));
+        Ok(())
+    }
+
+    fn push_op(&mut self, op: Op) {
+        self.steps.push(Step::Blur(self.ops.len()));
+        self.ops.push(op);
     }
 
     fn frame(&self, source: &VideoSource) -> Result<&VideoFrame, RenderError> {

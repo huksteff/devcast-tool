@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 dc-core = { path = "../core" }
+glyphon = "0.12"
 serde.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true

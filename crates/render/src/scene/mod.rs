@@ -6,6 +6,7 @@
 
 mod blur;
 mod shape;
+mod text;
 mod video;
 
 use std::collections::BTreeMap;
@@ -18,6 +19,7 @@ pub use shape::{
     Geometry, Glow, Gradient, GradientColors, GradientCount, Paint, ParseRgbaError, Rgba, Shape,
     Stroke,
 };
+pub use text::{Align, Font, Plate, Text, TextRun};
 pub use video::{PxRect, Video, VideoSource};
 
 /// Everything drawn in one output frame. The frame starts black (the fields around a clip, SCOPE
@@ -101,6 +103,7 @@ pub enum Layer {
     /// Figures drawn in one instanced pass, later ones on top.
     Shapes(Vec<Shape>),
     Blur(Blur),
+    Text(Text),
 }
 
 #[cfg(test)]

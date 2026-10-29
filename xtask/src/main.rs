@@ -4,6 +4,7 @@ mod changed;
 mod crates;
 mod deps;
 mod features;
+mod fonts;
 mod hook;
 mod limits;
 mod metadata;
@@ -28,7 +29,7 @@ const USAGE: &str = "\
       Stop-хук Claude Code (.claude/settings.json): если менялся код и verify красный,
       не даёт сессии закончиться и передаёт отчёт агенту.
   deps
-      Скачать и проверить по SHA-256 нативные зависимости сборки (FFmpeg, libclang) в .deps/
+      Скачать и проверить по SHA-256 нативные зависимости сборки (FFmpeg, libclang) и шрифты в .deps/
       и скопировать DLL FFmpeg рядом с собираемыми exe.";
 
 fn main() -> ExitCode {

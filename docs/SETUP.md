@@ -21,7 +21,7 @@
 |---|---|---|
 | CMake 4.4.5, portable zip | собирает whisper.cpp (субтитры) | zip `cmake-4.4.5-windows-x86_64.zip` с https://cmake.org/download/ распаковать в `.deps/cmake`, добавить `.deps/cmake/bin` в PATH для сборки |
 | Модели Whisper | субтитры | `ggml-small.bin` и `ggml-large-v3-turbo.bin` с https://huggingface.co/ggerganov/whisper.cpp в `.deps/models/`. SHA-256 сверить с docs/decisions/010-whisper.md |
-| Шрифты | текст в рендере | Inter, Montserrat, Roboto, PT Serif, JetBrains Mono из https://github.com/google/fonts в `.deps/fonts/`; Noto Color Emoji оттуда же. См. docs/decisions/005-text.md |
+| Шрифты | текст в рендере | `cargo xtask deps` (п. 5) скачивает в `.deps/fonts/` с проверкой SHA-256: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono из https://github.com/google/fonts; Noto Color Emoji (сборка CBDT) из релиза https://github.com/googlefonts/noto-emoji. См. docs/decisions/005-text.md |
 | .NET SDK 10 (LTS) и vpk | установщик и обновления (Velopack) | без админа: официальный `dotnet-install.ps1 -Channel LTS` (https://dot.net/v1/dotnet-install.ps1) в `%LOCALAPPDATA%\Microsoft\dotnet`, затем `dotnet tool install -g vpk`. См. docs/decisions/013-velopack.md |
 | egui-mcp | смотреть окна приложения в тестах | `cargo install egui_mcp --locked`. См. docs/decisions/012-testing.md |
 | Vulkan SDK | GPU для Whisper | **Нужны права администратора**, вопрос открыт в docs/QUESTIONS.md. Владелец ставит с https://vulkan.lunarg.com |

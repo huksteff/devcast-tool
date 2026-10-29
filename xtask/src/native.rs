@@ -1,4 +1,4 @@
-//! `cargo xtask deps`: native build dependencies (FFmpeg, libclang, CMake) in `.deps/`, verified by SHA-256
+//! `cargo xtask deps`: native build dependencies (FFmpeg, libclang, CMake) and the fonts in `.deps/`, verified by SHA-256
 //! (docs/decisions/003-video-decode.md). Downloads and unpacks with the system `curl` and `tar`.
 
 use std::path::{Path, PathBuf};
@@ -58,6 +58,7 @@ pub fn run(root: &Path) -> Result<(), String> {
         ensure(&deps, archive)?;
     }
     copy_ffmpeg_dlls(root)?;
+    crate::fonts::ensure(&deps)?;
     println!(
         "deps: OK — .deps/ffmpeg, .deps/libclang; DLL FFmpeg скопированы в target/debug и target/release"
     );
@@ -170,7 +171,7 @@ fn single_child(dir: &Path) -> Result<PathBuf, String> {
     }
 }
 
-fn run_tool(command: &mut Command) -> Result<(), String> {
+pub(crate) fn run_tool(command: &mut Command) -> Result<(), String> {
     let shown = format!("{command:?}");
     let status = command
         .status()
@@ -182,7 +183,7 @@ fn run_tool(command: &mut Command) -> Result<(), String> {
     }
 }
 
-fn create_dir(path: &Path) -> Result<(), String> {
+pub(crate) fn create_dir(path: &Path) -> Result<(), String> {
     std::fs::create_dir_all(path).map_err(|e| format!("не удалось создать {}: {e}", path.display()))
 }
 
