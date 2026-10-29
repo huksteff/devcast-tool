@@ -34,6 +34,13 @@ pub fn free_recording_folder(media: &Path) -> String {
     }
 }
 
+/// The folder of recording `media` in the project at `root`: the folder of its video.
+pub fn recording_dir(root: &Path, media: &Media) -> PathBuf {
+    let mut dir = root.join(&media.path);
+    dir.pop();
+    dir
+}
+
 /// Adds the finished recording in `media/<folder>/` (its `manifest`) to the end of `project`
 /// as a clip of the whole video; returns the clip.
 pub fn add_recording<'a>(
@@ -189,6 +196,10 @@ mod tests {
         assert_eq!(project.problems(), Vec::<String>::new());
         let media = &project.clips[0].media;
         assert_eq!(media.path, "media/recording-1/video.mp4");
+        assert_eq!(
+            recording_dir(Path::new("Урок.dcproj"), media),
+            Path::new("Урок.dcproj/media/recording-1")
+        );
         assert_eq!(media.duration, TimeDelta::from_micros(10_000_000));
         assert_eq!((media.size.width, media.size.height), (1920, 1080));
         assert_eq!(project.clips[0].trim.duration(), media.duration);

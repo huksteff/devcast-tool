@@ -10,6 +10,7 @@
 
 use std::path::{Path, PathBuf};
 
+use dc_capture::project::recording_dir;
 use dc_capture::{Manifest, VIDEO_TRACK};
 use dc_core::project::{Media, MediaKind};
 use dc_project::ProjectDir;
@@ -34,16 +35,14 @@ pub struct SourceTrack {
 
 /// Sound tracks of `media` of `project`, in a stable order.
 pub fn tracks(project: &ProjectDir, media: &Media) -> Result<Vec<SourceTrack>, AudioError> {
-    let path = project.root().join(&media.path);
     let origin = dc_media::cached_probe(project, &media.path)?.origin_micros;
     match media.kind {
-        MediaKind::Recording => recording_tracks(&path, origin),
-        MediaKind::Imported => imported_tracks(&path, origin),
+        MediaKind::Recording => recording_tracks(&recording_dir(project.root(), media), origin),
+        MediaKind::Imported => imported_tracks(&project.root().join(&media.path), origin),
     }
 }
 
-fn recording_tracks(video: &Path, origin: i64) -> Result<Vec<SourceTrack>, AudioError> {
-    let folder = video.parent().unwrap_or(Path::new(""));
+fn recording_tracks(folder: &Path, origin: i64) -> Result<Vec<SourceTrack>, AudioError> {
     let manifest = Manifest::read(folder)?;
     let sound = manifest.tracks.iter().filter(|t| t.name != VIDEO_TRACK);
     sound

@@ -5,6 +5,7 @@
 use std::path::Path;
 
 use dc_capture::input::Telemetry;
+use dc_capture::project::recording_dir;
 use dc_core::project::{Media, MediaKind};
 use dc_core::{Clip, OutputTime, Point, Project, SourceTime, TimeMap};
 
@@ -25,11 +26,7 @@ pub(crate) fn read<'a>(root: &Path, project: &'a Project) -> Result<Vec<Recorded
         {
             continue;
         }
-        let video = root.join(&media.path);
-        let dir = video
-            .parent()
-            .ok_or_else(|| CliError::Failed(format!("у записи {} нет папки", media.path)))?;
-        let telemetry = Telemetry::read(dir).map_err(|e| CliError::Failed(e.to_string()))?;
+        let telemetry = Telemetry::read(&recording_dir(root, media)).map_err(|e| CliError::Failed(e.to_string()))?;
         recorded.push(Recorded { media, telemetry });
     }
     Ok(recorded)
