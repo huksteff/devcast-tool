@@ -1,5 +1,5 @@
-//! Speech recognition with whisper-rs (whisper.cpp), on the CPU until the Vulkan build is
-//! possible (docs/QUESTIONS.md). Word times by DTW with flash attention off (decision 010).
+//! Speech recognition with whisper-rs (whisper.cpp): on the first Vulkan GPU, on the CPU when
+//! there is none. Word times by DTW with flash attention off (decision 010).
 
 use std::path::Path;
 
@@ -60,9 +60,9 @@ pub fn recognize(
     let mut state = context.create_state().map_err(whisper)?;
 
     let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    let threads = std::thread::available_parallelism()
-        .map_err(|e| TranscribeError::Whisper(format!("не узнать число ядер процессора: {e}")))?;
-    params.set_n_threads(threads.get() as i32);
+    // One thread per physical core: with a thread per logical core ggml waits on its spinning
+    // barriers, and a busy 8-core i7 recognized 10 s of speech in 43 s instead of 4 s.
+    params.set_n_threads(num_cpus::get_physical() as i32);
     params.set_language(Some(language.unwrap_or("auto")));
     params.set_token_timestamps(true);
     params.set_print_special(false);

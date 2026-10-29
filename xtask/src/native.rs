@@ -1,4 +1,4 @@
-//! `cargo xtask deps`: native build dependencies (FFmpeg, libclang, CMake) and the fonts in `.deps/`, verified by SHA-256
+//! `cargo xtask deps`: native build dependencies (FFmpeg, libclang, CMake, the Vulkan loader) and the fonts in `.deps/`, verified by SHA-256
 //! (docs/decisions/003-video-decode.md). Downloads and unpacks with the system `curl` and `tar`.
 
 use std::path::{Path, PathBuf};
@@ -21,7 +21,7 @@ struct Archive {
     unpack: Unpack,
 }
 
-const ARCHIVES: [Archive; 3] = [
+const ARCHIVES: [Archive; 4] = [
     Archive {
         name: "ffmpeg",
         url: "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-full_build-shared.zip",
@@ -47,6 +47,18 @@ const ARCHIVES: [Archive; 3] = [
         sha256: "326c826486d46a23cf9d5a1c9ee3a567d427bdd02c4a34071937a2a675cff004",
         unpack: Unpack::StripTopDir,
     },
+    // The Vulkan loader, shipped next to the exe: without it a PC with no Vulkan driver (and
+    // CI) cannot even start an exe that links whisper.cpp; with it whisper falls back to the CPU
+    // (decision 010).
+    Archive {
+        name: "vulkan",
+        url: "https://sdk.lunarg.com/sdk/download/1.4.363.0/windows/VulkanRT-X64-1.4.363.0-Components.zip",
+        file: "VulkanRT-X64-1.4.363.0-Components.zip",
+        sha256: "a25a927aa8b9f0371048f1861cf88ac3b9bc9b1fb332c42d897c8ab32695769a",
+        unpack: Unpack::SingleFile {
+            member: "VulkanRT-X64-1.4.363.0-Components/x64/vulkan-1.dll",
+        },
+    },
 ];
 
 /// Marker inside a ready destination folder: the SHA-256 of the archive it came from.
@@ -57,10 +69,10 @@ pub fn run(root: &Path) -> Result<(), String> {
     for archive in &ARCHIVES {
         ensure(&deps, archive)?;
     }
-    copy_ffmpeg_dlls(root)?;
+    copy_dlls(root)?;
     crate::fonts::ensure(&deps)?;
     println!(
-        "deps: OK — .deps/ffmpeg, .deps/libclang; DLL FFmpeg скопированы в target/debug и target/release"
+        "deps: OK — .deps/ffmpeg, .deps/libclang, .deps/vulkan; DLL FFmpeg и Vulkan скопированы в target/debug и target/release"
     );
     Ok(())
 }
@@ -127,16 +139,21 @@ fn unpack(deps: &Path, archive: &Archive, download: &Path, dest: &Path) -> Resul
     remove_dir(&staging)
 }
 
-/// FFmpeg DLLs next to the built executables, so `cargo run` / tests start without PATH tweaks.
-fn copy_ffmpeg_dlls(root: &Path) -> Result<(), String> {
-    let bin = root.join(".deps").join("ffmpeg").join("bin");
-    let entries =
-        std::fs::read_dir(&bin).map_err(|e| format!("нет папки {}: {e}", bin.display()))?;
-    let dlls: Vec<PathBuf> = entries
-        .filter_map(Result::ok)
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|x| x == "dll"))
-        .collect();
+/// FFmpeg and Vulkan loader DLLs next to the built executables, so `cargo run` / tests start
+/// without PATH tweaks.
+fn copy_dlls(root: &Path) -> Result<(), String> {
+    let deps = root.join(".deps");
+    let mut dlls = Vec::new();
+    for dir in [deps.join("ffmpeg").join("bin"), deps.join("vulkan")] {
+        let entries =
+            std::fs::read_dir(&dir).map_err(|e| format!("нет папки {}: {e}", dir.display()))?;
+        dlls.extend(
+            entries
+                .filter_map(Result::ok)
+                .map(|e| e.path())
+                .filter(|p| p.extension().is_some_and(|x| x == "dll")),
+        );
+    }
     for profile in ["debug", "release"] {
         let target = root.join("target").join(profile);
         create_dir(&target)?;
