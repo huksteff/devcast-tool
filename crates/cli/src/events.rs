@@ -50,6 +50,15 @@ struct Counts {
     keys: usize,
 }
 
+impl Counts {
+    fn add(&mut self, other: Self) {
+        self.moves += other.moves;
+        self.clicks += other.clicks;
+        self.wheel += other.wheel;
+        self.keys += other.keys;
+    }
+}
+
 pub(crate) fn events(
     ctx: &Ctx<'_>,
     kind: Kind,
@@ -183,84 +192,68 @@ fn keys(map: &TimeMap, project: &Project, recorded: &[Recorded<'_>]) -> (Vec<Row
     (rows, cut)
 }
 
-/// Stretches of input separated by more than [`IDLE`] without any. The first position of a
-/// recording is where the pointer was at the start, not a move.
+/// Stretches of input separated by more than [`IDLE`] without any.
 fn activity(map: &TimeMap, project: &Project, recorded: &[Recorded<'_>]) -> (Vec<Row>, usize) {
-    let (shown, cut) = placed(map, project, recorded, |r| {
-        let start = r
-            .telemetry
-            .cursor
-            .iter()
-            .position(|e| e.event.position().is_some());
-        let mouse = r
-            .telemetry
-            .cursor
-            .iter()
-            .enumerate()
-            .filter_map(move |(i, e)| {
-                let counts = match e.event {
-                    CursorEvent::Move { .. } if Some(i) == start => return None,
-                    CursorEvent::Move { .. } | CursorEvent::Up { .. } => Counts {
-                        moves: 1,
-                        ..Counts::default()
-                    },
-                    CursorEvent::Down { .. } => Counts {
-                        clicks: 1,
-                        ..Counts::default()
-                    },
-                    CursorEvent::Wheel { .. } | CursorEvent::HWheel { .. } => Counts {
-                        wheel: 1,
-                        ..Counts::default()
-                    },
-                    CursorEvent::Image { .. } | CursorEvent::Shape { .. } => return None,
-                };
-                Some((e.at, counts))
-            });
-        let keys = r.telemetry.keys.iter().map(|k| {
-            let counts = Counts {
-                keys: 1,
-                ..Counts::default()
-            };
-            (k.at, counts)
-        });
-        mouse.chain(keys).collect()
-    });
+    let (shown, cut) = placed(map, project, recorded, inputs);
     let mut stretches: Vec<(OutputTime, OutputTime, Counts)> = Vec::new();
     for (at, counts) in shown {
         match stretches.last_mut() {
             Some((_, end, total)) if at.since(*end) <= IDLE => {
                 *end = at;
-                total.moves += counts.moves;
-                total.clicks += counts.clicks;
-                total.wheel += counts.wheel;
-                total.keys += counts.keys;
+                total.add(counts);
             }
             _ => stretches.push((at, at, counts)),
         }
     }
     let rows = stretches
         .into_iter()
-        .map(|(from, to, c)| {
-            let counted = [
-                ("moves", c.moves),
-                ("clicks", c.clicks),
-                ("wheel", c.wheel),
-                ("keys", c.keys),
-            ];
-            let mut text = format!("{from}–{to}");
-            for (name, n) in counted.iter().filter(|(_, n)| *n > 0) {
-                text.push_str(&format!("  {name}={n}"));
-            }
-            Row {
-                from,
-                to,
-                text,
-                fields: json!({
-                    "from": secs(from), "to": secs(to), "moves": c.moves,
-                    "clicks": c.clicks, "wheel": c.wheel, "keys": c.keys,
-                }),
-            }
-        })
+        .map(|(from, to, counts)| stretch_row(from, to, counts))
         .collect();
     (rows, cut)
+}
+
+/// Every input event of a recording with what it counts as. The first position of a recording
+/// is where the pointer was at the start, not a move.
+fn inputs(recorded: &Recorded<'_>) -> Vec<(SourceTime, Counts)> {
+    let cursor = &recorded.telemetry.cursor;
+    let start = cursor.iter().position(|e| e.event.position().is_some());
+    let one = Counts::default();
+    let mouse = cursor.iter().enumerate().filter_map(|(i, e)| {
+        let counts = match e.event {
+            CursorEvent::Move { .. } if Some(i) == start => return None,
+            CursorEvent::Move { .. } | CursorEvent::Up { .. } => Counts { moves: 1, ..one },
+            CursorEvent::Down { .. } => Counts { clicks: 1, ..one },
+            CursorEvent::Wheel { .. } | CursorEvent::HWheel { .. } => Counts { wheel: 1, ..one },
+            CursorEvent::Image { .. } | CursorEvent::Shape { .. } => return None,
+        };
+        Some((e.at, counts))
+    });
+    let keys = recorded
+        .telemetry
+        .keys
+        .iter()
+        .map(|k| (k.at, Counts { keys: 1, ..one }));
+    mouse.chain(keys).collect()
+}
+
+fn stretch_row(from: OutputTime, to: OutputTime, c: Counts) -> Row {
+    let counted = [
+        ("moves", c.moves),
+        ("clicks", c.clicks),
+        ("wheel", c.wheel),
+        ("keys", c.keys),
+    ];
+    let mut text = format!("{from}–{to}");
+    for (name, n) in counted.iter().filter(|(_, n)| *n > 0) {
+        text.push_str(&format!("  {name}={n}"));
+    }
+    Row {
+        from,
+        to,
+        text,
+        fields: json!({
+            "from": secs(from), "to": secs(to), "moves": c.moves,
+            "clicks": c.clicks, "wheel": c.wheel, "keys": c.keys,
+        }),
+    }
 }

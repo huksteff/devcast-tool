@@ -7,9 +7,10 @@ use dc_core::{OpInfo, Project};
 use dc_ops::Registry;
 use serde_json::{Value, json};
 
+use crate::builtin::Cli;
 use crate::error::CliError;
 use crate::help_args::{Arg, clap_args, op_args};
-use crate::run::{Answer, Cli};
+use crate::run::Answer;
 
 struct Entry<'a> {
     name: String,

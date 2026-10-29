@@ -1,6 +1,7 @@
 //! devcast command-line tool: edit, analyse, render and export projects.
 
 mod autozoom;
+mod builtin;
 mod edit;
 pub mod error;
 mod events;
@@ -35,15 +36,21 @@ mod import_tests;
 #[cfg(test)]
 mod ls_tests;
 #[cfg(test)]
+mod pauses_e2e_tests;
+#[cfg(test)]
 mod record_tests;
 #[cfg(test)]
 mod recover_tests;
+#[cfg(test)]
+mod silences_tests;
 #[cfg(test)]
 mod skill_tests;
 #[cfg(test)]
 mod test_util;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod transcript_tests;
 
 use std::ffi::OsString;
 
@@ -76,9 +83,3 @@ pub fn main_outcome(args: Vec<OsString>) -> Outcome {
         Err(error) => Outcome::failure(&error, false),
     }
 }
-#[cfg(test)]
-mod pauses_e2e_tests;
-#[cfg(test)]
-mod silences_tests;
-#[cfg(test)]
-mod transcript_tests;
