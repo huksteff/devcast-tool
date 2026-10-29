@@ -19,7 +19,7 @@
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-audio`. Звук для тестов делает ffmpeg из `.deps` (`tests/common`: `sine`, `aevalsrc`, `anoisesrc`) во временной папке; запись с речью — `fixtures/recordings/speech.dcproj`. Ничего не проигрывать через колонки.
+- `cargo nextest run -p dc-audio`. Звук для тестов делает ffmpeg из `.deps` (`tests/common`, в юнит-тестах `src/test_util.rs`: `sine`, `aevalsrc`, `anoisesrc`) во временной папке; запись с речью — `fixtures/recordings/speech.dcproj`. Ничего не проигрывать через колонки.
 
 ## Куда не лезть
 

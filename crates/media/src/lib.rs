@@ -1,4 +1,4 @@
-//! Probe, keyframe index, hardware decoding, frame-accurate seek, preview frames.
+//! Probe, keyframe index, software decoding, frame-accurate seek, preview frames.
 
 pub mod cache;
 pub mod decoder;

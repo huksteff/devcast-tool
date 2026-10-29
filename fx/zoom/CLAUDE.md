@@ -24,4 +24,4 @@
 
 ## Ссылки
 
-- docs/porting/zoom.md, docs/decisions/000-porting-questions.md («Зум»), задача 2.22 в docs/roadmap/02-core.md.
+- docs/porting/zoom.md, docs/decisions/000-porting-questions.md («Зум»), задача 2.22 в docs/roadmap/02-core.md, автозумы — 4.17 в docs/roadmap/04-media.md.

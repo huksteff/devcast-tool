@@ -1,6 +1,6 @@
 [package]
 name = "dc-media"
-description = "Probe, keyframe index, hardware decoding, frame-accurate seek, preview frames."
+description = "Probe, keyframe index, software decoding, frame-accurate seek, preview frames."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
