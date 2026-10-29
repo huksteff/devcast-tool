@@ -26,7 +26,8 @@ pub(crate) fn read<'a>(root: &Path, project: &'a Project) -> Result<Vec<Recorded
         {
             continue;
         }
-        let telemetry = Telemetry::read(&recording_dir(root, media)).map_err(|e| CliError::Failed(e.to_string()))?;
+        let telemetry = Telemetry::read(&recording_dir(root, media))
+            .map_err(|e| CliError::Failed(e.to_string()))?;
         recorded.push(Recorded { media, telemetry });
     }
     Ok(recorded)

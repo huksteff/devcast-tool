@@ -288,11 +288,25 @@ fn is_word_list(arg: &str) -> bool {
 
 /// `w12-w20` or `w12` → `a-b` in output seconds.
 fn word_range(all: &[MediaWords], map: &TimeMap, item: &str) -> Result<String, CliError> {
-    let mut ids = item
+    let ids = item
         .split('-')
-        .map(|id| id[1..].parse::<u32>().unwrap_or(0));
-    let first = ids.next().unwrap_or(0);
-    let last = ids.next().unwrap_or(first);
+        .map(|id| {
+            id[1..].parse::<u32>().map_err(|_| {
+                CliError::Usage(format!(
+                    "{id}: такого номера слова нет; список: devcast transcript --words"
+                ))
+            })
+        })
+        .collect::<Result<Vec<u32>, CliError>>()?;
+    let (first, last) = match ids[..] {
+        [one] => (one, one),
+        [first, last] => (first, last),
+        _ => {
+            return Err(CliError::Usage(format!(
+                "{item}: нужно слово w12 или диапазон w12-w20"
+            )));
+        }
+    };
     let find = |id: u32| {
         all.iter().find_map(|m| {
             let index = id.checked_sub(m.first_id)? as usize;

@@ -93,7 +93,9 @@ pub fn probe(path: &Path) -> Result<Probe, MediaError> {
         source,
     })?;
     let packets = read_packets(&mut input, video, path)?;
-    let Some(first_pts) = packets.frames.iter().map(|(pts, _)| *pts).min() else {
+    let first = packets.frames.iter().map(|(pts, _)| *pts).min();
+    let last = packets.frames.iter().copied().max_by_key(|(pts, _)| *pts);
+    let (Some(first_pts), Some(last)) = (first, last) else {
         return Err(MediaError::NoFrames {
             path: path.to_path_buf(),
         });
@@ -101,7 +103,7 @@ pub fn probe(path: &Path) -> Result<Probe, MediaError> {
     let mut starts: Vec<i64> = packets.frames.iter().map(|(pts, _)| *pts).collect();
     starts.sort_unstable();
     let intervals: Vec<i64> = starts.windows(2).map(|w| w[1] - w[0]).collect();
-    let end = end_pts(&packets.frames, &intervals);
+    let end = end_pts(last, &intervals);
     let to_micros = |pts: i64| (pts - first_pts).rescale(time_base, MICROS);
     let duration = TimeDelta::from_micros(to_micros(end));
     let frames = starts.len() as u64;
@@ -186,14 +188,9 @@ fn read_packets(
     }
 }
 
-/// End of the last frame: its start plus its duration, or plus the interval before it when the
-/// container does not store durations.
-fn end_pts(frames: &[(i64, i64)], intervals: &[i64]) -> i64 {
-    let (last, duration) = frames
-        .iter()
-        .copied()
-        .max_by_key(|(pts, _)| *pts)
-        .unwrap_or_default();
+/// End of the last frame (start, duration): its start plus its duration, or plus the interval
+/// before it when the container does not store durations (one tick for a single frame).
+fn end_pts((last, duration): (i64, i64), intervals: &[i64]) -> i64 {
     match duration {
         d if d > 0 => last + d,
         _ => last + intervals.last().copied().unwrap_or(1),

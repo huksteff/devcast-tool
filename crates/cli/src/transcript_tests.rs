@@ -157,6 +157,12 @@ fn word_ids_must_exist_and_be_recognized_first() {
     let out = speech.run("cut w5-w3");
     assert_eq!(out.code, 2, "{}", out.stderr);
     assert!(out.stderr.contains("по порядку"), "{}", out.stderr);
+    let out = speech.run("cut w1-w2-w3");
+    assert_eq!(out.code, 2, "{}", out.stderr);
+    assert!(out.stderr.contains("диапазон w12-w20"), "{}", out.stderr);
+    let out = speech.run("cut w99999999999");
+    assert_eq!(out.code, 2, "{}", out.stderr);
+    assert!(out.stderr.contains("такого номера"), "{}", out.stderr);
     std::fs::remove_dir_all(speech.root.join("cache")).unwrap();
     let out = speech.run("cut w1");
     assert!(

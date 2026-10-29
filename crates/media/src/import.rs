@@ -69,17 +69,18 @@ fn plan(media_dir: &Path, sources: &[PathBuf]) -> Result<Vec<(PathBuf, String)>,
         let extension = source
             .extension()
             .map(|e| e.to_string_lossy().to_lowercase())
-            .filter(|e| VIDEO_EXTENSIONS.contains(&e.as_str()))
-            .ok_or_else(|| MediaError::NotAVideo {
+            .filter(|e| VIDEO_EXTENSIONS.contains(&e.as_str()));
+        let (Some(stem), Some(extension)) = (source.file_stem(), extension) else {
+            return Err(MediaError::NotAVideo {
                 path: source.clone(),
-            })?;
+            });
+        };
         if !source.is_file() {
             return Err(MediaError::NotFound {
                 path: source.clone(),
             });
         }
-        let stem = source.file_stem().unwrap_or_default().to_string_lossy();
-        let name = free_name(media_dir, &names, &stem, &extension);
+        let name = free_name(media_dir, &names, &stem.to_string_lossy(), &extension);
         names.push(name.clone());
         planned.push((source.clone(), name));
     }
@@ -88,13 +89,13 @@ fn plan(media_dir: &Path, sources: &[PathBuf]) -> Result<Vec<(PathBuf, String)>,
 
 /// `stem.ext`, or `stem-2.ext`, `stem-3.ext` … if it is in `media_dir` or already `taken`.
 fn free_name(media_dir: &Path, taken: &[String], stem: &str, extension: &str) -> String {
-    (1..)
-        .map(|n| match n {
-            1 => format!("{stem}.{extension}"),
-            n => format!("{stem}-{n}.{extension}"),
-        })
-        .find(|name| !taken.contains(name) && !media_dir.join(name).exists())
-        .unwrap_or_default()
+    let mut name = format!("{stem}.{extension}");
+    let mut n = 1;
+    while taken.contains(&name) || media_dir.join(&name).exists() {
+        n += 1;
+        name = format!("{stem}-{n}.{extension}");
+    }
+    name
 }
 
 #[cfg(test)]

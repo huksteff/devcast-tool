@@ -5,7 +5,7 @@ use std::path::Path;
 
 use whisper_rs::{
     DtwMode, DtwModelPreset, DtwParameters, FullParams, SamplingStrategy, WhisperContext,
-    WhisperContextParameters,
+    WhisperContextParameters, WhisperState,
 };
 
 use crate::error::{Result, TranscribeError};
@@ -60,8 +60,9 @@ pub fn recognize(
     let mut state = context.create_state().map_err(whisper)?;
 
     let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    params.set_n_threads(i32::try_from(threads).unwrap_or(4));
+    let threads = std::thread::available_parallelism()
+        .map_err(|e| TranscribeError::Whisper(format!("не узнать число ядер процессора: {e}")))?;
+    params.set_n_threads(threads.get() as i32);
     params.set_language(Some(language.unwrap_or("auto")));
     params.set_token_timestamps(true);
     params.set_print_special(false);
@@ -71,7 +72,20 @@ pub fn recognize(
     params.set_progress_callback_safe(progress);
     state.full(params, samples).map_err(whisper)?;
 
-    let eot = context.token_eot();
+    let segments = segments(&state, context.token_eot())?;
+    let id = state.full_lang_id_from_state();
+    let language = whisper_rs::get_lang_str(id)
+        .ok_or_else(|| TranscribeError::Whisper(format!("неизвестный язык с номером {id}")))?
+        .to_owned();
+    Ok(Recognized {
+        language,
+        words: words(&segments),
+    })
+}
+
+/// Tokens of every recognized segment, without special ones (`eot` and above).
+fn segments(state: &WhisperState, eot: i32) -> Result<Vec<Segment>> {
+    let whisper = |e: whisper_rs::WhisperError| TranscribeError::Whisper(e.to_string());
     let mut segments = Vec::new();
     for segment in state.as_iter() {
         let mut tokens = Vec::new();
@@ -99,11 +113,5 @@ pub fn recognize(
             end: segment.end_timestamp() * CENTI,
         });
     }
-    let language = whisper_rs::get_lang_str(state.full_lang_id_from_state())
-        .unwrap_or("?")
-        .to_owned();
-    Ok(Recognized {
-        language,
-        words: words(&segments),
-    })
+    Ok(segments)
 }
