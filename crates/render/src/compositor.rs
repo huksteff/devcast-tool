@@ -3,14 +3,18 @@
 
 use std::collections::HashMap;
 
+use dc_core::PixelSize;
+
 use crate::error::RenderError;
 use crate::gpu::{Gpu, SRGB_VIEW};
 use crate::scene::{Camera, Layer, Scene, VideoSource};
+use crate::shapes::ShapesPass;
 use crate::video::{Nv12, VideoFrame, VideoPass};
 
 /// The renderer of preview, export and the CLI.
 pub struct Compositor {
     video: VideoPass,
+    shapes: ShapesPass,
     /// Decoded frames by `Media::path`; a frame the drawn scene does not show is dropped.
     frames: HashMap<String, VideoFrame>,
 }
@@ -19,6 +23,7 @@ impl Compositor {
     pub fn new(gpu: &Gpu) -> Self {
         Self {
             video: VideoPass::new(gpu),
+            shapes: ShapesPass::new(gpu),
             frames: HashMap::new(),
         }
     }
@@ -39,6 +44,47 @@ impl Compositor {
         scene: &Scene,
         target: &wgpu::Texture,
     ) -> Result<(), RenderError> {
+        self.prepare(gpu, scene, target)?;
+        let view = target.create_view(&wgpu::TextureViewDescriptor {
+            format: Some(SRGB_VIEW),
+            ..Default::default()
+        });
+        let mut encoder = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("draw"),
+            });
+        let mut pass = begin(&mut encoder, &view);
+        // Shape layers were pushed in paint order, so their instances follow one another.
+        let mut first = 0;
+        for (_band, layer) in scene.painted() {
+            match layer {
+                Layer::Video(video) => self.video.record(&mut pass, self.frame(&video.source)?),
+                Layer::Shapes(shapes) => {
+                    let end = first + shapes.len() as u32;
+                    self.shapes.record(&mut pass, first..end);
+                    first = end;
+                }
+            }
+        }
+        drop(pass);
+        gpu.queue.submit([encoder.finish()]);
+        self.frames.retain(|media, _| {
+            scene
+                .painted()
+                .any(|(_, layer)| matches!(layer, Layer::Video(v) if v.source.media == *media))
+        });
+        Ok(())
+    }
+
+    /// Writes what the layers need into GPU buffers before the render pass.
+    fn prepare(
+        &mut self,
+        gpu: &Gpu,
+        scene: &Scene,
+        target: &wgpu::Texture,
+    ) -> Result<(), RenderError> {
+        self.shapes.clear();
         for (band, layer) in scene.painted() {
             let camera = if band.under_camera() {
                 scene.camera
@@ -50,30 +96,14 @@ impl Compositor {
                     let frame = self.frame(&video.source)?;
                     VideoPass::prepare(gpu, frame, video, camera, scene.size);
                 }
+                Layer::Shapes(shapes) => self.shapes.push(shapes, camera),
             }
         }
-        let view = target.create_view(&wgpu::TextureViewDescriptor {
-            format: Some(SRGB_VIEW),
-            ..Default::default()
-        });
-        let mut encoder = gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("draw"),
-            });
-        let mut pass = begin(&mut encoder, &view);
-        for (_band, layer) in scene.painted() {
-            match layer {
-                Layer::Video(video) => self.video.record(&mut pass, self.frame(&video.source)?),
-            }
-        }
-        drop(pass);
-        gpu.queue.submit([encoder.finish()]);
-        self.frames.retain(|media, _| {
-            scene
-                .painted()
-                .any(|(_, layer)| matches!(layer, Layer::Video(v) if v.source.media == *media))
-        });
+        let target = PixelSize {
+            width: target.width(),
+            height: target.height(),
+        };
+        self.shapes.upload(gpu, scene.size, target);
         Ok(())
     }
 

@@ -85,8 +85,9 @@ pub fn video_scene(frame: PixelSize, planes: &Planes, crop: Rect) -> Scene {
 pub fn render(gpu: &Gpu, scene: &Scene, planes: &Planes) -> Result<Image, Box<dyn Error>> {
     let mut compositor = Compositor::new(gpu);
     for (_, layer) in scene.painted() {
-        let Layer::Video(video) = layer;
-        compositor.upload(gpu, &video.source, planes.nv12()?);
+        if let Layer::Video(video) = layer {
+            compositor.upload(gpu, &video.source, planes.nv12()?);
+        }
     }
     let target = gpu.target(scene.size);
     compositor.draw(gpu, scene, &target)?;
@@ -95,4 +96,11 @@ pub fn render(gpu: &Gpu, scene: &Scene, planes: &Planes) -> Result<Image, Box<dy
 
 pub fn gpu() -> Result<Gpu, GpuError> {
     Gpu::new(AdapterChoice::Auto)
+}
+
+/// Draws a scene without video into a target of its size.
+pub fn render_shapes(gpu: &Gpu, scene: &Scene) -> Result<Image, Box<dyn Error>> {
+    let target = gpu.target(scene.size);
+    Compositor::new(gpu).draw(gpu, scene, &target)?;
+    Ok(gpu.read(&target)?)
 }

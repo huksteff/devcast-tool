@@ -4,6 +4,7 @@
 //! Coordinates are pixels of the output frame (`size`), y down. A target of another size gets
 //! the same picture scaled, so the preview may render smaller than the export.
 
+mod shape;
 mod video;
 
 use std::collections::BTreeMap;
@@ -11,6 +12,9 @@ use std::collections::BTreeMap;
 use dc_core::PixelSize;
 use serde::{Deserialize, Serialize};
 
+pub use shape::{
+    Geometry, Gradient, GradientColors, GradientCount, Paint, ParseRgbaError, Rgba, Shape, Stroke,
+};
 pub use video::{PxRect, Video, VideoSource};
 
 /// Everything drawn in one output frame. The frame starts black (the fields around a clip, SCOPE
@@ -91,6 +95,8 @@ impl Camera {
 #[serde(rename_all = "snake_case")]
 pub enum Layer {
     Video(Video),
+    /// Figures drawn in one instanced pass, later ones on top.
+    Shapes(Vec<Shape>),
 }
 
 #[cfg(test)]
