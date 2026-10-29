@@ -45,6 +45,9 @@ impl Gpu {
     pub fn new(choice: AdapterChoice) -> Result<Self, GpuError> {
         let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
         desc.backends = BACKEND;
+        // FXC ships with Windows; the default takes any dxcompiler.dll on PATH (the Vulkan SDK
+        // puts one there and WARP crashes on its output). The reference frames are made with FXC.
+        desc.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::Fxc;
         let instance = wgpu::Instance::new(desc);
         let adapter = match choice {
             AdapterChoice::Auto => request(&instance, false).or_else(|_| request(&instance, true)),
