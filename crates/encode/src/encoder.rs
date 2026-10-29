@@ -3,7 +3,7 @@
 use ffmpeg_next as ffmpeg;
 use ffmpeg_next::util::color;
 
-use crate::codec::Codec;
+use crate::codec::{Codec, Quality};
 use crate::error::EncodeError;
 use crate::frame::{Nv12Frame, check_size};
 use crate::packet::{Packet, StreamParameters};
@@ -25,8 +25,18 @@ pub struct VideoEncoder {
 }
 
 impl VideoEncoder {
-    /// Opens `codec` for MP4: no B-frames, SPS/PPS in the stream header, BT.709 limited range.
+    /// Opens `codec` for a recording: [`Quality::High`].
     pub fn open(codec: Codec, settings: VideoSettings) -> Result<Self, EncodeError> {
+        Self::open_with(codec, settings, Quality::High)
+    }
+
+    /// Opens `codec` for MP4: no B-frames, SPS/PPS in the stream header, BT.709 limited range,
+    /// chroma sited left (as the video pass reads it, decision 006).
+    pub fn open_with(
+        codec: Codec,
+        settings: VideoSettings,
+        quality: Quality,
+    ) -> Result<Self, EncodeError> {
         crate::init();
         let VideoSettings { width, height, fps } = settings;
         check_size(width, height)?;
@@ -50,9 +60,14 @@ impl VideoEncoder {
         enc.set_colorspace(color::Space::BT709);
         enc.set_color_primaries(color::Primaries::BT709);
         enc.set_color_transfer_characteristic(color::TransferCharacteristic::BT709);
+        // SAFETY: a plain enum field of the owned, not yet opened AVCodecContext.
+        unsafe {
+            (*enc.as_mut_ptr()).chroma_sample_location =
+                ffmpeg::ffi::AVChromaLocation::AVCHROMA_LOC_LEFT;
+        }
         enc.set_flags(ffmpeg::codec::Flags::GLOBAL_HEADER);
         let inner = enc
-            .open_as_with(found, codec.options())
+            .open_as_with(found, codec.options(quality))
             .map_err(failed("открыть кодек"))?;
         Ok(Self {
             codec,

@@ -1,12 +1,13 @@
-//! Choosing the encoder for a recording: the first codec in [`Codec::ORDER`] that passes the
-//! self-test and keeps up with the recording's size and frame rate.
+//! Choosing the encoder: for a recording, the first codec in [`Codec::ORDER`] that passes the
+//! self-test and keeps up with the recording's size and frame rate; for an export, the first that
+//! passes the self-test and opens.
 
 use std::sync::OnceLock;
 use std::time::Instant;
 
 use ffmpeg_next as ffmpeg;
 
-use crate::codec::Codec;
+use crate::codec::{Codec, Quality};
 use crate::encoder::{VideoEncoder, VideoSettings};
 use crate::error::EncodeError;
 use crate::frame::Nv12Frame;
@@ -61,6 +62,27 @@ pub fn select(settings: VideoSettings) -> Result<Selection, EncodeError> {
             details: problems.join("; "),
         }),
     }
+}
+
+/// Opens the encoder of an export: the first codec in [`Codec::ORDER`] that passes the self-test
+/// and opens at the export's size. No speed check: an export may take longer than real time.
+pub fn open_for_export(
+    settings: VideoSettings,
+    quality: Quality,
+) -> Result<VideoEncoder, EncodeError> {
+    let mut problems = Vec::new();
+    for codec in Codec::ORDER {
+        let opened = self_test_once(codec).and_then(|()| {
+            VideoEncoder::open_with(codec, settings, quality).map_err(|e| e.to_string())
+        });
+        match opened {
+            Ok(encoder) => return Ok(encoder),
+            Err(problem) => problems.push(format!("{codec}: {problem}")),
+        }
+    }
+    Err(EncodeError::NoCodec {
+        details: problems.join("; "),
+    })
 }
 
 fn self_test_once(codec: Codec) -> Result<(), String> {

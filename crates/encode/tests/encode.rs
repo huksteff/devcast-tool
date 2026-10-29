@@ -142,3 +142,29 @@ fn fragmented_file_reads_back_with_times_keys_and_durations() {
         ]
     );
 }
+
+/// Bytes of 30 frames of a detailed moving picture at `quality`.
+fn encoded_bytes(codec: Codec, quality: dc_encode::Quality) -> usize {
+    let mut encoder = VideoEncoder::open_with(codec, SETTINGS, quality).unwrap();
+    let mut frame = Nv12Frame::new(SETTINGS.width, SETTINGS.height).unwrap();
+    let mut packets = Vec::new();
+    for pts in 0..30 {
+        for (y, row) in frame.luma_rows_mut().enumerate() {
+            for (x, v) in row.iter_mut().enumerate() {
+                *v = ((x * 7 + y * 13 + pts as usize * 5) ^ ((x * y) >> 3)) as u8;
+            }
+        }
+        encoder.encode(&mut frame, pts, &mut packets).unwrap();
+    }
+    encoder.finish(&mut packets).unwrap();
+    packets.iter().map(|p| p.size()).sum()
+}
+
+#[test]
+fn lower_quality_makes_smaller_files() {
+    use dc_encode::Quality;
+    let sizes =
+        [Quality::Low, Quality::Medium, Quality::High].map(|q| encoded_bytes(Codec::X264, q));
+    println!("x264 low/medium/high: {sizes:?}");
+    assert!(sizes[0] < sizes[1] && sizes[1] < sizes[2], "{sizes:?}");
+}

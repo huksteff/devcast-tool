@@ -150,6 +150,13 @@ impl Golden {
     }
 }
 
+/// Mean ꟻLIP error of `actual` against `expected` (frames of one size) and the error 99 % of
+/// the pixels stay under, for checks of two rendered frames against each other.
+pub fn flip_error(expected: &Image, actual: &Image) -> (f32, f32) {
+    let (_, mean, p99) = flip(expected.size, &expected.rgba, &actual.rgba);
+    (mean, p99)
+}
+
 /// ꟻLIP of `actual` against `expected` (RGBA, alpha ignored): the error map in the magma colours
 /// as RGBA, the mean error and the error 99 % of the pixels stay under.
 fn flip(size: PixelSize, expected: &[u8], actual: &[u8]) -> (Vec<u8>, f32, f32) {

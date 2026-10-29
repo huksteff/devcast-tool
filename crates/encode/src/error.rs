@@ -59,6 +59,37 @@ pub enum EncodeError {
         frames: usize,
     },
 
+    #[error("экспорт отменён, файл не записан")]
+    Cancelled,
+
+    #[error("звук проекта не свёлся: {0}")]
+    Sound(Box<dyn std::error::Error + Send + Sync>),
+
+    #[error("в проекте нет клипов: добавь видео (devcast clip add <видео>) и экспортируй снова")]
+    Empty,
+
+    #[error("частота {fps} кадров/с для {format} недоступна: выбери одну из {allowed}")]
+    Fps {
+        fps: u32,
+        format: &'static str,
+        allowed: String,
+    },
+
+    #[error(
+        "120 кадров/с — только для записей на 120 кадров/с, а в проекте самая частая {source_fps:.0}: выбери 30 или 60"
+    )]
+    Fps120 { source_fps: f64 },
+
+    #[error("не удалось {action} «{}»: {source}. Проверь, что папка есть и доступна для записи", path.display())]
+    Io {
+        action: &'static str,
+        path: PathBuf,
+        source: std::io::Error,
+    },
+
+    #[error(transparent)]
+    Gpu(#[from] dc_render::GpuError),
+
     #[error(transparent)]
     Media(#[from] dc_media::MediaError),
 

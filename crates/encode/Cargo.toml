@@ -19,4 +19,6 @@ ffmpeg-next = "9"
 thiserror.workspace = true
 
 [dev-dependencies]
+dc-render = { path = "../render", features = ["golden"] }
+serde_json.workspace = true
 tempfile.workspace = true

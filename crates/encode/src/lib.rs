@@ -10,6 +10,7 @@ pub mod audio;
 pub mod codec;
 pub mod encoder;
 pub mod error;
+pub mod export;
 pub mod frame;
 pub mod mp4;
 pub mod packet;
@@ -18,14 +19,14 @@ pub mod select;
 pub mod still;
 
 pub use audio::{AudioEncoder, AudioSettings};
-pub use codec::Codec;
+pub use codec::{Codec, Quality};
 pub use encoder::{VideoEncoder, VideoSettings};
 pub use error::EncodeError;
 pub use frame::Nv12Frame;
 pub use mp4::{Mp4Layout, Mp4Writer};
 pub use packet::{Packet, StreamParameters};
 pub use reader::Mp4Reader;
-pub use select::{Selection, select};
+pub use select::{Selection, open_for_export, select};
 pub use still::{Sources, frame_png, sheet_png};
 
 /// Initializes FFmpeg once per process and keeps its own log to errors only:

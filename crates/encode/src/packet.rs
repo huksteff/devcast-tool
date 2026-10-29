@@ -20,6 +20,11 @@ impl Packet {
         self.pts
     }
 
+    /// Bytes of encoded data.
+    pub fn size(&self) -> usize {
+        self.inner.size()
+    }
+
     /// Decoding can start here: an IDR frame, or any block of sound.
     pub fn is_key(&self) -> bool {
         self.inner.is_key()
