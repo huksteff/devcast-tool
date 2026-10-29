@@ -44,7 +44,6 @@ pub fn display(root: &Path, path: &Path) -> String {
         .replace('\\', "/")
 }
 
-/// Reads a source file as text.
 pub fn read(path: &Path) -> Result<String, String> {
     std::fs::read_to_string(path)
         .map_err(|error| format!("не удалось прочитать {}: {error}", path.display()))

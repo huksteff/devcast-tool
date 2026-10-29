@@ -1,6 +1,5 @@
 //! Cursor pictures: straight-alpha RGBA with a hotspot, built from the bitmaps of a cursor.
 
-/// A cursor picture.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CursorImage {
     pub width: u32,

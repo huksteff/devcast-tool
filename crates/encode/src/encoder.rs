@@ -95,7 +95,6 @@ impl VideoEncoder {
         self.drain(out)
     }
 
-    /// Flushes the frames the encoder still holds.
     pub fn finish(&mut self, out: &mut Vec<Packet>) -> Result<(), EncodeError> {
         self.inner
             .send_eof()

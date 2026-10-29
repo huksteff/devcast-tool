@@ -28,7 +28,6 @@ pub fn cargo(args: &[&str], hint: &str) -> Outcome {
     }
 }
 
-/// Runs `git <args>` and returns its stdout.
 pub fn git(args: &[&str]) -> Result<String, String> {
     let shown = format!("git {}", args.join(" "));
     let output = Command::new("git")

@@ -17,7 +17,6 @@ pub use cut::Cut;
 pub use speed::Speed;
 pub use split::ClipSplit;
 
-/// Every command of the effect, for the ops registry.
 pub fn ops() -> Vec<OpInfo> {
     vec![
         OpInfo::of::<Cut>(),

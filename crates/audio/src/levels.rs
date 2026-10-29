@@ -11,7 +11,6 @@ use dc_core::ClipId;
 
 use crate::error::AudioError;
 
-/// Highest gain of a channel.
 pub const GAIN_MAX: f32 = 10.0;
 
 /// Level of one sound track of a clip.

@@ -18,7 +18,6 @@ pub enum MigrateError {
     Failed { from: u32, message: String },
 }
 
-/// Brings `value` to the current schema version.
 pub fn migrate(value: Value) -> Result<Value, MigrateError> {
     migrate_with(value, MIGRATIONS, SCHEMA_VERSION)
 }

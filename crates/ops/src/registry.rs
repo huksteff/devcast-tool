@@ -84,7 +84,6 @@ impl Registry {
         })
     }
 
-    /// Builds the command `name` from its arguments.
     pub fn command(
         &self,
         name: &str,

@@ -60,7 +60,6 @@ impl StreamDecoder {
         })
     }
 
-    /// Sample rate of the stream.
     pub fn rate(&self) -> u32 {
         self.decoder.rate()
     }

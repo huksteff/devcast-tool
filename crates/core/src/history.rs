@@ -171,7 +171,6 @@ impl History {
         Ok(summary)
     }
 
-    /// Undoes the last step; returns what was undone.
     pub fn undo(&mut self, project: &mut Project) -> Option<&Change> {
         let change = self.undo.pop()?;
         change.before.restore(project);
@@ -179,7 +178,6 @@ impl History {
         self.redo.last()
     }
 
-    /// Redoes the last undone step; returns what was redone.
     pub fn redo(&mut self, project: &mut Project) -> Option<&Change> {
         let change = self.redo.pop()?;
         change.after.restore(project);

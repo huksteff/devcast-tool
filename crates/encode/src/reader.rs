@@ -41,7 +41,6 @@ impl Mp4Reader {
         &self.parameters
     }
 
-    /// The next packet, `None` at the end of the file.
     pub fn read(&mut self) -> Result<Option<Packet>, EncodeError> {
         loop {
             let mut packet = ffmpeg::Packet::empty();

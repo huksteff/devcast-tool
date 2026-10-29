@@ -51,7 +51,6 @@ pub struct Suggestion {
     pub clicks: usize,
 }
 
-/// What [`suggest`] found.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Suggestions {
     pub zooms: Vec<Suggestion>,
@@ -72,7 +71,6 @@ struct Press {
 }
 
 impl Suggestion {
-    /// The `zoom add` that places this zoom.
     pub fn command(&self, scale: f64, mode: Mode) -> ZoomAdd {
         ZoomAdd {
             at: TimeArg(self.span.start()),

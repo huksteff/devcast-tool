@@ -64,7 +64,6 @@ impl Tempo {
         })
     }
 
-    /// Feeds `input` and appends the frames that are ready to `out`.
     pub fn push(&mut self, input: &[f32], out: &mut Vec<f32>) -> Result<(), AudioError> {
         let speed = self.speed;
         let failed = |source| AudioError::Tempo { speed, source };

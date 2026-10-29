@@ -80,7 +80,6 @@ impl Listener {
         &self.name
     }
 
-    /// Waits for the next connection.
     pub fn accept(&self) -> Result<Connection, IpcError> {
         Ok(Connection(self.listener.accept()?))
     }
@@ -115,7 +114,6 @@ fn ns_name(name: &str) -> Result<Name<'_>, IpcError> {
     Ok(name.to_ns_name::<GenericNamespaced>()?)
 }
 
-/// Writes one message: length, then JSON.
 pub fn send<T: Serialize>(stream: &mut impl Write, message: &T) -> Result<(), IpcError> {
     let json = serde_json::to_vec(message).map_err(|e| IpcError::BadMessage(e.to_string()))?;
     let length = u32::try_from(json.len())
@@ -128,7 +126,6 @@ pub fn send<T: Serialize>(stream: &mut impl Write, message: &T) -> Result<(), Ip
     Ok(())
 }
 
-/// Reads one message written by [`send`].
 pub fn receive<T: DeserializeOwned>(stream: &mut impl Read) -> Result<T, IpcError> {
     let mut length = [0; 4];
     stream.read_exact(&mut length)?;

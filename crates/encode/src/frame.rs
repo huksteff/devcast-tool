@@ -36,7 +36,6 @@ impl Nv12Frame {
         copy_plane(&mut self.frame, 1, uv, pitch, width, height / 2);
     }
 
-    /// Fills the frame with one color.
     pub fn fill(&mut self, y: u8, u: u8, v: u8) {
         self.frame.data_mut(0).fill(y);
         for pair in self.frame.data_mut(1).as_chunks_mut::<2>().0 {

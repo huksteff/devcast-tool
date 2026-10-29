@@ -59,7 +59,6 @@ impl Autosave {
         })
     }
 
-    /// `session.json` was written.
     pub fn session_written(&mut self) {
         self.pending = None;
     }

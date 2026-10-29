@@ -64,7 +64,6 @@ impl Timeline {
         self.start(t)
     }
 
-    /// Range of one recording from `start` to `end`.
     pub fn span(&self, start: Edge, end: Edge) -> Result<(String, Range<Source>), CommandError> {
         let (media, from) = start;
         if end.0 != media {

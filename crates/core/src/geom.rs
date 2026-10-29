@@ -71,7 +71,6 @@ impl Rect {
         Ok(Self { x, y, w, h })
     }
 
-    /// The whole frame.
     pub const FULL: Self = Self {
         x: 0.0,
         y: 0.0,

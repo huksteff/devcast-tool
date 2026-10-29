@@ -6,7 +6,6 @@ use std::process::Command;
 
 use serde::Deserialize;
 
-/// One workspace package.
 pub struct Package {
     pub name: String,
     /// Package folder relative to the workspace root, with `/` separators.
