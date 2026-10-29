@@ -5,6 +5,7 @@ mod crates;
 mod deps;
 mod features;
 mod fonts;
+mod golden;
 mod hook;
 mod limits;
 mod metadata;
@@ -28,6 +29,9 @@ const USAGE: &str = "\
   hook-stop
       Stop-хук Claude Code (.claude/settings.json): если менялся код и verify красный,
       не даёт сессии закончиться и передаёт отчёт агенту.
+  golden update \"<почему>\"
+      Перезаписать эталонные кадры (тесты golden с UPDATE_GOLDEN=1) и показать, что изменилось.
+      Причина обязательна: она идёт в сообщение коммита.
   deps
       Скачать и проверить по SHA-256 нативные зависимости сборки (FFmpeg, libclang) и шрифты в .deps/
       и скопировать DLL FFmpeg рядом с собираемыми exe.";
@@ -48,6 +52,16 @@ fn main() -> ExitCode {
             Err(message) => usage_error(&message),
         },
         "hook-stop" => hook::stop(),
+        "golden" => match golden::run(rest) {
+            Ok(report) => {
+                println!("{report}");
+                ExitCode::SUCCESS
+            }
+            Err(message) => {
+                eprintln!("golden: {message}");
+                ExitCode::FAILURE
+            }
+        },
         "deps" => {
             // xtask lives in <root>/xtask, so the workspace root is its parent.
             let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent();

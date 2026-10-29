@@ -15,10 +15,19 @@ pub enum Outcome {
 
 /// Runs `cargo <args>` and fails with its output and `hint` if it exits non-zero.
 pub fn cargo(args: &[&str], hint: &str) -> Outcome {
+    cargo_with(args, &[], hint)
+}
+
+/// [`cargo`] with environment variables `env` set for it.
+pub fn cargo_with(args: &[&str], env: &[(&str, &str)], hint: &str) -> Outcome {
     // `cargo xtask` sets CARGO to the cargo binary that started us.
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
     let shown = format!("cargo {}", args.join(" "));
-    match Command::new(&cargo).args(args).output() {
+    match Command::new(&cargo)
+        .args(args)
+        .envs(env.iter().copied())
+        .output()
+    {
         Err(error) => Outcome::Fail(format!("не удалось запустить `{shown}`: {error}")),
         Ok(output) if output.status.success() => Outcome::Pass(String::new()),
         Ok(output) => {

@@ -11,12 +11,19 @@ publish.workspace = true
 dc-core = { path = "../core" }
 glyphon = "0.12"
 lyon = "1.0"
+dc-media = { path = "../media", optional = true }
+nv-flip = { version = "0.1", optional = true }
 serde.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
 
+[features]
+# Reference frames for tests (`golden`): the tests of render and of the effects turn it on.
+golden = ["dep:dc-media", "dep:nv-flip"]
+
 [dev-dependencies]
 dc-media = { path = "../media" }
+dc-render = { path = ".", features = ["golden"] }
 serde_json.workspace = true
 tempfile.workspace = true
 

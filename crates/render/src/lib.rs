@@ -5,6 +5,8 @@ mod blur;
 mod brush;
 mod compositor;
 mod error;
+#[cfg(feature = "golden")]
+pub mod golden;
 mod gpu;
 mod offscreen;
 mod pipeline;

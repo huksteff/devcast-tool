@@ -24,7 +24,7 @@
 | Установщик и обновления | Velopack (Rust SDK) | Windows, macOS и Linux, дельта-обновления, источник — GitHub Releases. `vpk` в CI требует .NET 8 SDK. |
 | Логи и падения | tracing + tracing-appender (держать `WorkerGuard`), panic hook; crash-handler + minidumper для падений в нативном коде | |
 | Схема проекта | serde + schemars | JSON Schema служит документацией для агента и для `devcast help`. |
-| Тесты | cargo-nextest, insta (снимки), proptest; egui_kittest 0.37 (UI и снимки PNG); эталонные кадры рендера (dify / nv-flip); egui_inspection + egui_mcp (агент сам кликает по живому приложению и делает скриншоты) | Детали в [PROCESS.md](PROCESS.md). |
+| Тесты | cargo-nextest, insta (снимки), proptest; egui_kittest 0.37 (UI и снимки PNG); эталонные кадры рендера (nv-flip: ꟻLIP, им же сверяет кадры wgpu; dify отклонён — тянет `image` и это CLI); egui_inspection + egui_mcp (агент сам кликает по живому приложению и делает скриншоты) | Детали в [PROCESS.md](PROCESS.md). |
 
 **Лицензия.** v2 выходит под AGPL-3.0, как и v1: алгоритмы переносятся из v1. Код Cap (AGPL/MIT) можно брать как образец, при копировании сохраняя уведомления. Крейт `dssim` не используем.
 
