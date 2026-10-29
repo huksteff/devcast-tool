@@ -11,6 +11,7 @@ mod keys;
 mod kind;
 mod shapes;
 mod telemetry;
+mod track;
 mod writer;
 
 pub use cursor::{Button, CURSOR_FILE, CursorEvent, CursorKind, image_file, read_cursor};

@@ -1,0 +1,238 @@
+---
+source: fx/cursor/src/evaluate_tests.rs
+expression: scenes
+---
+[
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0000.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 384.0,
+        "y": 324.0
+      },
+      "rotation": 0.0
+    },
+    "t": 0.0
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0000.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 384.0,
+        "y": 324.0
+      },
+      "rotation": 0.0
+    },
+    "t": 0.5
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0000.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 391.0779724121094,
+        "y": 326.65423583984375
+      },
+      "rotation": 0.0
+    },
+    "t": 0.55
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0000.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 430.8920593261719,
+        "y": 341.58453369140625
+      },
+      "rotation": 0.0
+    },
+    "t": 0.6
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0000.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 714.0526733398438,
+        "y": 447.769775390625
+      },
+      "rotation": 0.0
+    },
+    "t": 0.75
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0000.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 1293.7999267578125,
+        "y": 665.1749267578125
+      },
+      "rotation": 0.0
+    },
+    "t": 1.0
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0000.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 1478.02880859375,
+        "y": 734.2608032226563
+      },
+      "rotation": 0.0
+    },
+    "t": 1.1
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0000.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 1536.0,
+        "y": 756.0
+      },
+      "rotation": 0.0
+    },
+    "t": 1.49
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0000.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 1536.0,
+        "y": 756.0
+      },
+      "rotation": 0.0
+    },
+    "t": 1.5
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0001.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 1513.9671630859375,
+        "y": 756.0
+      },
+      "rotation": 0.0
+    },
+    "t": 2.0
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0001.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 933.4365234375,
+        "y": 538.301025390625
+      },
+      "rotation": 0.0
+    },
+    "t": 2.4
+  },
+  {
+    "cursor": {
+      "image": {
+        "frame": 0,
+        "path": "media/recording-1/cursor-0001.png"
+      },
+      "motion": null,
+      "opacity": 0.949999988079071,
+      "rect": {
+        "h": 117.50819396972656,
+        "w": 117.50819396972656,
+        "x": 937.01953125,
+        "y": 539.6445922851563
+      },
+      "rotation": 0.0
+    },
+    "t": 2.5
+  },
+  {
+    "cursor": null,
+    "t": 2.7
+  },
+  {
+    "cursor": null,
+    "t": 2.9
+  },
+  {
+    "cursor": null,
+    "t": 3.0
+  },
+  {
+    "cursor": null,
+    "t": 4.0
+  }
+]

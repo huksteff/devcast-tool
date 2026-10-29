@@ -9,12 +9,14 @@ pub fn registry() -> Result<Registry, CliError> {
         dc_fx_cut::ops(),
         dc_fx_crop::ops(),
         dc_fx_zoom::ops(),
+        dc_fx_cursor::ops(),
         dc_fx_captions::ops(),
     ]
     .concat();
     let effects = vec![
         dc_fx_crop::effect(),
         dc_fx_zoom::effect(),
+        dc_fx_cursor::effect(),
         dc_fx_captions::effect(),
     ];
     Registry::new(ops, effects).map_err(|e| {

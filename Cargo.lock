@@ -678,6 +678,7 @@ dependencies = [
  "dc-encode",
  "dc-fx-captions",
  "dc-fx-crop",
+ "dc-fx-cursor",
  "dc-fx-cut",
  "dc-fx-zoom",
  "dc-ipc",
@@ -762,6 +763,14 @@ dependencies = [
 [[package]]
 name = "dc-fx-cursor"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "dc-render",
+ "insta",
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "dc-fx-cut"
@@ -834,10 +843,13 @@ dependencies = [
 name = "dc-ops"
 version = "0.1.0"
 dependencies = [
+ "dc-capture",
  "dc-core",
  "dc-fx-crop",
+ "dc-fx-cursor",
  "dc-fx-cut",
  "dc-fx-zoom",
+ "dc-media",
  "dc-render",
  "insta",
  "schemars",
