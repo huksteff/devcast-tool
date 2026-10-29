@@ -61,4 +61,8 @@ pub enum RenderError {
         "картинка «{path}» (кадр {frame}) не загружена в рендер перед рисованием сцены. Это ошибка программы: сообщи разработчику"
     )]
     NoImage { path: String, frame: u32 },
+    #[error(
+        "штрих кисти не разбился на треугольники: {0}. Это ошибка программы: сообщи разработчику"
+    )]
+    Stroke(lyon::tessellation::TessellationError),
 }

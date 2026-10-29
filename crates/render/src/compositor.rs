@@ -8,6 +8,7 @@ use std::path::Path;
 use dc_core::PixelSize;
 
 use crate::blur::{BlurPass, Op};
+use crate::brush::BrushPass;
 use crate::error::RenderError;
 use crate::gpu::{Gpu, SRGB_VIEW};
 use crate::recorder::Recorder;
@@ -24,6 +25,7 @@ pub struct Compositor {
     blur: BlurPass,
     text: TextPass,
     sprites: SpritesPass,
+    brush: BrushPass,
     /// Decoded frames by `Media::path`; a frame the drawn scene does not show is dropped.
     frames: HashMap<String, VideoFrame>,
     /// What the frame being drawn records, in paint order.
@@ -43,6 +45,8 @@ enum Step {
         image: ImageKey,
         slot: u32,
     },
+    /// Drawing `i` of the brush pass.
+    Drawing(usize),
 }
 
 impl Compositor {
@@ -53,6 +57,7 @@ impl Compositor {
             blur: BlurPass::new(gpu),
             text: TextPass::new(gpu),
             sprites: SpritesPass::new(gpu),
+            brush: BrushPass::new(gpu),
             frames: HashMap::new(),
             steps: Vec::new(),
             ops: Vec::new(),
@@ -117,6 +122,7 @@ impl Compositor {
                 Step::Sprite { image, slot } => {
                     self.sprites.record(recorder.pass(), image, *slot);
                 }
+                Step::Drawing(i) => self.brush.record(&mut recorder, *i),
             }
         }
         gpu.queue.submit([recorder.finish()]);
@@ -144,6 +150,7 @@ impl Compositor {
         self.blur.clear(scene.size, target);
         self.text.clear(gpu, scene.size, target);
         self.sprites.clear();
+        self.brush.clear();
         self.steps.clear();
         self.ops.clear();
         for (band, layer) in scene.painted() {
@@ -170,10 +177,16 @@ impl Compositor {
                     let image = sprite.image.clone();
                     self.steps.push(Step::Sprite { image, slot });
                 }
+                Layer::Drawing(drawing) => {
+                    if let Some(i) = self.brush.push(drawing, camera, scene.size, target)? {
+                        self.steps.push(Step::Drawing(i));
+                    }
+                }
             }
         }
         self.shapes.upload(gpu);
         self.sprites.upload_slots(gpu);
+        self.brush.upload(gpu, target);
         self.blur.upload(gpu, !self.ops.is_empty());
         Ok(())
     }

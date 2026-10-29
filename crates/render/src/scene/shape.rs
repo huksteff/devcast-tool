@@ -156,6 +156,21 @@ impl From<Rgba> for String {
     }
 }
 
+impl Rgba {
+    /// Linear rgb and alpha (straight).
+    pub(crate) fn linear(self) -> [f32; 4] {
+        let [r, g, b, a] = self.0.map(|c| f32::from(c) / 255.0);
+        let decode = |c: f32| {
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        [decode(r), decode(g), decode(b), a]
+    }
+}
+
 impl fmt::Display for Rgba {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let [r, g, b, a] = self.0;
@@ -182,6 +197,14 @@ mod tests {
         ] {
             assert!(bad.parse::<Rgba>().is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn srgb_turns_linear() {
+        let [r, g, b, a] = Rgba([255, 188, 0, 128]).linear();
+        assert!((r - 1.0).abs() < 1e-6 && b == 0.0);
+        assert!((g - 0.5).abs() < 0.003, "{g}");
+        assert!((a - 128.0 / 255.0).abs() < 1e-6);
     }
 
     #[test]

@@ -13,7 +13,7 @@ use dc_core::PixelSize;
 use crate::gpu::Gpu;
 use crate::pipeline::pipeline;
 use crate::recorder::Recorder;
-use crate::scene::{Blur, Rgba};
+use crate::scene::Blur;
 use crate::shapes::{ShapesPass, View};
 use crate::uniform::Slots;
 
@@ -138,7 +138,7 @@ impl BlurPass {
         overlaps(rect, self.target)?;
         let half = [(rect[2] - rect[0]) / 2.0, (rect[3] - rect[1]) / 2.0];
         let center = [rect[0] + half[0], rect[1] + half[1]];
-        let [tr, tg, tb, ta] = linear(blur.tint);
+        let [tr, tg, tb, ta] = blur.tint.linear();
         let values = self.values(&area, rect, [tr, tg, tb, ta], center, half, blur.radius * k);
         Some(Op {
             slot: self.params.push(&values),
@@ -300,30 +300,4 @@ fn overlaps(rect: [f32; 4], target: PixelSize) -> Option<[f32; 4]> {
 
 fn grow(rect: [f32; 4], by: f32) -> [f32; 4] {
     [rect[0] - by, rect[1] - by, rect[2] + by, rect[3] + by]
-}
-
-/// Linear rgb and alpha of an sRGB colour.
-fn linear(color: Rgba) -> [f32; 4] {
-    let [r, g, b, a] = color.0.map(|c| f32::from(c) / 255.0);
-    let decode = |c: f32| {
-        if c <= 0.04045 {
-            c / 12.92
-        } else {
-            ((c + 0.055) / 1.055).powf(2.4)
-        }
-    };
-    [decode(r), decode(g), decode(b), a]
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn srgb_tint_turns_linear() {
-        let [r, g, b, a] = linear(Rgba([255, 188, 0, 128]));
-        assert!((r - 1.0).abs() < 1e-6 && b == 0.0);
-        assert!((g - 0.5).abs() < 0.003, "{g}");
-        assert!((a - 128.0 / 255.0).abs() < 1e-6);
-    }
 }

@@ -5,6 +5,7 @@
 //! the same picture scaled, so the preview may render smaller than the export.
 
 mod blur;
+mod drawing;
 mod shape;
 mod sprite;
 mod text;
@@ -16,6 +17,7 @@ use dc_core::PixelSize;
 use serde::{Deserialize, Serialize};
 
 pub use blur::Blur;
+pub use drawing::{BrushStroke, Drawing, Tool};
 pub use shape::{
     Geometry, Glow, Gradient, GradientColors, GradientCount, Paint, ParseRgbaError, Rgba, Shape,
     Stroke,
@@ -107,6 +109,7 @@ pub enum Layer {
     Blur(Blur),
     Text(Text),
     Sprite(Sprite),
+    Drawing(Drawing),
 }
 
 #[cfg(test)]
