@@ -115,7 +115,6 @@ impl ProjectDir {
         self.discard_session()
     }
 
-    /// Autosave of the working state.
     pub fn save_session(&self, project: &Project) -> Result<()> {
         check(project)?;
         atomic::write_json(&self.file(SESSION_FILE), project)

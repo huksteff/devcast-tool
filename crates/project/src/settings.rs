@@ -14,7 +14,6 @@ pub fn dir() -> Result<PathBuf> {
         .ok_or(ProjectError::NoSettingsDir)
 }
 
-/// The app defaults file.
 pub fn defaults_file() -> Result<PathBuf> {
     Ok(dir()?.join(DEFAULTS_FILE))
 }

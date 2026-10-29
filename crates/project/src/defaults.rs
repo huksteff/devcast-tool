@@ -20,7 +20,6 @@ pub struct Defaults {
 }
 
 impl Defaults {
-    /// Factory defaults.
     pub fn factory() -> Self {
         Self::default()
     }
