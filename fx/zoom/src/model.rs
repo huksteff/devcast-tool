@@ -13,7 +13,6 @@ pub const TRANSITION_MIN: TimeDelta = TimeDelta::from_millis(60);
 pub const TRANSITION_MAX: TimeDelta = TimeDelta::from_millis(4000);
 pub const MOTION_BLUR_MAX: f64 = 2.0;
 
-/// The zoom effect.
 pub struct ZoomEffect;
 
 impl Effect for ZoomEffect {
