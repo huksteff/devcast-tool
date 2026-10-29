@@ -72,8 +72,9 @@ pub fn run(root: &Path) -> Result<(), String> {
     let target = crate::metadata::Workspace::load()?.target;
     copy_dlls(root, &target)?;
     crate::fonts::ensure(&deps)?;
+    crate::fonts::copy(&deps, &target)?;
     println!(
-        "deps: OK — .deps/ffmpeg, .deps/libclang, .deps/vulkan; DLL FFmpeg и Vulkan скопированы в debug и release папки сборки {}",
+        "deps: OK — .deps/ffmpeg, .deps/libclang, .deps/vulkan; DLL FFmpeg и Vulkan и шрифты скопированы в debug и release папки сборки {}",
         target.display()
     );
     Ok(())

@@ -8,6 +8,7 @@ mod commands;
 mod effects;
 mod evaluate;
 mod path;
+mod pointer;
 mod pose;
 mod prepared;
 mod spring;
@@ -20,6 +21,7 @@ pub use click_state::{
 };
 pub use commands::CursorSet;
 pub use evaluate::evaluate;
+pub use pointer::{Pointer, pointer};
 pub use prepared::Prepared;
 pub use state::{
     BLUR_MAX, BOUNCE_MAX, BOUNCE_TIME_MAX, BOUNCE_TIME_MIN, CursorSettings, CursorState, SIZE_MAX,

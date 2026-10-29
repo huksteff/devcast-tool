@@ -20,14 +20,14 @@ mod text;
 mod uniform;
 mod video;
 
-pub use compositor::Compositor;
+pub use compositor::{BUILTIN_FONTS, Compositor};
 pub use error::{GpuError, RenderError};
 pub use gpu::{AdapterChoice, BACKEND, FORMAT, Gpu, SRGB_VIEW};
 pub use nv12_readback::{Nv12Readback, Planes};
 pub use offscreen::SHEET_GAP;
 pub use readback::Image;
 pub use scene::{
-    Align, Band, Blur, BrushStroke, Camera, Drawing, Font, Geometry, Glow, Gradient,
+    Align, Band, Beside, Blur, BrushStroke, Camera, Drawing, Font, Geometry, Glow, Gradient,
     GradientColors, ImageKey, Layer, Motion, Paint, Plate, PxRect, Rgba, Scene, Shape, Sprite,
     Stroke, Text, TextRun, Tool, Video, VideoSource,
 };

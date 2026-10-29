@@ -2,7 +2,7 @@
 
 use glyphon::{Buffer, Color, LayoutRun};
 
-use crate::scene::{Geometry, Paint, PxRect, Rgba, Shape, Text};
+use crate::scene::{Beside, Geometry, Glow, Paint, PxRect, Rgba, Shape, Text};
 
 use super::Decor;
 
@@ -40,9 +40,20 @@ pub(super) fn decor(
                 h: run.line_height + 2.0 * py,
             };
             if let Some(rect) = to_frame(rect) {
-                let color = faded(plate.color, text.opacity);
-                let radius = plate.radius * k / scale;
-                decor.plates.push(figure(rect, radius, color));
+                decor.plates.push(Shape {
+                    geometry: Geometry::Rect {
+                        rect,
+                        radius: plate.radius * k / scale,
+                    },
+                    fill: Some(plate.paint.clone()),
+                    stroke: None,
+                    opacity: text.opacity,
+                    rotation: 0.0,
+                    glow: plate.glow.as_ref().map(|glow| Glow {
+                        color: glow.color,
+                        sigma: glow.sigma * k / scale,
+                    }),
+                });
             }
         }
         for (x0, x1, y, thickness, color) in underlines(&run) {
@@ -104,11 +115,6 @@ fn rgba(color: Option<Color>) -> Rgba {
     Rgba(color.map_or([255; 4], |c| c.as_rgba()))
 }
 
-fn faded(color: Rgba, opacity: f32) -> Rgba {
-    let [r, g, b, a] = color.0;
-    Rgba([r, g, b, (f32::from(a) * opacity).round() as u8])
-}
-
 /// The part of `rect` inside `clip`; `None` when nothing is.
 fn cut(rect: PxRect, clip: PxRect) -> Option<PxRect> {
     let x0 = rect.x.max(clip.x);
@@ -132,4 +138,62 @@ fn figure(rect: PxRect, radius: f32, color: Rgba) -> Shape {
         rotation: 0.0,
         glow: None,
     }
+}
+
+/// Top-left of a buffer centred vertically in `rect` after the side padding (target px).
+pub(super) fn centred(buffer: &Buffer, text: &Text, rect: PxRect, k: f32) -> [f32; 2] {
+    let height = buffer
+        .layout_runs()
+        .last()
+        .map_or(0.0, |run| run.line_top + run.line_height);
+    [rect.x + text.padding * k, rect.y + (rect.h - height) / 2.0]
+}
+
+/// Top-left of a one-line buffer whose box sits by `point` as [`Beside`] says (target px).
+/// `[k, scale]`: target px per px of the text's own lengths (camera included) and per frame px.
+pub(super) fn beside_point(
+    buffer: &Buffer,
+    text: &Text,
+    beside: &Beside,
+    point: [f32; 2],
+    rect: PxRect,
+    [k, scale]: [f32; 2],
+) -> [f32; 2] {
+    let pad = text
+        .plate
+        .as_ref()
+        .map_or([text.padding; 2], |plate| plate.pad)
+        .map(|p| p * k);
+    let run = buffer.layout_runs().next();
+    let [x0, x1] = run.as_ref().and_then(ink).unwrap_or([0.0, 0.0]);
+    let line = run.map_or(0.0, |run| run.line_height);
+    let size = [x1 - x0 + 2.0 * pad[0], line + 2.0 * pad[1]];
+    let margin = beside.margin * scale;
+    let x = side(
+        point[0],
+        beside.offset[0] * k,
+        size[0],
+        [rect.x + margin, rect.x + rect.w - margin],
+    );
+    let y = side(
+        point[1],
+        beside.offset[1] * k,
+        size[1],
+        [rect.y + margin, rect.y + rect.h - margin],
+    );
+    [x + pad[0] - x0, y + pad[1]]
+}
+
+/// Start of a box of `length` on one axis: `offset` after `p` if it ends by `hi`, else before
+/// `p` if it starts from `lo`, else pushed between them (`lo` wins when it is too long).
+fn side(p: f32, offset: f32, length: f32, [lo, hi]: [f32; 2]) -> f32 {
+    let after = p + offset;
+    if after + length <= hi {
+        return after;
+    }
+    let before = p - offset - length;
+    if before >= lo {
+        return before;
+    }
+    after.min(hi - length).max(lo)
 }

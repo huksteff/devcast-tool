@@ -18,6 +18,9 @@ use crate::sprites::{Bitmap, SpritesPass};
 use crate::text::TextPass;
 use crate::video::{Nv12, VideoFrame, VideoPass};
 
+/// Folder of the built-in fonts next to the program.
+pub const BUILTIN_FONTS: &str = "fonts";
+
 /// The renderer of preview, export and the CLI.
 pub struct Compositor {
     video: VideoPass,
@@ -69,6 +72,14 @@ impl Compositor {
     /// included (decision 005).
     pub fn load_fonts(&mut self, dir: &Path) -> Result<(), RenderError> {
         self.text.load_fonts(dir)
+    }
+
+    /// Loads the built-in fonts: the `fonts` folder next to the running program (`cargo xtask
+    /// deps` puts them next to the built programs and tests).
+    pub fn load_builtin_fonts(&mut self) -> Result<(), RenderError> {
+        let exe = std::env::current_exe().map_err(RenderError::NoBuiltinFonts)?;
+        let dir = exe.parent().unwrap_or(&exe).join(BUILTIN_FONTS);
+        self.load_fonts(&dir)
     }
 
     /// Hands over a picture (a frame of a decoded image file) that sprites show as `key`. It
@@ -214,8 +225,7 @@ impl Compositor {
 
     fn push_text(&mut self, gpu: &Gpu, text: &Text, camera: Camera) -> Result<(), RenderError> {
         let (renderer, decor) = self.text.push(gpu, text, camera)?;
-        let plates = self.shapes.push(&decor.plates, Camera::IDENTITY);
-        self.steps.push(Step::Shapes(plates));
+        self.push_shapes(&decor.plates, Camera::IDENTITY);
         self.steps.push(Step::Text(renderer));
         let underlines = self.shapes.push(&decor.underlines, Camera::IDENTITY);
         self.steps.push(Step::Shapes(underlines));

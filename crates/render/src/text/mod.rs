@@ -117,12 +117,11 @@ impl TextPass {
         }
         let buffer = &mut self.buffers[index];
         let size = text.font.size * k;
-        let width = (rect.w - 2.0 * text.padding * k).max(0.0);
-        buffer.set_metrics_and_size(
-            Metrics::new(size, size * text.line_height),
-            Some(width),
-            None,
-        );
+        let width = match text.beside {
+            Some(_) => None,
+            None => Some((rect.w - 2.0 * text.padding * k).max(0.0)),
+        };
+        buffer.set_metrics_and_size(Metrics::new(size, size * text.line_height), width, None);
         buffer.set_wrap(Wrap::WordOrGlyph);
         let base = attrs(text);
         let spans = text.runs.iter().map(|run| {
@@ -135,12 +134,13 @@ impl TextPass {
         });
         buffer.set_rich_text(spans, &base, Shaping::Advanced, Some(align(text.align)));
         buffer.shape_until_scroll(&mut self.fonts, false);
-        let height = buffer
-            .layout_runs()
-            .last()
-            .map_or(0.0, |run| run.line_top + run.line_height);
-        let left = rect.x + text.padding * k;
-        let top = rect.y + (rect.h - height) / 2.0;
+        let [left, top] = match &text.beside {
+            None => layout::centred(buffer, text, rect, k),
+            Some(beside) => {
+                let point = camera.apply(beside.point).map(|v| v * self.scale);
+                layout::beside_point(buffer, text, beside, point, rect, [k, self.scale])
+            }
+        };
         let decor = layout::decor(buffer, text, [left, top], rect, k, self.scale);
         let area = TextArea {
             buffer,
@@ -265,6 +265,7 @@ mod tests {
             padding: 0.0,
             plate: None,
             opacity: 1.0,
+            beside: None,
         };
         let mut buffer = Buffer::new(fonts, Metrics::new(32.0, 44.0));
         buffer.set_text(line, &attrs(&text), Shaping::Advanced, None);

@@ -44,6 +44,10 @@ pub enum RenderError {
         source: std::io::Error,
     },
     #[error(
+        "не найдена папка программы ({0}), а встроенные шрифты лежат рядом с ней в fonts/: переустанови программу"
+    )]
+    NoBuiltinFonts(std::io::Error),
+    #[error(
         "шрифт «{family}» не загружен. Выбери встроенный шрифт (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono) или положи файл шрифта в assets/ проекта"
     )]
     NoFont { family: String },

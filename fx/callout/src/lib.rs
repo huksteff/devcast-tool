@@ -2,12 +2,14 @@
 //! text and the look of the bubble.
 
 mod commands;
+mod evaluate;
 mod model;
 mod resolve;
 mod style;
 mod text;
 
 pub use commands::{ActionName, CalloutAdd, CalloutRm, CalloutSet};
+pub use evaluate::{Anchor, evaluate};
 pub use model::{
     Action, Callout, CalloutEvent, CalloutSettings, CalloutState, EventId, EventKind, GLOW_MAX,
     SIZE_MAX, SIZE_MIN, TEXT_MAX,

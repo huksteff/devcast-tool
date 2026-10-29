@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{PxRect, Rgba};
+use super::{Glow, Paint, PxRect, Rgba};
 
 /// Text in a box (v1 text annotation, `annotationRenderer.ts`): it wraps at the box width minus
 /// `padding` on both sides, the block of lines is centred vertically, and the box cuts what does
@@ -23,6 +23,20 @@ pub struct Text {
     pub plate: Option<Plate>,
     /// 0..1, for the text and its plates.
     pub opacity: f32,
+    /// One line put next to a point instead of centred in `rect` (the cursor callout).
+    pub beside: Option<Beside>,
+}
+
+/// Places one line (no wrapping) by a point. Its box — the ink grown by the plate's `pad`, or by
+/// `padding` without a plate — gets its top-left corner at `point + offset`. On an axis where the
+/// box would come closer than `margin` to the edge of `rect`, it goes to the other side of the
+/// point (its far corner at `point − offset`); if it fits neither way, it is pushed inside `rect`.
+/// `rect` also cuts the text. Px of the frame, like `rect`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Beside {
+    pub point: [f32; 2],
+    pub offset: [f32; 2],
+    pub margin: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -54,7 +68,9 @@ pub enum Align {
 /// v1: `pad` = (0.2, 0.1) of the font size.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Plate {
-    pub color: Rgba,
+    /// A gradient runs across each line's box.
+    pub paint: Paint,
     pub radius: f32,
     pub pad: [f32; 2],
+    pub glow: Option<Glow>,
 }

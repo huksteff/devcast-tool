@@ -71,6 +71,7 @@ pub(crate) fn run(
         sound: &mut sound,
     };
     let mut compositor = Compositor::new(gpu);
+    compositor.load_builtin_fonts()?;
     let mut sources = Sources::new(&dir);
     let settings = &spec.settings;
     match settings.format {

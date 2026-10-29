@@ -243,11 +243,13 @@ fn golden_text() -> TestResult {
         line_height: 1.4,
         padding: 8.0,
         plate: Some(Plate {
-            color: Rgba([40, 40, 60, 220]),
+            paint: Paint::Solid(Rgba([40, 40, 60, 220])),
             radius: 8.0,
             pad: [8.0, 4.0],
+            glow: None,
         }),
         opacity: 1.0,
+        beside: None,
     };
     scene.push(Band::Overlay, Layer::Text(text));
     check("text", &scene)

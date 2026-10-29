@@ -5,8 +5,8 @@ use std::path::Path;
 
 use common::{TestResult, gpu, pixel, size};
 use dc_render::{
-    Align, Band, Camera, Compositor, Font, Image, Layer, Plate, PxRect, RenderError, Rgba, Scene,
-    Text, TextRun,
+    Align, Band, Camera, Compositor, Font, Image, Layer, Paint, Plate, PxRect, RenderError, Rgba,
+    Scene, Text, TextRun,
 };
 
 const WHITE: Rgba = Rgba([255, 255, 255, 255]);
@@ -35,6 +35,7 @@ fn text(line: &str) -> Text {
         padding: 8.0,
         plate: None,
         opacity: 1.0,
+        beside: None,
     }
 }
 
@@ -149,9 +150,10 @@ fn alignment_moves_the_line() -> TestResult {
 fn plate_sits_behind_each_line_and_underline_under_it() -> TestResult {
     let mut plated = text("Плашка");
     plated.plate = Some(Plate {
-        color: Rgba([0, 0, 255, 255]),
+        paint: Paint::Solid(Rgba([0, 0, 255, 255])),
         radius: 6.0,
         pad: [8.0, 4.0],
+        glow: None,
     });
     plated.underline = true;
     let image = one(plated)?;

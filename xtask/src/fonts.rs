@@ -161,6 +161,25 @@ pub fn ensure(deps: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// The fonts with their licences next to the built programs (`<profile>/fonts`) and tests
+/// (`<profile>/deps/fonts`): the programs load them from there (`Compositor::load_builtin_fonts`).
+pub fn copy(deps: &Path, target: &Path) -> Result<(), String> {
+    let source = deps.join("fonts");
+    for profile in ["debug", "release"] {
+        for dir in [
+            target.join(profile).join("fonts"),
+            target.join(profile).join("deps").join("fonts"),
+        ] {
+            create_dir(&dir)?;
+            for font in &FONTS {
+                std::fs::copy(source.join(font.file), dir.join(font.file))
+                    .map_err(|e| format!("не удалось скопировать {}: {e}", font.file))?;
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

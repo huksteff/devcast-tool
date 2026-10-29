@@ -2,7 +2,7 @@
 //! count, over everything and outside the zoom camera.
 
 use dc_core::{OutputTime, TimeDelta};
-use dc_render::{Align, Band, Font, Layer, Plate, PxRect, Scene, Text, TextRun};
+use dc_render::{Align, Band, Font, Layer, Paint, Plate, PxRect, Scene, Text, TextRun};
 
 use crate::prepared::{Prepared, Shown};
 use crate::state::Position;
@@ -71,11 +71,13 @@ pub fn evaluate(prepared: &Prepared, t: OutputTime, scene: &mut Scene) {
         line_height: LINE_HEIGHT,
         padding: pad_x as f32,
         plate: Some(Plate {
-            color: settings.background,
+            paint: Paint::Solid(settings.background),
             radius: (RADIUS * font) as f32,
             pad: [pad_x as f32, pad_y as f32],
+            glow: None,
         }),
         opacity: opacity(shown, t),
+        beside: None,
     };
     scene.push(Band::Overlay, Layer::Text(layer));
 }

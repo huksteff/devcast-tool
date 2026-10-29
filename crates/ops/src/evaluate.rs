@@ -5,6 +5,7 @@
 use dc_core::{
     CursorTracks, KeyTracks, OutputTime, PixelSize, Project, StateError, TimeDelta, TimeMap,
 };
+use dc_fx_callout::{Anchor, Callout, CalloutState};
 use dc_fx_crop::Crop;
 use dc_fx_cursor::Cursor;
 use dc_fx_keys::Keys;
@@ -31,6 +32,7 @@ pub struct Evaluator<'p> {
     camera: CameraTrack,
     cursor: dc_fx_cursor::Prepared,
     keys: dc_fx_keys::Prepared,
+    callout: CalloutState,
 }
 
 impl<'p> Evaluator<'p> {
@@ -60,6 +62,7 @@ impl<'p> Evaluator<'p> {
             camera,
             cursor: dc_fx_cursor::Prepared::new(project, cursor, cursors),
             keys,
+            callout: project.state::<Callout>()?,
         })
     }
 
@@ -82,6 +85,13 @@ impl<'p> Evaluator<'p> {
         dc_fx_cut::evaluate(self.project, &self.map, t, &mut scene);
         self.camera.evaluate(t, &mut scene);
         dc_fx_cursor::evaluate(&self.cursor, self.project, &self.map, t, &mut scene);
+        let anchor = dc_fx_cursor::pointer(&self.cursor, self.project, &self.map, t, scene.size)
+            .map(|p| Anchor {
+                tip: p.tip,
+                arrow: p.arrow,
+                k: p.k,
+            });
+        dc_fx_callout::evaluate(&self.callout, &self.map, t, anchor, &mut scene);
         dc_fx_keys::evaluate(&self.keys, t, &mut scene);
         scene
     }
