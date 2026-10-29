@@ -21,6 +21,7 @@ use std::time::{Duration, Instant};
 
 use common::probe::{AudioProbe, Probe, frame_png};
 use common::{Running, TestPicture, fresh_dir, test_monitor};
+use dc_capture::input::{CURSOR_FILE, KEYS_FILE};
 use dc_capture::win::Recording;
 use dc_capture::{Manifest, RecordingConfig, recover};
 
@@ -127,8 +128,27 @@ fn recording_survives_kill() {
         .map(|e| e.unwrap().file_name().into_string().unwrap())
         .collect();
     left.sort();
-    assert_eq!(
-        left,
-        ["manifest.json", "system.mp4", "video.2s.png", "video.mp4"]
-    );
+    assert_eq!(left, kept_files(&manifest, &names));
+}
+
+/// What recovery leaves: the telemetry and the manifest as they were, the final tracks and the
+/// checked frame; only the segments and the temporary files are deleted.
+fn kept_files(manifest: &Manifest, before: &[String]) -> Vec<String> {
+    let segment = |name: &str| {
+        manifest
+            .tracks
+            .iter()
+            .any(|t| name.starts_with(&format!("{}-", t.name)) && name.ends_with(".mp4"))
+    };
+    let mut kept: Vec<String> = before
+        .iter()
+        .filter(|name| !segment(name) && !name.ends_with(".tmp"))
+        .cloned()
+        .collect();
+    for telemetry in [CURSOR_FILE, KEYS_FILE] {
+        assert!(kept.iter().any(|name| name == telemetry), "{telemetry}");
+    }
+    kept.extend(["system.mp4", "video.2s.png", "video.mp4"].map(str::to_owned));
+    kept.sort();
+    kept
 }
