@@ -177,7 +177,6 @@ impl SharedManifest {
         manifest.write(&self.dir)
     }
 
-    /// The manifest as it is now.
     pub fn get(&self) -> Result<Manifest, CaptureError> {
         Ok(self.lock()?.clone())
     }

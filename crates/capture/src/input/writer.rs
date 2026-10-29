@@ -60,7 +60,6 @@ pub struct InputSummary {
     pub keys: u64,
 }
 
-/// Encodes a cursor picture as PNG.
 pub type EncodePng = fn(&CursorImage) -> Result<Vec<u8>, CaptureError>;
 
 struct Open {

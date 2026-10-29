@@ -19,7 +19,6 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::w;
 
-/// Flash length.
 pub const FLASH_SECONDS: f64 = 0.05;
 
 static WHITE: AtomicBool = AtomicBool::new(false);

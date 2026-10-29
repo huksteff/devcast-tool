@@ -65,7 +65,6 @@ impl Canvas {
         CONTENT.lock().unwrap().text.clone()
     }
 
-    /// Starts empty: no text, no clicks.
     pub fn clear(&self) {
         let mut content = CONTENT.lock().unwrap();
         content.text.clear();
