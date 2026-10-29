@@ -95,6 +95,7 @@ mod tests {
         };
         Workspace {
             root: "/ws".into(),
+            target: "/ws/target".into(),
             packages: vec![
                 package("dc-core", "crates/core", &[]),
                 package("dc-render", "crates/render", &["dc-core"]),

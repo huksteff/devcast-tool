@@ -13,7 +13,8 @@
 | 3 | Git LFS | https://git-lfs.com, затем `git lfs install` и `git lfs pull` в репозитории | `git lfs ls-files` |
 | 4 | cargo-nextest | `cargo install cargo-nextest --locked` | `cargo nextest --version` |
 | 5 | Vulkan SDK (распознавание речи на видеокарте, решение 010) | **Нужны права администратора.** Владелец ставит установщик Windows с https://vulkan.lunarg.com/sdk/home (версия 1.4.363.0 или новее, компоненты по умолчанию). Установщик задаёт системную переменную `VULKAN_SDK`; после установки перезапусти терминал. Тихая установка (так ставит CI): `vulkansdk-windows-X64-1.4.363.0.exe --root C:\VulkanSDK --accept-licenses --default-answer --confirm-command install`, затем задать `VULKAN_SDK=C:\VulkanSDK` | `echo %VULKAN_SDK%` показывает папку SDK, в ней есть `Bin\glslc.exe` и `Lib\vulkan-1.lib` |
-| 6 | FFmpeg, libclang, CMake, загрузчик Vulkan | `cargo xtask deps`: скачивает в `.deps/`, проверяет SHA-256 и копирует DLL (FFmpeg и `vulkan-1.dll`) к exe | в `.deps/` появились `ffmpeg/`, `libclang/`, `cmake/`, `vulkan/` |
+| 6 | Короткая папка сборки | Пользовательская переменная `CARGO_TARGET_DIR=D:\dct` (любая папка с коротким путём; без админа: `setx CARGO_TARGET_DIR D:\dct`), затем перезапусти терминал и Claude. whisper.cpp с Vulkan собирает вспомогательную программу через MSBuild, а он не умеет пути длиннее 260 символов: из `<репозиторий>\target` путь получается длиннее. Заодно все worktree делят одну сборку и не забивают диск | `echo %CARGO_TARGET_DIR%` |
+| 6а | FFmpeg, libclang, CMake, загрузчик Vulkan | `cargo xtask deps`: скачивает в `.deps/`, проверяет SHA-256 и копирует DLL (FFmpeg и `vulkan-1.dll`) к exe в папку сборки | в `.deps/` появились `ffmpeg/`, `libclang/`, `cmake/`, `vulkan/` |
 | 7 | Проверка, что всё работает | `cargo xtask verify --full` | `verify: OK` |
 
 ## Для проб и следующих этапов: ставь, когда дойдёшь до этапа
@@ -25,10 +26,6 @@
 | Шрифты | текст в рендере | `cargo xtask deps` (п. 6) скачивает в `.deps/fonts/` с проверкой SHA-256: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono из https://github.com/google/fonts; Noto Color Emoji (сборка CBDT) из релиза https://github.com/googlefonts/noto-emoji. См. docs/decisions/005-text.md |
 | .NET SDK 10 (LTS) и vpk | установщик и обновления (Velopack) | без админа: официальный `dotnet-install.ps1 -Channel LTS` (https://dot.net/v1/dotnet-install.ps1) в `%LOCALAPPDATA%\Microsoft\dotnet`, затем `dotnet tool install -g vpk`. См. docs/decisions/013-velopack.md |
 | egui-mcp | смотреть окна приложения в тестах | `cargo install egui_mcp --locked`. См. docs/decisions/012-testing.md |
-
-## Длинный путь к репозиторию
-
-whisper.cpp с Vulkan собирает вспомогательную программу через MSBuild, а он не умеет пути длиннее 260 символов. Если репозиторий лежит глубоко (например, worktree в `.claude/worktrees/…`) и сборка `whisper-rs-sys` падает с «No CMAKE_C_COMPILER could be found» или «FTK1011», собирай с коротким `CARGO_TARGET_DIR` (например, `D:\dct`) и скопируй туда в `debug\` DLL из `.deps/ffmpeg/bin` и `.deps/vulkan`.
 
 ## После установки
 

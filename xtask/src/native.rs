@@ -69,10 +69,12 @@ pub fn run(root: &Path) -> Result<(), String> {
     for archive in &ARCHIVES {
         ensure(&deps, archive)?;
     }
-    copy_dlls(root)?;
+    let target = crate::metadata::Workspace::load()?.target;
+    copy_dlls(root, &target)?;
     crate::fonts::ensure(&deps)?;
     println!(
-        "deps: OK — .deps/ffmpeg, .deps/libclang, .deps/vulkan; DLL FFmpeg и Vulkan скопированы в target/debug и target/release"
+        "deps: OK — .deps/ffmpeg, .deps/libclang, .deps/vulkan; DLL FFmpeg и Vulkan скопированы в debug и release папки сборки {}",
+        target.display()
     );
     Ok(())
 }
@@ -141,7 +143,7 @@ fn unpack(deps: &Path, archive: &Archive, download: &Path, dest: &Path) -> Resul
 
 /// FFmpeg and Vulkan loader DLLs next to the built executables, so `cargo run` / tests start
 /// without PATH tweaks.
-fn copy_dlls(root: &Path) -> Result<(), String> {
+fn copy_dlls(root: &Path, target: &Path) -> Result<(), String> {
     let deps = root.join(".deps");
     let mut dlls = Vec::new();
     for dir in [deps.join("ffmpeg").join("bin"), deps.join("vulkan")] {
@@ -155,11 +157,11 @@ fn copy_dlls(root: &Path) -> Result<(), String> {
         );
     }
     for profile in ["debug", "release"] {
-        let target = root.join("target").join(profile);
-        create_dir(&target)?;
+        let bin = target.join(profile);
+        create_dir(&bin)?;
         for dll in &dlls {
             let name = dll.file_name().ok_or("пустое имя DLL")?;
-            std::fs::copy(dll, target.join(name))
+            std::fs::copy(dll, bin.join(name))
                 .map_err(|e| format!("не удалось скопировать {}: {e}", dll.display()))?;
         }
     }

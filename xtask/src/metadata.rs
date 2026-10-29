@@ -16,12 +16,15 @@ pub struct Package {
 
 pub struct Workspace {
     pub root: PathBuf,
+    /// Cargo's build folder: `target/` or `CARGO_TARGET_DIR`.
+    pub target: PathBuf,
     pub packages: Vec<Package>,
 }
 
 #[derive(Deserialize)]
 struct RawMetadata {
     workspace_root: PathBuf,
+    target_directory: PathBuf,
     packages: Vec<RawPackage>,
 }
 
@@ -71,6 +74,7 @@ impl Workspace {
             .collect();
         Self {
             root: raw.workspace_root,
+            target: raw.target_directory,
             packages,
         }
     }
@@ -89,7 +93,7 @@ mod tests {
     #[test]
     fn keeps_only_workspace_dependencies() {
         let raw: RawMetadata = serde_json::from_str(
-            r#"{"workspace_root": "/ws", "packages": [
+            r#"{"workspace_root": "/ws", "target_directory": "/ws/target", "packages": [
                 {"name": "dc-core", "manifest_path": "/ws/crates/core/Cargo.toml", "dependencies": []},
                 {"name": "dc-ops", "manifest_path": "/ws/crates/ops/Cargo.toml",
                  "dependencies": [{"name": "dc-core"}, {"name": "serde"}]}

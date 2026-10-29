@@ -118,6 +118,7 @@ mod tests {
         };
         check(&Workspace {
             root: "/ws".into(),
+            target: "/ws/target".into(),
             packages: vec![package],
         })
     }
