@@ -6,16 +6,18 @@ use dc_core::PixelSize;
 
 use crate::gpu::{Gpu, SRGB_VIEW};
 use crate::scene::{Camera, Geometry, Paint, Shape};
-use crate::uniform::{UNIFORM_BYTES, Uniform};
+use crate::uniform::{self, Uniform};
 
 /// Floats of one figure in the storage buffer: `Shape` of shapes.wgsl, 10 × vec4.
 const FLOATS: usize = 40;
 const BYTES: u64 = FLOATS as u64 * 4;
+/// Floats of `Globals` of shapes.wgsl.
+const GLOBALS: usize = 4;
 
 pub(crate) struct ShapesPass {
     pipeline: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
-    globals: Uniform,
+    globals: Uniform<GLOBALS>,
     storage: wgpu::Buffer,
     bind: wgpu::BindGroup,
     /// Figures of the frame being prepared, reused between frames.
@@ -29,7 +31,7 @@ impl ShapesPass {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("shapes"),
             entries: &[
-                Uniform::layout_entry(0, wgpu::ShaderStages::VERTEX),
+                uniform::layout_entry(0, wgpu::ShaderStages::VERTEX),
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
@@ -111,7 +113,7 @@ impl ShapesPass {
         if len > 0 {
             gpu.queue.write_buffer(&self.storage, 0, &self.bytes);
         }
-        let mut globals = [0.0; UNIFORM_BYTES / 4];
+        let mut globals = [0.0; GLOBALS];
         globals[0] = frame.width as f32;
         globals[1] = frame.height as f32;
         globals[2] = frame.width as f32 / target.width as f32;
@@ -137,7 +139,7 @@ fn storage(gpu: &Gpu, size: u64) -> wgpu::Buffer {
 fn bind(
     gpu: &Gpu,
     layout: &wgpu::BindGroupLayout,
-    globals: &Uniform,
+    globals: &Uniform<GLOBALS>,
     storage: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
     gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {

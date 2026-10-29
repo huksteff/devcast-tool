@@ -1,7 +1,7 @@
 mod common;
 
 use common::{Planes, TestResult, assert_near, gpu, pixel, render, size, source, video_scene};
-use dc_core::{Rect, SourceTime};
+use dc_core::{Rect, SourceTime, VideoColor};
 use dc_render::{Band, Camera, Compositor, Layer, Nv12, RenderError, Scene, Video};
 
 const BLACK: [u8; 3] = [16, 128, 128];
@@ -190,10 +190,10 @@ fn frames_the_scene_does_not_show_are_dropped() -> TestResult {
 fn nv12_planes_must_match_the_size() {
     let y = [0; 15];
     let uv = [0; 12];
-    assert!(Nv12::new(size(5, 3), &y, &uv).is_ok());
-    let short = Nv12::new(size(5, 3), &y, &uv[..10]);
+    assert!(Nv12::new(size(5, 3), &y, &uv, VideoColor::BT709).is_ok());
+    let short = Nv12::new(size(5, 3), &y, &uv[..10], VideoColor::BT709);
     assert!(matches!(short, Err(RenderError::Nv12 { .. })), "{short:?}");
-    assert!(Nv12::new(size(0, 0), &[], &[]).is_err());
+    assert!(Nv12::new(size(0, 0), &[], &[], VideoColor::BT709).is_err());
 }
 
 /// H.264 sites chroma on even luma columns: luma column 2 takes chroma sample 1 alone.

@@ -1,25 +1,35 @@
-//! Video pass: NV12 frames on the GPU, converted to RGB (BT.709, limited range, chroma sited
-//! left as H.264 and our recordings mark it) while drawing.
+//! Video pass: NV12 frames on the GPU, converted to RGB while drawing with the matrix, range and
+//! chroma siting the file marks (`dc_media::Probe::color`).
 
-use dc_core::{PixelSize, SourceTime};
+use dc_core::{ColorRange, PixelSize, SourceTime, VideoColor};
 
 use crate::error::RenderError;
 use crate::gpu::{Gpu, SRGB_VIEW};
 use crate::scene::{Camera, Video};
-use crate::uniform::{UNIFORM_BYTES, Uniform};
+use crate::uniform::{self, Uniform};
+
+/// Floats of `Video` of video.wgsl.
+const FLOATS: usize = 24;
 
 /// A decoded frame as `dc_media::Frame` gives it: the Y plane, then interleaved UV of
-/// `ceil(width/2)` pairs per row and `ceil(height/2)` rows; rows without padding.
+/// `ceil(width/2)` pairs per row and `ceil(height/2)` rows; rows without padding. `color` is how
+/// its file stores colour.
 #[derive(Debug, Clone, Copy)]
 pub struct Nv12<'a> {
     size: PixelSize,
     y: &'a [u8],
     uv: &'a [u8],
+    color: VideoColor,
 }
 
 impl<'a> Nv12<'a> {
     /// Checks that the planes have the lengths of a `size` frame.
-    pub fn new(size: PixelSize, y: &'a [u8], uv: &'a [u8]) -> Result<Self, RenderError> {
+    pub fn new(
+        size: PixelSize,
+        y: &'a [u8],
+        uv: &'a [u8],
+        color: VideoColor,
+    ) -> Result<Self, RenderError> {
         let half = chroma_size(size);
         let y_len = size.width as usize * size.height as usize;
         let uv_len = half.width as usize * 2 * half.height as usize;
@@ -31,7 +41,7 @@ impl<'a> Nv12<'a> {
                 uv: uv.len(),
             });
         }
-        Ok(Self { size, y, uv })
+        Ok(Self { size, y, uv, color })
     }
 }
 
@@ -46,9 +56,10 @@ pub(crate) struct VideoPass {
 pub(crate) struct VideoFrame {
     pub(crate) time: SourceTime,
     size: PixelSize,
+    color: VideoColor,
     luma: wgpu::Texture,
     chroma: wgpu::Texture,
-    uniform: Uniform,
+    uniform: Uniform<FLOATS>,
     bind: wgpu::BindGroup,
 }
 
@@ -69,7 +80,7 @@ impl VideoPass {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("video"),
             entries: &[
-                Uniform::layout_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
+                uniform::layout_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
                 texture(1),
                 texture(2),
                 wgpu::BindGroupLayoutEntry {
@@ -141,7 +152,11 @@ impl VideoPass {
             frame.uv,
             chroma_size(frame.size).width * 2,
         );
-        VideoFrame { time, ..textures }
+        VideoFrame {
+            time,
+            color: frame.color,
+            ..textures
+        }
     }
 
     fn create(&self, gpu: &Gpu, size: PixelSize) -> VideoFrame {
@@ -171,6 +186,7 @@ impl VideoPass {
         VideoFrame {
             time: SourceTime::ZERO,
             size,
+            color: VideoColor::BT709,
             luma,
             chroma,
             uniform,
@@ -195,12 +211,14 @@ impl VideoPass {
         let [x1, y1] = ndc(right, bottom);
         let c = video.crop;
         let crop = [c.x(), c.y(), c.x() + c.w(), c.y() + c.h()].map(|v| v as f32);
-        // Chroma sample i sits on luma column 2i (left) and between luma rows 2i and 2i + 1;
-        // odd sizes have one chroma sample more than half the luma.
+        // Chroma sample i covers luma pixels 2i and 2i + 1, shifted by the siting; odd sizes have
+        // one chroma sample more than half the luma.
         let half = chroma_size(textures.size);
         let (cw, ch) = ((half.width * 2) as f32, (half.height * 2) as f32);
         let (w, h) = (textures.size.width as f32, textures.size.height as f32);
-        let values: [f32; UNIFORM_BYTES / 4] = [
+        let (dx, dy) = textures.color.chroma.offset();
+        let [r, g, b] = yuv_to_rgb(textures.color);
+        let head = [
             x0,
             y0,
             x1,
@@ -211,9 +229,16 @@ impl VideoPass {
             crop[3],
             w / cw,
             h / ch,
-            0.5 / cw,
-            0.0,
+            -dx / cw,
+            -dy / ch,
         ];
+        let mut values = [0.0; FLOATS];
+        for (value, v) in values
+            .iter_mut()
+            .zip(head.iter().chain(&r).chain(&g).chain(&b))
+        {
+            *value = *v;
+        }
         textures.uniform.write(gpu, &values);
     }
 
@@ -222,6 +247,22 @@ impl VideoPass {
         pass.set_bind_group(0, &textures.bind, &[]);
         pass.draw(0..4, 0..1);
     }
+}
+
+/// Rows of R', G' and B' as `(y, u, v, 1) · row` of the sampled texture values 0..1.
+fn yuv_to_rgb(color: VideoColor) -> [[f32; 4]; 3] {
+    let (kr, kb) = color.matrix.weights();
+    let kg = 1.0 - kr - kb;
+    // Luma and chroma 0..1 → Y' 0..1 and Cb, Cr −0.5..0.5.
+    let (ys, yo, cs) = match color.range {
+        ColorRange::Limited => (255.0 / 219.0, -16.0 / 219.0, 255.0 / 224.0),
+        ColorRange::Full => (1.0, 0.0, 1.0),
+    };
+    let co = -128.0 / 255.0 * cs;
+    let (rv, bu) = (2.0 * (1.0 - kr), 2.0 * (1.0 - kb));
+    let (gu, gv) = (-bu * kb / kg, -rv * kr / kg);
+    let row = |u: f64, v: f64| [ys, u * cs, v * cs, yo + (u + v) * co].map(|x| x as f32);
+    [row(0.0, rv), row(gu, gv), row(bu, 0.0)]
 }
 
 fn chroma_size(size: PixelSize) -> PixelSize {

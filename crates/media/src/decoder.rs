@@ -16,8 +16,8 @@ use crate::error::MediaError;
 use crate::pool::{Buffer, FramePool};
 use crate::probe::{MICROS, Probe};
 
-/// A decoded frame: NV12 (BT.709 limited range as in the file), Y plane then interleaved UV,
-/// rows without padding.
+/// A decoded frame: NV12 with the samples as the file stores them (matrix, range and chroma
+/// siting in `Probe::color`), Y plane then interleaved UV, rows without padding.
 #[derive(Debug)]
 pub struct Frame {
     /// When the frame starts being shown.
@@ -187,6 +187,7 @@ impl Decoder {
                 Err(source) => return Err(self.decode_error(source)),
             }
         }
+        frame.set_format(without_range_mark(frame.format()));
         let ts = frame
             .timestamp()
             .ok_or_else(|| self.decode_error(ffmpeg::Error::InvalidData))?;
@@ -296,6 +297,20 @@ fn pack_plane(frame: &ffmpeg::frame::Video, plane: usize, row_bytes: usize, out:
     let data = frame.data(plane);
     for (row, target) in out.chunks_exact_mut(row_bytes).enumerate() {
         target.copy_from_slice(&data[row * stride..row * stride + row_bytes]);
+    }
+}
+
+/// The J formats are YUV formats marked full range. The range is in `Probe::color`, so the copy
+/// to NV12 keeps the samples as decoded instead of letting swscale squeeze them to limited range.
+fn without_range_mark(format: ffmpeg::format::Pixel) -> ffmpeg::format::Pixel {
+    use ffmpeg::format::Pixel;
+    match format {
+        Pixel::YUVJ420P => Pixel::YUV420P,
+        Pixel::YUVJ422P => Pixel::YUV422P,
+        Pixel::YUVJ444P => Pixel::YUV444P,
+        Pixel::YUVJ440P => Pixel::YUV440P,
+        Pixel::YUVJ411P => Pixel::YUV411P,
+        other => other,
     }
 }
 

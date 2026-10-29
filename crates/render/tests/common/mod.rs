@@ -5,7 +5,7 @@
 
 use std::error::Error;
 
-use dc_core::{PixelSize, Rect, SourceTime};
+use dc_core::{PixelSize, Rect, SourceTime, VideoColor};
 use dc_render::{
     AdapterChoice, Band, Compositor, Gpu, GpuError, Image, Layer, Nv12, RenderError, Scene, Video,
     VideoSource,
@@ -62,7 +62,7 @@ impl Planes {
     }
 
     pub fn nv12(&self) -> Result<Nv12<'_>, RenderError> {
-        Nv12::new(self.size, &self.y, &self.uv)
+        Nv12::new(self.size, &self.y, &self.uv, VideoColor::BT709)
     }
 }
 

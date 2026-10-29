@@ -1,9 +1,11 @@
-// Video pass: an NV12 frame (BT.709, limited range, chroma sited left as in H.264) drawn as a
-// textured quad.
+// Video pass: an NV12 frame drawn as a textured quad, YUV → R'G'B' by the file's matrix and range.
 struct Video {
     rect: vec4<f32>,    // NDC: left, top, right, bottom
     uv: vec4<f32>,      // source fractions: left, top, right, bottom (the crop)
-    chroma: vec4<f32>,  // chroma fraction = luma fraction * xy + (z, 0); w: padding
+    chroma: vec4<f32>,  // chroma fraction = luma fraction * xy + zw (siting)
+    r: vec4<f32>,       // R' = dot((y, u, v, 1), r)
+    g: vec4<f32>,
+    b: vec4<f32>,
 };
 @group(0) @binding(0) var<uniform> video: Video;
 @group(0) @binding(1) var luma: texture_2d<f32>;
@@ -30,13 +32,10 @@ fn srgb_to_linear(c: vec3<f32>) -> vec3<f32> {
 }
 
 @fragment fn fs(v: VsOut) -> @location(0) vec4<f32> {
-    let y = (textureSample(luma, bilinear, v.uv).r * 255.0 - 16.0) / 219.0;
-    let c = (textureSample(chroma, bilinear, v.uv * video.chroma.xy + vec2<f32>(video.chroma.z, 0.0)).rg * 255.0 - 128.0) / 224.0;
-    let rgb = vec3<f32>(
-        y + 1.5748 * c.y,
-        y - 0.187324 * c.x - 0.468124 * c.y,
-        y + 1.8556 * c.x,
-    );
+    let y = textureSample(luma, bilinear, v.uv).r;
+    let c = textureSample(chroma, bilinear, v.uv * video.chroma.xy + video.chroma.zw).rg;
+    let yuv = vec4<f32>(y, c, 1.0);
+    let rgb = vec3<f32>(dot(yuv, video.r), dot(yuv, video.g), dot(yuv, video.b));
     // The decoded R'G'B' is stored as is: the sRGB view encodes back what is decoded here.
     return vec4<f32>(srgb_to_linear(clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }

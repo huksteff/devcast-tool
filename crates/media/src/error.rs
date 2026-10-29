@@ -22,6 +22,9 @@ pub enum MediaError {
     #[error("в видео «{}» нет ни одного кадра: файл пустой или оборван, запиши или экспортируй его заново", path.display())]
     NoFrames { path: PathBuf },
 
+    #[error("видео «{}» в цветовом пространстве {space}, его цвета не перевести в RGB: перекодируй файл в BT.709 (например, в mp4 H.264)", path.display())]
+    ColorSpace { path: PathBuf, space: String },
+
     #[error("в видео «{}» нет ключевых кадров, по нему нельзя перематывать: перекодируй его (например, в mp4 H.264)", path.display())]
     NoKeyframes { path: PathBuf },
 

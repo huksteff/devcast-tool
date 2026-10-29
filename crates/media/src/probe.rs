@@ -9,7 +9,9 @@
 
 use std::path::Path;
 
-use dc_core::{PixelSize, SourceTime, TimeDelta};
+use dc_core::{
+    ChromaSiting, ColorMatrix, ColorRange, PixelSize, SourceTime, TimeDelta, VideoColor,
+};
 use ffmpeg_next as ffmpeg;
 use ffmpeg_next::Rescale;
 use serde::{Deserialize, Serialize};
@@ -42,6 +44,9 @@ pub struct Probe {
     /// Index of the video stream that is shown (FFmpeg's best video stream).
     pub video: usize,
     pub size: PixelSize,
+    /// How the decoded YUV turns into RGB, as the stream marks it. Unmarked values are BT.709,
+    /// limited range and chroma on the left: what H.264 assumes and our recordings write.
+    pub color: VideoColor,
     /// From the first frame to the end of the last one.
     pub duration: TimeDelta,
     pub frames: u64,
@@ -88,10 +93,15 @@ pub fn probe(path: &Path) -> Result<Probe, MediaError> {
         })?;
     let video = stream.index();
     let time_base = stream.time_base();
-    let size = frame_size(&stream.parameters()).map_err(|source| MediaError::Read {
+    let decoder = video_decoder(&stream.parameters()).map_err(|source| MediaError::Read {
         path: path.to_path_buf(),
         source,
     })?;
+    let size = PixelSize {
+        width: decoder.width(),
+        height: decoder.height(),
+    };
+    let color = video_color(&decoder, path)?;
     let packets = read_packets(&mut input, video, path)?;
     let first = packets.frames.iter().map(|(pts, _)| *pts).min();
     let last = packets.frames.iter().copied().max_by_key(|(pts, _)| *pts);
@@ -123,6 +133,7 @@ pub fn probe(path: &Path) -> Result<Probe, MediaError> {
         streams,
         video,
         size,
+        color,
         duration,
         frames,
         fps: frames as f64 / duration.as_secs_f64(),
@@ -147,12 +158,50 @@ fn stream_info(stream: &ffmpeg::format::stream::Stream<'_>) -> StreamInfo {
     }
 }
 
-fn frame_size(parameters: &ffmpeg::codec::Parameters) -> Result<PixelSize, ffmpeg::Error> {
+fn video_decoder(
+    parameters: &ffmpeg::codec::Parameters,
+) -> Result<ffmpeg::decoder::Video, ffmpeg::Error> {
     let context = ffmpeg::codec::context::Context::from_parameters(parameters.clone())?;
-    let decoder = context.decoder().video()?;
-    Ok(PixelSize {
-        width: decoder.width(),
-        height: decoder.height(),
+    context.decoder().video()
+}
+
+fn video_color(decoder: &ffmpeg::decoder::Video, path: &Path) -> Result<VideoColor, MediaError> {
+    use ffmpeg::chroma::Location;
+    use ffmpeg::color::{Range, Space};
+    use ffmpeg::format::Pixel;
+    let matrix = match decoder.color_space() {
+        Space::BT709 | Space::Unspecified => ColorMatrix::Bt709,
+        Space::BT470BG | Space::SMPTE170M => ColorMatrix::Bt601,
+        Space::BT2020NCL => ColorMatrix::Bt2020,
+        other => {
+            return Err(MediaError::ColorSpace {
+                path: path.to_path_buf(),
+                space: format!("{other:?}"),
+            });
+        }
+    };
+    let jpeg = matches!(
+        decoder.format(),
+        Pixel::YUVJ420P | Pixel::YUVJ422P | Pixel::YUVJ444P | Pixel::YUVJ440P | Pixel::YUVJ411P
+    );
+    let range = match decoder.color_range() {
+        Range::JPEG => ColorRange::Full,
+        Range::MPEG => ColorRange::Limited,
+        Range::Unspecified if jpeg => ColorRange::Full,
+        Range::Unspecified => ColorRange::Limited,
+    };
+    let chroma = match decoder.chroma_location() {
+        Location::Left | Location::Unspecified => ChromaSiting::Left,
+        Location::Center => ChromaSiting::Center,
+        Location::TopLeft => ChromaSiting::TopLeft,
+        Location::Top => ChromaSiting::Top,
+        Location::BottomLeft => ChromaSiting::BottomLeft,
+        Location::Bottom => ChromaSiting::Bottom,
+    };
+    Ok(VideoColor {
+        matrix,
+        range,
+        chroma,
     })
 }
 

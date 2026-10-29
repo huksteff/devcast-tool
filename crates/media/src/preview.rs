@@ -11,7 +11,7 @@
 
 use std::path::{Path, PathBuf};
 
-use dc_core::{PixelSize, Project, SourceTime};
+use dc_core::{ColorMatrix, ColorRange, PixelSize, Project, SourceTime, VideoColor};
 use dc_project::{FileStamp, ProjectDir, atomic};
 use ffmpeg_next as ffmpeg;
 
@@ -73,12 +73,16 @@ fn render(project: &ProjectDir, media: &str, file: &Path) -> Result<Vec<u8>, Med
         path: file.to_path_buf(),
         source,
     };
-    let rgb = scale_to_rgb(&frame, fit(frame.size)).map_err(error)?;
+    let rgb = scale_to_rgb(&frame, decoder.probe().color, fit(frame.size)).map_err(error)?;
     encode_png(&rgb).map_err(error)
 }
 
-/// NV12 (BT.709 limited range, decision 003) → RGB24 full range at `size`, area filter.
-fn scale_to_rgb(frame: &Frame, size: PixelSize) -> Result<ffmpeg::frame::Video, ffmpeg::Error> {
+/// NV12 stored as `color` says → RGB24 full range at `size`, area filter.
+fn scale_to_rgb(
+    frame: &Frame,
+    color: VideoColor,
+    size: PixelSize,
+) -> Result<ffmpeg::frame::Video, ffmpeg::Error> {
     let (width, height) = (frame.size.width, frame.size.height);
     let mut nv12 = ffmpeg::frame::Video::new(ffmpeg::format::Pixel::NV12, width, height);
     let uv_row = (width as usize).div_ceil(2) * 2;
@@ -89,8 +93,17 @@ fn scale_to_rgb(frame: &Frame, size: PixelSize) -> Result<ffmpeg::frame::Video, 
     let input = format!("video_size={width}x{height}:pix_fmt=nv12:time_base=1/1:pixel_aspect=1/1");
     graph.add(&filter("buffer")?, "in", &input)?;
     graph.add(&filter("buffersink")?, "out", "")?;
+    let matrix = match color.matrix {
+        ColorMatrix::Bt601 => "bt601",
+        ColorMatrix::Bt709 => "bt709",
+        ColorMatrix::Bt2020 => "bt2020",
+    };
+    let range = match color.range {
+        ColorRange::Limited => "tv",
+        ColorRange::Full => "pc",
+    };
     let spec = format!(
-        "scale={}:{}:flags=area:in_color_matrix=bt709:in_range=tv:out_range=pc,format=rgb24",
+        "scale={}:{}:flags=area:in_color_matrix={matrix}:in_range={range}:out_range=pc,format=rgb24",
         size.width, size.height
     );
     graph.output("in", 0)?.input("out", 0)?.parse(&spec)?;

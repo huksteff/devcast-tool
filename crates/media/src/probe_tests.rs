@@ -135,3 +135,28 @@ fn not_a_video() {
     let error = probe(&dir.path().join("нет.mp4")).unwrap_err();
     assert!(error.to_string().contains("нет.mp4"), "{error}");
 }
+
+#[test]
+fn colour_marks_of_the_stream() {
+    let dir = tempfile::tempdir().unwrap();
+    let marked = dir.path().join("bt601.mp4");
+    ffmpeg(
+        "-f lavfi -i testsrc2=size=64x32 -frames:v 1 -pix_fmt yuv420p -colorspace bt470bg -color_range pc -chroma_sample_location center -c:v libx264",
+        &marked,
+    );
+    let color = probe(&marked).unwrap().color;
+    assert_eq!(
+        color,
+        dc_core::VideoColor {
+            matrix: dc_core::ColorMatrix::Bt601,
+            range: dc_core::ColorRange::Full,
+            chroma: dc_core::ChromaSiting::Center,
+        }
+    );
+    let unmarked = dir.path().join("plain.mp4");
+    ffmpeg(
+        "-f lavfi -i testsrc2=size=64x32 -frames:v 1 -pix_fmt yuv420p -c:v libx264",
+        &unmarked,
+    );
+    assert_eq!(probe(&unmarked).unwrap().color, dc_core::VideoColor::BT709);
+}

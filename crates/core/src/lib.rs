@@ -1,6 +1,7 @@
 //! Time, ids, geometry, Project, Effect and Command traits, history, time map. No IO, no GPU.
 
 pub mod arg;
+pub mod color;
 pub mod command;
 pub mod diff;
 pub mod effect;
@@ -16,6 +17,7 @@ pub mod timemap;
 mod test_util;
 
 pub use arg::{RangeArg, RangesArg, TimeArg};
+pub use color::{ChromaSiting, ColorMatrix, ColorRange, VideoColor};
 pub use command::{Command, CommandError, Op, OpInfo};
 pub use diff::Diff;
 pub use effect::{Effect, EffectInfo, EffectRegistry, StateError};
