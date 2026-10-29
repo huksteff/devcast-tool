@@ -23,7 +23,9 @@
   Сделано всё, кроме SVG: resvg нет в стеке ARCHITECTURE, ждёт решения владельца.
 - [x] **5.8** Штрихи кисти через lyon.
 - [x] **5.9** Motion blur из нескольких выборок для курсора и камеры.
-- [ ] **5.10** Рендер без окна в PNG: `devcast frame --at [--grid]`, `devcast sheet --from --to -n`.
+- [x] **5.10** Рендер без окна в PNG: `devcast frame --at [--grid]`, `devcast sheet --from --to -n`.
+
+  Сделано: `Compositor::render` (сцена без окна в память), `Image::sheet`, `dc_encode::frame_png` / `sheet_png` (сцена → PNG, кадры и картинки проекта подаются сами). Команды CLI и сетка — в 5.38: им нужен `evaluate` проекта.
 - [ ] **5.11** Инфраструктура эталонов:
   - эталонные PNG по бэкендам;
   - сравнение (dify / nv-flip) с порогом;
@@ -78,7 +80,8 @@
   - `devcast set эффект.параметр=значение`;
   - `defaults show|set|from-project`;
   - `style copy --from --to`;
-  - `batch`.
+  - `batch`;
+  - `devcast frame --at [--grid]`, `devcast sheet --from --to -n` на `dc_encode::frame_png` / `sheet_png` (5.10).
 - [ ] **5.39** E2E: полный сценарий из SCOPE на фикстурах:
   1. вырезать паузы;
   2. зумы на клики;

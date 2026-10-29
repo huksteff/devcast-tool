@@ -1,6 +1,6 @@
 [package]
 name = "dc-encode"
-description = "Live encoding while recording, MP4 and GIF export, encoder self-test, export queue."
+description = "Live encoding while recording, frames as PNG, MP4 and GIF export, encoder self-test, export queue."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,6 +11,10 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+dc-core = { path = "../core" }
+dc-media = { path = "../media" }
+dc-project = { path = "../project" }
+dc-render = { path = "../render" }
 ffmpeg-next = "9"
 thiserror.workspace = true
 

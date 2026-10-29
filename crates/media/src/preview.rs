@@ -18,6 +18,7 @@ use ffmpeg_next as ffmpeg;
 use crate::cache::cached_probe;
 use crate::decoder::{Decoder, Frame, nv12_len};
 use crate::error::MediaError;
+use crate::picture::png;
 use crate::pool::FramePool;
 
 pub const PREVIEW_MAX: PixelSize = PixelSize {
@@ -74,7 +75,7 @@ fn render(project: &ProjectDir, media: &str, file: &Path) -> Result<Vec<u8>, Med
         source,
     };
     let rgb = scale_to_rgb(&frame, decoder.probe().color, fit(frame.size)).map_err(error)?;
-    encode_png(&rgb).map_err(error)
+    png(&rgb).map_err(error)
 }
 
 /// NV12 stored as `color` says → RGB24 full range at `size`, area filter.
@@ -121,27 +122,6 @@ fn unpack_plane(source: &[u8], row_bytes: usize, frame: &mut ffmpeg::frame::Vide
     for (row, line) in source.chunks_exact(row_bytes).enumerate() {
         data[row * stride..row * stride + row_bytes].copy_from_slice(line);
     }
-}
-
-fn encode_png(rgb: &ffmpeg::frame::Video) -> Result<Vec<u8>, ffmpeg::Error> {
-    let codec =
-        ffmpeg::encoder::find(ffmpeg::codec::Id::PNG).ok_or(ffmpeg::Error::EncoderNotFound)?;
-    let mut encoder = ffmpeg::codec::context::Context::new_with_codec(codec)
-        .encoder()
-        .video()?;
-    encoder.set_width(rgb.width());
-    encoder.set_height(rgb.height());
-    encoder.set_format(ffmpeg::format::Pixel::RGB24);
-    encoder.set_time_base((1, 1));
-    let mut encoder = encoder.open_as(codec)?;
-    encoder.send_frame(rgb)?;
-    encoder.send_eof()?;
-    let mut packet = ffmpeg::Packet::empty();
-    encoder.receive_packet(&mut packet)?;
-    packet
-        .data()
-        .map(<[u8]>::to_vec)
-        .ok_or(ffmpeg::Error::InvalidData)
 }
 
 /// Deletes the previews of the same media made from an older version of the file: the files

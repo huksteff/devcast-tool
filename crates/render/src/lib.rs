@@ -6,6 +6,7 @@ mod brush;
 mod compositor;
 mod error;
 mod gpu;
+mod offscreen;
 mod pipeline;
 mod readback;
 mod recorder;
@@ -19,6 +20,7 @@ mod video;
 pub use compositor::Compositor;
 pub use error::{GpuError, RenderError};
 pub use gpu::{AdapterChoice, BACKEND, FORMAT, Gpu, SRGB_VIEW};
+pub use offscreen::SHEET_GAP;
 pub use readback::Image;
 pub use scene::{
     Align, Band, Blur, BrushStroke, Camera, Drawing, Font, Geometry, Glow, Gradient,

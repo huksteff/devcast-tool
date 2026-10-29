@@ -1,6 +1,7 @@
 //! Pictures for sprites (image annotations, custom cursors): PNG, JPEG, WebP and GIF, animated
 //! GIF and WebP included, decoded by FFmpeg into straight-alpha RGBA. Each frame comes whole, as
-//! shown (the decoder applies GIF disposal), with how long it is shown.
+//! shown (the decoder applies GIF disposal), with how long it is shown. Rendered frames go back
+//! to PNG the same way.
 
 use std::path::Path;
 
@@ -62,6 +63,44 @@ pub fn decode_picture(path: &Path) -> Result<Picture, MediaError> {
     decoder.send_eof().map_err(error)?;
     frames.receive(&mut decoder)?;
     frames.finish()
+}
+
+/// A PNG of an RGBA picture of `size` (rows without padding).
+pub fn encode_png(size: PixelSize, rgba: &[u8]) -> Result<Vec<u8>, MediaError> {
+    crate::init();
+    let row = size.width as usize * 4;
+    if rgba.len() != row * size.height as usize || rgba.is_empty() {
+        return Err(MediaError::EncodePng(ffmpeg::Error::InvalidData));
+    }
+    let mut frame = ffmpeg::frame::Video::new(ffmpeg::format::Pixel::RGBA, size.width, size.height);
+    let stride = frame.stride(0);
+    let data = frame.data_mut(0);
+    for (y, line) in rgba.chunks_exact(row).enumerate() {
+        data[y * stride..y * stride + row].copy_from_slice(line);
+    }
+    png(&frame).map_err(MediaError::EncodePng)
+}
+
+/// A PNG of `frame` in its own pixel format.
+pub(crate) fn png(frame: &ffmpeg::frame::Video) -> Result<Vec<u8>, ffmpeg::Error> {
+    let codec =
+        ffmpeg::encoder::find(ffmpeg::codec::Id::PNG).ok_or(ffmpeg::Error::EncoderNotFound)?;
+    let mut encoder = ffmpeg::codec::context::Context::new_with_codec(codec)
+        .encoder()
+        .video()?;
+    encoder.set_width(frame.width());
+    encoder.set_height(frame.height());
+    encoder.set_format(frame.format());
+    encoder.set_time_base((1, 1));
+    let mut encoder = encoder.open_as(codec)?;
+    encoder.send_frame(frame)?;
+    encoder.send_eof()?;
+    let mut packet = ffmpeg::Packet::empty();
+    encoder.receive_packet(&mut packet)?;
+    packet
+        .data()
+        .map(<[u8]>::to_vec)
+        .ok_or(ffmpeg::Error::InvalidData)
 }
 
 /// Frames converted to RGBA as they come out of the decoder.

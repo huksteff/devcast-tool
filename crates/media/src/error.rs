@@ -57,6 +57,9 @@ pub enum MediaError {
         source: ffmpeg_next::Error,
     },
 
+    #[error("кадр не сохранился в PNG: {0}. Это ошибка программы: сообщи разработчику")]
+    EncodePng(ffmpeg_next::Error),
+
     #[error("кадры картинки «{}» занимают больше {limit_mb} МБ: уменьши её или сократи анимацию", path.display())]
     PictureTooBig { path: PathBuf, limit_mb: usize },
 

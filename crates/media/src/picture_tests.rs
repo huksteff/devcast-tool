@@ -95,3 +95,22 @@ fn not_a_picture_is_an_error() {
     assert!(matches!(error, MediaError::Picture { .. }), "{error}");
     assert!(error.to_string().contains("PNG"), "{error}");
 }
+
+#[test]
+fn png_round_trips_rgba_exactly() {
+    let size = PixelSize {
+        width: 5,
+        height: 3,
+    };
+    let rgba: Vec<u8> = (0..5 * 3 * 4).map(|i| (i * 17 % 256) as u8).collect();
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("кадр.png");
+    std::fs::write(&path, encode_png(size, &rgba).unwrap()).unwrap();
+    let picture = decode_picture(&path).unwrap();
+    assert_eq!(picture.size, size);
+    assert_eq!(picture.frames[0].rgba, rgba);
+    assert!(matches!(
+        encode_png(size, &rgba[4..]),
+        Err(MediaError::EncodePng(_))
+    ));
+}

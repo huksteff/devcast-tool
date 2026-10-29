@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use dc_core::SourceTime;
+use dc_core::{PixelSize, SourceTime};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -65,4 +65,13 @@ pub enum RenderError {
         "штрих кисти не разбился на треугольники: {0}. Это ошибка программы: сообщи разработчику"
     )]
     Stroke(lyon::tessellation::TessellationError),
+    #[error("в раскадровке нет ни одного кадра: задай хотя бы один момент")]
+    EmptySheet,
+    #[error(
+        "кадры раскадровки разного размера: {}×{} и {}×{}. Это ошибка программы: сообщи разработчику",
+        first.width, first.height, other.width, other.height
+    )]
+    SheetSizes { first: PixelSize, other: PixelSize },
+    #[error(transparent)]
+    Gpu(#[from] GpuError),
 }

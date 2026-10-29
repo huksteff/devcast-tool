@@ -51,6 +51,21 @@ pub enum EncodeError {
     NoTimestamp { codec: Codec },
 
     #[error(
+        "в картинке «{path}» {frames} кадр(ов), кадра {frame} нет. Это ошибка программы: сообщи разработчику"
+    )]
+    NoPictureFrame {
+        path: String,
+        frame: u32,
+        frames: usize,
+    },
+
+    #[error(transparent)]
+    Media(#[from] dc_media::MediaError),
+
+    #[error(transparent)]
+    Render(#[from] dc_render::RenderError),
+
+    #[error(
         "не удалось {action} файл {path}: {source}. Проверь, что диск не переполнен и папка доступна для записи"
     )]
     File {

@@ -698,6 +698,10 @@ dependencies = [
 name = "dc-encode"
 version = "0.1.0"
 dependencies = [
+ "dc-core",
+ "dc-media",
+ "dc-project",
+ "dc-render",
  "ffmpeg-next",
  "tempfile",
  "thiserror 2.0.21",
