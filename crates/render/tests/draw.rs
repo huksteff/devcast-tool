@@ -1,16 +1,14 @@
-use dc_core::PixelSize;
-use dc_render::{AdapterChoice, Gpu, GpuError, SRGB_VIEW, Scene, draw};
+mod common;
 
-const SIZE: PixelSize = PixelSize {
-    width: 64,
-    height: 36,
-};
+use common::{TestResult, gpu, size};
+use dc_render::{Compositor, SRGB_VIEW, Scene};
 
 #[test]
-fn empty_scene_is_an_opaque_black_frame() -> Result<(), GpuError> {
-    let gpu = Gpu::new(AdapterChoice::Auto)?;
-    let target = gpu.target(SIZE);
-    draw(&gpu, &Scene::new(SIZE), &target);
+fn empty_scene_is_an_opaque_black_frame() -> TestResult {
+    let gpu = gpu()?;
+    let frame = size(64, 36);
+    let target = gpu.target(frame);
+    Compositor::new(&gpu).draw(&gpu, &Scene::new(frame), &target)?;
     let image = gpu.read(&target)?;
     assert_eq!(image.rgba, [0, 0, 0, 255].repeat(64 * 36));
     Ok(())
@@ -18,9 +16,9 @@ fn empty_scene_is_an_opaque_black_frame() -> Result<(), GpuError> {
 
 /// Passes see linear light through the sRGB view: linear 0.5 is stored as sRGB byte 188, not 128.
 #[test]
-fn srgb_view_stores_linear_light_as_srgb_bytes() -> Result<(), GpuError> {
-    let gpu = Gpu::new(AdapterChoice::Auto)?;
-    let target = gpu.target(SIZE);
+fn srgb_view_stores_linear_light_as_srgb_bytes() -> TestResult {
+    let gpu = gpu()?;
+    let target = gpu.target(size(64, 36));
     let view = target.create_view(&wgpu::TextureViewDescriptor {
         format: Some(SRGB_VIEW),
         ..Default::default()

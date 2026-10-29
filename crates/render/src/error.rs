@@ -1,3 +1,4 @@
+use dc_core::SourceTime;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -17,4 +18,22 @@ pub enum GpuError {
     Map(#[from] wgpu::BufferAsyncError),
     #[error("кадр не прочитался из видеопамяти: {0}. Устройство потеряно, перезапусти программу")]
     MapRange(#[from] wgpu::MapRangeError),
+}
+
+/// A scene that cannot be drawn with what the caller gave the compositor.
+#[derive(Debug, Error)]
+pub enum RenderError {
+    #[error(
+        "кадр «{media}» на {time} не загружен в рендер перед рисованием сцены. Это ошибка программы: сообщи разработчику"
+    )]
+    NoFrame { media: String, time: SourceTime },
+    #[error(
+        "кадр NV12 {width}×{height} не той длины: Y {y} байт, UV {uv} байт. Это ошибка программы: сообщи разработчику"
+    )]
+    Nv12 {
+        width: u32,
+        height: u32,
+        y: usize,
+        uv: usize,
+    },
 }

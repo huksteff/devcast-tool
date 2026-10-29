@@ -1,0 +1,262 @@
+//! Video pass: NV12 frames on the GPU, converted to RGB (BT.709, limited range, chroma sited
+//! left as H.264 and our recordings mark it) while drawing.
+
+use dc_core::{PixelSize, SourceTime};
+
+use crate::error::RenderError;
+use crate::gpu::{Gpu, SRGB_VIEW};
+use crate::scene::{Camera, Video};
+use crate::uniform::{UNIFORM_BYTES, Uniform};
+
+/// A decoded frame as `dc_media::Frame` gives it: the Y plane, then interleaved UV of
+/// `ceil(width/2)` pairs per row and `ceil(height/2)` rows; rows without padding.
+#[derive(Debug, Clone, Copy)]
+pub struct Nv12<'a> {
+    size: PixelSize,
+    y: &'a [u8],
+    uv: &'a [u8],
+}
+
+impl<'a> Nv12<'a> {
+    /// Checks that the planes have the lengths of a `size` frame.
+    pub fn new(size: PixelSize, y: &'a [u8], uv: &'a [u8]) -> Result<Self, RenderError> {
+        let half = chroma_size(size);
+        let y_len = size.width as usize * size.height as usize;
+        let uv_len = half.width as usize * 2 * half.height as usize;
+        if y.len() != y_len || uv.len() != uv_len || y_len == 0 {
+            return Err(RenderError::Nv12 {
+                width: size.width,
+                height: size.height,
+                y: y.len(),
+                uv: uv.len(),
+            });
+        }
+        Ok(Self { size, y, uv })
+    }
+}
+
+/// Pipeline and sampler shared by all video layers.
+pub(crate) struct VideoPass {
+    pipeline: wgpu::RenderPipeline,
+    layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
+}
+
+/// Textures of one media file, kept between frames and rewritten by every upload.
+pub(crate) struct VideoFrame {
+    pub(crate) time: SourceTime,
+    size: PixelSize,
+    luma: wgpu::Texture,
+    chroma: wgpu::Texture,
+    uniform: Uniform,
+    bind: wgpu::BindGroup,
+}
+
+impl VideoPass {
+    pub(crate) fn new(gpu: &Gpu) -> Self {
+        let device = &gpu.device;
+        let module = device.create_shader_module(wgpu::include_wgsl!("video.wgsl"));
+        let texture = |binding| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        };
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("video"),
+            entries: &[
+                Uniform::layout_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
+                texture(1),
+                texture(2),
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("video"),
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
+        });
+        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("video"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: Some("vs"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: Some("fs"),
+                compilation_options: Default::default(),
+                targets: &[Some(SRGB_VIEW.into())],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleStrip,
+                ..Default::default()
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview_mask: None,
+            cache: None,
+        });
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("video"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        Self {
+            pipeline,
+            layout,
+            sampler,
+        }
+    }
+
+    /// Writes `frame` into the textures of `old` (new ones when there are none of its size).
+    pub(crate) fn upload(
+        &self,
+        gpu: &Gpu,
+        old: Option<VideoFrame>,
+        time: SourceTime,
+        frame: Nv12<'_>,
+    ) -> VideoFrame {
+        let textures = match old {
+            Some(old) if old.size == frame.size => old,
+            _ => self.create(gpu, frame.size),
+        };
+        write(gpu, &textures.luma, frame.y, frame.size.width);
+        write(
+            gpu,
+            &textures.chroma,
+            frame.uv,
+            chroma_size(frame.size).width * 2,
+        );
+        VideoFrame { time, ..textures }
+    }
+
+    fn create(&self, gpu: &Gpu, size: PixelSize) -> VideoFrame {
+        let luma = plane(gpu, size, wgpu::TextureFormat::R8Unorm);
+        let chroma = plane(gpu, chroma_size(size), wgpu::TextureFormat::Rg8Unorm);
+        let uniform = Uniform::new(gpu, "video");
+        let view = |texture: &wgpu::Texture| texture.create_view(&Default::default());
+        let bind = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("video"),
+            layout: &self.layout,
+            entries: &[
+                uniform.bind_entry(0),
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&view(&luma)),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&view(&chroma)),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        });
+        VideoFrame {
+            time: SourceTime::ZERO,
+            size,
+            luma,
+            chroma,
+            uniform,
+            bind,
+        }
+    }
+
+    /// Places `video` in a `frame`-sized output through `camera`.
+    pub(crate) fn prepare(
+        gpu: &Gpu,
+        textures: &VideoFrame,
+        video: &Video,
+        camera: Camera,
+        frame: PixelSize,
+    ) {
+        let r = video.rect;
+        let [left, top] = camera.apply([r.x, r.y]);
+        let [right, bottom] = camera.apply([r.x + r.w, r.y + r.h]);
+        let (fw, fh) = (frame.width as f32, frame.height as f32);
+        let ndc = |x: f32, y: f32| [x / fw * 2.0 - 1.0, 1.0 - y / fh * 2.0];
+        let [x0, y0] = ndc(left, top);
+        let [x1, y1] = ndc(right, bottom);
+        let c = video.crop;
+        let crop = [c.x(), c.y(), c.x() + c.w(), c.y() + c.h()].map(|v| v as f32);
+        // Chroma sample i sits on luma column 2i (left) and between luma rows 2i and 2i + 1;
+        // odd sizes have one chroma sample more than half the luma.
+        let half = chroma_size(textures.size);
+        let (cw, ch) = ((half.width * 2) as f32, (half.height * 2) as f32);
+        let (w, h) = (textures.size.width as f32, textures.size.height as f32);
+        let values: [f32; UNIFORM_BYTES / 4] = [
+            x0,
+            y0,
+            x1,
+            y1,
+            crop[0],
+            crop[1],
+            crop[2],
+            crop[3],
+            w / cw,
+            h / ch,
+            0.5 / cw,
+            0.0,
+        ];
+        textures.uniform.write(gpu, &values);
+    }
+
+    pub(crate) fn record(&self, pass: &mut wgpu::RenderPass<'_>, textures: &VideoFrame) {
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &textures.bind, &[]);
+        pass.draw(0..4, 0..1);
+    }
+}
+
+fn chroma_size(size: PixelSize) -> PixelSize {
+    PixelSize {
+        width: size.width.div_ceil(2),
+        height: size.height.div_ceil(2),
+    }
+}
+
+fn plane(gpu: &Gpu, size: PixelSize, format: wgpu::TextureFormat) -> wgpu::Texture {
+    gpu.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("video plane"),
+        size: wgpu::Extent3d {
+            width: size.width,
+            height: size.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    })
+}
+
+fn write(gpu: &Gpu, texture: &wgpu::Texture, data: &[u8], row_bytes: u32) {
+    gpu.queue.write_texture(
+        texture.as_image_copy(),
+        data,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(row_bytes),
+            rows_per_image: None,
+        },
+        texture.size(),
+    );
+}

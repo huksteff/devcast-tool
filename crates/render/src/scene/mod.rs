@@ -4,10 +4,14 @@
 //! Coordinates are pixels of the output frame (`size`), y down. A target of another size gets
 //! the same picture scaled, so the preview may render smaller than the export.
 
+mod video;
+
 use std::collections::BTreeMap;
 
 use dc_core::PixelSize;
 use serde::{Deserialize, Serialize};
+
+pub use video::{PxRect, Video, VideoSource};
 
 /// Everything drawn in one output frame. The frame starts black (the fields around a clip, SCOPE
 /// «Кадр»); layers are painted band by band, bottom to top, and in push order within a band.
@@ -85,7 +89,9 @@ impl Camera {
 /// One drawable thing; each kind is drawn by its own pass.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Layer {}
+pub enum Layer {
+    Video(Video),
+}
 
 #[cfg(test)]
 mod tests {
@@ -114,6 +120,29 @@ mod tests {
         );
         assert!(Band::Cursor.under_camera());
         assert!(!Band::Overlay.under_camera());
+    }
+
+    #[test]
+    fn video_layer_round_trips_through_json() {
+        let size = PixelSize {
+            width: 1280,
+            height: 720,
+        };
+        let mut scene = Scene::new(size);
+        let source = VideoSource {
+            media: "media/запись 1.mp4".into(),
+            time: dc_core::SourceTime::from_micros(1_500_000),
+        };
+        scene.push(
+            Band::Video,
+            Layer::Video(Video::fitted(source, size, dc_core::Rect::FULL, size)),
+        );
+        let json = serde_json::to_string(&scene).unwrap();
+        assert!(
+            json.contains(r#""layers":{"video":[{"video":{"source":{"media":"media/запись 1.mp4","time":1500000}"#),
+            "{json}"
+        );
+        assert_eq!(serde_json::from_str::<Scene>(&json).unwrap(), scene);
     }
 
     #[test]
