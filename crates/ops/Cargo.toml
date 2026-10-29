@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 dc-core = { path = "../core" }
 dc-fx-crop = { path = "../../fx/crop" }
+dc-fx-cursor = { path = "../../fx/cursor" }
 dc-fx-cut = { path = "../../fx/cut" }
 dc-render = { path = "../render" }
 schemars.workspace = true
@@ -21,5 +22,7 @@ thiserror.workspace = true
 workspace = true
 
 [dev-dependencies]
+dc-capture = { path = "../capture" }
+dc-media = { path = "../media" }
 dc-render = { path = "../render", features = ["golden"] }
 insta.workspace = true

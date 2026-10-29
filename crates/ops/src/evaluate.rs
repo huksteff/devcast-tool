@@ -2,8 +2,9 @@
 //! every effect adds its part to the scene in a fixed order. The one source of scenes for the
 //! preview, the export and `devcast frame`/`sheet`.
 
-use dc_core::{OutputTime, PixelSize, Project, StateError, TimeDelta, TimeMap};
+use dc_core::{CursorTracks, OutputTime, PixelSize, Project, StateError, TimeDelta, TimeMap};
 use dc_fx_crop::Crop;
+use dc_fx_cursor::Cursor;
 use dc_render::Scene;
 
 /// The project's scene can not be built.
@@ -23,16 +24,21 @@ pub struct Evaluator<'p> {
     project: &'p Project,
     map: TimeMap,
     canvas: PixelSize,
+    cursor: dc_fx_cursor::Prepared,
 }
 
 impl<'p> Evaluator<'p> {
-    pub fn new(project: &'p Project) -> Result<Self, EvaluateError> {
+    /// `cursors` — the cursor telemetry of the recordings on the track (decision 015); the
+    /// caller reads it from the project folder.
+    pub fn new(project: &'p Project, cursors: CursorTracks) -> Result<Self, EvaluateError> {
         let crop = project.state::<Crop>()?;
         let canvas = dc_fx_crop::canvas(project, &crop.settings).ok_or(EvaluateError::Empty)?;
+        let cursor = project.state::<Cursor>()?;
         Ok(Self {
             project,
             map: TimeMap::build(project),
             canvas,
+            cursor: dc_fx_cursor::Prepared::new(project, cursor.settings, cursors),
         })
     }
 
@@ -53,6 +59,7 @@ impl<'p> Evaluator<'p> {
     pub fn evaluate(&self, t: OutputTime) -> Scene {
         let mut scene = Scene::new(self.canvas);
         dc_fx_cut::evaluate(self.project, &self.map, t, &mut scene);
+        dc_fx_cursor::evaluate(&self.cursor, self.project, &self.map, t, &mut scene);
         scene
     }
 }

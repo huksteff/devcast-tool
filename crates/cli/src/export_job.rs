@@ -42,7 +42,10 @@ pub(crate) fn run(
 ) -> Result<Exported, EncodeError> {
     let dir = ProjectDir::open(&spec.root)?;
     let project = &spec.project;
-    let evaluator = Evaluator::new(project).map_err(|e| EncodeError::Scene(Box::new(e)))?;
+    let cursors = crate::telemetry::cursor_tracks(&spec.root, project)
+        .map_err(|e| EncodeError::Scene(Box::new(e)))?;
+    let evaluator =
+        Evaluator::new(project, cursors).map_err(|e| EncodeError::Scene(Box::new(e)))?;
     let mut source_fps = 0.0_f64;
     for clip in &project.clips {
         source_fps = source_fps.max(cached_probe(&dir, &clip.media.path)?.fps);
