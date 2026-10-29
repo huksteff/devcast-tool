@@ -21,6 +21,7 @@ fn filled(geometry: Geometry, color: Rgba) -> Shape {
         stroke: None,
         opacity: 1.0,
         rotation: 0.0,
+        glow: None,
     }
 }
 

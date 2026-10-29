@@ -4,6 +4,7 @@
 //! Coordinates are pixels of the output frame (`size`), y down. A target of another size gets
 //! the same picture scaled, so the preview may render smaller than the export.
 
+mod blur;
 mod shape;
 mod video;
 
@@ -12,8 +13,10 @@ use std::collections::BTreeMap;
 use dc_core::PixelSize;
 use serde::{Deserialize, Serialize};
 
+pub use blur::Blur;
 pub use shape::{
-    Geometry, Gradient, GradientColors, GradientCount, Paint, ParseRgbaError, Rgba, Shape, Stroke,
+    Geometry, Glow, Gradient, GradientColors, GradientCount, Paint, ParseRgbaError, Rgba, Shape,
+    Stroke,
 };
 pub use video::{PxRect, Video, VideoSource};
 
@@ -97,6 +100,7 @@ pub enum Layer {
     Video(Video),
     /// Figures drawn in one instanced pass, later ones on top.
     Shapes(Vec<Shape>),
+    Blur(Blur),
 }
 
 #[cfg(test)]

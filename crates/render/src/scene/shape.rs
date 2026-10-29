@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::PxRect;
 
 /// One figure. The outline is centred on the edge and drawn over the fill; `opacity` applies to
-/// the figure as a whole.
+/// the figure as a whole. The glow lies under the figure and over everything painted before it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Shape {
     pub geometry: Geometry,
@@ -18,6 +18,15 @@ pub struct Shape {
     pub opacity: f32,
     /// Degrees, clockwise on screen, around the centre of the figure.
     pub rotation: f32,
+    pub glow: Option<Glow>,
+}
+
+/// Soft light around what is visible of a figure (fill and outline): their coverage in `color`,
+/// blurred by a gaussian of `sigma` px of the frame (v1: canvas `shadowBlur` = 2σ).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Glow {
+    pub color: Rgba,
+    pub sigma: f32,
 }
 
 /// Outline of a figure, px of the frame.
@@ -205,6 +214,10 @@ mod tests {
             stroke: None,
             opacity: 1.0,
             rotation: 0.0,
+            glow: Some(Glow {
+                color: Rgba([0xa8, 0x55, 0xf7, 255]),
+                sigma: 10.5,
+            }),
         };
         let json = serde_json::to_string(&shape).unwrap();
         assert!(

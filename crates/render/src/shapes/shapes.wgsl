@@ -1,9 +1,11 @@
 // Instanced SDF figures: rounded rectangle (0), ellipse (1), line (2), arrow (3).
-// Fill: solid or 2-4 colour gradient (once or looping), outline, opacity, rotation.
+// Fill: solid or 2-4 colour gradient (once or looping), outline, opacity, rotation; `fs_mask` draws
+// what is visible of a figure in its glow colour, to be blurred.
 // Colours arrive in sRGB with straight alpha and mix in sRGB like v1 and CSS gradients; the
 // result is converted to linear light and premultiplied for blending.
 struct Globals {
-    frame: vec4<f32>,   // xy: frame size px; z: frame px per target px; w: padding
+    view: vec4<f32>,    // xy: size of the drawn part of the frame px; z: frame px per target px
+    origin: vec4<f32>,  // xy: top-left of the drawn part of the frame px
 };
 struct Shape {
     center_half: vec4<f32>,  // centre xy; half size of the bounds xy (px)
@@ -13,6 +15,7 @@ struct Shape {
     direction: vec4<f32>,    // xy: gradient direction; zw: padding
     colors: array<vec4<f32>, 4>,
     stroke: vec4<f32>,
+    glow: vec4<f32>,         // glow colour
 };
 @group(0) @binding(0) var<uniform> g: Globals;
 @group(0) @binding(1) var<storage, read> shapes: array<Shape>;
@@ -26,13 +29,14 @@ struct VsOut {
 @vertex fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> VsOut {
     let s = shapes[ii];
     let corner = vec2<f32>(f32(vi & 1u), f32(vi >> 1u)) * 2.0 - 1.0;
-    let margin = s.transform.z * 0.5 + 2.0 * g.frame.z;
+    let margin = s.transform.z * 0.5 + 2.0 * g.view.z;
     let local = corner * (s.center_half.zw + vec2<f32>(margin));
     let c = s.transform.x;
     let sn = s.transform.y;
     let world = s.center_half.xy + vec2<f32>(local.x * c - local.y * sn, local.x * sn + local.y * c);
     var out: VsOut;
-    out.pos = vec4<f32>(world.x / g.frame.x * 2.0 - 1.0, 1.0 - world.y / g.frame.y * 2.0, 0.0, 1.0);
+    let p = (world - g.origin.xy) / g.view.xy;
+    out.pos = vec4<f32>(p.x * 2.0 - 1.0, 1.0 - p.y * 2.0, 0.0, 1.0);
     out.local = local;
     out.id = ii;
     return out;
@@ -105,7 +109,8 @@ fn premultiplied(c: vec4<f32>, coverage: f32) -> vec4<f32> {
     return vec4<f32>(srgb_to_linear(c.rgb) * a, a);
 }
 
-@fragment fn fs(v: VsOut) -> @location(0) vec4<f32> {
+// Premultiplied colour of the figure at the fragment.
+fn shade(v: VsOut) -> vec4<f32> {
     let s = shapes[v.id];
     let d = shape_distance(s, v.local);
     let aa = max(fwidth(d), 1e-3);
@@ -118,4 +123,13 @@ fn premultiplied(c: vec4<f32>, coverage: f32) -> vec4<f32> {
         color = stroke + color * (1.0 - stroke.a);
     }
     return color * s.transform.w;
+}
+
+@fragment fn fs(v: VsOut) -> @location(0) vec4<f32> {
+    return shade(v);
+}
+
+@fragment fn fs_mask(v: VsOut) -> @location(0) vec4<f32> {
+    let glow = shapes[v.id].glow;
+    return premultiplied(glow, shade(v).a);
 }
