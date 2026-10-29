@@ -1,5 +1,6 @@
-//! Reference frames of the project's scene (decision 012) for task 5.16: the output frame of
-//! every aspect, a crop and clips of other proportions fitted with black fields. Rendered on the
+//! Reference frames of the project's scene (decision 012). Task 5.16: the output frame of every
+//! aspect, a crop and clips of other proportions fitted with black fields. Task 5.17: the zoom
+//! camera held, halfway in and at the edge of the picture. Rendered on the
 //! software adapter like CI; a frame that changes on purpose is updated with
 //! `cargo xtask golden update "<почему>"`.
 
@@ -76,7 +77,7 @@ fn with_aspect(mut project: Project, aspect: Aspect) -> Result<Project, Box<dyn 
 }
 
 /// Renders the project's scene at output second `at` with bars as every video and checks it
-/// against reference `crop/<name>`.
+/// against reference `<name>`.
 fn check(name: &str, project: &Project, at: f64) -> TestResult {
     let scene: Scene = Evaluator::new(project)?.evaluate(OutputTime::from_secs_f64(at));
     let gpu = Gpu::new(AdapterChoice::Software)?;
@@ -95,7 +96,7 @@ fn check(name: &str, project: &Project, at: f64) -> TestResult {
     }
     let image = compositor.render(&gpu, &scene)?;
     Golden::new(&gpu)?
-        .check(&format!("crop/{name}"), &image)
+        .check(name, &image)
         .map_err(|error| error.to_string())?;
     Ok(())
 }
@@ -104,7 +105,11 @@ fn check(name: &str, project: &Project, at: f64) -> TestResult {
 fn golden_4x3_clip_in_a_16x9_frame() -> TestResult {
     let mut project = Project::default();
     clip(&mut project, "media/a.mp4", size(160, 120), Rect::FULL)?;
-    check("aspect_16x9", &with_aspect(project, Aspect::Wide16x9)?, 0.5)
+    check(
+        "crop/aspect_16x9",
+        &with_aspect(project, Aspect::Wide16x9)?,
+        0.5,
+    )
 }
 
 #[test]
@@ -112,7 +117,7 @@ fn golden_free_frame_is_the_crop() -> TestResult {
     let mut project = Project::default();
     let crop = Rect::new(0.25, 0.1, 0.5, 0.6)?;
     clip(&mut project, "media/a.mp4", size(320, 180), crop)?;
-    check("free", &with_aspect(project, Aspect::Free)?, 0.5)
+    check("crop/free", &with_aspect(project, Aspect::Free)?, 0.5)
 }
 
 #[test]
@@ -121,5 +126,43 @@ fn golden_second_clip_of_other_proportions_gets_fields() -> TestResult {
     clip(&mut project, "media/a.mp4", size(320, 180), Rect::FULL)?;
     let top_half = Rect::new(0.0, 0.0, 1.0, 0.5)?;
     clip(&mut project, "media/b.mp4", size(160, 120), top_half)?;
-    check("mixed_clips", &with_aspect(project, Aspect::Source)?, 2.5)
+    check(
+        "crop/mixed_clips",
+        &with_aspect(project, Aspect::Source)?,
+        2.5,
+    )
+}
+
+/// A 4 s 320×180 clip with one zoom over 0.5–2.5 s.
+fn zoomed(scale: f64, x: f64, y: f64) -> Result<Project, Box<dyn Error>> {
+    let mut project = Project::default();
+    clip(&mut project, "media/a.mp4", size(320, 180), Rect::FULL)?;
+    let length = TimeDelta::from_secs_f64(4.0);
+    for c in &mut project.clips {
+        c.media.duration = length;
+        c.trim = Range::new(SourceTime::ZERO, SourceTime::ZERO + length)?;
+    }
+    project.effects.insert(
+        "zoom".to_owned(),
+        serde_json::json!({"zooms": [{
+            "id": "z1", "media": "media/a.mp4", "range": {"start": 500_000, "end": 2_500_000},
+            "scale": scale, "focus": {"x": x, "y": y}, "mode": "fixed"
+        }]}),
+    );
+    Ok(project)
+}
+
+#[test]
+fn golden_zoom_held_puts_the_focus_in_the_centre() -> TestResult {
+    check("zoom/held", &zoomed(2.0, 0.25, 0.75)?, 1.5)
+}
+
+#[test]
+fn golden_zoom_halfway_in() -> TestResult {
+    check("zoom/entering", &zoomed(2.0, 0.25, 0.75)?, 0.45)
+}
+
+#[test]
+fn golden_zoom_at_the_corner_keeps_the_picture_covered() -> TestResult {
+    check("zoom/corner", &zoomed(3.0, 1.0, 0.0)?, 1.5)
 }

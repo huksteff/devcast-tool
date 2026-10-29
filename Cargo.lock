@@ -800,6 +800,8 @@ name = "dc-fx-zoom"
 version = "0.1.0"
 dependencies = [
  "dc-core",
+ "dc-render",
+ "insta",
  "schemars",
  "serde",
  "serde_json",
@@ -835,6 +837,7 @@ dependencies = [
  "dc-core",
  "dc-fx-crop",
  "dc-fx-cut",
+ "dc-fx-zoom",
  "dc-render",
  "insta",
  "schemars",

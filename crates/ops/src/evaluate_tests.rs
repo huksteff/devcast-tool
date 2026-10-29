@@ -99,3 +99,21 @@ fn clips_of_other_proportions_are_fitted_into_the_aspect_frame() {
         .collect();
     insta::assert_json_snapshot!(scenes);
 }
+
+#[test]
+fn zoom_camera_moves_the_scene_over_a_cut() {
+    let mut p = two_clips();
+    p.effects.insert(
+        "zoom".to_owned(),
+        json!({"zooms": [{
+            "id": "z1", "media": "media/recording-1/video.mp4", "range": {"start": 500000, "end": 3000000},
+            "scale": 2.0, "focus": {"x": 0.25, "y": 0.75}, "mode": "fixed"
+        }]}),
+    );
+    let evaluator = Evaluator::new(&p).unwrap();
+    let scenes: Vec<_> = [0.0, 1.0, 1.9, 2.5, 4.0]
+        .iter()
+        .map(|&t| json!({ "t": t, "scene": evaluator.evaluate(OutputTime::from_secs_f64(t)) }))
+        .collect();
+    insta::assert_json_snapshot!(scenes);
+}

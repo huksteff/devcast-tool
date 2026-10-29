@@ -11,6 +11,7 @@ publish.workspace = true
 dc-core = { path = "../core" }
 dc-fx-crop = { path = "../../fx/crop" }
 dc-fx-cut = { path = "../../fx/cut" }
+dc-fx-zoom = { path = "../../fx/zoom" }
 dc-render = { path = "../render" }
 schemars.workspace = true
 serde.workspace = true

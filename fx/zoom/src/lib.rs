@@ -1,12 +1,18 @@
 //! Zoom regions, follow mode, motion, auto zooms.
 
 mod classify;
+mod ease;
+mod frame;
 mod model;
 mod motion;
+mod ramp;
 mod region;
 mod span;
+mod spring;
 mod suggest;
+mod track;
 
+pub use frame::{Corner, frame, reachable, resize};
 pub use model::{
     DEFAULT_SCALE, MOTION_BLUR_MAX, Mode, Preset, SCALE_MAX, SCALE_MIN, TRANSITION_MAX,
     TRANSITION_MIN, Zoom, ZoomEffect, ZoomId, ZoomKind, ZoomSettings, ZoomState,
@@ -16,6 +22,7 @@ pub use region::{ZoomAdd, ZoomRm, ZoomSet};
 pub use suggest::{
     Action, CLUSTER_GAP, CLUSTER_PAD, Pointer, Recording, Suggestion, Suggestions, suggest,
 };
+pub use track::{CameraTrack, STEP};
 
 use dc_core::{EffectInfo, IdKind, OpInfo};
 

@@ -1,0 +1,201 @@
+---
+source: crates/ops/src/evaluate_tests.rs
+expression: scenes
+---
+[
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/recording-1/video.mp4",
+                "time": 0
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 0.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.9839701652526855,
+        "x": 0.0,
+        "y": -1062.687744140625
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/recording-1/video.mp4",
+                "time": 2000000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 1.0
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.5477956533432007,
+        "x": 0.0,
+        "y": -591.6193237304688
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/recording-1/video.mp4",
+                "time": 2900000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 1.9
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.018276333808899,
+        "x": 0.0,
+        "y": -19.738384246826172
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1920.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/recording-1/video.mp4",
+                "time": 3500000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 2.5
+  },
+  {
+    "scene": {
+      "camera": {
+        "scale": 1.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "camera_motion": null,
+      "layers": {
+        "video": [
+          {
+            "video": {
+              "crop": {
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rect": {
+                "h": 1080.0,
+                "w": 1440.0,
+                "x": 240.0,
+                "y": 0.0
+              },
+              "source": {
+                "media": "media/импорт 1.mp4",
+                "time": 1000000
+              }
+            }
+          }
+        ]
+      },
+      "size": {
+        "height": 1080,
+        "width": 1920
+      }
+    },
+    "t": 4.0
+  }
+]
