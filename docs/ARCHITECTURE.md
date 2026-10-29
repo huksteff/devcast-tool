@@ -156,7 +156,7 @@ devcast events <clicks|keys|activity> [--from --to]
 devcast cut <10.2-12.5,...|w120-w135> [--dry-run]
 devcast speed <from-to> <x>
 devcast zoom suggest | zoom add --at <сек|clicks> [--duration 1] [--scale 1.8] [--mode follow|fixed] | zoom set z3 --scale 2 | zoom motion --preset smooth | zoom rm z3
-devcast annot add <text|shape|image|blur|draw> --from --to --rect x,y,w,h [--rotate 15] [опции]
+devcast annot add <text|shape|image|drawing|blur> --at --duration --rect x,y,w,h [--track 1] [--rotation 15] | annot set a3 --from --to --x --w --rotation | annot move a3 --at --track | annot layer a3 up|down|top|bottom | annot rm a3
 devcast key add a3 --at 12.0 [параметры] | key rm
 devcast callout add ... | keys --show --position bottom_right
 devcast captions gen [--model fast|accurate] [--tracks mic] | export -o t.txt | import t.txt | clear

@@ -1,0 +1,254 @@
+//! `annot add`, `annot set`, `annot rm`: annotations, their time, box and rotation.
+
+use dc_core::time::Output;
+use dc_core::{Command, CommandError, Diff, Op, Project, Rect, TimeArg, TimeDelta};
+use schemars::JsonSchema;
+use serde::Deserialize;
+use serde_json::Map;
+
+use crate::model::{
+    AnnotId, Annotation, Annotations, AnnotationsState, Kind, POSITION_LIMIT, ROTATION_LIMIT,
+    SIZE_MAX, SIZE_MIN, TRACKS,
+};
+use crate::span::Timeline;
+
+fn one_second() -> f64 {
+    1.0
+}
+
+/// A box of 0.3×0.2 of the frame around its centre.
+fn centered() -> Result<Rect, CommandError> {
+    Rect::new(0.35, 0.4, 0.3, 0.2).map_err(|e| CommandError::new(e.to_string()))
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AnnotAdd {
+    pub kind: Kind,
+    /// Start on the output video.
+    pub at: TimeArg<Output>,
+    /// Length, seconds of the output video, at least 0.1.
+    #[serde(default = "one_second")]
+    pub duration: f64,
+    /// Track, 0..31; a higher track lies above.
+    #[serde(default)]
+    pub track: u32,
+    /// Box `x,y,w,h` in fractions of the frame (before the zoom); by default 0.3×0.2 in the
+    /// centre.
+    pub rect: Option<Rect>,
+    /// Degrees clockwise around the box centre, -360..360.
+    #[serde(default)]
+    pub rotation: f64,
+}
+
+impl Command for AnnotAdd {
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
+
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+        let timeline = Timeline::new(project)?;
+        let length = TimeDelta::from_secs_f64(self.duration);
+        if !self.duration.is_finite() || length <= TimeDelta::ZERO {
+            return Err(CommandError::new(format!(
+                "длительность аннотации должна быть больше нуля (секунды), а не {}",
+                self.duration
+            )));
+        }
+        let start = timeline.start(self.at.0)?;
+        let end = timeline.end(self.at.0 + length)?;
+        let (media, range) = timeline.span(start, end)?;
+        let mut state = project.state::<Annotations>()?;
+        let annotation = Annotation {
+            id: state.ids.allocate(),
+            kind: self.kind,
+            media,
+            range,
+            track: check_track(self.track)?,
+            rect: check_rect(match self.rect {
+                Some(rect) => rect,
+                None => centered()?,
+            })?,
+            rotation: check_rotation(self.rotation)?,
+            body: Map::new(),
+        };
+        let id = annotation.id;
+        state.annotations.push(annotation);
+        project.set_state::<Annotations>(&state)?;
+        Ok(Diff::added(id))
+    }
+}
+
+impl Op for AnnotAdd {
+    const NAME: &'static str = "annot add";
+    const ABOUT: &'static str =
+        "Добавить аннотацию: text, shape, image, drawing или blur (время — по готовому видео)";
+    const EXAMPLE: &'static str =
+        "annot add text --at 3 --duration 2 --rect 0.1,0.1,0.3,0.1 --rotation -5";
+    const POSITIONAL: &'static [&'static str] = &["kind"];
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AnnotSet {
+    pub id: AnnotId,
+    /// New start on the output video.
+    pub from: Option<TimeArg<Output>>,
+    /// New end on the output video.
+    pub to: Option<TimeArg<Output>>,
+    /// New box `x,y,w,h` in fractions of the frame; not together with `x`, `y`, `w`, `h`.
+    pub rect: Option<Rect>,
+    /// Left edge, fraction of the frame width.
+    pub x: Option<f64>,
+    /// Top edge, fraction of the frame height.
+    pub y: Option<f64>,
+    /// Width, fraction of the frame width, 0.01..10.
+    pub w: Option<f64>,
+    /// Height, fraction of the frame height, 0.01..10.
+    pub h: Option<f64>,
+    /// Degrees clockwise around the box centre, -360..360.
+    pub rotation: Option<f64>,
+}
+
+impl AnnotSet {
+    fn rect(&self, old: Rect) -> Result<Rect, CommandError> {
+        let parts = [self.x, self.y, self.w, self.h];
+        let Some(rect) = self.rect else {
+            let [x, y, w, h] = parts;
+            let rect = Rect::new(
+                x.unwrap_or(old.x()),
+                y.unwrap_or(old.y()),
+                w.unwrap_or(old.w()),
+                h.unwrap_or(old.h()),
+            )
+            .map_err(|e| CommandError::new(e.to_string()))?;
+            return check_rect(rect);
+        };
+        if parts.iter().any(Option::is_some) {
+            return Err(CommandError::new(
+                "укажи либо --rect, либо --x/--y/--w/--h, но не вместе",
+            ));
+        }
+        check_rect(rect)
+    }
+}
+
+impl Command for AnnotSet {
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
+
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+        let mut state = project.state::<Annotations>()?;
+        let index = position(&state, self.id)?;
+        let mut annotation = state.annotations[index].clone();
+        if self.from.is_some() || self.to.is_some() {
+            let timeline = Timeline::new(project)?;
+            let start = match self.from {
+                Some(TimeArg(t)) => timeline.start(t)?,
+                None => (annotation.media.clone(), annotation.range.start()),
+            };
+            let end = match self.to {
+                Some(TimeArg(t)) => timeline.end(t)?,
+                None => (annotation.media.clone(), annotation.range.end()),
+            };
+            (annotation.media, annotation.range) = timeline.span(start, end)?;
+        }
+        annotation.rect = self.rect(annotation.rect)?;
+        if let Some(rotation) = self.rotation {
+            annotation.rotation = check_rotation(rotation)?;
+        }
+        if annotation == state.annotations[index] {
+            return Ok(Diff::default());
+        }
+        state.annotations[index] = annotation;
+        project.set_state::<Annotations>(&state)?;
+        Ok(Diff::changed(self.id))
+    }
+}
+
+impl Op for AnnotSet {
+    const NAME: &'static str = "annot set";
+    const ABOUT: &'static str =
+        "Изменить аннотацию: границы по времени, положение, размер, поворот";
+    const EXAMPLE: &'static str = "annot set a3 --from 4 --to 6.5 --x 0.2 --w 0.4 --rotation 15";
+    const POSITIONAL: &'static [&'static str] = &["id"];
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AnnotRm {
+    pub id: AnnotId,
+}
+
+impl Command for AnnotRm {
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
+
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+        let mut state = project.state::<Annotations>()?;
+        let index = position(&state, self.id)?;
+        state.annotations.remove(index);
+        project.set_state::<Annotations>(&state)?;
+        Ok(Diff::removed(self.id))
+    }
+}
+
+impl Op for AnnotRm {
+    const NAME: &'static str = "annot rm";
+    const ABOUT: &'static str = "Удалить аннотацию";
+    const EXAMPLE: &'static str = "annot rm a3";
+    const POSITIONAL: &'static [&'static str] = &["id"];
+}
+
+pub(crate) fn position(state: &AnnotationsState, id: AnnotId) -> Result<usize, CommandError> {
+    state
+        .annotations
+        .iter()
+        .position(|a| a.id == id)
+        .ok_or_else(|| CommandError::not_found(id, state.annot_ids()))
+}
+
+pub(crate) fn check_track(track: u32) -> Result<u32, CommandError> {
+    if track < TRACKS {
+        return Ok(track);
+    }
+    Err(CommandError::new(format!(
+        "дорожка аннотаций должна быть от 0 до {}, а не {track}",
+        TRACKS - 1
+    )))
+}
+
+fn check_rect(rect: Rect) -> Result<Rect, CommandError> {
+    let sides_ok = [rect.w(), rect.h()]
+        .iter()
+        .all(|side| (SIZE_MIN..=SIZE_MAX).contains(side));
+    if !sides_ok {
+        return Err(CommandError::new(format!(
+            "ширина и высота аннотации должны быть от {SIZE_MIN} до {SIZE_MAX} (доли кадра), а не {}×{}",
+            rect.w(),
+            rect.h()
+        )));
+    }
+    let corner_ok = [rect.x(), rect.y()]
+        .iter()
+        .all(|v| v.abs() <= POSITION_LIMIT);
+    if !corner_ok {
+        return Err(CommandError::new(format!(
+            "угол аннотации ({}, {}) слишком далеко от кадра: x и y — доли кадра от -{POSITION_LIMIT} до {POSITION_LIMIT}",
+            rect.x(),
+            rect.y()
+        )));
+    }
+    Ok(rect)
+}
+
+fn check_rotation(degrees: f64) -> Result<f64, CommandError> {
+    if degrees.abs() <= ROTATION_LIMIT {
+        return Ok(degrees);
+    }
+    Err(CommandError::new(format!(
+        "поворот должен быть от -{ROTATION_LIMIT} до {ROTATION_LIMIT} градусов, а не {degrees}"
+    )))
+}

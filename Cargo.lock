@@ -676,6 +676,7 @@ dependencies = [
  "dc-capture",
  "dc-core",
  "dc-encode",
+ "dc-fx-annotations",
  "dc-fx-callout",
  "dc-fx-captions",
  "dc-fx-crop",
@@ -728,6 +729,12 @@ dependencies = [
 [[package]]
 name = "dc-fx-annotations"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "dc-fx-audio-tracks"
