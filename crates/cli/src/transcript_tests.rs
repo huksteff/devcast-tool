@@ -9,7 +9,7 @@ use dc_transcribe::{Model, Recognized, Word, words_cache_path, write_words};
 
 use crate::registry::registry;
 use crate::run::Outcome;
-use crate::test_util::run_line;
+use crate::test_util::{ffmpeg, run_line};
 
 /// Words of the speech, seconds, as recognized.
 const WORDS: [(&str, f64, f64); 16] = [
@@ -41,26 +41,17 @@ impl Speech {
         let tmp = tempfile::tempdir().unwrap();
         let video = tmp.path().join("речь.mp4");
         let speech = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/audio/tts-ru.flac");
-        let ffmpeg = Path::new(env!("FFMPEG_DIR")).join("bin").join("ffmpeg.exe");
-        let status = std::process::Command::new(ffmpeg)
-            .args([
-                "-v",
-                "error",
-                "-y",
-                "-f",
-                "lavfi",
-                "-i",
-                "testsrc2=size=320x240:rate=30",
-                "-i",
-            ])
-            .arg(&speech)
-            .args([
-                "-t", "10", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "flac",
-            ])
-            .arg(&video)
-            .status()
-            .unwrap();
-        assert!(status.success());
+        let (speech, output) = (speech.to_str().unwrap(), video.to_str().unwrap());
+        let source = "testsrc2=size=320x240:rate=30";
+        let video_codec = ["-c:v", "libx264", "-pix_fmt", "yuv420p"];
+        ffmpeg(
+            &[
+                &["-f", "lavfi", "-i", source, "-i", speech, "-t", "10"][..],
+                &video_codec,
+                &["-c:a", "flac", output],
+            ]
+            .concat(),
+        );
         let out = run_line(
             "new речь.mp4 -o Речь.dcproj",
             tmp.path(),

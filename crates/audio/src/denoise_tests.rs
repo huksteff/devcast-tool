@@ -1,48 +1,31 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use dc_project::ProjectDir;
 
 use super::*;
+use crate::test_util::{ffmpeg, fixture, track};
 use crate::track::tracks;
-
-fn fixture(path: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../fixtures")
-        .join(path)
-}
-
-fn track(path: &Path) -> SourceTrack {
-    SourceTrack {
-        name: "test".to_owned(),
-        path: path.to_path_buf(),
-        stream: 0,
-        origin: 0,
-    }
-}
 
 /// Clean synthesized Russian speech (`fixtures/audio`) with pink noise of amplitude 0.03 under
 /// it, stereo, in `dir`.
 fn noisy_speech(dir: &Path) -> PathBuf {
     let path = dir.join("noisy.flac");
-    let tool = PathBuf::from(env!("FFMPEG_DIR"))
-        .join("bin")
-        .join("ffmpeg.exe");
+    let speech = fixture("audio/tts-ru.flac");
+    let noise = "anoisesrc=color=pink:amplitude=0.03:r=48000:seed=7";
     let mix = "[0]aformat=channel_layouts=stereo[s];[s][1]amix=inputs=2:duration=first:normalize=0";
-    let status = Command::new(tool)
-        .args(["-v", "error", "-y", "-i"])
-        .arg(fixture("audio/tts-ru.flac"))
-        .args([
-            "-f",
-            "lavfi",
-            "-i",
-            "anoisesrc=color=pink:amplitude=0.03:r=48000:seed=7",
-        ])
-        .args(["-filter_complex", mix, "-c:a", "flac"])
-        .arg(&path)
-        .status()
-        .unwrap();
-    assert!(status.success());
+    ffmpeg(&[
+        "-i",
+        speech.to_str().unwrap(),
+        "-f",
+        "lavfi",
+        "-i",
+        noise,
+        "-filter_complex",
+        mix,
+        "-c:a",
+        "flac",
+        path.to_str().unwrap(),
+    ]);
     path
 }
 

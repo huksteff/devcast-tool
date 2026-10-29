@@ -1,30 +1,21 @@
 use std::path::Path;
-use std::process::Command;
 
 use super::*;
+use crate::test_util::{ffmpeg, track};
 
-/// `name` in `dir` from the lavfi source `source`, made by the ffmpeg of `.deps`.
+/// `name` in `dir` from the lavfi source `source`, stereo.
 fn make(dir: &Path, name: &str, source: &str) -> PathBuf {
     let path = dir.join(name);
-    let tool = PathBuf::from(env!("FFMPEG_DIR"))
-        .join("bin")
-        .join("ffmpeg.exe");
-    let status = Command::new(tool)
-        .args(["-v", "error", "-y", "-f", "lavfi", "-i", source, "-ac", "2"])
-        .arg(&path)
-        .status()
-        .unwrap();
-    assert!(status.success());
+    ffmpeg(&[
+        "-f",
+        "lavfi",
+        "-i",
+        source,
+        "-ac",
+        "2",
+        path.to_str().unwrap(),
+    ]);
     path
-}
-
-fn track(path: &Path) -> SourceTrack {
-    SourceTrack {
-        name: "test".to_owned(),
-        path: path.to_path_buf(),
-        stream: 0,
-        origin: 0,
-    }
 }
 
 /// 1 s of silence, then 1 s of a 0.5 sine.

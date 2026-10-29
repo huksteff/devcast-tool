@@ -229,18 +229,31 @@ pub(crate) fn done(stdout: &str) -> Outcome {
     }
 }
 
-/// A 320×240 `testsrc2` video `secs` long at 30 fps, made by the FFmpeg command line from `.deps`.
-pub(crate) fn test_video(path: &Path, secs: f64) {
+/// Runs the FFmpeg command line from `.deps` with `args` after `-v error -y`.
+pub(crate) fn ffmpeg(args: &[&str]) {
     let exe = Path::new(env!("FFMPEG_DIR"))
         .join("bin")
         .join(format!("ffmpeg{}", std::env::consts::EXE_SUFFIX));
-    let source = "testsrc2=size=320x240:rate=30";
     let status = std::process::Command::new(exe)
-        .args(["-v", "error", "-y", "-f", "lavfi", "-i", source, "-t"])
-        .arg(secs.to_string())
-        .args(["-c:v", "libx264", "-pix_fmt", "yuv420p"])
-        .arg(path)
+        .args(["-v", "error", "-y"])
+        .args(args)
         .status()
         .unwrap();
-    assert!(status.success(), "ffmpeg → {}", path.display());
+    assert!(status.success(), "ffmpeg {args:?}");
+}
+
+/// A 320×240 `testsrc2` video `secs` long at 30 fps.
+pub(crate) fn test_video(path: &Path, secs: f64) {
+    let source = "testsrc2=size=320x240:rate=30";
+    let secs = secs.to_string();
+    let output = path.to_str().unwrap();
+    let video_codec = ["-c:v", "libx264", "-pix_fmt", "yuv420p"];
+    ffmpeg(
+        &[
+            &["-f", "lavfi", "-i", source, "-t", &secs][..],
+            &video_codec,
+            &[output],
+        ]
+        .concat(),
+    );
 }

@@ -19,6 +19,8 @@ mod part;
 mod rate;
 mod stream;
 mod tempo;
+#[cfg(test)]
+mod test_util;
 
 pub use error::AudioError;
 pub use levels::{ChannelLevel, ClipLevels, GAIN_MAX, Levels};
