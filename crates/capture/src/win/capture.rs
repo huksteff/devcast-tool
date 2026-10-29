@@ -25,6 +25,10 @@ use crate::error::CaptureError;
 use crate::list::area_on_monitor;
 use crate::source::Source;
 
+/// The least time between two frames asked of WGC: below any refresh period, so it never
+/// holds a frame back.
+const MIN_UPDATE_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1);
+
 /// Receives frames on the capture thread.
 pub trait FrameSink: Send + 'static {
     /// A new frame; [`ControlFlow::Break`] or an error ends the capture.
@@ -106,12 +110,25 @@ impl<S: FrameSink> VideoCapture<S> {
         } else {
             DrawBorderSettings::Default
         };
+        // The default minimum interval is about 1/60 s, and frames come on the ticks of the
+        // primary monitor: with 144 Hz there the next tick after it is the third (20.8 ms), so a
+        // 60 fps picture gave 48 fps. Every composed frame is taken; `FrameGrid` drops extras.
+        let interval =
+            if GraphicsCaptureApi::is_minimum_update_interval_supported().map_err(|e| {
+                CaptureError::platform("проверить возможности захвата")(
+                    e.to_string(),
+                )
+            })? {
+                MinimumUpdateIntervalSettings::Custom(MIN_UPDATE_INTERVAL)
+            } else {
+                MinimumUpdateIntervalSettings::Default
+            };
         let settings = Settings::new(
             target,
             CursorCaptureSettings::WithoutCursor,
             border,
             SecondaryWindowSettings::Default,
-            MinimumUpdateIntervalSettings::Default,
+            interval,
             DirtyRegionSettings::Default,
             ColorFormat::Bgra8,
             Job { sink, crop },
