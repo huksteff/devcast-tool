@@ -45,17 +45,17 @@ pub struct VideoCapture<S: FrameSink> {
 }
 
 /// What the capture is pointed at.
-pub(crate) enum Target {
+enum Target {
     Monitor(Monitor),
     Window(Window),
 }
 
 impl Target {
-    pub(crate) fn monitor(index: u32) -> Result<Self, CaptureError> {
+    fn monitor(index: u32) -> Result<Self, CaptureError> {
         Ok(Self::Monitor(monitors::by_index(index)?))
     }
 
-    pub(crate) fn window(id: u64) -> Result<Self, CaptureError> {
+    fn window(id: u64) -> Result<Self, CaptureError> {
         let hwnd = HWND(id as *mut _);
         // SAFETY: IsWindow accepts any value and only checks it.
         if !unsafe { IsWindow(Some(hwnd)) }.as_bool() {
@@ -95,11 +95,7 @@ impl<S: FrameSink> VideoCapture<S> {
         }
     }
 
-    pub(crate) fn start_target(
-        target: Target,
-        crop: Option<CropArea>,
-        sink: S,
-    ) -> Result<Self, CaptureError> {
+    fn start_target(target: Target, crop: Option<CropArea>, sink: S) -> Result<Self, CaptureError> {
         let supported = GraphicsCaptureApi::is_border_settings_supported().map_err(|e| {
             CaptureError::platform("проверить возможности захвата")(
                 e.to_string(),

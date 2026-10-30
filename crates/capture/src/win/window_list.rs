@@ -11,6 +11,7 @@ use windows::Win32::System::Threading::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{GetShellWindow, IsIconic};
 use windows::core::{Owned, PWSTR};
+use windows_capture::settings::GraphicsCaptureItemType;
 use windows_capture::window::Window;
 
 use crate::error::CaptureError;
@@ -34,6 +35,7 @@ pub fn list() -> Result<Vec<WindowInfo>, CaptureError> {
             cloaked: is_cloaked(hwnd),
             own_process: process == own_process,
             shell: hwnd == shell,
+            capturable: capturable(window),
         };
         if traits.pickable() {
             found.push(WindowInfo {
@@ -57,12 +59,23 @@ struct Traits {
     own_process: bool,
     /// The desktop itself (Program Manager).
     shell: bool,
+    /// WGC can make a capture item of it; some windows it refuses, and they cannot be recorded.
+    capturable: bool,
 }
 
 impl Traits {
     fn pickable(&self) -> bool {
-        !self.title.trim().is_empty() && !self.cloaked && !self.own_process && !self.shell
+        !self.title.trim().is_empty()
+            && !self.cloaked
+            && !self.own_process
+            && !self.shell
+            && self.capturable
     }
+}
+
+/// Only creates the capture item: no capture session starts, no border is drawn.
+fn capturable(window: Window) -> bool {
+    TryInto::<GraphicsCaptureItemType>::try_into(window).is_ok()
 }
 
 fn is_cloaked(hwnd: HWND) -> bool {
@@ -110,6 +123,7 @@ mod tests {
             cloaked: false,
             own_process: false,
             shell: false,
+            capturable: true,
         }
     }
 
@@ -129,6 +143,13 @@ mod tests {
             !Traits {
                 own_process: true,
                 ..traits("DevCast")
+            }
+            .pickable()
+        );
+        assert!(
+            !Traits {
+                capturable: false,
+                ..traits("Параметры")
             }
             .pickable()
         );

@@ -69,6 +69,25 @@ fn lists_monitors_and_windows() {
     }
 }
 
+/// Still previews of everything the picker shows: GDI, so no capture session and no yellow
+/// border on Windows 10; every listed window gives a picture (WGC refused some).
+#[test]
+fn previews_every_listed_source() {
+    let sources = list_sources().unwrap();
+    for m in &sources.monitors {
+        let p = preview_monitor(m.index, 320).unwrap();
+        assert_eq!(p.width.max(p.height), 320, "monitor {}", m.index);
+    }
+    for w in sources.windows.iter().filter(|w| !w.minimized) {
+        match preview_window(w.id, 320) {
+            Ok(p) => assert!(p.width.max(p.height) <= 320 && p.width * p.height > 0),
+            // Closed or minimized since the listing.
+            Err(CaptureError::WindowNotFound(_) | CaptureError::WindowMinimized(_)) => {}
+            Err(e) => panic!("window {} «{}»: {e}", w.id, w.title),
+        }
+    }
+}
+
 #[test]
 #[ignore = "records the screen: needs DEVCAST_TEST_MONITOR"]
 fn previews_monitor_and_window() {
