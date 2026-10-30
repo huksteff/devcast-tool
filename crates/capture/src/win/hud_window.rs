@@ -1,11 +1,9 @@
 //! The app's HUD window as the recording sees it (decision 001): excluded from capture,
-//! rounded by DWM, moved in physical desktop pixels. `hwnd` is the window handle of the app.
+//! cut to a rounded rectangle, moved in physical desktop pixels. `hwnd` is the window handle of the app.
 //! Also bringing a picked window to front.
 
 use windows::Win32::Foundation::{HWND, RECT};
-use windows::Win32::Graphics::Dwm::{
-    DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND, DwmSetWindowAttribute,
-};
+use windows::Win32::Graphics::Gdi::{CreateRoundRectRgn, DeleteObject, SetWindowRgn};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetWindowRect, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, SetForegroundWindow,
     SetWindowDisplayAffinity, SetWindowPos, WDA_EXCLUDEFROMCAPTURE, WDA_NONE,
@@ -31,20 +29,24 @@ pub fn exclude_from_capture(hwnd: isize, exclude: bool) -> Result<(), CaptureErr
     })
 }
 
-/// Rounded corners of a borderless window (Windows 11; Windows 10 keeps square corners and
-/// returns an error, which callers may ignore only by logging it).
-pub fn round_corners(hwnd: isize) -> Result<(), CaptureError> {
-    let preference = DWMWCP_ROUND;
-    // SAFETY: the pointer and size describe `preference`, which outlives the call.
-    unsafe {
-        DwmSetWindowAttribute(
-            handle(hwnd),
-            DWMWA_WINDOW_CORNER_PREFERENCE,
-            (&raw const preference).cast(),
-            size_of_val(&preference) as u32,
-        )
+/// Cuts the window to a `width` × `height` rectangle with corners of `radius`, physical
+/// pixels: the corners outside show what is under the window. The same on Windows 10 and 11
+/// (DWM rounds only on 11, and a see-through eframe window shows white there, decision 001).
+pub fn round_window(hwnd: isize, width: u32, height: u32, radius: u32) -> Result<(), CaptureError> {
+    let failed = CaptureError::platform("скруглить углы панели");
+    let (w, h, d) = (width as i32 + 1, height as i32 + 1, 2 * radius as i32);
+    // SAFETY: no pointers; the region is ours until SetWindowRgn takes it.
+    let region = unsafe { CreateRoundRectRgn(0, 0, w, h, d, d) };
+    if region.is_invalid() {
+        return Err(failed("CreateRoundRectRgn".to_owned()));
     }
-    .map_err(|e| CaptureError::platform("скруглить углы панели")(e.to_string()))
+    // SAFETY: on success the system owns the region; a bad handle makes the call fail.
+    if unsafe { SetWindowRgn(handle(hwnd), Some(region), true) } == 0 {
+        // SAFETY: the call failed, so the region is still ours to delete.
+        let _ = unsafe { DeleteObject(region.into()) };
+        return Err(failed("SetWindowRgn".to_owned()));
+    }
+    Ok(())
 }
 
 /// Top-left corner and size of the window on the desktop, physical pixels.

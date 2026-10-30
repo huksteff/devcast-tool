@@ -1,6 +1,7 @@
 //! The HUD: the app's main window, an opaque borderless bar on top of everything, as decision
-//! 001 says: no taskbar button, rounded by DWM, excluded from capture while «Скрывать HUD из
-//! записи» is on, dragged by its grip; its place is remembered per monitor.
+//! 001 says: no taskbar button, cut to a rounded rectangle (Windows 10 and 11 alike), excluded
+//! from capture while «Скрывать HUD из записи» is on, dragged by its grip; its place is
+//! remembered per monitor.
 
 pub mod bar;
 pub mod picker;
@@ -24,14 +25,13 @@ pub struct HudWindow {
     excluded: Option<bool>,
     /// Desktop rectangle last remembered, physical pixels.
     rect: Option<(i32, i32, u32, u32)>,
+    /// Size and corner radius the window was last cut to, physical pixels.
+    shape: Option<(u32, u32, u32)>,
 }
 
 impl HudWindow {
-    /// Rounds the window and puts it where it stood last on its monitor.
+    /// Puts the window where it stood last on its monitor.
     pub fn new(hwnd: isize, shared: &mut Shared) -> Self {
-        if let Err(error) = hud_window::round_corners(hwnd) {
-            tracing::info!("углы панели не скруглены (Windows 10?): {error}");
-        }
         let placed = hud_window::window_rect(hwnd).and_then(|(_, _, width, height)| {
             let hud = &shared.store.get().hud;
             match hud.place(&shared.sources.monitors, (width, height)) {
@@ -44,6 +44,7 @@ impl HudWindow {
             hwnd,
             excluded: None,
             rect: None,
+            shape: None,
         }
     }
 
@@ -64,8 +65,23 @@ impl HudWindow {
             _ => {}
         }
         fit(ui, inner.response.rect.width());
+        let rect = match hud_window::window_rect(self.hwnd) {
+            Ok(rect) => rect,
+            Err(error) => return shared.report(Err(error)),
+        };
+        self.round(ui, shared, rect);
         if !ui.input(|i| i.pointer.any_down()) {
-            self.remember_place(shared);
+            self.remember_place(shared, rect);
+        }
+    }
+
+    /// Cuts the corners of the window to the bar's radius again when its size or DPI changed.
+    fn round(&mut self, ui: &Ui, shared: &mut Shared, (_, _, width, height): (i32, i32, u32, u32)) {
+        let radius = (f32::from(R3) * ui.ctx().pixels_per_point()).round() as u32;
+        let shape = (width, height, radius);
+        if self.shape != Some(shape) {
+            shared.report(hud_window::round_window(self.hwnd, width, height, radius));
+            self.shape = Some(shape);
         }
     }
 
@@ -78,11 +94,7 @@ impl HudWindow {
     }
 
     /// Saves the place after the bar was moved.
-    fn remember_place(&mut self, shared: &mut Shared) {
-        let rect = match hud_window::window_rect(self.hwnd) {
-            Ok(rect) => rect,
-            Err(error) => return shared.report(Err(error)),
-        };
+    fn remember_place(&mut self, shared: &mut Shared, rect: (i32, i32, u32, u32)) {
         if self.rect == Some(rect) {
             return;
         }
