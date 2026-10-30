@@ -10,7 +10,7 @@ license = "AGPL-3.0-or-later"
 publish = false
 
 [workspace.lints.rust]
-# unsafe разрешён только в capture и encode через #![allow(unsafe_code, reason = "...")]
+# unsafe разрешён только в capture, encode и модуле crash.rs dc-app через #[allow(unsafe_code, reason = "...")]
 unsafe_code = "deny"
 
 [workspace.lints.clippy]

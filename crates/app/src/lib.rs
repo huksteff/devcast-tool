@@ -3,6 +3,11 @@
 
 mod app;
 mod area;
+#[allow(
+    unsafe_code,
+    reason = "crash-handler's crash callback is an unsafe contract; the only unsafe of dc-app"
+)]
+mod crash;
 mod error;
 mod hud;
 mod instance;
@@ -19,8 +24,16 @@ const APP_NAME: &str = "DevCast";
 
 /// Starts the app, or brings the running one to front and returns.
 pub fn run() -> Result<(), AppError> {
+    let args: Vec<std::ffi::OsString> = std::env::args_os().collect();
+    if let [_, flag, socket, dir] = args.as_slice()
+        && flag == crash::SERVER_ARG
+    {
+        return crash::serve(std::path::Path::new(socket), dir.into());
+    }
     let settings = dc_project::settings::dir()?;
     let _log = logging::init(&settings.join(logging::FOLDER))?;
+    let _crash = crash::install(&settings)
+        .inspect_err(|e| tracing::error!("дампы падений не будут записаны: {e}"));
     let store = settings::Store::load(&settings.join(settings::FILE))?;
     let listener = match instance::claim()? {
         Claim::First(listener) => listener,
