@@ -122,6 +122,11 @@ impl TimeMap {
         self.segments.get(index).filter(|s| s.output_start <= t)
     }
 
+    /// The segment whose output ends exactly at `t` (segments do not overlap, so at most one).
+    pub fn ending_at(&self, t: OutputTime) -> Option<&Segment> {
+        self.segments.iter().find(|s| s.output_end() == t)
+    }
+
     /// Which clip and source moment is shown at output time `t`; `None` outside `0..duration`.
     pub fn to_source(&self, t: OutputTime) -> Option<(ClipId, SourceTime)> {
         self.segment_at(t).map(|s| (s.clip, s.source_at(t)))

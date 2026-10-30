@@ -136,8 +136,8 @@ fn add_rejects_bad_arguments() {
             json!({"action": "off", "at": 1, "duration": 0}),
             "больше нуля",
         ),
-        (json!({"action": "on", "at": 10}), "вне видео"),
-        (json!({"action": "on", "at": -1}), "вне видео"),
+        (json!({"action": "on", "at": 10}), "не раньше конца видео"),
+        (json!({"action": "on", "at": -1}), "раньше начала видео"),
     ] {
         let error = fail(&mut p, &add(args.clone()));
         assert!(error.contains(message), "{args}: {error}");

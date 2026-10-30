@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 
 use crate::commands::position;
 use crate::model::{AnnotId, Annotation, Annotations, Kind, fields};
-use crate::span::Timeline;
+use crate::span::{shown, timeline};
 
 /// The `set` command of a kind: [`edit_body`] of annotation `id` in the key at output `at`, or
 /// everywhere without it. The annotation must be of `kind`, else the error is `{id} — {wrong}`.
@@ -44,9 +44,9 @@ pub fn key_offset(
     annotation: &Annotation,
     t: OutputTime,
 ) -> Result<TimeDelta, CommandError> {
-    let timeline = Timeline::new(project)?;
+    let timeline = timeline(project)?;
     let id = annotation.id;
-    let shown = timeline.shown(annotation).ok_or_else(|| {
+    let shown = shown(&timeline, annotation).ok_or_else(|| {
         CommandError::new(format!(
             "{id} не видна в готовом видео (её место вырезано): задай время через annot set {id} --from … --to …"
         ))
@@ -120,7 +120,7 @@ fn key_times(project: &Project, annotation: &Annotation) -> String {
     if annotation.keys.is_empty() {
         return "ключей у неё нет".to_owned();
     }
-    let timeline = Timeline::new(project).ok();
+    let timeline = timeline(project).ok();
     let times: Vec<String> = annotation
         .keys
         .iter()
@@ -128,7 +128,8 @@ fn key_times(project: &Project, annotation: &Annotation) -> String {
             let now = annotation.range.start() + key.at;
             timeline
                 .as_ref()
-                .and_then(|t| t.output_of(&annotation.media, now))
+                .and_then(|t| t.map().locate(&annotation.media, now))
+                .map(|(_, at)| at)
                 .map_or_else(|| "вне показа".to_owned(), |t| t.to_string())
         })
         .collect();

@@ -1,13 +1,12 @@
 //! `callout add`, `callout set`, `callout rm`: events of the callout track.
 
+use dc_core::span::Timeline;
 use dc_core::time::Output;
-use dc_core::{
-    Command, CommandError, Diff, Op, Project, SourceTime, TimeArg, TimeDelta, TimeMap, index_of,
-};
+use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg, TimeDelta, index_of};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::model::{Action, Callout, CalloutEvent, CalloutState, EventId};
+use crate::model::{Action, Callout, CalloutEvent, CalloutState, EventId, EventKind};
 use crate::text::check_text;
 
 fn one_second() -> f64 {
@@ -45,7 +44,7 @@ impl Command for CalloutAdd {
     }
 
     fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
-        let (media, at) = moment(project, self.at.0)?;
+        let (media, at) = Timeline::new::<EventKind>(project)?.start(self.at.0)?;
         let action = action(self.action, self.text.clone())?;
         let duration = duration(self.duration)?;
         let mut state = project.state::<Callout>()?;
@@ -92,7 +91,7 @@ impl Command for CalloutSet {
         let index = position(&state, self.id)?;
         let mut event = state.events[index].clone();
         if let Some(TimeArg(t)) = self.at {
-            (event.media, event.at) = moment(project, t)?;
+            (event.media, event.at) = Timeline::new::<EventKind>(project)?.start(t)?;
         }
         if let Some(seconds) = self.duration {
             event.duration = duration(seconds)?;
@@ -154,23 +153,6 @@ impl Op for CalloutRm {
 
 fn position(state: &CalloutState, id: EventId) -> Result<usize, CommandError> {
     index_of(&state.events, id, |e| e.id)
-}
-
-/// The recording and its source moment shown at output time `t`.
-fn moment(project: &Project, t: dc_core::OutputTime) -> Result<(String, SourceTime), CommandError> {
-    let map = TimeMap::build(project);
-    if map.duration() <= TimeDelta::ZERO {
-        return Err(CommandError::new(
-            "в проекте нет клипов: сначала добавь видео (devcast clip add)",
-        ));
-    }
-    let segment = map.segment_at(t).ok_or_else(|| {
-        CommandError::new(format!(
-            "время события {t} вне видео (0–{}): укажи время внутри",
-            dc_core::OutputTime::ZERO + map.duration()
-        ))
-    })?;
-    Ok((segment.media.clone(), segment.source_at(t)))
 }
 
 fn action(name: ActionName, text: Option<String>) -> Result<Action, CommandError> {

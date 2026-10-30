@@ -11,7 +11,7 @@ use dc_core::{CommandError, OutputTime, Point, Project, Range, SourceTime, TimeA
 use crate::classify::strength;
 use crate::model::{Mode, ZoomEffect};
 use crate::region::ZoomAdd;
-use crate::span::Timeline;
+use crate::span::{self, timeline};
 
 /// Presses at most this far apart on the output are one cluster.
 pub const CLUSTER_GAP: TimeDelta = TimeDelta::from_millis(2500);
@@ -86,7 +86,7 @@ impl Suggestion {
 /// Zooms for the clusters of presses of `recordings` that do not overlap the project's zooms
 /// or each other, in output order.
 pub fn suggest(project: &Project, recordings: &[Recording]) -> Result<Suggestions, CommandError> {
-    let timeline = Timeline::new(project)?;
+    let timeline = timeline(project)?;
     let map = TimeMap::build(project);
     let runs = runs(map.segments());
     let mut found = Suggestions::default();
@@ -121,7 +121,7 @@ pub fn suggest(project: &Project, recordings: &[Recording]) -> Result<Suggestion
         let start = (first.at - CLUSTER_PAD).max(run_start);
         let end = (last.at + CLUSTER_PAD).min(run_end);
         let span = Range::new(start, end).map_err(|e| CommandError::new(e.to_string()))?;
-        let source = timeline.span(timeline.start(start)?, timeline.end(end)?)?;
+        let source = span::span(&timeline, timeline.start(start)?, timeline.end(end)?)?;
         let overlaps = |(media, range): &(String, Range<Source>)| {
             *media == source.0 && range.intersect(&source.1).is_some()
         };

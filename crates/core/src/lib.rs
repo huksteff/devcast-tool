@@ -13,6 +13,7 @@ pub mod id;
 pub mod item;
 pub mod keys;
 pub mod project;
+pub mod span;
 pub mod time;
 pub mod timemap;
 

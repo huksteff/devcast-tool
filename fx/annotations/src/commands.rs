@@ -12,7 +12,7 @@ use crate::model::{
     SIZE_MAX, SIZE_MIN, TRACKS,
 };
 use crate::motion::Stage;
-use crate::span::Timeline;
+use crate::span::{span, timeline};
 
 fn one_second() -> f64 {
     1.0
@@ -49,7 +49,7 @@ impl Command for AnnotAdd {
     }
 
     fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
-        let timeline = Timeline::new(project)?;
+        let timeline = timeline(project)?;
         let length = TimeDelta::from_secs_f64(self.duration);
         if !self.duration.is_finite() || length <= TimeDelta::ZERO {
             return Err(CommandError::new(format!(
@@ -59,7 +59,7 @@ impl Command for AnnotAdd {
         }
         let start = timeline.start(self.at.0)?;
         let end = timeline.end(self.at.0 + length)?;
-        let (media, range) = timeline.span(start, end)?;
+        let (media, range) = span(&timeline, start, end)?;
         let mut state = project.state::<Annotations>()?;
         let annotation = Annotation {
             id: state.ids.allocate(),
@@ -189,7 +189,7 @@ impl Command for AnnotSet {
                     "время аннотации ключами не меняется: --from и --to укажи без --at",
                 ));
             }
-            let timeline = Timeline::new(project)?;
+            let timeline = timeline(project)?;
             let start_edge = match self.from {
                 Some(TimeArg(t)) => timeline.start(t)?,
                 None => (annotation.media.clone(), annotation.range.start()),
@@ -199,7 +199,7 @@ impl Command for AnnotSet {
                 None => (annotation.media.clone(), annotation.range.end()),
             };
             let (media, start) = (annotation.media.clone(), annotation.range.start());
-            (annotation.media, annotation.range) = timeline.span(start_edge, end)?;
+            (annotation.media, annotation.range) = span(&timeline, start_edge, end)?;
             if annotation.media == media {
                 // Keys stay on their frames of the recording when the head is trimmed.
                 let shift = annotation.range.start().since(start).micros();

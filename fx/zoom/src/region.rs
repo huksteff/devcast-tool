@@ -8,7 +8,7 @@ use serde::Deserialize;
 use crate::model::{
     DEFAULT_SCALE, Mode, SCALE_MAX, SCALE_MIN, Zoom, ZoomEffect, ZoomId, ZoomState,
 };
-use crate::span::Timeline;
+use crate::span::{span, timeline};
 
 fn one_second() -> f64 {
     1.0
@@ -50,10 +50,10 @@ impl Command for ZoomAdd {
     }
 
     fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
-        let timeline = Timeline::new(project)?;
+        let timeline = timeline(project)?;
         let start = timeline.start(self.at.0)?;
         let end = timeline.end(self.at.0 + TimeDelta::from_secs_f64(self.duration))?;
-        let (media, range) = timeline.span(start, end)?;
+        let (media, range) = span(&timeline, start, end)?;
         check_scale(self.scale)?;
         let focus = Point {
             x: check_focus("x", self.x)?,
@@ -109,7 +109,7 @@ impl Command for ZoomSet {
         let index = position(&state, self.id)?;
         let mut zoom = state.zooms[index].clone();
         if self.from.is_some() || self.to.is_some() {
-            let timeline = Timeline::new(project)?;
+            let timeline = timeline(project)?;
             let start = match self.from {
                 Some(TimeArg(t)) => timeline.start(t)?,
                 None => (zoom.media.clone(), zoom.range.start()),
@@ -118,7 +118,7 @@ impl Command for ZoomSet {
                 Some(TimeArg(t)) => timeline.end(t)?,
                 None => (zoom.media.clone(), zoom.range.end()),
             };
-            (zoom.media, zoom.range) = timeline.span(start, end)?;
+            (zoom.media, zoom.range) = span(&timeline, start, end)?;
         }
         if let Some(scale) = self.scale {
             zoom.scale = check_scale(scale)?;

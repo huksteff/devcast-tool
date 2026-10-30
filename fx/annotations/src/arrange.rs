@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::commands::{check_track, position};
 use crate::model::{AnnotId, Annotation, Annotations};
-use crate::span::Timeline;
+use crate::span::{shown, span, timeline};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -35,8 +35,8 @@ impl Command for AnnotMove {
         let index = position(&state, self.id)?;
         let mut annotation = state.annotations[index].clone();
         if let Some(TimeArg(at)) = self.at {
-            let timeline = Timeline::new(project)?;
-            let shown = timeline.shown(&annotation).ok_or_else(|| {
+            let timeline = timeline(project)?;
+            let shown = shown(&timeline, &annotation).ok_or_else(|| {
                 CommandError::new(format!(
                     "{} не видна в готовом видео (её место вырезано): задай время через annot set {} --from … --to …",
                     self.id, self.id
@@ -44,7 +44,7 @@ impl Command for AnnotMove {
             })?;
             let start = timeline.start(at)?;
             let end = timeline.end(at + shown.duration())?;
-            (annotation.media, annotation.range) = timeline.span(start, end)?;
+            (annotation.media, annotation.range) = span(&timeline, start, end)?;
         }
         let track = self.track.map(check_track).transpose()?;
         let new_track = track.filter(|t| *t != annotation.track);

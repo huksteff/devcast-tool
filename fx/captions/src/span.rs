@@ -36,12 +36,7 @@ impl Timeline {
     /// The exclusive source end of what `cue`'s recording shows before `t`: at the end of a
     /// segment it stays in that segment.
     pub(crate) fn end(&self, cue: &Cue, t: OutputTime) -> Result<SourceTime, CommandError> {
-        let ending = self
-            .map
-            .segments()
-            .iter()
-            .find(|s| s.output_end() == t && s.media == cue.media);
-        match ending {
+        match self.map.ending_at(t).filter(|s| s.media == cue.media) {
             Some(segment) => Ok(segment.source.end()),
             None => self.start(cue, t),
         }
