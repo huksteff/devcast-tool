@@ -24,6 +24,7 @@ pub mod hud {
     pub const SYSTEM_AUDIO: &str = "Системный звук";
     pub const SOUND: &str = "Звук";
     pub const FPS: &str = "Частота кадров";
+    pub const TIMING: &str = "Частота кадров и отсчёт";
     pub const COUNTDOWN: &str = "Обратный отсчёт";
     pub const COUNTDOWN_NONE: &str = "Нет";
     pub const RECORD: &str = "Запись";

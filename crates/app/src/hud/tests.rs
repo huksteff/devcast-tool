@@ -310,3 +310,29 @@ fn countdown_turns_record_into_cancel() {
     harness.run();
     assert_eq!(harness.state().clicked, Some(Clicked::Record));
 }
+
+#[test]
+fn closes_on_focus_loss_only_after_having_focus() {
+    let mut open = popover::Open::new(popover::Kind::More, 0.0);
+    assert!(!open.focus_lost(Some(false)), "opened behind another app");
+    assert!(!open.focus_lost(None));
+    assert!(!open.focus_lost(Some(true)));
+    assert!(open.focus_lost(Some(false)));
+}
+
+#[test]
+fn every_popover_has_its_own_title() {
+    let kinds = [
+        popover::Kind::Source,
+        popover::Kind::Sound,
+        popover::Kind::Timing,
+        popover::Kind::More,
+        popover::Kind::Cancel,
+        popover::Kind::Quit,
+        popover::Kind::Failed,
+    ];
+    let mut titles: Vec<&str> = kinds.iter().map(|k| k.title()).collect();
+    titles.sort_unstable();
+    titles.dedup();
+    assert_eq!(titles.len(), kinds.len());
+}

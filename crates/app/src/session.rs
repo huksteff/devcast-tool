@@ -222,10 +222,7 @@ impl Shared {
                 recorder.join();
                 self.show_hud();
                 self.failure = Some((message, root));
-                self.popover = Some(popover::Open {
-                    kind: popover::Kind::Failed,
-                    anchor: 0.0,
-                });
+                self.popover = Some(popover::Open::new(popover::Kind::Failed, 0.0));
             }
             (Event::Failed(message), session) => {
                 finished(session);
@@ -278,10 +275,7 @@ impl Shared {
                 live.recorder.send(Request::Pause);
             }
             live.asking = true;
-            self.popover = Some(popover::Open {
-                kind: popover::Kind::Cancel,
-                anchor,
-            });
+            self.popover = Some(popover::Open::new(popover::Kind::Cancel, anchor));
         }
     }
 
@@ -326,10 +320,7 @@ impl Shared {
         match self.session {
             Session::Starting(_) | Session::Live(_) => {
                 self.show_hud();
-                self.popover = Some(popover::Open {
-                    kind: popover::Kind::Quit,
-                    anchor: 0.0,
-                });
+                self.popover = Some(popover::Open::new(popover::Kind::Quit, 0.0));
             }
             _ => self
                 .ctx

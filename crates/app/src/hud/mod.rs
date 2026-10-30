@@ -190,7 +190,7 @@ fn fit(ui: &Ui, width: f32) {
 /// Opens the popover `kind` under the button at `anchor`, or closes it when it is open.
 fn toggle(shared: &mut Shared, kind: popover::Kind, anchor: f32) {
     let open = shared.popover.is_some_and(|open| open.kind == kind);
-    shared.popover = (!open).then_some(popover::Open { kind, anchor });
+    shared.popover = (!open).then_some(popover::Open::new(kind, anchor));
     shared.previews = None;
     if !open && kind == popover::Kind::Sound {
         shared.refresh_microphones();

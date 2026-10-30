@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
-use dc_ui_kit::strings::{hud, tray};
+use dc_ui_kit::strings::{hud, picker as picker_text, tray};
 use dc_ui_kit::tokens::{BORDER, FS_M, ICON, R1, S2, SURFACE, SURFACE_2, TEXT};
 use dc_ui_kit::widgets::{
     Answer, Confirm, ErrorAction, ErrorPanel, Kind as ButtonKind, Toggle, panel_frame,
@@ -37,11 +37,52 @@ pub enum Kind {
     Failed,
 }
 
+impl Kind {
+    /// Title of the popover's window (UI Automation finds windows by it).
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Source => picker_text::TITLE,
+            Self::Sound => hud::SOUND,
+            Self::Timing => hud::TIMING,
+            Self::More => hud::MORE,
+            Self::Cancel => hud::CANCEL_TITLE,
+            Self::Quit => tray::QUIT_TITLE,
+            Self::Failed => hud::PREPARE_FAILED,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Open {
     pub kind: Kind,
     /// Left edge of the button under it, points from the bar's left edge.
     pub anchor: f32,
+    /// The window has had the focus. Until then losing it does not close the popover: Windows
+    /// does not activate a window opened while another app is in front (a button pressed
+    /// through UI Automation), and the popover closed on its first frame.
+    focused: bool,
+}
+
+impl Open {
+    pub fn new(kind: Kind, anchor: f32) -> Self {
+        Self {
+            kind,
+            anchor,
+            focused: false,
+        }
+    }
+
+    /// Takes the window's focus state; true when the focus went elsewhere after it had it.
+    pub fn focus_lost(&mut self, focused: Option<bool>) -> bool {
+        match focused {
+            Some(true) => {
+                self.focused = true;
+                false
+            }
+            Some(false) => self.focused,
+            None => false,
+        }
+    }
 }
 
 /// What the «Ещё» menu asks for.
@@ -71,7 +112,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::Failed => 360.0,
     };
     let builder = egui::ViewportBuilder::default()
-        .with_title(hud::MORE)
+        .with_title(open.kind.title())
         .with_decorations(false)
         .with_resizable(false)
         .with_always_on_top()
@@ -112,7 +153,11 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::OuterPosition(corner));
         }
-        let lost_focus = ui.input(|i| i.viewport().focused == Some(false));
+        let focused = ui.input(|i| i.viewport().focused);
+        let lost_focus = shared
+            .popover
+            .as_mut()
+            .is_some_and(|open| open.focus_lost(focused));
         if lost_focus
             || ui.input(|i| i.key_pressed(egui::Key::Escape) || i.viewport().close_requested())
         {

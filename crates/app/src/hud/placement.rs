@@ -33,17 +33,21 @@ fn key(bounds: &Area) -> String {
 impl HudPlacement {
     /// Corner of a bar of `size` on the last monitor (or the primary one when it is gone).
     pub fn place(&self, monitors: &[MonitorInfo], size: (u32, u32)) -> Option<(i32, i32)> {
-        let last = self
-            .last
-            .as_ref()
-            .and_then(|last| monitors.iter().find(|m| &key(&m.bounds) == last));
-        let monitor = last.or_else(|| monitors.iter().find(|m| m.primary))?;
-        let b = monitor.bounds;
+        let b = self.monitor(monitors)?.bounds;
         let [dx, dy] = self.offsets.get(&key(&b)).copied().unwrap_or([
             (b.width() as i32 - size.0 as i32) / 2,
             b.height() as i32 - size.1 as i32 - BOTTOM_GAP,
         ]);
         Some((b.x() + dx, b.y() + dy))
+    }
+
+    /// The monitor of the bar: the last one it stood on, or the primary one when it is gone.
+    pub fn monitor<'a>(&self, monitors: &'a [MonitorInfo]) -> Option<&'a MonitorInfo> {
+        let last = self
+            .last
+            .as_ref()
+            .and_then(|last| monitors.iter().find(|m| &key(&m.bounds) == last));
+        last.or_else(|| monitors.iter().find(|m| m.primary))
     }
 
     /// Remembers the bar at `rect` (corner and size) on the monitor under its centre. Returns
@@ -98,6 +102,7 @@ mod tests {
         let mut placement = HudPlacement::default();
         assert!(placement.remember(&monitors(), (-1800, 300, 404, 48)));
         assert_eq!(placement.place(&monitors(), (404, 48)), Some((-1800, 300)));
+        assert_eq!(placement.monitor(&monitors()).map(|m| m.index), Some(2));
         assert!(placement.remember(&monitors(), (100, 50, 404, 48)));
         assert_eq!(placement.place(&monitors(), (404, 48)), Some((100, 50)));
         assert_eq!(placement.offsets["1920x1080@-1920,200"], [120, 100]);
