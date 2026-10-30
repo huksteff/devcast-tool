@@ -12,6 +12,7 @@ use crate::span::Timeline;
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CaptionsSet {
+    /// Cue to change.
     pub id: CueId,
     /// New text; unchanged words keep their timing, new ones share the time between them.
     pub text: Option<String>,
@@ -74,6 +75,7 @@ impl Op for CaptionsSet {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CaptionsSplit {
+    /// Cue to split.
     pub id: CueId,
     /// Moment on the output video; the cue splits at the pause between words nearest to it.
     pub at: TimeArg<Output>,
@@ -180,6 +182,7 @@ impl Op for CaptionsMerge {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CaptionsRm {
+    /// Cue to remove.
     pub id: CueId,
 }
 

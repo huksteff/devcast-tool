@@ -57,15 +57,18 @@ pub enum Mode {
 /// A zoom region of one recording.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Zoom {
+    /// Id, `z<number>`.
     pub id: ZoomId,
     /// Recording (`Media.path`) whose source time `range` is in. Clips split from one recording
     /// share it, so splitting and reordering clips keeps the zoom on the same frames.
     pub media: String,
+    /// When it is zoomed in, source time of the recording `media`.
     pub range: Range<Source>,
     /// Magnification, `SCALE_MIN..=SCALE_MAX`.
     pub scale: f64,
     /// Point of the project frame (before the camera) to zoom into, 0..1 on both axes.
     pub focus: Point,
+    /// Where the camera looks: follows the cursor or stays on `focus`.
     pub mode: Mode,
 }
 
@@ -148,7 +151,9 @@ impl ZoomSettings {
 pub struct ZoomState {
     /// In the order they were added; overlapping is not allowed within a recording.
     pub zooms: Vec<Zoom>,
+    /// Next free zoom id; numbers are never reused.
     pub ids: IdCounter<ZoomKind>,
+    /// Camera motion of every zoom.
     pub settings: ZoomSettings,
 }
 

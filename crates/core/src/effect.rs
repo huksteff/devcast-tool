@@ -182,6 +182,7 @@ mod tests {
 
     #[derive(Debug, Clone, PartialEq, Default, Serialize, serde::Deserialize, JsonSchema)]
     struct Items {
+        /// Stored numbers.
         items: Vec<u32>,
     }
 
@@ -235,7 +236,9 @@ mod tests {
     #[derive(Debug, Clone, PartialEq, Serialize, serde::Deserialize, JsonSchema)]
     #[serde(default)]
     struct Styled {
+        /// Stored numbers.
         items: Vec<u32>,
+        /// Settings of the test effect.
         settings: u32,
     }
 

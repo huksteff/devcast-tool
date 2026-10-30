@@ -12,9 +12,12 @@ use crate::{OpsError, Registry, Step, apply, parse_args, parse_plan};
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Note {
+    /// Text of the note.
     text: String,
+    /// How many times, 0..=9.
     #[serde(default)]
     count: u32,
+    /// Mark the note as loud.
     #[serde(default)]
     loud: bool,
 }
@@ -42,6 +45,7 @@ impl Op for Note {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct Loose {
+    /// Clashes with the global `--dry-run` flag.
     #[serde(default)]
     dry_run: bool,
 }
@@ -65,6 +69,7 @@ impl Op for Loose {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ClipAdd {
+    /// Length of the clip, seconds.
     secs: f64,
 }
 
@@ -107,6 +112,7 @@ impl Op for ClipAdd {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ClipRm {
+    /// Clip to remove.
     id: ClipId,
 }
 

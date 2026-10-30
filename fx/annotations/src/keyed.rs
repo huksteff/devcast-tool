@@ -139,6 +139,7 @@ fn key_times(project: &Project, annotation: &Annotation) -> String {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnnotKeyAdd {
+    /// Annotation to add the key to.
     pub id: AnnotId,
     /// Moment on the output video, inside the annotation; the key takes what is shown there.
     pub at: TimeArg<Output>,
@@ -174,6 +175,7 @@ impl Op for AnnotKeyAdd {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnnotKeyRm {
+    /// Annotation whose key to remove.
     pub id: AnnotId,
     /// Moment of the key on the output video (give or take 1 ms).
     pub at: TimeArg<Output>,
@@ -219,6 +221,7 @@ impl Op for AnnotKeyRm {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnnotKeyCopy {
+    /// Annotation whose look to copy.
     pub id: AnnotId,
     /// Moment of the key to copy on the output video (give or take 1 ms).
     pub at: TimeArg<Output>,

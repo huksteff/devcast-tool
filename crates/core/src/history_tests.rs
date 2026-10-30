@@ -6,6 +6,7 @@ use crate::test_util::{clip, r};
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, schemars::JsonSchema)]
 struct Items {
+    /// Stored numbers.
     items: Vec<u32>,
 }
 

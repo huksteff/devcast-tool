@@ -63,7 +63,9 @@ pub struct SoundFile {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AudioClip {
+    /// Id, `au<number>`.
     pub id: AudioId,
+    /// Sound file it plays.
     pub file: SoundFile,
     /// Extra track, `0..TRACKS`; clips of one track do not overlap.
     pub track: u32,
@@ -96,9 +98,11 @@ pub struct AudioSettings {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct AudioState {
+    /// Default levels of the recordings' tracks.
     pub settings: AudioSettings,
     /// Extra sound clips in the order they were added.
     pub clips: Vec<AudioClip>,
+    /// Next free sound clip id; numbers are never reused.
     pub ids: IdCounter<AudioKind>,
 }
 

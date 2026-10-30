@@ -76,6 +76,7 @@ impl Action {
 /// An event on the callout track of one recording.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct CalloutEvent {
+    /// Id, `co<number>`.
     pub id: EventId,
     /// Recording (`Media.path`) whose source time `at` is in; the callout of each recording has
     /// its own events.
@@ -85,6 +86,7 @@ pub struct CalloutEvent {
     /// How long typing or erasing takes, output time: a sped-up part does not hurry it
     /// (decision 000). `on` is instant; there it is only the length on the timeline.
     pub duration: TimeDelta,
+    /// What the event does, with its text for `text`.
     #[serde(flatten)]
     pub action: Action,
 }
@@ -106,11 +108,13 @@ pub struct CalloutSettings {
     pub text: String,
     /// Fill of the bubble without a gradient.
     pub background: Rgba,
+    /// Colour of the text, #rrggbbaa.
     pub text_color: Rgba,
     /// `SIZE_MIN..=SIZE_MAX`, 1 — the text 0.72 of the visible cursor height (v1).
     pub size: f64,
     /// Fill the bubble with `colors` flowing in a loop instead of `background`.
     pub gradient: bool,
+    /// Colours of the gradient, 2 to 4.
     pub colors: GradientColors,
     /// Soft light around the bubble, `0..=GLOW_MAX` (v1 units); 0 — none.
     pub glow: f64,
@@ -138,7 +142,9 @@ impl Default for CalloutSettings {
 pub struct CalloutState {
     /// In the order they were added.
     pub events: Vec<CalloutEvent>,
+    /// Next free event id; numbers are never reused.
     pub ids: IdCounter<EventKind>,
+    /// Look of every callout and the text of `on`.
     pub settings: CalloutSettings,
 }
 

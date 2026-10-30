@@ -85,6 +85,7 @@ impl Op for AudioChannel {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AudioReset {
+    /// Clip whose track levels go back to the defaults.
     pub clip: ClipId,
     /// Only this sound track (system, mic, audio-1 …); without it, every track of the clip.
     pub channel: Option<String>,
@@ -120,6 +121,7 @@ impl Op for AudioReset {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AudioMute {
+    /// Clip to mute.
     pub clip: ClipId,
     /// Sound the clip again.
     #[serde(default)]

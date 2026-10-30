@@ -28,6 +28,7 @@ pub enum ActionName {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CalloutAdd {
+    /// What the event does: on, text or off.
     pub action: ActionName,
     /// Start on the output video.
     pub at: TimeArg<Output>,
@@ -71,7 +72,9 @@ impl Op for CalloutAdd {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CalloutSet {
+    /// Event to change.
     pub id: EventId,
+    /// New action: on, text or off.
     pub action: Option<ActionName>,
     /// New start on the output video.
     pub at: Option<TimeArg<Output>>,
@@ -127,6 +130,7 @@ impl Op for CalloutSet {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CalloutRm {
+    /// Event to remove.
     pub id: EventId,
 }
 

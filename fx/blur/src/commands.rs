@@ -12,6 +12,7 @@ use crate::model::{BlurBody, RADIUS_MAX, STRENGTH_MAX, STRENGTH_MIN};
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct BlurSet {
+    /// Blur annotation to change.
     pub id: AnnotId,
     /// Strength: σ of the blur, px when the short side of the frame is 1080 px, 1..100.
     pub strength: Option<f64>,

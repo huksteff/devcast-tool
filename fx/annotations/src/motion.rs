@@ -103,6 +103,7 @@ impl Animation {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 pub struct Stage {
+    /// How it comes in or goes out.
     pub animation: Animation,
     /// Length, output time (a sped-up part does not shorten it), `0..=STAGE_MAX`. Applied no
     /// longer than the annotation is shown; the entrance is served first.

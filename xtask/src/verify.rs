@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use crate::metadata::Workspace;
 use crate::run::{self, Outcome};
-use crate::{changed, crates, deps, features, limits, todo};
+use crate::{changed, crates, deps, features, limits, schema_docs, todo};
 
 pub struct Options {
     /// Test the whole workspace instead of changed crates only.
@@ -113,6 +113,7 @@ pub fn run(options: &Options) -> Report {
             steps.push(("crates", crates::check(&workspace)));
             steps.push(("deps", deps::check(&workspace)));
             steps.push(("todo", todo::check(&workspace.root)));
+            steps.push(("schema_docs", schema_docs::check(&workspace.root)));
             steps.push(("features", features::check(&workspace.root)));
             if !options.quick {
                 steps.push(("tests", tests(options, &workspace)));

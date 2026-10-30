@@ -11,6 +11,7 @@ mod limits;
 mod metadata;
 mod native;
 mod run;
+mod schema_docs;
 mod sources;
 mod todo;
 mod verify;

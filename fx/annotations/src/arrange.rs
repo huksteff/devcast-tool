@@ -13,6 +13,7 @@ use crate::span::{shown, span, timeline};
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnnotMove {
+    /// Annotation to move.
     pub id: AnnotId,
     /// New start on the output video; the length on the output video stays.
     pub at: Option<TimeArg<Output>>,
@@ -88,7 +89,9 @@ pub enum Step {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnnotLayer {
+    /// Annotation to put higher or lower.
     pub id: AnnotId,
+    /// Where to put it: up, down, top or bottom of its track.
     pub step: Step,
 }
 

@@ -12,12 +12,18 @@ pub const DURATION_MAX: TimeDelta = TimeDelta::from_millis(5000);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Position {
+    /// Top left corner.
     TopLeft,
+    /// Top, in the middle.
     Top,
+    /// Top right corner.
     TopRight,
+    /// Bottom left corner.
     BottomLeft,
+    /// Bottom, in the middle.
     #[default]
     Bottom,
+    /// Bottom right corner.
     BottomRight,
 }
 
@@ -44,6 +50,7 @@ impl Position {
 pub struct KeysSettings {
     /// Show the shortcuts pressed during the recordings; off by default.
     pub show: bool,
+    /// Where the plate stands; bottom by default.
     pub position: Position,
     /// Size, `SIZE_MIN..=SIZE_MAX`: 1 is a 36 px font when the short side of the frame is 1080 px.
     pub size: f64,
@@ -74,5 +81,6 @@ impl Default for KeysSettings {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct KeysState {
+    /// Whether and where the shortcuts are shown.
     pub settings: KeysSettings,
 }

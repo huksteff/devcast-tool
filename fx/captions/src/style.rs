@@ -20,10 +20,14 @@ pub const RADIUS_MAX: f64 = 40.0;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Animation {
+    /// Shown and hidden at once.
     None,
+    /// Fades in and out.
     #[default]
     Fade,
+    /// Fades in rising from below, fades out.
     Rise,
+    /// Fades in growing from smaller, fades out.
     Pop,
 }
 
@@ -55,6 +59,7 @@ pub struct CaptionsSettings {
     pub highlight: Rgba,
     /// Words not said yet.
     pub inactive: Rgba,
+    /// Soft shadow under the letters.
     pub shadow: bool,
     /// Lines on screen at once, 1..=`ROWS_MAX`; a longer caption turns pages.
     pub rows: u32,
@@ -66,6 +71,7 @@ pub struct CaptionsSettings {
     pub radius: f64,
     /// Opacity of the black plate, 0..1; 0 — no plate.
     pub background: f64,
+    /// How a page comes and goes.
     pub animation: Animation,
 }
 

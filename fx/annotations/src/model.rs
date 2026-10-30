@@ -85,7 +85,9 @@ impl Kind {
 /// An annotation on the track of one recording.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Annotation {
+    /// Id, `a<number>`.
     pub id: AnnotId,
+    /// What it shows; its fields are in `body`.
     pub kind: Kind,
     /// Recording (`Media.path`) whose source time `range` is in: cutting and splitting clips
     /// keep the annotation on the same frames.
@@ -153,6 +155,7 @@ pub struct AnnotationsState {
     /// Within a track a later annotation is painted above an earlier one; `annot layer`
     /// changes this order. Overlapping in time is allowed on any track.
     pub annotations: Vec<Annotation>,
+    /// Next free annotation id; numbers are never reused.
     pub ids: IdCounter<AnnotKind>,
 }
 

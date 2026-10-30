@@ -92,6 +92,7 @@ impl Op for ClipAdd {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ClipRm {
+    /// Clip to remove.
     id: ClipId,
 }
 

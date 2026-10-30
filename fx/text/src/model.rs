@@ -26,8 +26,11 @@ pub struct TextBody {
     /// Font size, px when the short side of the frame is 1080 px, 12..128; the zoom camera
     /// scales it with the box.
     pub size: f64,
+    /// Bold letters; on by default (v1).
     pub bold: bool,
+    /// Italic letters.
     pub italic: bool,
+    /// Underlined lines.
     pub underline: bool,
     /// Lines to the left, centre or right of the box.
     pub align: TextAlign,
@@ -60,8 +63,11 @@ impl Default for TextBody {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TextAlign {
+    /// Lines start at the left edge.
     Left,
+    /// Lines are centred; the default.
     Center,
+    /// Lines end at the right edge.
     Right,
 }
 

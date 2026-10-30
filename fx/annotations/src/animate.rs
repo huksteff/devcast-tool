@@ -11,6 +11,7 @@ use crate::motion::{Animation, STAGE_MAX, Stage};
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnnotAnim {
+    /// Annotation to animate.
     pub id: AnnotId,
     /// Entrance: none, fade, pop, slide_left, slide_right, slide_top, slide_bottom (from that
     /// side), typewriter (text) or draw (shapes and drawings).

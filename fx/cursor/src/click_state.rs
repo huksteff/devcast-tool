@@ -48,7 +48,9 @@ impl ClickKind {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct ClickStyle {
+    /// What a click looks like; off by default.
     pub kind: ClickKind,
+    /// Colour of the effect, #rrggbbaa.
     pub color: Rgba,
     /// Size, `CLICK_SCALE_MIN..=CLICK_SCALE_MAX`, × the cursor arrow height.
     pub scale: f64,
@@ -82,12 +84,16 @@ pub struct ClickChange {
     /// `off` hides the effect of this click.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<ClickKind>,
+    /// Colour of the effect, #rrggbbaa.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<Rgba>,
+    /// Size, `CLICK_SCALE_MIN..=CLICK_SCALE_MAX`, × the cursor arrow height.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scale: Option<f64>,
+    /// 0..1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opacity: Option<f64>,
+    /// On the output timeline, `CLICK_TIME_MIN..=CLICK_TIME_MAX`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration: Option<TimeDelta>,
 }

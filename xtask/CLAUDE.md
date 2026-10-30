@@ -8,10 +8,11 @@
 - Вывод короткий: при успехе одна строка, при ошибке только детали упавших шагов (не больше 150 строк на шаг).
 - Слои крейтов в `src/deps.rs` совпадают с картой в docs/ARCHITECTURE.md.
 - Хук блокирует остановку один раз подряд; при повторной остановке показывает отчёт владельцу (не зацикливается).
+- `schema_docs` (`src/schema_docs.rs`, без сборки, входит и в `--quick`): у каждого поля и варианта типа с `derive(JsonSchema)` есть `///` — из них собираются `devcast help` и JSON Schema. Тестовые типы проверяются так же (одно правило), поля с `serde(skip)`/`schemars(skip)` — нет. Разбор — `syn`.
 
 ## Как тестировать
 
-- `cargo nextest run -p xtask` — правила (deps, limits, crates, todo, features, changed, hook) покрыты юнит-тестами.
+- `cargo nextest run -p xtask` — правила (deps, limits, crates, todo, schema_docs, features, changed, hook) покрыты юнит-тестами.
 - Живая проверка: внести нарушение каждого вида и убедиться, что `cargo xtask verify` его ловит и подсказывает исправление.
 
 ## Куда не лезть

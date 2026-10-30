@@ -77,6 +77,7 @@ impl Command for AudioAdd {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AudioSet {
+    /// Sound clip to change.
     pub id: AudioId,
     /// New start on the output video; the length stays.
     pub at: Option<TimeArg<Output>>,
@@ -150,6 +151,7 @@ impl Op for AudioSet {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AudioRm {
+    /// Sound clip to remove.
     pub id: AudioId,
 }
 

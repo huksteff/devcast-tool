@@ -13,10 +13,13 @@ pub enum Aspect {
     /// The source frame of the first clip.
     #[serde(rename = "source")]
     Source,
+    /// 16:9.
     #[serde(rename = "16:9")]
     Wide16x9,
+    /// 16:10.
     #[serde(rename = "16:10")]
     Wide16x10,
+    /// 4:3.
     #[serde(rename = "4:3")]
     Standard4x3,
 }
@@ -36,6 +39,7 @@ impl fmt::Display for Aspect {
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CropSettings {
+    /// Aspect of the output frame; free by default.
     #[serde(default)]
     pub aspect: Aspect,
 }
@@ -43,6 +47,7 @@ pub struct CropSettings {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CropState {
+    /// Output frame settings.
     #[serde(default)]
     pub settings: CropSettings,
 }

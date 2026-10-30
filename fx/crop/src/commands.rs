@@ -10,6 +10,7 @@ use crate::state::Aspect;
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CropClip {
+    /// Clip to crop.
     pub clip: dc_core::ClipId,
     /// Visible part as fractions of the source frame: inside 0..1, width and height at least 0.05.
     pub rect: Rect,
@@ -49,6 +50,7 @@ impl Op for CropClip {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SetAspect {
+    /// Aspect of the output frame.
     pub aspect: Aspect,
 }
 

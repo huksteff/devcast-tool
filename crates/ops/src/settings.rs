@@ -69,8 +69,11 @@ mod tests {
     #[derive(Debug, Deserialize, JsonSchema)]
     #[serde(deny_unknown_fields)]
     struct Look {
+        /// Font size, px.
         size: Option<f64>,
+        /// Font family.
         font: Option<String>,
+        /// Smallest gap, seconds.
         min_gap: Option<f64>,
     }
 

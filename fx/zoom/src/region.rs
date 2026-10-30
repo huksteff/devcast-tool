@@ -34,6 +34,7 @@ pub struct ZoomAdd {
     /// Magnification, 1..5.
     #[serde(default = "default_scale")]
     pub scale: f64,
+    /// follow (by default) the cursor or stay fixed on the focus.
     #[serde(default)]
     pub mode: Mode,
     /// Focus, fraction of the frame width (0..1).
@@ -85,6 +86,7 @@ impl Op for ZoomAdd {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ZoomSet {
+    /// Zoom to change.
     pub id: ZoomId,
     /// New start on the output video.
     pub from: Option<TimeArg<Output>>,
@@ -92,6 +94,7 @@ pub struct ZoomSet {
     pub to: Option<TimeArg<Output>>,
     /// Magnification, 1..5.
     pub scale: Option<f64>,
+    /// follow the cursor or stay fixed on the focus.
     pub mode: Option<Mode>,
     /// Focus, fraction of the frame width (0..1).
     pub x: Option<f64>,
@@ -150,6 +153,7 @@ impl Op for ZoomSet {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ZoomRm {
+    /// Zoom to remove.
     pub id: ZoomId,
 }
 

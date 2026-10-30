@@ -13,6 +13,7 @@ use crate::model::{BLUE, DrawingBody, Stroke, StrokeTool, WIDTH_MAX, WIDTH_MIN};
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DrawingAdd {
+    /// Drawing to add the stroke to.
     pub id: AnnotId,
     /// Points of the stroke in fractions of the box, `x1,y1,x2,y2,…` each 0..1: one point is a
     /// dot, two points a straight line.
@@ -62,6 +63,7 @@ impl Op for DrawingAdd {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DrawingSet {
+    /// Drawing to change.
     pub id: AnnotId,
     /// Number of the stroke to change, from 1 in drawing order; without it colour and thickness
     /// change every pencil stroke.
@@ -122,6 +124,7 @@ impl Op for DrawingSet {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DrawingRm {
+    /// Drawing whose stroke to remove.
     pub id: AnnotId,
     /// Number of the stroke, from 1 in drawing order.
     pub stroke: usize,
@@ -155,6 +158,7 @@ impl Op for DrawingRm {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DrawingClear {
+    /// Drawing to clear.
     pub id: AnnotId,
     /// Moment on the output video: the strokes go from the key there. Without it they go from
     /// the annotation and from every key.

@@ -26,6 +26,7 @@ fn centered() -> Result<Rect, CommandError> {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnnotAdd {
+    /// What the annotation shows.
     pub kind: Kind,
     /// Start on the output video.
     pub at: TimeArg<Output>,
@@ -96,6 +97,7 @@ impl Op for AnnotAdd {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnnotSet {
+    /// Annotation to change.
     pub id: AnnotId,
     /// New start on the output video.
     pub from: Option<TimeArg<Output>>,
@@ -229,6 +231,7 @@ impl Op for AnnotSet {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnnotRm {
+    /// Annotation to remove.
     pub id: AnnotId,
 }
 

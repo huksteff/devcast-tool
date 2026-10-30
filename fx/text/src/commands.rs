@@ -12,6 +12,7 @@ use crate::model::{RADIUS_MAX, SIZE_MAX, SIZE_MIN, TEXT_MAX, TextAlign, TextBody
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TextSet {
+    /// Text annotation to change.
     pub id: AnnotId,
     /// The words; a line break starts a new line.
     pub text: Option<String>,
@@ -20,8 +21,11 @@ pub struct TextSet {
     pub font: Option<String>,
     /// Font size, px when the short side of the frame is 1080 px, 12..128.
     pub size: Option<f64>,
+    /// Bold letters.
     pub bold: Option<bool>,
+    /// Italic letters.
     pub italic: Option<bool>,
+    /// Underlined lines.
     pub underline: Option<bool>,
     /// left, center or right.
     pub align: Option<TextAlign>,

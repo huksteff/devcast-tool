@@ -45,6 +45,7 @@ pub struct CursorSettings {
     pub show: bool,
     /// Size, `SIZE_MIN..=SIZE_MAX`: 1 draws the arrow 28 px tall in a clip 1920 px wide.
     pub size: f64,
+    /// How the drawn cursor follows the recorded one.
     pub smoothing: Smoothing,
     /// Motion blur, `0..=BLUR_MAX`: the trail of the last `blur / 30` s of output; 0 is off.
     pub blur: f64,
@@ -81,6 +82,7 @@ impl Default for CursorSettings {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct CursorState {
+    /// Look and motion of the cursor and the click effects.
     pub settings: CursorSettings,
     /// Clicks shown otherwise than `settings.click`, at most one per press.
     pub clicks: Vec<ClickChange>,

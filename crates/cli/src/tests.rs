@@ -158,7 +158,7 @@ fn help_for_one_command_shows_args_and_example() {
         done(
             "test rm — Удалить клип
 пример: devcast test rm c1
-  <id>: id c<число>, обязательный — Короткий id клипа: c<число>"
+  <id>: id c<число>, обязательный — Clip to remove."
         )
     );
     assert_eq!(

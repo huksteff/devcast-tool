@@ -56,6 +56,7 @@ pub struct Word {
 /// One caption on screen.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Cue {
+    /// Id, `s<number>`.
     pub id: CueId,
     /// Recording (`Media.path`) whose source time `range` and the word times are in.
     pub media: String,
@@ -120,6 +121,7 @@ pub(crate) fn join(words: &[Word]) -> String {
 pub struct CaptionsState {
     /// Sorted by recording, then start; cues may overlap.
     pub cues: Vec<Cue>,
+    /// Next free cue id; numbers are never reused.
     pub ids: IdCounter<CueKind>,
     /// Look of all captions (`SETTINGS_FIELD`: copied into new projects by `Defaults`).
     pub settings: CaptionsSettings,

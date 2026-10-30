@@ -14,6 +14,7 @@ use crate::model::{
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ShapeSet {
+    /// Shape to change.
     pub id: AnnotId,
     /// arrow, rectangle, ellipse, circle, line or highlight; becoming or leaving a highlight
     /// brings its look (fill, outline, opacity) unless given here.
