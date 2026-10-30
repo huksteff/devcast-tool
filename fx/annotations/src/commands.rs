@@ -10,6 +10,7 @@ use crate::model::{
     AnnotId, Annotation, Annotations, AnnotationsState, Kind, POSITION_LIMIT, ROTATION_LIMIT,
     SIZE_MAX, SIZE_MIN, TRACKS,
 };
+use crate::motion::Stage;
 use crate::span::Timeline;
 
 fn one_second() -> f64 {
@@ -70,6 +71,8 @@ impl Command for AnnotAdd {
                 None => centered()?,
             })?,
             rotation: check_rotation(self.rotation)?,
+            enter: Stage::default(),
+            exit: Stage::default(),
             body: Map::new(),
         };
         let id = annotation.id;

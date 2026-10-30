@@ -179,6 +179,48 @@ fn plate_sits_behind_each_line_and_underline_under_it() -> TestResult {
 }
 
 #[test]
+fn transparent_letters_take_their_place_but_get_no_plate_or_underline() -> TestResult {
+    let decorated = |runs: &[(&str, u8)]| {
+        let mut t = text("");
+        t.runs = runs
+            .iter()
+            .map(|(text, alpha)| TextRun {
+                text: (*text).into(),
+                color: Rgba([255, 255, 255, *alpha]),
+            })
+            .collect();
+        t.plate = Some(Plate {
+            paint: Paint::Solid(Rgba([0, 0, 255, 255])),
+            radius: 0.0,
+            pad: [8.0, 4.0],
+            glow: None,
+        });
+        t.underline = true;
+        t
+    };
+    let blue = |p: [u8; 4]| p[2] > 200 && p[0] < 50;
+    let typed = one(decorated(&[("Пла", 255), ("шка", 0)]))?;
+    let head = one(decorated(&[("Пла", 255)]))?;
+    assert_eq!(
+        ink(&typed, blue),
+        ink(&head, blue),
+        "the plate wraps the typed part"
+    );
+    assert_eq!(
+        ink(&typed, bright),
+        ink(&head, bright),
+        "no underline under the rest"
+    );
+    let two = one(decorated(&[("Пла", 255), ("\nвторая", 0)]))?;
+    let [_, top, _, bottom] = ink(&two, blue).ok_or("no plate")?;
+    assert!(
+        bottom - top < 80,
+        "no plate on the untyped line: {top}..{bottom}"
+    );
+    Ok(())
+}
+
+#[test]
 fn emoji_are_in_colour() -> TestResult {
     let image = one(text("🔥👍"))?;
     let coloured = |p: [u8; 4]| {

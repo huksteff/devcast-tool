@@ -71,10 +71,13 @@ pub(super) fn decor(
     decor
 }
 
-/// Left and right of the line's glyphs without spaces at its ends.
+/// Left and right of the line's glyphs without spaces at its ends and without fully
+/// transparent letters (the untyped part of a typewriter).
 fn ink(run: &LayoutRun<'_>) -> Option<[f32; 2]> {
-    let visible =
-        |g: &&glyphon::LayoutGlyph| !run.text[g.start..g.end].chars().all(char::is_whitespace);
+    let visible = |g: &&glyphon::LayoutGlyph| {
+        g.color_opt.is_none_or(|c| c.a() > 0)
+            && !run.text[g.start..g.end].chars().all(char::is_whitespace)
+    };
     let left = run
         .glyphs
         .iter()
@@ -92,6 +95,7 @@ fn ink(run: &LayoutRun<'_>) -> Option<[f32; 2]> {
 
 /// Underline pieces of a line, one per stretch of one colour: left, right, centre y (from the
 /// top of the text), thickness, colour. Offset and thickness are the font's.
+/// Transparent letters get none.
 fn underlines(run: &LayoutRun<'_>) -> Vec<(f32, f32, f32, f32, Rgba)> {
     let mut pieces: Vec<(f32, f32, f32, f32, Rgba)> = Vec::new();
     for span in run.decorations {
@@ -108,6 +112,7 @@ fn underlines(run: &LayoutRun<'_>) -> Vec<(f32, f32, f32, f32, Rgba)> {
             }
         }
     }
+    pieces.retain(|piece| piece.4.0[3] > 0);
     pieces
 }
 

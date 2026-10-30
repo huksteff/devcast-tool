@@ -14,6 +14,8 @@ fn annotation(rect: Rect, rotation: f64) -> Annotation {
         track: 0,
         rect,
         rotation,
+        enter: Default::default(),
+        exit: Default::default(),
         body: Map::new(),
     }
 }
@@ -95,4 +97,37 @@ fn a_background_makes_v1_plates_around_each_line() {
     let plate = text.plate.expect("a plate");
     assert_eq!(plate.paint, Paint::Solid(body.background));
     assert_eq!((plate.radius, plate.pad), (20.0, [16.0, 8.0]));
+}
+
+#[test]
+fn reveal_types_whole_letters_and_hides_the_rest_in_place() {
+    let body = TextBody {
+        text: "Да 🎬!".into(),
+        ..TextBody::default()
+    };
+    let at = |reveal: f64| {
+        let placement = Placement {
+            reveal,
+            opacity: 0.25,
+            ..placed(FULL_HD, 0.0)
+        };
+        evaluate(&body, &placement)
+    };
+    let runs = |reveal| {
+        at(reveal)
+            .runs
+            .into_iter()
+            .map(|r| (r.text, r.color.0[3]))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(runs(1.0), [("Да 🎬!".to_owned(), 255)]);
+    assert_eq!(
+        runs(0.5),
+        [("Да ".to_owned(), 255), ("🎬!".to_owned(), 0)],
+        "5 letters: 2.5 rounds up, the emoji is one letter"
+    );
+    assert_eq!(runs(0.7), [("Да 🎬".to_owned(), 255), ("!".to_owned(), 0)]);
+    assert_eq!(runs(0.0), [(String::new(), 255), ("Да 🎬!".to_owned(), 0)]);
+    assert_eq!(at(0.5).runs[1].color.0[..3], body.color.0[..3]);
+    assert_eq!(at(1.0).opacity, 0.25);
 }

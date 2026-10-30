@@ -88,7 +88,7 @@ devcast callout rm co3
 ```
 Текст с пробелами — в кавычках: `--text "Жми сюда"`, одна строка до 80 символов. Цвета — `#rrggbbaa` в кавычках (`--background "#14b8c4ff"`, `--colors "#14b8c4ff,#a855f7ff"` — 2–4 цвета градиента), размер `--size` 0.5–2, свечение `--glow` 0–40.
 
-Аннотации (id `a1`, `a2`; виды text, shape, image, drawing, blur; время — по готовому видео, не короче 0,1 с; бокс `--rect x,y,w,h` — доли кадра до зума, по умолчанию 0.3×0.2 в центре; поворот в градусах по часовой). В кадре рисуется пока только текст; остальные виды появятся следующими задачами.
+Аннотации (id `a1`, `a2`; виды text, shape, image, drawing, blur; время — по готовому видео, не короче 0,1 с; анимации входа и выхода — по готовому видео, по умолчанию 0,3 с, выход — вход наоборот; бокс `--rect x,y,w,h` — доли кадра до зума, по умолчанию 0.3×0.2 в центре; поворот в градусах по часовой). В кадре рисуется пока только текст; остальные виды появятся следующими задачами.
 ```
 devcast annot add text --at 2 --duration 3 --rect 0.1,0.1,0.4,0.1
 devcast annot add shape --at 3 --track 1 --rotation -15   # дорожка выше — слой выше
@@ -97,6 +97,8 @@ devcast annot move a1 --at 4 --track 1                   # длина сохра
 devcast annot layer a1 down                              # up, down, top, bottom внутри дорожки
 devcast text set a1 --text Экспорт --font Montserrat --size 48 --radius 8
 devcast text set a1 --italic --underline --align left    # выключить — --italic false
+devcast annot anim a1 --enter slide_left --exit fade --exit-duration 0.5   # slide_left/right/top/bottom — с той стороны
+devcast annot anim a1 --enter typewriter --enter-duration 1  # pop, fade, none; typewriter — у текста, draw — у фигур и рисунков
 devcast ls annots
 devcast annot rm a2
 ```

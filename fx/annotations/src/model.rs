@@ -9,6 +9,8 @@ use serde::ser::Error as _;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::motion::Stage;
+
 /// Number of annotation tracks: `track` is `0..TRACKS`.
 pub const TRACKS: u32 = 32;
 /// Shortest annotation on the output video (docs/porting/annotations.md §10).
@@ -67,6 +69,18 @@ pub enum Kind {
     Blur,
 }
 
+impl Kind {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Shape => "shape",
+            Self::Image => "image",
+            Self::Drawing => "drawing",
+            Self::Blur => "blur",
+        }
+    }
+}
+
 /// An annotation on the track of one recording.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Annotation {
@@ -85,6 +99,12 @@ pub struct Annotation {
     pub rect: Rect,
     /// Degrees clockwise around the box centre, `-ROTATION_LIMIT..=ROTATION_LIMIT`.
     pub rotation: f64,
+    /// How it comes in: `none` by default.
+    #[serde(default, skip_serializing_if = "Stage::is_default")]
+    pub enter: Stage,
+    /// How it goes out, played backwards from the end: `none` by default.
+    #[serde(default, skip_serializing_if = "Stage::is_default")]
+    pub exit: Stage,
     /// Fields of the kind, described by the kind's commands (`devcast help`); a missing field
     /// takes the kind's default.
     #[serde(default, skip_serializing_if = "Map::is_empty")]

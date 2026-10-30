@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use dc_core::{Command, CursorTracks, KeyTracks, OutputTime, Project};
-use dc_fx_annotations::{AnnotAdd, Annotations};
+use dc_fx_annotations::{AnnotAdd, AnnotAnim, Annotations};
 use dc_fx_text::TextSet;
 use dc_render::{Band, Layer, PxRect, Scene, Text, TextMeasure};
 use serde_json::{Value, json};
@@ -106,4 +106,33 @@ fn a_missing_font_or_broken_fields_stop_before_any_frame() {
     p.set_state::<Annotations>(&state).unwrap();
     let error = scene(&p, 1.0).unwrap_err();
     assert!(error.to_string().contains("annot rm a2"), "{error}");
+}
+
+#[test]
+fn animations_change_the_text_layer_by_output_time() {
+    let mut p = layered();
+    run::<AnnotAnim>(
+        &mut p,
+        json!({"id": "a2", "enter": "pop", "enter_duration": 1.6}),
+    );
+    run::<AnnotAnim>(
+        &mut p,
+        json!({"id": "a1", "exit": "typewriter", "exit_duration": 1}),
+    );
+    // Output 1.0 s is right after the cut: 0.8 s into the pop of a2, all of a1 typed.
+    let frame = scene(&p, 1.0).unwrap();
+    let [low, high] = texts(&frame)[..] else {
+        panic!("two texts")
+    };
+    assert_eq!((low.opacity, low.font.size), (0.5, 64.0 * 0.93));
+    let centre = |t: &Text| [t.rect.x + t.rect.w / 2.0, t.rect.y + t.rect.h / 2.0];
+    assert_eq!(centre(low), [672.0, 351.0], "scaled around the box centre");
+    assert_eq!(high.runs.len(), 1);
+    let frame = scene(&p, 1.7).unwrap();
+    let typed: Vec<&str> = texts(&frame)[1]
+        .runs
+        .iter()
+        .map(|r| r.text.as_str())
+        .collect();
+    assert_eq!(typed, ["ве", "рх"], "0.5 s of the 1 s exit left");
 }

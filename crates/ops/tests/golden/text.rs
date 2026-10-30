@@ -12,7 +12,7 @@ use crate::common::{TestResult, clip, size};
 
 /// A 2 s 640×360 clip with a text annotation over 0.2–1.8 s placed by `place` and looking as
 /// `look` says.
-fn project(place: Value, look: Value) -> Result<Project, Box<dyn Error>> {
+pub(crate) fn project(place: Value, look: Value) -> Result<Project, Box<dyn Error>> {
     let mut project = Project::default();
     clip(&mut project, "media/a.mp4", size(640, 360), Rect::FULL)?;
     let length = TimeDelta::from_secs_f64(2.0);

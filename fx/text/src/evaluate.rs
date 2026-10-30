@@ -3,7 +3,8 @@
 //! the text; a plate behind each line; the whole turned with the box.
 
 use dc_fx_annotations::Placement;
-use dc_render::{Font, Paint, Plate, Text, TextRun};
+use dc_render::{Font, Paint, Plate, Rgba, Text, TextRun};
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::model::TextBody;
 
@@ -27,10 +28,7 @@ pub fn evaluate(body: &TextBody, placement: &Placement) -> Text {
     });
     Text {
         rect: placement.rect,
-        runs: vec![TextRun {
-            text: body.text.clone(),
-            color: body.color,
-        }],
+        runs: runs(body, placement.reveal),
         font: Font {
             family: body.font.clone(),
             size: size as f32,
@@ -42,9 +40,36 @@ pub fn evaluate(body: &TextBody, placement: &Placement) -> Text {
         line_height: LINE_HEIGHT,
         padding: (PADDING * k) as f32,
         plate,
-        opacity: 1.0,
+        opacity: placement.opacity,
         beside: None,
         shadow: None,
         rotation: placement.rotation,
     }
+}
+
+/// The letters a typewriter has shown (`reveal` 0..1 of the grapheme clusters, rounded up as
+/// v1) and the rest, laid out too but transparent: the whole text is wrapped once and words do
+/// not jump to the next line while they are typed. A transparent letter is not ink, so the
+/// plates grow with the typed part.
+fn runs(body: &TextBody, reveal: f64) -> Vec<TextRun> {
+    let count = body.text.graphemes(true).count();
+    let shown = (count as f64 * reveal.clamp(0.0, 1.0)).ceil() as usize;
+    let split = body
+        .text
+        .grapheme_indices(true)
+        .nth(shown)
+        .map_or(body.text.len(), |(at, _)| at);
+    let (head, tail) = body.text.split_at(split);
+    let hidden = Rgba([body.color.0[0], body.color.0[1], body.color.0[2], 0]);
+    let mut runs = vec![TextRun {
+        text: head.to_owned(),
+        color: body.color,
+    }];
+    if !tail.is_empty() {
+        runs.push(TextRun {
+            text: tail.to_owned(),
+            color: hidden,
+        });
+    }
+    runs
 }

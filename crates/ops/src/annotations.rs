@@ -43,10 +43,12 @@ impl Prepared {
         let Some(segment) = map.segment_at(t) else {
             return;
         };
-        let shown = self.state.shown_at(&segment.media, segment.source_at(t));
+        let now = segment.source_at(t);
+        let shown = self.state.shown_at(&segment.media, now);
         for annotation in shown {
             if let Some(Look::Text(body)) = self.looks.get(&annotation.id) {
-                let text = dc_fx_text::evaluate(body, &Placement::of(annotation, scene.size));
+                let placement = Placement::at(annotation, scene.size, map, now, t);
+                let text = dc_fx_text::evaluate(body, &placement);
                 scene.push(Band::Annotations, Layer::Text(text));
             }
         }

@@ -268,6 +268,7 @@ fn ops_follow_the_rules() {
         [
             "annot add",
             "annot set",
+            "annot anim",
             "annot move",
             "annot layer",
             "annot rm"
