@@ -85,6 +85,7 @@ pub fn evaluate(
             margin: (MARGIN * k) as f32,
         }),
         shadow: None,
+        rotation: 0.0,
     };
     scene.push(Band::Cursor, Layer::Text(layer));
 }

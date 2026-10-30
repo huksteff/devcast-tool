@@ -683,6 +683,7 @@ dependencies = [
  "dc-fx-cursor",
  "dc-fx-cut",
  "dc-fx-keys",
+ "dc-fx-text",
  "dc-fx-zoom",
  "dc-ipc",
  "dc-media",
@@ -731,6 +732,7 @@ name = "dc-fx-annotations"
 version = "0.1.0"
 dependencies = [
  "dc-core",
+ "dc-render",
  "schemars",
  "serde",
  "serde_json",
@@ -830,6 +832,14 @@ version = "0.1.0"
 [[package]]
 name = "dc-fx-text"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "dc-fx-annotations",
+ "dc-render",
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "dc-fx-zoom"
@@ -872,12 +882,14 @@ version = "0.1.0"
 dependencies = [
  "dc-capture",
  "dc-core",
+ "dc-fx-annotations",
  "dc-fx-callout",
  "dc-fx-captions",
  "dc-fx-crop",
  "dc-fx-cursor",
  "dc-fx-cut",
  "dc-fx-keys",
+ "dc-fx-text",
  "dc-fx-zoom",
  "dc-media",
  "dc-render",

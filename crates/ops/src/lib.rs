@@ -1,6 +1,7 @@
 //! Registry of all commands, batch apply, dry-run, one-line diff output, errors with hints; the
 //! project's `evaluate` over all effects.
 
+mod annotations;
 pub mod apply;
 pub mod argv;
 pub mod error;
@@ -15,6 +16,8 @@ pub use evaluate::{EvaluateError, Evaluator};
 pub use plan::{Step, parse_plan};
 pub use registry::{RESERVED_FIELDS, Registry};
 
+#[cfg(test)]
+mod annotations_tests;
 #[cfg(test)]
 mod evaluate_tests;
 #[cfg(test)]

@@ -26,6 +26,9 @@ pub struct Text {
     /// One line put next to a point instead of centred in `rect` (the cursor callout).
     pub beside: Option<Beside>,
     pub shadow: Option<Shadow>,
+    /// Degrees clockwise around the centre of `rect` (a text annotation): the box, its cut, the
+    /// plates and the shadow turn with the letters.
+    pub rotation: f32,
 }
 
 /// Soft shadow of the letters (captions): their shape in `color`, moved by `offset` and blurred

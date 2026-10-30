@@ -133,6 +133,10 @@ impl TextPass {
                 layout::beside_point(buffer, text, beside, point, rect, [k, self.scale])
             }
         };
+        // cosmic-text truncates the glyph row towards zero: above the top edge a text would land
+        // a row lower than the same text moved below it (turned text tiles, decision 017). A
+        // whole-pixel top there keeps every row the floor of its position.
+        let top = if top < 0.0 { top.floor() } else { top };
         let decor = layout::decor(buffer, text, [left, top], rect, k, self.scale);
         let area = TextArea {
             buffer,
@@ -273,6 +277,7 @@ mod tests {
             opacity: 1.0,
             beside: None,
             shadow: None,
+            rotation: 0.0,
         };
         let mut buffer = Buffer::new(fonts, Metrics::new(32.0, 44.0));
         buffer.set_text(line, &attrs(&text), Shaping::Advanced, None);

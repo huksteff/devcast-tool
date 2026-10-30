@@ -17,6 +17,7 @@ pub mod scene;
 mod shapes;
 mod sprites;
 mod text;
+mod turn;
 mod uniform;
 mod video;
 

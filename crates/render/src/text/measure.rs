@@ -34,6 +34,11 @@ impl TextMeasure {
         fonts::load(&mut self.fonts, &fonts::builtin_dir()?)
     }
 
+    /// Whether font `family` is loaded: [`RenderError::NoFont`] says what to do if not.
+    pub fn check(&self, family: &str) -> Result<(), RenderError> {
+        fonts::check_family(&self.fonts, family)
+    }
+
     /// Advance width of `text` set on one line in `font`, px; spaces at its ends count.
     pub fn width(&mut self, text: &str, font: &Font) -> Result<f32, RenderError> {
         fonts::check_family(&self.fonts, &font.family)?;

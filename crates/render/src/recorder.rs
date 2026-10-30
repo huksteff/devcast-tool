@@ -1,5 +1,5 @@
 //! Commands of one frame: the render pass into the target, left for the passes of a blur and
-//! resumed after them.
+//! resumed after them, or moved into the layer of a turned text and back.
 
 use crate::gpu::Gpu;
 
@@ -43,6 +43,16 @@ impl<'v> Recorder<'v> {
     pub(crate) fn encoder(&mut self) -> &mut wgpu::CommandEncoder {
         self.pass = None;
         &mut self.encoder
+    }
+
+    /// Makes `target` the texture [`Self::pass`] draws into; `clear` starts it transparent.
+    pub(crate) fn retarget(&mut self, target: &'v wgpu::TextureView, clear: bool) {
+        self.pass = None;
+        self.target = target;
+        if clear {
+            let load = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
+            self.pass = Some(begin(&mut self.encoder, target, load).forget_lifetime());
+        }
     }
 
     pub(crate) fn finish(mut self) -> wgpu::CommandBuffer {

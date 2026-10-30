@@ -54,6 +54,7 @@ fn render(shadow: Option<Shadow>, camera: Camera) -> Result<Image, Box<dyn Error
         opacity: 1.0,
         beside: None,
         shadow,
+        rotation: 0.0,
     };
     scene.push(Band::Annotations, Layer::Text(text));
     let target = gpu.target(scene.size);

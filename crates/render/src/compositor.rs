@@ -16,6 +16,7 @@ use crate::scene::{Blur, Camera, ImageKey, Layer, PxRect, Scene, Shape, Text, Vi
 use crate::shapes::{ShapesPass, glow_area};
 use crate::sprites::{Bitmap, SpritesPass};
 use crate::text::TextPass;
+use crate::turn::{self, TurnPass};
 use crate::video::{Nv12, VideoFrame, VideoPass};
 
 /// The renderer of preview, export and the CLI.
@@ -26,6 +27,7 @@ pub struct Compositor {
     text: TextPass,
     sprites: SpritesPass,
     brush: BrushPass,
+    turn: TurnPass,
     /// Decoded frames by `Media::path`; a frame the drawn scene does not show is dropped.
     frames: HashMap<String, VideoFrame>,
     /// What the frame being drawn records, in paint order.
@@ -47,6 +49,10 @@ enum Step {
     },
     /// Drawing `i` of the brush pass.
     Drawing(usize),
+    /// What follows, up to `Turned`, goes upright into the layer of the turn pass.
+    Turn,
+    /// The layer goes over the frame, turned as slot `i` of the turn pass says.
+    Turned(u32),
 }
 
 impl Compositor {
@@ -58,6 +64,7 @@ impl Compositor {
             text: TextPass::new(gpu),
             sprites: SpritesPass::new(gpu),
             brush: BrushPass::new(gpu),
+            turn: TurnPass::new(gpu),
             frames: HashMap::new(),
             steps: Vec::new(),
             ops: Vec::new(),
@@ -130,6 +137,8 @@ impl Compositor {
                     self.sprites.record(recorder.pass(), image, *slot);
                 }
                 Step::Drawing(i) => self.brush.record(&mut recorder, *i),
+                Step::Turn => self.turn.begin(&mut recorder),
+                Step::Turned(slot) => self.turn.end(&mut recorder, &view, *slot),
             }
         }
         gpu.queue.submit([recorder.finish()]);
@@ -158,6 +167,7 @@ impl Compositor {
         self.text.clear(gpu, scene.size, target);
         self.sprites.clear();
         self.brush.clear();
+        self.turn.clear();
         self.steps.clear();
         self.ops.clear();
         for (band, layer) in scene.painted() {
@@ -180,6 +190,9 @@ impl Compositor {
                         self.push_op(op);
                     }
                 }
+                Layer::Text(text) if turn::turned(text) => {
+                    self.push_turned(gpu, text, camera, [scene.size, target])?;
+                }
                 Layer::Text(text) => self.push_text(gpu, text, camera)?,
                 Layer::Sprite(sprite) => {
                     let slot = self.sprites.push(sprite, camera, scene.size, target)?;
@@ -196,6 +209,7 @@ impl Compositor {
         self.shapes.upload(gpu);
         self.sprites.upload_slots(gpu);
         self.brush.upload(gpu, target);
+        self.turn.upload(gpu, target);
         self.blur.upload(gpu, !self.ops.is_empty());
         Ok(())
     }
@@ -236,6 +250,31 @@ impl Compositor {
         self.steps.push(Step::Text(renderer));
         let underlines = self.shapes.push(&decor.underlines, Camera::IDENTITY);
         self.steps.push(Step::Shapes(underlines));
+        Ok(())
+    }
+
+    /// `text` with a rotation: drawn upright into the turn layer tile by tile, each tile moved
+    /// there by shifting the camera by the tile's origin, and laid over the frame turned.
+    fn push_turned(
+        &mut self,
+        gpu: &Gpu,
+        text: &Text,
+        camera: Camera,
+        [frame, target]: [PixelSize; 2],
+    ) -> Result<(), RenderError> {
+        let scale = target.width as f32 / frame.width as f32;
+        let (area, centre) = turn::bounds(text, camera, scale);
+        for tile in turn::tiles(area, centre, text.rotation, target) {
+            self.steps.push(Step::Turn);
+            let shifted = Camera {
+                scale: camera.scale,
+                x: camera.x - tile.origin[0] / scale,
+                y: camera.y - tile.origin[1] / scale,
+            };
+            self.push_text(gpu, text, shifted)?;
+            let slot = self.turn.push(centre, text.rotation, tile);
+            self.steps.push(Step::Turned(slot));
+        }
         Ok(())
     }
 

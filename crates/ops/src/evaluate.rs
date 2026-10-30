@@ -21,6 +21,11 @@ pub enum EvaluateError {
     #[error(transparent)]
     Text(#[from] RenderError),
 
+    #[error(
+        "аннотация {id}: поля вида не читаются ({error}). Удали её (devcast annot rm {id}) и создай заново"
+    )]
+    Annotation { id: String, error: String },
+
     #[error("в проекте нет клипов: добавь видео (devcast clip add <видео>) и попробуй снова")]
     Empty,
 }
@@ -37,6 +42,7 @@ pub struct Evaluator<'p> {
     keys: dc_fx_keys::Prepared,
     callout: CalloutState,
     captions: dc_fx_captions::Prepared,
+    annotations: crate::annotations::Prepared,
 }
 
 impl<'p> Evaluator<'p> {
@@ -74,6 +80,10 @@ impl<'p> Evaluator<'p> {
                 canvas,
                 measure,
             )?,
+            annotations: crate::annotations::Prepared::new(
+                project.state::<dc_fx_annotations::Annotations>()?,
+                measure,
+            )?,
         })
     }
 
@@ -95,6 +105,7 @@ impl<'p> Evaluator<'p> {
         let mut scene = Scene::new(self.canvas);
         dc_fx_cut::evaluate(self.project, &self.map, t, &mut scene);
         self.camera.evaluate(t, &mut scene);
+        self.annotations.evaluate(&self.map, t, &mut scene);
         dc_fx_cursor::evaluate(&self.cursor, self.project, &self.map, t, &mut scene);
         let anchor = dc_fx_cursor::pointer(&self.cursor, self.project, &self.map, t, scene.size)
             .map(|p| Anchor {

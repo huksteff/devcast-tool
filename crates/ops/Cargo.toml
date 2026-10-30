@@ -9,12 +9,14 @@ publish.workspace = true
 
 [dependencies]
 dc-core = { path = "../core" }
+dc-fx-annotations = { path = "../../fx/annotations" }
 dc-fx-callout = { path = "../../fx/callout" }
 dc-fx-captions = { path = "../../fx/captions" }
 dc-fx-crop = { path = "../../fx/crop" }
 dc-fx-cursor = { path = "../../fx/cursor" }
 dc-fx-cut = { path = "../../fx/cut" }
 dc-fx-keys = { path = "../../fx/keys" }
+dc-fx-text = { path = "../../fx/text" }
 dc-fx-zoom = { path = "../../fx/zoom" }
 dc-render = { path = "../render" }
 schemars.workspace = true

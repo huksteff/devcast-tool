@@ -8,7 +8,7 @@ use serde_json::json;
 
 use crate::{EvaluateError, Evaluator};
 
-fn clip(project: &mut Project, path: &str, secs: f64, width: u32, height: u32) {
+pub(crate) fn clip(project: &mut Project, path: &str, secs: f64, width: u32, height: u32) {
     let id = project.clip_ids.allocate();
     let duration = TimeDelta::from_secs_f64(secs);
     project.clips.push(Clip {
@@ -27,7 +27,7 @@ fn clip(project: &mut Project, path: &str, secs: f64, width: u32, height: u32) {
 }
 
 /// A 1080p recording with a cut at 1–2 s, then a 4:3 one.
-fn two_clips() -> Project {
+pub(crate) fn two_clips() -> Project {
     let mut p = Project::default();
     clip(&mut p, "media/recording-1/video.mp4", 4.0, 1920, 1080);
     clip(&mut p, "media/импорт 1.mp4", 2.0, 1440, 1080);

@@ -194,6 +194,7 @@ fn push(
             opacity: look.opacity as f32,
             beside: None,
             shadow: settings.shadow.then(|| shadow(size * s)),
+            rotation: 0.0,
         }),
     );
 }

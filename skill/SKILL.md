@@ -88,16 +88,19 @@ devcast callout rm co3
 ```
 Текст с пробелами — в кавычках: `--text "Жми сюда"`, одна строка до 80 символов. Цвета — `#rrggbbaa` в кавычках (`--background "#14b8c4ff"`, `--colors "#14b8c4ff,#a855f7ff"` — 2–4 цвета градиента), размер `--size` 0.5–2, свечение `--glow` 0–40.
 
-Аннотации (id `a1`, `a2`; виды text, shape, image, drawing, blur; время — по готовому видео, не короче 0,1 с; бокс `--rect x,y,w,h` — доли кадра до зума, по умолчанию 0.3×0.2 в центре; поворот в градусах по часовой). Пока они только хранятся в проекте: в кадре появятся вместе с отрисовкой видов.
+Аннотации (id `a1`, `a2`; виды text, shape, image, drawing, blur; время — по готовому видео, не короче 0,1 с; бокс `--rect x,y,w,h` — доли кадра до зума, по умолчанию 0.3×0.2 в центре; поворот в градусах по часовой). В кадре рисуется пока только текст; остальные виды появятся следующими задачами.
 ```
 devcast annot add text --at 2 --duration 3 --rect 0.1,0.1,0.4,0.1
 devcast annot add shape --at 3 --track 1 --rotation -15   # дорожка выше — слой выше
 devcast annot set a1 --x 0.2 --to 6 --rotation 5
 devcast annot move a1 --at 4 --track 1                   # длина сохраняется, на новой дорожке — сверху
 devcast annot layer a1 down                              # up, down, top, bottom внутри дорожки
+devcast text set a1 --text Экспорт --font Montserrat --size 48 --radius 8
+devcast text set a1 --italic --underline --align left    # выключить — --italic false
 devcast ls annots
 devcast annot rm a2
 ```
+Текст: `--text` (перевод строки — новая строка), `--font` Inter (по умолчанию), Montserrat, Roboto, PT Serif, JetBrains Mono; `--size` 12–128 (px при 1080p); `--bold`, `--italic`, `--underline`; `--align` left, center, right; `--color "#fde047ff"` — цвет букв, `--background "#000000b0"` — плашка (альфа 00 — без плашки), `--radius` 0–64 — её углы. Текст с пробелами — в кавычках: `--text "Нажми сюда"`.
 
 Показ нажатых клавиш (по умолчанию выключен; места top_left, top, top_right, bottom_left, bottom, bottom_right):
 ```

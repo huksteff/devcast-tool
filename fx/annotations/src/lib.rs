@@ -4,6 +4,7 @@
 mod arrange;
 mod commands;
 mod model;
+mod place;
 mod span;
 
 pub use arrange::{AnnotLayer, AnnotMove, Step};
@@ -12,6 +13,7 @@ pub use model::{
     AnnotId, AnnotKind, Annotation, Annotations, AnnotationsState, Kind, MIN_DURATION,
     POSITION_LIMIT, ROTATION_LIMIT, SIZE_MAX, SIZE_MIN, TRACKS,
 };
+pub use place::{Placement, REFERENCE};
 
 use dc_core::{EffectInfo, IdKind, OpInfo};
 

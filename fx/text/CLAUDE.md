@@ -1,9 +1,24 @@
 # dc-fx-text (`fx/text`)
 
-Аннотация: текст.
-
-Пока пустой. Наполняется в задачах 5.32 (см. docs/ROADMAP.md). Когда появится код, перепиши этот файл по шаблону `docs/templates/crate-CLAUDE.md`.
+Вид аннотации «текст»: поля текста, команда `text set` и текстовый слой сцены (5.32).
 
 ## Инварианты
 
-- Зависит от dc-core, dc-render, dc-ui-kit и dc-fx-annotations
+- Зависит от dc-core, dc-render и dc-fx-annotations (позже dc-ui-kit). Общая часть аннотации (время, дорожка, бокс, поворот) — в `dc-fx-annotations`, здесь только поля вида.
+- Поля — `TextBody` в `Annotation::body` (`#[serde(default)]`, недостающее — по умолчанию): `text` (перевод строки — новая строка, до 2000 символов, без управляющих), `font` (семейство: встроенное Inter по умолчанию или шрифт из `assets/`; есть ли он, проверяет `Evaluator::new` до первого кадра), `size` 12–128, `bold` (по умолчанию да, как v1), `italic`, `underline`, `align` (left/center/right, по умолчанию center), `color`, `background` (альфа 00 — без плашки, по умолчанию), `radius` 0–64 (по умолчанию 4, как v1).
+- Длины (`size`, `radius`, отступ 8) — px при короткой стороне кадра 1080 (`REFERENCE` в annotations, как субтитры и клавиши); камера масштабирует их вместе с боксом.
+- `text set` меняет только текстовую аннотацию; без изменений — пустой `Diff`, ошибка проект не меняет.
+- `evaluate(body, placement)` — чистая функция, раскладка экспорта v1 (выжимка §5): перенос по ширине бокса минус отступы, блок по центру по вертикали, бокс режет текст, межстрочный 1,4, плашка вокруг чернил строки (+0,2 fs по бокам, +0,1 fs сверху и снизу), поворот бокса — `Text::rotation` (решение 017). Кто когда показан и в каком порядке — `dc_ops` (`annotations.rs`).
+
+## Как тестировать
+
+- `cargo nextest run -p dc-fx-text`: `tests.rs` (значения по умолчанию, `text set`, ошибки и чужой вид, undo/redo, файл проекта), `evaluate_tests.rs` (бокс в px холста, размеры от короткой стороны, плашка).
+- Сцена проекта — `crates/ops/src/annotations_tests.rs`; эталоны `crates/ops/tests/golden/text.rs` (`text/plain`, `turned`, `styled`, `zoom`).
+
+## Куда не лезть
+
+- Общая модель и `annot add|set|move|layer|rm` — `fx/annotations`. Поворот текста, плашки, перенос — `dc-render`. Анимации (5.30) и ключи (5.31) меняют `Placement`, не этот крейт.
+
+## Ссылки
+
+- docs/porting/annotations.md §5, §2.4; docs/decisions/000-porting-questions.md («Аннотации»), 017-turned-text.md; задача 5.32.
