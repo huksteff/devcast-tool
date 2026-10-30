@@ -122,27 +122,41 @@ fn slider_with_field() {
     harness.snapshot("slider");
 }
 
+const MICS: [(usize, &str); 3] = [
+    (0, "Без микрофона"),
+    (1, "Микрофон (Rode NT-USB)"),
+    (2, "Гарнитура (HyperX Cloud II)"),
+];
+
 #[test]
 fn dropdown_list() {
     let mut harness = harness(1, |ui, mic: &mut usize| {
-        dropdown(
-            ui,
-            "Микрофон",
-            mic,
-            &[
-                (0, "Без микрофона"),
-                (1, "Микрофон (Rode NT-USB)"),
-                (2, "Гарнитура (HyperX Cloud II)"),
-            ],
-            240.0,
-        );
+        dropdown(ui, "Микрофон", mic, &MICS, 240.0);
     });
     harness.snapshot("dropdown");
+}
+
+#[test]
+fn dropdown_open_shows_every_item() {
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(egui::vec2(300.0, 200.0))
+        .build_ui_state(
+            |ui, mic: &mut usize| {
+                egui::Frame::new()
+                    .fill(SURFACE)
+                    .inner_margin(S3)
+                    .show(ui, |ui| {
+                        ui.set_min_size(ui.available_size());
+                        dropdown(ui, "Микрофон", mic, &MICS, 240.0);
+                    });
+            },
+            1,
+        );
     harness.get_by_label("Микрофон").click();
     harness.run();
-    harness.get_by_label("Гарнитура (HyperX Cloud II)");
-    harness.set_size(egui::vec2(300.0, 220.0));
-    harness.run();
+    for (_, text) in MICS {
+        harness.get_by_label(text);
+    }
     harness.snapshot("dropdown_open");
 }
 

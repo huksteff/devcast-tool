@@ -60,7 +60,7 @@ fn visuals() -> Visuals {
         widgets: widgets(),
         selection: Selection {
             bg_fill: ACCENT_SOFT,
-            stroke: Stroke::new(1.0, ACCENT_HI),
+            stroke: Stroke::new(1.0, TEXT),
         },
         hyperlink_color: ACCENT_HI,
         faint_bg_color: SURFACE_2,

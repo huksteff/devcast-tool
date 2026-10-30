@@ -4,6 +4,7 @@
 mod error;
 pub mod fonts;
 pub mod icons;
+pub mod strings;
 #[cfg(feature = "kittest")]
 pub mod testing;
 pub mod theme;

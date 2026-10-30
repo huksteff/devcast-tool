@@ -34,10 +34,13 @@ pub enum Icon {
     Quit,
     Search,
     Grip,
+    Plus,
+    Minus,
+    Right,
 }
 
 impl Icon {
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 26] = [
         Self::Monitor,
         Self::Window,
         Self::Area,
@@ -61,6 +64,9 @@ impl Icon {
         Self::Quit,
         Self::Search,
         Self::Grip,
+        Self::Plus,
+        Self::Minus,
+        Self::Right,
     ];
 
     /// Draws the icon into `rect` (usually 16 × 16) in `color`.
@@ -178,6 +184,12 @@ impl Pen<'_> {
                 self.line(&[(20.0, 20.0), (15.5, 15.5)]);
             }
             Icon::Grip => self.grip(),
+            Icon::Plus => {
+                self.line(&[(12.0, 5.0), (12.0, 19.0)]);
+                self.line(&[(5.0, 12.0), (19.0, 12.0)]);
+            }
+            Icon::Minus => self.line(&[(5.0, 12.0), (19.0, 12.0)]),
+            Icon::Right => self.line(&[(9.0, 6.0), (15.0, 12.0), (9.0, 18.0)]),
         }
     }
 

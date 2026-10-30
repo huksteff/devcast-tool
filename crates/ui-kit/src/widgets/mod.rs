@@ -2,17 +2,25 @@
 //! kittest and egui-mcp find it by its caption.
 
 mod button;
+mod color;
+mod dialog;
 mod dropdown;
 mod icon_button;
+mod section;
 mod segmented;
 mod slider;
 mod text_field;
+mod toast;
 mod toggle;
 
 pub use button::{Button, Kind};
+pub use color::{GRADIENT_COLORS, color_button, gradient_editor};
+pub use dialog::{Answer, Confirm, ErrorAction, ErrorPanel, panel_frame};
 pub use dropdown::dropdown;
 pub use icon_button::IconButton;
+pub use section::Section;
 pub use segmented::segmented;
 pub use slider::Slider;
 pub use text_field::text_field;
+pub use toast::{ToastKind, Toasts};
 pub use toggle::Toggle;
