@@ -34,5 +34,5 @@ pub use scene::{
     Video, VideoSource,
 };
 pub use sprites::{Bitmap, IMAGE_BUDGET};
-pub use text::{BUILTIN_FONTS, TextMeasure};
+pub use text::{BUILTIN_FONTS, TextMeasure, builtin_dir as builtin_fonts_dir};
 pub use video::Nv12;

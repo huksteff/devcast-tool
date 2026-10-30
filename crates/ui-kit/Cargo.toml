@@ -9,3 +9,19 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+dc-render = { path = "../render" }
+egui = "0.37"
+egui-wgpu = { version = "0.37", optional = true }
+egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"], optional = true }
+thiserror.workspace = true
+wgpu = { workspace = true, optional = true }
+
+[features]
+# Test harness with our fonts and theme (`testing`): the tests of ui-kit and app turn it on.
+kittest = ["dep:egui_kittest", "dep:egui-wgpu", "dep:wgpu"]
+
+[dev-dependencies]
+dc-ui-kit = { path = ".", features = ["kittest"] }
+egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }

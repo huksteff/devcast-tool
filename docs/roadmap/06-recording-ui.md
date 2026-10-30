@@ -13,7 +13,8 @@
   - CPU в простое около 0%;
   - dev-сборка с фичами eframe `inspection` + `accesskit`, `.mcp.json` проекта подключает `egui-mcp` для живой проверки агентом (решение 012).
   Сделано: один экземпляр через канал dc-ipc `devcast-app-<пользователь>`, журнал с ротацией и паника в журнал, перерисовка только по событию, eframe с `inspection` + `accesskit`, `.mcp.json` с egui-mcp. Minidump не сделан: crash-handler требует `unsafe` (вопрос в QUESTIONS.md). CPU в простое — в ночной живой проверке.
-- [ ] **6.2** `ui-kit`: тёмная тема, шрифты из `assets/fonts` (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono, Noto Color Emoji, OFL + лицензии; `FontSystem` без системных шрифтов — решение 005), отступы, цвета, иконки.
+- [x] **6.2** `ui-kit`: тёмная тема, шрифты из `assets/fonts` (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono, Noto Color Emoji, OFL + лицензии; `FontSystem` без системных шрифтов — решение 005), отступы, цвета, иконки.
+  Сделано: токены макета (`tokens.rs`), тёмная тема egui, шрифты Inter 400/500/600/700 (ось `wght` одной гарнитуры), JetBrains Mono, запасной Noto Color Emoji из папки `fonts` программы (`cargo xtask deps`; системных и встроенных egui нет), 23 линейные иконки фигурами; тестовый `testing::harness()` (FXC для WARP). Снимки `theme`, `icons_scale`. Файлы шрифтов в git не кладутся: их скачивает и копирует к программе `xtask deps`.
 - [ ] **6.3** `ui-kit`, виджеты ввода: кнопка, иконка-кнопка, переключатель, слайдер с полем числа, выпадающий список, поле ввода.
 - [ ] **6.4** `ui-kit`, остальные виджеты:
   - выбор цвета и редактор градиента (2–4 цвета);

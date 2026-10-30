@@ -40,7 +40,7 @@ pub(crate) fn load(fonts: &mut FontSystem, dir: &Path) -> Result<(), RenderError
 
 /// The `fonts` folder next to the running program (`cargo xtask deps` puts the built-in fonts
 /// next to the built programs and tests).
-pub(crate) fn builtin_dir() -> Result<PathBuf, RenderError> {
+pub fn builtin_dir() -> Result<PathBuf, RenderError> {
     let exe = std::env::current_exe().map_err(RenderError::NoBuiltinFonts)?;
     Ok(exe.parent().unwrap_or(&exe).join(BUILTIN_FONTS))
 }

@@ -9,8 +9,7 @@ mod shadow;
 
 pub(crate) use shadow::ShadowArea;
 
-pub use fonts::BUILTIN_FONTS;
-pub(crate) use fonts::builtin_dir;
+pub use fonts::{BUILTIN_FONTS, builtin_dir};
 pub use measure::TextMeasure;
 
 use std::path::Path;
