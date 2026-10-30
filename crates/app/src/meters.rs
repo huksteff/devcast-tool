@@ -1,6 +1,7 @@
 //! Live sound levels of the indicators (owner's decision): the selected microphone while
 //! something shows it, every microphone and the system sound while the sound popover is open.
-//! Each level wakes the windows that may show it; nothing is measured while nothing is shown.
+//! Each level wakes the main window, which passes the repaint on to the windows it shows
+//! (`app::show_windows`); nothing is measured while nothing is shown.
 
 use std::collections::HashMap;
 use std::sync::mpsc;
@@ -43,12 +44,7 @@ fn key(source: &AudioSource) -> String {
 
 impl Meters {
     /// Keeps exactly `wanted` open; returns the errors of sources that would not open.
-    pub fn sync(
-        &mut self,
-        ctx: &egui::Context,
-        wake: &[egui::ViewportId],
-        wanted: &[AudioSource],
-    ) -> Vec<AppError> {
+    pub fn sync(&mut self, ctx: &egui::Context, wanted: &[AudioSource]) -> Vec<AppError> {
         let keys: Vec<String> = wanted.iter().map(key).collect();
         self.open.retain(|k, _| keys.contains(k));
         self.failed.retain(|k| keys.contains(k));
@@ -57,7 +53,7 @@ impl Meters {
             if self.open.contains_key(&key) || self.failed.contains(&key) {
                 continue;
             }
-            match open(ctx, wake, source) {
+            match open(ctx, source) {
                 Ok(meter) => {
                     self.open.insert(key, meter);
                 }
@@ -91,15 +87,11 @@ pub fn share(db: f32) -> f32 {
     ((db + RANGE_DB) / RANGE_DB).clamp(0.0, 1.0)
 }
 
-fn open(
-    ctx: &egui::Context,
-    wake: &[egui::ViewportId],
-    source: &AudioSource,
-) -> Result<Meter, AppError> {
+fn open(ctx: &egui::Context, source: &AudioSource) -> Result<Meter, AppError> {
     let (sender, levels) = mpsc::channel();
     let meter = LevelMeter::start(source, sender)?;
     let last: Last = Arc::default();
-    let (ctx, wake, shared) = (ctx.clone(), wake.to_vec(), Arc::clone(&last));
+    let (ctx, shared) = (ctx.clone(), Arc::clone(&last));
     std::thread::Builder::new()
         .name("devcast-level".to_owned())
         .spawn(move || {
@@ -109,9 +101,7 @@ fn open(
                     Ok(level) => {
                         *shared.lock().unwrap_or_else(PoisonError::into_inner) =
                             Some((level, Instant::now()));
-                        for id in &wake {
-                            ctx.request_repaint_of(*id);
-                        }
+                        ctx.request_repaint_of(egui::ViewportId::ROOT);
                     }
                     Err(error) => tracing::warn!("индикатор уровня остановился: {error}"),
                 }

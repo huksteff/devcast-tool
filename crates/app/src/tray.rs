@@ -75,7 +75,7 @@ impl Tray {
             if let Some((_, action)) = ids.iter().find(|(id, _)| *id == event.id) {
                 // The receiver goes only with the app.
                 let _ = menu_sender.send(*action);
-                menu_ctx.request_repaint();
+                menu_ctx.request_repaint_of(egui::ViewportId::ROOT);
             }
         }));
         let click_ctx = ctx.clone();
@@ -87,7 +87,7 @@ impl Tray {
             } = event
             {
                 let _ = sender.send(TrayAction::ShowHud);
-                click_ctx.request_repaint();
+                click_ctx.request_repaint_of(egui::ViewportId::ROOT);
             }
         }));
         let icon = TrayIconBuilder::new()

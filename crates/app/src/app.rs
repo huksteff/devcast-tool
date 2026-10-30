@@ -122,12 +122,7 @@ impl Shared {
         {
             wanted.push(AudioSource::Microphone(mic.clone()));
         }
-        let wake = [
-            egui::ViewportId::ROOT,
-            egui::ViewportId::from_hash_of(popover::ID),
-            egui::ViewportId::from_hash_of(SETTINGS_ID),
-        ];
-        for error in self.meters.sync(&self.ctx, &wake, &wanted) {
+        for error in self.meters.sync(&self.ctx, &wanted) {
             self.report(Err(error));
         }
     }
@@ -243,21 +238,38 @@ impl eframe::App for App {
         shared.sync_meters();
         self.hud.ui(ui, &mut shared);
         shared.toasts.show(ui.ctx());
-        let open = shared.popover;
-        let area = shared.area.is_some();
         drop(shared);
-        if area {
-            crate::area::show(ui.ctx(), &self.shared);
-        }
-        crate::countdown::show(ui.ctx(), &self.shared);
-        crate::editor::show(ui.ctx(), &self.shared);
         let bar = ui.input(|i| i.viewport().outer_rect);
-        if let (Some(open), Some(bar)) = (open, bar) {
-            popover::show(ui.ctx(), &self.shared, open, bar);
-        }
-        if lock(&self.shared).settings.is_some() {
-            show_settings(ui.ctx(), Arc::clone(&self.shared));
-        }
+        show_windows(ui.ctx(), &self.shared, bar);
+    }
+}
+
+/// The windows besides the HUD, from the main window's pass; `bar` is the HUD's outer
+/// rectangle. Threads (levels, previews) wake only the main window: a repaint asked of a
+/// viewport that is not shown makes egui open an empty default window («egui window»), which
+/// on Vulkan also crashed when it was destroyed. The main window passes the repaint on to the
+/// popover and the settings, which exist for sure while it shows them.
+pub fn show_windows(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, bar: Option<egui::Rect>) {
+    let (open, area, settings) = {
+        let shared = lock(shared);
+        (
+            shared.popover,
+            shared.area.is_some(),
+            shared.settings.is_some(),
+        )
+    };
+    if area {
+        crate::area::show(ctx, shared);
+    }
+    crate::countdown::show(ctx, shared);
+    crate::editor::show(ctx, shared);
+    if let (Some(open), Some(bar)) = (open, bar) {
+        popover::show(ctx, shared, open, bar);
+        ctx.request_repaint_of(egui::ViewportId::from_hash_of(popover::ID));
+    }
+    if settings {
+        show_settings(ctx, Arc::clone(shared));
+        ctx.request_repaint_of(egui::ViewportId::from_hash_of(SETTINGS_ID));
     }
 }
 
@@ -299,14 +311,5 @@ fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
 }
 
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn clear_color_is_the_surface_token_as_bytes() {
-        let bytes = super::clear_color().map(|c| (c * 255.0).round() as u8);
-        assert_eq!(
-            bytes,
-            [0x18, 0x1a, 0x1f, 0xff],
-            "the HUD background is surface #181a1f"
-        );
-    }
-}
+#[path = "app_tests.rs"]
+mod tests;

@@ -105,7 +105,7 @@ impl GlobalKeys {
             if let Some((_, command)) = ids.iter().find(|(id, _)| *id == event.id()) {
                 // The receiver goes only with the app.
                 let _ = sender.send(*command);
-                ctx.request_repaint();
+                ctx.request_repaint_of(egui::ViewportId::ROOT);
             }
         }));
         Ok(Self {

@@ -66,7 +66,7 @@ impl Recorder {
                 let send = |event| {
                     // The UI is gone only when the app quits; then nobody needs the event.
                     let _ = sender.send(event);
-                    ctx.request_repaint();
+                    ctx.request_repaint_of(egui::ViewportId::ROOT);
                 };
                 run(&config, &root, defaults, &received, send);
             })

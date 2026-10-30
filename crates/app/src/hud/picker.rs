@@ -86,9 +86,8 @@ impl Previews {
                         if sender.send((source, preview)).is_err() {
                             return;
                         }
-                        // The cards are in the popover's window: waking only the HUD left
-                        // them empty until the mouse moved over them.
-                        ctx.request_repaint_of(egui::ViewportId::from_hash_of(super::popover::ID));
+                        // The main window passes the repaint on to the popover with the cards.
+                        ctx.request_repaint_of(egui::ViewportId::ROOT);
                     }
                     Err(error) => tracing::info!("нет превью {source}: {error}"),
                 }

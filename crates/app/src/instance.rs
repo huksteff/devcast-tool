@@ -50,7 +50,7 @@ pub fn serve(listener: Listener, ctx: egui::Context) -> Receiver<()> {
                 connection.send(&())
             });
             match answered {
-                Ok(()) if shown.send(()).is_ok() => ctx.request_repaint(),
+                Ok(()) if shown.send(()).is_ok() => ctx.request_repaint_of(egui::ViewportId::ROOT),
                 Ok(()) => return,
                 Err(error) => tracing::warn!("второй запуск DevCast не обработан: {error}"),
             }
