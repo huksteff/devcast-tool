@@ -70,6 +70,7 @@ impl Op for CalloutStyle {
         "Вид облачка у курсора: текст для on, цвета, размер, градиент 2–4 цвета, свечение";
     const EXAMPLE: &'static str =
         "callout style --gradient --colors \"#14b8c4ff,#a855f7ff\" --glow 14";
+    const SETTINGS: Option<&'static str> = Some("callout");
 }
 
 fn within(name: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {

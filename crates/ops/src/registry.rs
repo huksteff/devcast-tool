@@ -21,10 +21,14 @@ impl Registry {
     pub fn new(ops: Vec<OpInfo>, effects: Vec<EffectInfo>) -> Result<Self, String> {
         let effects = EffectRegistry::new(effects)?;
         let mut names = BTreeSet::new();
+        let mut keys = BTreeSet::new();
         let mut problems = Vec::new();
         for op in &ops {
             if !names.insert(op.name) {
                 problems.push(format!("команда «{}» зарегистрирована дважды", op.name));
+            }
+            if let Some(key) = op.settings.filter(|key| !keys.insert(*key)) {
+                problems.push(format!("{}: ключ настроек «{key}» уже занят", op.name));
             }
             problems.extend(check(op).into_iter().map(|p| format!("{}: {p}", op.name)));
         }
@@ -42,6 +46,25 @@ impl Registry {
 
     pub fn effects(&self) -> &EffectRegistry {
         &self.effects
+    }
+
+    /// Keys of `devcast set <key>.<arg>=<value>` in registration order ([`dc_core::Op::SETTINGS`]).
+    pub fn settings_keys(&self) -> impl Iterator<Item = &'static str> + '_ {
+        self.ops.iter().filter_map(|op| op.settings)
+    }
+
+    /// The op that changes the settings named `key` in `devcast set`.
+    pub fn settings_op(&self, key: &str) -> Result<&OpInfo, OpsError> {
+        self.ops
+            .iter()
+            .find(|op| op.settings == Some(key))
+            .ok_or_else(|| {
+                let keys: Vec<&str> = self.settings_keys().collect();
+                OpsError::Usage(format!(
+                    "нет настроек «{key}»: есть {}; чьи это команды и аргументы — devcast help set",
+                    keys.join(", ")
+                ))
+            })
     }
 
     pub fn find(&self, name: &str) -> Result<&OpInfo, OpsError> {
@@ -107,6 +130,12 @@ fn check(op: &OpInfo) -> Vec<String> {
         .any(|w| w.is_empty() || !w.chars().all(|c| c.is_ascii_lowercase() || c == '-'))
     {
         problems.push("имя — слова из строчных латинских букв через пробел".to_owned());
+    }
+    if op
+        .settings
+        .is_some_and(|key| key.is_empty() || !key.chars().all(|c| c.is_ascii_lowercase()))
+    {
+        problems.push("ключ настроек — одно слово из строчных латинских букв".to_owned());
     }
     if op.about.is_empty() || op.about.contains('\n') {
         problems.push("описание — одна непустая строка".to_owned());

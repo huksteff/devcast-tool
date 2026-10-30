@@ -64,6 +64,7 @@ impl Op for ZoomMotion {
     const ABOUT: &'static str =
         "Движение камеры всех зумов: пресет focused/smooth, плавность, вход и выход, blur, склейка";
     const EXAMPLE: &'static str = "zoom motion --preset smooth --smoothness 0.7";
+    const SETTINGS: Option<&'static str> = Some("zoom");
 }
 
 fn transition(what: &str, secs: f64) -> Result<TimeDelta, CommandError> {

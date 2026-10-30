@@ -70,4 +70,5 @@ impl Op for SetAspect {
     const ABOUT: &'static str = "Формат выхода: free, source, 16:9, 16:10 или 4:3";
     const EXAMPLE: &'static str = "aspect 16:9";
     const POSITIONAL: &'static [&'static str] = &["aspect"];
+    const SETTINGS: Option<&'static str> = Some("crop");
 }

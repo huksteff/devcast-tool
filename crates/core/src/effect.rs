@@ -93,6 +93,9 @@ pub struct EffectInfo {
     pub lists: &'static [&'static str],
     /// Objects of its track in `project`, see [`Effect::items`].
     pub items: fn(&Project) -> Result<Vec<Item>, StateError>,
+    /// The [`SETTINGS_FIELD`] of its state in `project` with every default filled in (a missing
+    /// state is `Default`); `None` when the state has no settings.
+    pub settings: fn(&Project) -> Result<Option<serde_json::Value>, StateError>,
 }
 
 impl fmt::Debug for EffectInfo {
@@ -118,6 +121,14 @@ impl EffectInfo {
                     effect: E::ID,
                     message: e.to_string(),
                 })
+            },
+            settings: |project| {
+                let state = project.state::<E>()?;
+                let value = serde_json::to_value(&state).map_err(|e| StateError {
+                    effect: E::ID,
+                    message: e.to_string(),
+                })?;
+                Ok(value.get(SETTINGS_FIELD).cloned())
             },
         }
     }
@@ -219,5 +230,40 @@ mod tests {
         let info = EffectInfo::of::<Test>(vec![]);
         let json = serde_json::to_string(&(info.schema)()).unwrap();
         assert!(json.contains("items"), "{json}");
+    }
+
+    #[derive(Debug, Clone, PartialEq, Serialize, serde::Deserialize, JsonSchema)]
+    #[serde(default)]
+    struct Styled {
+        items: Vec<u32>,
+        settings: u32,
+    }
+
+    impl Default for Styled {
+        fn default() -> Self {
+            Self {
+                items: Vec::new(),
+                settings: 7,
+            }
+        }
+    }
+
+    struct WithSettings;
+    impl Effect for WithSettings {
+        const ID: &'static str = "styled";
+        const TITLE: &'static str = "Со стилем";
+        type State = Styled;
+    }
+
+    #[test]
+    fn settings_are_read_with_defaults_filled_in() {
+        let info = EffectInfo::of::<WithSettings>(vec![]);
+        let mut p = Project::default();
+        assert_eq!((info.settings)(&p).unwrap(), Some(serde_json::json!(7)));
+        p.effects
+            .insert("styled".to_owned(), serde_json::json!({"settings": 3}));
+        assert_eq!((info.settings)(&p).unwrap(), Some(serde_json::json!(3)));
+        let plain = EffectInfo::of::<Test>(vec![]);
+        assert_eq!((plain.settings)(&p).unwrap(), None);
     }
 }

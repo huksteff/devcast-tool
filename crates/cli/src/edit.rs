@@ -1,7 +1,7 @@
 //! Commands that change the project (an op, a plan, undo, redo, save) and `history`. Each opens the
 //! project, changes it in memory and writes it back, except under `--dry-run`.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use dc_core::{Change, Command, History, Project, TimeMap};
 use dc_ops::{Applied, Registry, Step, duration_change};
@@ -20,12 +20,21 @@ pub(crate) struct Ctx<'a> {
     pub globals: &'a Globals,
     pub cwd: &'a Path,
     pub registry: &'a Registry,
+    /// The app defaults file; `None` — the real one in the settings folder (tests give their own).
+    pub defaults: Option<&'a Path>,
 }
 
 impl Ctx<'_> {
     pub(crate) fn open(&self, write: bool) -> Result<Workspace, CliError> {
         let dir = find_project(self.globals.project.as_deref(), self.cwd)?;
         Workspace::open(dir, write && !self.globals.dry_run, self.globals.dry_run)
+    }
+
+    pub(crate) fn defaults_file(&self) -> Result<PathBuf, CliError> {
+        match self.defaults {
+            Some(path) => Ok(path.to_path_buf()),
+            None => Ok(dc_project::settings::defaults_file()?),
+        }
     }
 
     pub(crate) fn prefix(&self) -> &'static str {
@@ -38,6 +47,7 @@ pub(crate) fn answer(workspace: &mut Workspace, text: String, json: Value) -> An
         text,
         json,
         warnings: std::mem::take(&mut workspace.warnings),
+        code: 0,
     }
 }
 

@@ -69,6 +69,11 @@ pub trait Op: Command + DeserializeOwned + JsonSchema + 'static {
     const EXAMPLE: &'static str;
     /// Arguments given without `--name`, in order.
     const POSITIONAL: &'static [&'static str] = &[];
+    /// Key of `devcast set <key>.<arg>=<value>` (and `defaults set`) when the op changes only the
+    /// settings of its effect (the `settings` field of the state, no content), e.g. `"zoom"` for
+    /// `zoom motion`; `None` for every other op. `set` builds this op from the arguments, so the
+    /// op's own checks guard the values.
+    const SETTINGS: Option<&'static str> = None;
 }
 
 /// Everything about an [`Op`] that the ops registry needs, without its type.
@@ -78,6 +83,8 @@ pub struct OpInfo {
     pub about: &'static str,
     pub example: &'static str,
     pub positional: &'static [&'static str],
+    /// See [`Op::SETTINGS`].
+    pub settings: Option<&'static str>,
     pub schema: fn() -> schemars::Schema,
     pub parse: fn(serde_json::Value) -> Result<Box<dyn Command>, String>,
 }
@@ -89,6 +96,7 @@ impl OpInfo {
             about: T::ABOUT,
             example: T::EXAMPLE,
             positional: T::POSITIONAL,
+            settings: T::SETTINGS,
             schema: || schemars::schema_for!(T),
             parse: |args| {
                 serde_json::from_value::<T>(args)

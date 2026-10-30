@@ -60,6 +60,7 @@ impl Op for KeysSet {
     const ABOUT: &'static str =
         "Показ нажатых клавиш записей: включить, позиция, размер, цвета, время показа";
     const EXAMPLE: &'static str = "keys --show --position bottom_right --size 1.5";
+    const SETTINGS: Option<&'static str> = Some("keys");
 }
 
 fn within(what: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {

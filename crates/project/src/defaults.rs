@@ -74,6 +74,27 @@ impl Defaults {
         }
     }
 
+    /// Makes these the settings of `project` («копировать стиль»): an effect without settings here
+    /// goes back to its factory settings, content stays. A state left empty is removed, as a
+    /// state equal to `Default` is.
+    pub fn restyle(&self, project: &mut Project) {
+        project.effects.retain(|id, state| {
+            if !self.settings.contains_key(id)
+                && let Some(object) = state.as_object_mut()
+            {
+                object.remove(SETTINGS_FIELD);
+                return !object.is_empty();
+            }
+            true
+        });
+        self.apply(project);
+    }
+
+    /// Effect id → its `settings` value, as stored.
+    pub fn all(&self) -> &BTreeMap<String, Value> {
+        &self.settings
+    }
+
     /// Default settings of one effect, for the «Сбросить» button of its settings group;
     /// `None` means the effect's factory settings.
     pub fn settings(&self, effect: &str) -> Option<&Value> {
@@ -119,6 +140,26 @@ mod tests {
         assert_eq!(
             recording,
             project_with(json!({"zoom": {"regions": [1, 2], "settings": 1}}))
+        );
+    }
+
+    #[test]
+    fn restyle_replaces_settings_and_keeps_content() {
+        let style = Defaults::from_project(&project_with(json!({
+            "zoom": {"settings": {"smoothness": 0.7}},
+        })));
+        let mut target = project_with(json!({
+            "zoom": {"settings": {"smoothness": 0.1}, "zooms": [1]},
+            "cursor": {"settings": {"size": 3}},
+            "captions": {"settings": {"size": 40}, "cues": [2]},
+        }));
+        style.restyle(&mut target);
+        assert_eq!(
+            target,
+            project_with(json!({
+                "zoom": {"settings": {"smoothness": 0.7}, "zooms": [1]},
+                "captions": {"cues": [2]},
+            }))
         );
     }
 

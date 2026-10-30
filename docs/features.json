@@ -101,7 +101,7 @@
     { "id": "ai.frames", "area": "Для нейронки", "title": "Кадры для проверки", "acceptance": "devcast frame (с сеткой) и devcast sheet дают те же кадры, что экспорт.", "verify": ["test", "golden"], "tasks": ["5.10"], "status": "todo" },
     { "id": "ai.skill", "area": "Для нейронки", "title": "Skill для Claude Code", "acceptance": "devcast skill install ставит SKILL.md; по нему нейронка выполняет сценарий из SCOPE без чтения кода.", "verify": ["cli"], "tasks": ["2.23"], "status": "todo" },
     { "id": "ai.live", "area": "Для нейронки", "title": "Живые правки", "acceptance": "Команда CLI при открытом редакторе применяется вживую быстрее 100 мс и попадает в общий undo.", "verify": ["test", "ui"], "tasks": ["7.32"], "status": "todo" },
-    { "id": "ai.batch", "area": "Для нейронки", "title": "Пакетная обработка", "acceptance": "devcast batch и style copy применяют команды и стиль ко многим проектам.", "verify": ["test", "cli"], "tasks": ["5.38"], "status": "todo" },
+    { "id": "ai.batch", "area": "Для нейронки", "title": "Пакетная обработка", "acceptance": "devcast batch и style copy применяют команды и стиль ко многим проектам.", "verify": ["test", "cli"], "tasks": ["5.38"], "status": "pass" },
 
     { "id": "platform.macos", "area": "Платформы", "title": "macOS", "acceptance": "Все фичи выше проходят на macOS 14+.", "verify": ["manual"], "tasks": ["9.9"], "status": "todo" },
     { "id": "platform.linux", "area": "Платформы", "title": "Linux", "acceptance": "Все фичи выше проходят на Linux (X11 и Wayland, с оговорками по кликам).", "verify": ["manual"], "tasks": ["10.7"], "status": "todo" }

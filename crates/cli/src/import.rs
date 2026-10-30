@@ -9,7 +9,7 @@ use dc_core::{Command, History, Project};
 use dc_fx_cut::ClipAdd;
 use dc_ops::Applied;
 use dc_project::dir::MEDIA_DIR;
-use dc_project::{Defaults, ProjectDir, ProjectLock, settings};
+use dc_project::{Defaults, ProjectDir, ProjectLock};
 
 use crate::edit::{self, Ctx, applied_json};
 use crate::error::CliError;
@@ -35,7 +35,7 @@ pub(crate) fn new(ctx: &Ctx<'_>, videos: &[PathBuf], out: &Path) -> Result<Answe
     let root = new_folder(ctx.cwd, out)?;
     let sources = sources(ctx.cwd, videos);
     let mut project = Project::default();
-    Defaults::load(&settings::defaults_file()?)?.apply(&mut project);
+    Defaults::load(&ctx.defaults_file()?)?.apply(&mut project);
     if ctx.globals.dry_run {
         let media = dc_media::import_dry_run(&root.join(MEDIA_DIR), &sources).map_err(failed)?;
         let applied = add_clips(&mut project, media)?;

@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use dc_capture::VIDEO_TRACK;
 use dc_capture::win::{ProjectRecording, RecordedProject, on_console_stop};
 use dc_core::SourceTime;
-use dc_project::{Defaults, settings};
+use dc_project::Defaults;
 use serde_json::json;
 
 use crate::autozoom;
@@ -76,7 +76,7 @@ fn start(ctx: &Ctx<'_>, args: &RecordArgs) -> Result<Answer, CliError> {
         let json = json!({"dry_run": true, "config": config, "project": root});
         return Ok(Answer::new(text, json));
     }
-    let defaults = Defaults::load(&settings::defaults_file()?)?;
+    let defaults = Defaults::load(&ctx.defaults_file()?)?;
     let server = Server::start(&record_control::channel()?)?;
     if let Err(e) = on_console_stop(server.stopper()) {
         server.close()?;

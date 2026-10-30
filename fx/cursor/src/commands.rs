@@ -75,6 +75,7 @@ impl Op for CursorSet {
     const ABOUT: &'static str =
         "Курсор всех записей: показ, размер, сглаживание, blur, отскок, покачивание, loop";
     const EXAMPLE: &'static str = "cursor --size 3 --smoothing exact --sway 0";
+    const SETTINGS: Option<&'static str> = Some("cursor");
 }
 
 fn within(what: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {

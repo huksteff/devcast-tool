@@ -30,6 +30,7 @@ fn call(
         globals: &globals,
         cwd,
         registry,
+        defaults: None,
     };
     export::export(&ctx, action, id, args, channel)
 }

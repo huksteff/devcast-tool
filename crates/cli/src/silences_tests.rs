@@ -18,7 +18,7 @@ impl Speech {
         let root = tmp.path().join("Речь с паузами.dcproj");
         let fixture =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.dcproj");
-        copy(&fixture, &root);
+        crate::test_util::copy_dir(&fixture, &root);
         Self { _tmp: tmp, root }
     }
 
@@ -30,19 +30,6 @@ impl Speech {
         let out = self.run(line);
         assert_eq!(out.code, 0, "{line}: {}", out.stderr);
         out.stdout.trim_end().to_owned()
-    }
-}
-
-fn copy(from: &Path, to: &Path) {
-    std::fs::create_dir_all(to).unwrap();
-    for entry in std::fs::read_dir(from).unwrap() {
-        let path = entry.unwrap().path();
-        let name = path.file_name().unwrap();
-        if path.is_dir() {
-            copy(&path, &to.join(name));
-        } else if name != "lock" && name != "lock-owner.json" {
-            std::fs::copy(&path, to.join(name)).unwrap();
-        }
     }
 }
 

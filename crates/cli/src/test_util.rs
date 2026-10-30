@@ -14,7 +14,7 @@ use dc_project::ProjectDir;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::{Outcome, registry::registry, run};
+use crate::{Outcome, registry::registry, run, run_with};
 
 /// A clip of the whole recording `path`, `secs` long.
 fn recording(id: ClipId, path: String, secs: f64) -> Clip {
@@ -41,6 +41,22 @@ fn recording(id: ClipId, path: String, secs: f64) -> Clip {
 pub(crate) fn run_line(line: &str, cwd: &Path, registry: &Registry) -> Outcome {
     let args = line.split(' ').map(str::to_owned).collect();
     run(args, cwd, registry)
+}
+
+/// [`run_line`] with the app defaults file `defaults` (a test never touches the real one).
+pub(crate) fn run_line_with(
+    line: &str,
+    cwd: &Path,
+    registry: &Registry,
+    defaults: &Path,
+) -> Outcome {
+    let args = line.split(' ').map(str::to_owned).collect();
+    run_with(args, cwd, registry, Some(defaults))
+}
+
+/// Where the tests keep the app defaults: next to the project, never in `%APPDATA%`.
+pub(crate) fn defaults_file(tmp: &Path) -> PathBuf {
+    tmp.join("Настройки DevCast").join("defaults.json")
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -120,11 +136,16 @@ impl Fixture {
     }
 
     pub(crate) fn run(&self, line: &str) -> Outcome {
-        run_line(line, &self.cwd, &self.registry)
+        run_line_with(
+            line,
+            &self.cwd,
+            &self.registry,
+            &defaults_file(self._tmp.path()),
+        )
     }
 
     pub(crate) fn run_in(&self, line: &str, cwd: &Path) -> Outcome {
-        run_line(line, cwd, &self.registry)
+        run_line_with(line, cwd, &self.registry, &defaults_file(self._tmp.path()))
     }
 
     pub(crate) fn clips(&self) -> usize {
@@ -197,7 +218,8 @@ impl Recordings {
     }
 
     pub(crate) fn run(&self, line: &str) -> Outcome {
-        run_line(line, self.dir.root(), &registry().unwrap())
+        let defaults = defaults_file(self._tmp.path());
+        run_line_with(line, self.dir.root(), &registry().unwrap(), &defaults)
     }
 
     pub(crate) fn ok(&self, line: &str) -> String {
@@ -257,4 +279,26 @@ pub(crate) fn test_video(path: &Path, secs: f64) {
         ]
         .concat(),
     );
+}
+
+/// Copies a project folder (a fixture) without its lock files.
+pub(crate) fn copy_dir(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for entry in std::fs::read_dir(from).unwrap() {
+        let path = entry.unwrap().path();
+        let name = path.file_name().unwrap();
+        if path.is_dir() {
+            copy_dir(&path, &to.join(name));
+        } else if name != "lock" && name != "lock-owner.json" {
+            std::fs::copy(&path, to.join(name)).unwrap();
+        }
+    }
+}
+
+/// A fixture recording `fixtures/recordings/<name>` copied to `to`.
+pub(crate) fn fixture_copy(name: &str, to: &Path) {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/recordings")
+        .join(name);
+    copy_dir(&fixture, to);
 }

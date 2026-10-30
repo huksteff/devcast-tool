@@ -1,10 +1,15 @@
 //! Built-in commands of `devcast` as clap subcommands: `about` is the line in `devcast help`,
-//! `after_help` the example. Everything else is an op of the registry (`Builtin::Op`).
+//! `after_help` the example. Everything else is an op of the registry (`Builtin::Op`); groups
+//! like `clip add` are in `builtin_groups.rs`.
 
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
+use crate::builtin_groups::{
+    AudioCommand, CaptionsCommand, ClipCommand, DefaultsCommand, ImageCommand, StyleCommand,
+    ZoomCommand,
+};
 use crate::edit::{self, Ctx, Way};
 use crate::error::CliError;
 use crate::export::{self, Action};
@@ -15,9 +20,8 @@ use crate::record;
 use crate::record_args::RecordArgs;
 use crate::record_control::Control;
 use crate::run::Answer;
-use crate::{
-    audio, autozoom, captions, events, image, import, silences, skill, sources, transcript,
-};
+use crate::still::{FrameArgs, SheetArgs};
+use crate::{batch, events, silences, skill, sources, still, style, transcript};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -161,6 +165,44 @@ enum Builtin {
         command: ImageCommand,
     },
     #[command(
+        about = "Стиль проекта: настройки эффектов настройка.параметр=значение, все — одна запись истории",
+        after_help = "set zoom.preset=smooth captions.size=36 cursor.size=3"
+    )]
+    Set {
+        #[arg(
+            required = true,
+            help = "настройка.параметр=значение; параметр — аргумент команды этих настроек"
+        )]
+        assignments: Vec<String>,
+    },
+    /// `defaults show|set|from-project|reset`: settings of new projects.
+    #[command(disable_help_subcommand = true)]
+    Defaults {
+        #[command(subcommand)]
+        command: DefaultsCommand,
+    },
+    /// `style copy`: the look of one project in others.
+    #[command(disable_help_subcommand = true)]
+    Style {
+        #[command(subcommand)]
+        command: StyleCommand,
+    },
+    #[command(
+        about = "Одна команда в нескольких проектах: у каждого своя запись истории; ошибка в одном не останавливает другие",
+        after_help = "batch *.dcproj -- set captions.size=36"
+    )]
+    Batch(batch::Args),
+    #[command(
+        about = "Кадр готового видео в PNG; --grid — сетка долей кадра для --rect и фокуса",
+        after_help = "frame --at 12.5 --grid -o кадр.png"
+    )]
+    Frame(FrameArgs),
+    #[command(
+        about = "Раскадровка: n кадров отрезка готового видео в одном PNG, время кадров — в ответе",
+        after_help = "sheet --from 10 --to 20 -n 6 -o раскадровка.png"
+    )]
+    Sheet(SheetArgs),
+    #[command(
         about = "Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
         after_help = "record --source screen:1 --duration 10 -o урок.dcproj"
     )]
@@ -199,85 +241,6 @@ enum Builtin {
     Op(Vec<String>),
 }
 
-#[derive(Debug, Subcommand)]
-enum ClipCommand {
-    #[command(
-        about = "Добавить видео mp4/mov/mkv/webm клипами в конец главной дорожки (копия в media/)",
-        after_help = "clip add демо.mp4"
-    )]
-    Add {
-        #[arg(
-            required = true,
-            help = "Видео mp4, mov, mkv или webm; клипы идут в этом порядке"
-        )]
-        videos: Vec<PathBuf>,
-    },
-    /// `clip move`, `clip split` … from the registry.
-    #[command(external_subcommand)]
-    Op(Vec<String>),
-}
-
-#[derive(Debug, Subcommand)]
-enum ZoomCommand {
-    #[command(
-        about = "Предложить автозумы по группам кликов, ничего не меняя; добавить их — zoom add --at clicks",
-        after_help = "zoom suggest"
-    )]
-    Suggest,
-    /// `zoom add`, `zoom set` … from the registry.
-    #[command(external_subcommand)]
-    Op(Vec<String>),
-}
-
-#[derive(Debug, Subcommand)]
-enum CaptionsCommand {
-    #[command(
-        about = "Субтитры из речи записей: заменяет все реплики; первый раз распознаёт речь, как transcript",
-        after_help = "captions gen --tracks mic,system --language ru"
-    )]
-    Gen(captions::GenArgs),
-    #[command(
-        about = "Текст всех реплик в файл для перевода: строка «s3 текст» на реплику, по порядку видео",
-        after_help = "captions export -o субтитры.txt"
-    )]
-    Export {
-        #[arg(short = 'o', long, help = "Текстовый файл, куда писать")]
-        out: PathBuf,
-    },
-    #[command(
-        about = "Новый текст реплик из файла captions export; время реплик не меняется",
-        after_help = "captions import субтитры.txt"
-    )]
-    Import {
-        #[arg(help = "Файл со строками «s3 текст»; реплики, которых в нём нет, не меняются")]
-        file: PathBuf,
-    },
-    /// `captions set`, `captions split` … from the registry.
-    #[command(external_subcommand)]
-    Op(Vec<String>),
-}
-
-#[derive(Debug, Subcommand)]
-enum ImageCommand {
-    #[command(
-        about = "Картинка аннотации image: файл копируется в assets/images/, вписывается в бокс с сохранением пропорций (с --at — в ключе)",
-        after_help = "image set a3 --file логотип.png --at 4.5"
-    )]
-    Set(image::SetArgs),
-}
-
-#[derive(Debug, Subcommand)]
-enum AudioCommand {
-    #[command(
-        about = "Добавить звук mp3/wav/aac/m4a/flac/ogg по времени готового видео (копия в assets/audio/)",
-        after_help = "audio add музыка.mp3 --at 5 --duration 30"
-    )]
-    Add(audio::AddArgs),
-    /// `audio channel`, `audio set` … from the registry.
-    #[command(external_subcommand)]
-    Op(Vec<String>),
-}
-
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum SkillAction {
     Install,
@@ -305,33 +268,6 @@ impl Cli {
                     "у ls sources нет --from, --to и --fields: devcast ls sources".to_owned(),
                 )),
             },
-            Builtin::Transcript(args) => transcript::transcript(ctx, &args),
-            Builtin::Silences(args) => silences::silences(ctx, &args),
-            Builtin::Events { kind, from, to } => {
-                events::events(ctx, kind, from.as_ref(), to.as_ref())
-            }
-            Builtin::New { videos, out } => import::new(ctx, &videos, &out),
-            Builtin::Clip {
-                command: ClipCommand::Add { videos },
-            } => import::clip_add(ctx, &videos),
-            Builtin::Clip {
-                command: ClipCommand::Op(words),
-            } => edit::op(ctx, &[vec!["clip".to_owned()], words].concat()),
-            Builtin::Zoom {
-                command: ZoomCommand::Suggest,
-            } => autozoom::suggest(ctx),
-            Builtin::Zoom {
-                command: ZoomCommand::Op(words),
-            } => autozoom::op(ctx, &[vec!["zoom".to_owned()], words].concat()),
-            Builtin::Captions { command } => command.execute(ctx),
-            Builtin::Audio { command } => command.execute(ctx),
-            Builtin::Image {
-                command: ImageCommand::Set(args),
-            } => image::set(ctx, &args),
-            Builtin::Record { control, args } => record::record(ctx, control, &args),
-            Builtin::Export { action, id, args } => {
-                export::export(ctx, action, id.as_deref(), &args, &export::channel()?)
-            }
             Builtin::Ls {
                 list,
                 from,
@@ -350,30 +286,75 @@ impl Cli {
                     offset,
                 },
             ),
+            Builtin::Transcript(args) => transcript::transcript(ctx, &args),
+            Builtin::Silences(args) => silences::silences(ctx, &args),
+            Builtin::Events { kind, from, to } => {
+                events::events(ctx, kind, from.as_ref(), to.as_ref())
+            }
+            Builtin::New { videos, out } => crate::import::new(ctx, &videos, &out),
+            Builtin::Clip { command } => command.execute(ctx),
+            Builtin::Zoom { command } => command.execute(ctx),
+            Builtin::Captions { command } => command.execute(ctx),
+            Builtin::Audio { command } => command.execute(ctx),
+            Builtin::Image { command } => command.execute(ctx),
+            Builtin::Set { assignments } => style::set(ctx, &assignments),
+            Builtin::Defaults { command } => command.execute(ctx),
+            Builtin::Style { command } => command.execute(ctx),
+            Builtin::Batch(args) => batch::batch(ctx, &args),
+            Builtin::Frame(args) => still::frame(ctx, &args),
+            Builtin::Sheet(args) => still::sheet(ctx, &args),
+            Builtin::Record { control, args } => record::record(ctx, control, &args),
+            Builtin::Export { action, id, args } => {
+                export::export(ctx, action, id.as_deref(), &args, &export::channel()?)
+            }
             Builtin::Skill {
                 action: SkillAction::Install,
             } => skill::install(&skill::target()?, ctx.globals.dry_run),
             Builtin::Op(words) => edit::op(ctx, &words),
         }
     }
-}
 
-impl CaptionsCommand {
-    fn execute(self, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
-        match self {
-            Self::Gen(args) => captions::generate(ctx, &args),
-            Self::Export { out } => captions::export(ctx, &out),
-            Self::Import { file } => captions::import(ctx, &file),
-            Self::Op(words) => edit::op(ctx, &[vec!["captions".to_owned()], words].concat()),
+    /// Why this command cannot run inside `batch` (it works on one project there): `None` when
+    /// it can.
+    pub(crate) fn not_for_batch(&self) -> Option<&'static str> {
+        match &self.command {
+            Builtin::Help { .. } | Builtin::Skill { .. } | Builtin::Defaults { .. } => {
+                Some("не работает с проектом")
+            }
+            Builtin::Ls { list, .. } if list == sources::SOURCES => Some("не работает с проектом"),
+            Builtin::New { .. } | Builtin::Record { .. } => Some("создаёт новый проект"),
+            Builtin::Batch(_) | Builtin::Style { .. } => Some("сама перечисляет проекты"),
+            Builtin::Export { .. } | Builtin::Frame(_) | Builtin::Sheet(_) => Some(
+                "пишет один файл -o на все проекты; запусти её для каждого проекта с --project",
+            ),
+            Builtin::Captions {
+                command: CaptionsCommand::Export { .. },
+            } => Some(
+                "пишет один файл -o на все проекты; запусти её для каждого проекта с --project",
+            ),
+            _ => None,
         }
     }
-}
 
-impl AudioCommand {
-    fn execute(self, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
-        match self {
-            Self::Add(args) => audio::add(ctx, &args),
-            Self::Op(words) => edit::op(ctx, &[vec!["audio".to_owned()], words].concat()),
-        }
+    /// The words of the registry op this command line names (`clip move c2 --to 1`), so `batch`
+    /// can check the name and the arguments once before the projects.
+    pub(crate) fn op_words(&self) -> Option<Vec<String>> {
+        let (group, words) = match &self.command {
+            Builtin::Op(words) => return Some(words.clone()),
+            Builtin::Clip {
+                command: ClipCommand::Op(words),
+            } => ("clip", words),
+            Builtin::Zoom {
+                command: ZoomCommand::Op(words),
+            } => ("zoom", words),
+            Builtin::Captions {
+                command: CaptionsCommand::Op(words),
+            } => ("captions", words),
+            Builtin::Audio {
+                command: AudioCommand::Op(words),
+            } => ("audio", words),
+            _ => return None,
+        };
+        Some([vec![group.to_owned()], words.clone()].concat())
     }
 }

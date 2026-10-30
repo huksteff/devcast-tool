@@ -12,12 +12,17 @@ use crate::error::CliError;
 use crate::help_args::{Arg, clap_args, op_args};
 use crate::run::Answer;
 
+/// Built-in commands that take `<key>.<arg>=<value>` of the settings ops.
+const SETTINGS_ENTRIES: [&str; 2] = ["set", "defaults set"];
+
 struct Entry<'a> {
     name: String,
     about: String,
     example: String,
     args: Vec<Arg>,
     op: Option<&'a OpInfo>,
+    /// `set` and `defaults set`: settings key → the op whose arguments it takes.
+    settings: Vec<(&'static str, &'static str)>,
 }
 
 pub(crate) fn help(topic: &[String], registry: &Registry) -> Result<Answer, CliError> {
@@ -42,6 +47,11 @@ pub(crate) fn help(topic: &[String], registry: &Registry) -> Result<Answer, CliE
 
 fn entries(registry: &Registry) -> Vec<Entry<'_>> {
     let cli = Cli::command();
+    let settings: Vec<(&'static str, &'static str)> = registry
+        .ops()
+        .iter()
+        .filter_map(|op| Some((op.settings?, op.name)))
+        .collect();
     let builtins = cli.get_subcommands().flat_map(|command| {
         let children: Vec<Entry<'_>> = command
             .get_subcommands()
@@ -63,8 +73,15 @@ fn entries(registry: &Registry) -> Vec<Entry<'_>> {
         example: op.example.to_owned(),
         args: op_args(op),
         op: Some(op),
+        settings: Vec::new(),
     });
-    builtins.chain(ops).collect()
+    let mut entries: Vec<Entry<'_>> = builtins.chain(ops).collect();
+    for entry in &mut entries {
+        if SETTINGS_ENTRIES.contains(&entry.name.as_str()) {
+            entry.settings.clone_from(&settings);
+        }
+    }
+    entries
 }
 
 /// A built-in command; a group like `clip` is listed by its subcommands (`clip add`).
@@ -81,6 +98,7 @@ fn builtin(name: String, command: &clap::Command) -> Entry<'static> {
             .unwrap_or_default(),
         args: clap_args(command),
         op: None,
+        settings: Vec::new(),
     }
 }
 
@@ -103,6 +121,17 @@ fn entry_text(entry: &Entry<'_>) -> String {
         format!("{} — {}", entry.name, entry.about),
         format!("пример: devcast {}", entry.example),
     ];
+    if !entry.settings.is_empty() {
+        let pairs: Vec<String> = entry
+            .settings
+            .iter()
+            .map(|(key, op)| format!("{key} — {op}"))
+            .collect();
+        lines.push(format!(
+            "  настройки и команды, чьи аргументы они принимают: {}",
+            pairs.join(", ")
+        ));
+    }
     for arg in &entry.args {
         let mut line = format!("  {}: {}", arg.name, arg.kind);
         if arg.required {
@@ -126,6 +155,14 @@ fn entry_json(entry: &Entry<'_>) -> Value {
         "example": format!("devcast {}", entry.example),
         "args": entry.args,
     });
+    if !entry.settings.is_empty() {
+        let map: serde_json::Map<String, Value> = entry
+            .settings
+            .iter()
+            .map(|(k, op)| ((*k).to_owned(), json!(op)))
+            .collect();
+        value["settings"] = Value::Object(map);
+    }
     if let Some(op) = entry.op {
         value["schema"] = (op.schema)().to_value();
     }

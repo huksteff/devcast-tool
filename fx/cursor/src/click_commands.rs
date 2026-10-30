@@ -117,6 +117,7 @@ impl Op for ClicksSet {
     const NAME: &'static str = "clicks";
     const ABOUT: &'static str = "Эффект всех кликов: стиль off/ripple/spotlight/echo/flash, цвет, размер, прозрачность, длительность";
     const EXAMPLE: &'static str = "clicks --style ripple --color #ef4444ff --duration 0.8";
+    const SETTINGS: Option<&'static str> = Some("clicks");
 }
 
 /// The press nearest to output moment `at`: its recording and moment there.

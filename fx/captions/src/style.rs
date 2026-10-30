@@ -185,6 +185,7 @@ impl Op for CaptionsStyle {
     const ABOUT: &'static str =
         "Вид субтитров: показ, шрифт, размер, цвета слов, тень, строки, место, плашка, анимация";
     const EXAMPLE: &'static str = "captions style --size 36 --rows 2 --animation pop";
+    const SETTINGS: Option<&'static str> = Some("captions");
 }
 
 fn family(font: &str) -> Result<String, CommandError> {

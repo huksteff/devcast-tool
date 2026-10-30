@@ -201,7 +201,7 @@ pub(crate) fn settings(args: &ExportArgs, cwd: &Path) -> Result<(PathBuf, Settin
 }
 
 /// `path` without `.` and `..`: it is printed back to the user.
-fn resolved(path: &Path) -> PathBuf {
+pub(crate) fn resolved(path: &Path) -> PathBuf {
     let mut clean = PathBuf::new();
     for part in path.components() {
         match part {

@@ -10,9 +10,8 @@ use dc_core::Project;
 use dc_encode::export::{Exported, ProgressFn, Timeline, export_gif, export_mp4};
 use dc_encode::{AudioSettings, EncodeError, Sources};
 use dc_media::cached_probe;
-use dc_ops::Evaluator;
 use dc_project::ProjectDir;
-use dc_render::{Compositor, Gpu, TextMeasure};
+use dc_render::Gpu;
 use serde::{Deserialize, Serialize};
 
 use crate::export_args::{Format, Settings};
@@ -42,12 +41,8 @@ pub(crate) fn run(
 ) -> Result<Exported, EncodeError> {
     let dir = ProjectDir::open(&spec.root)?;
     let project = &spec.project;
-    let (cursors, keys) = crate::telemetry::tracks(&spec.root, project)
-        .map_err(|e| EncodeError::Scene(Box::new(e)))?;
-    let mut measure = TextMeasure::new();
-    measure.load_builtin_fonts()?;
-    let evaluator = Evaluator::new(project, cursors, keys, &mut measure)
-        .map_err(|e| EncodeError::Scene(Box::new(e)))?;
+    let scene_error = |e: crate::error::CliError| EncodeError::Scene(Box::new(e));
+    let evaluator = crate::scene::evaluator(&spec.root, project).map_err(scene_error)?;
     let mut source_fps = 0.0_f64;
     for clip in &project.clips {
         source_fps = source_fps.max(cached_probe(&dir, &clip.media.path)?.fps);
@@ -74,8 +69,7 @@ pub(crate) fn run(
         },
         sound: &mut sound,
     };
-    let mut compositor = Compositor::new(gpu);
-    compositor.load_builtin_fonts()?;
+    let mut compositor = crate::scene::compositor(gpu).map_err(scene_error)?;
     let mut sources = Sources::new(&dir);
     let settings = &spec.settings;
     match settings.format {

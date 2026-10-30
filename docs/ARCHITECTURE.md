@@ -164,14 +164,14 @@ devcast captions gen [--model fast|accurate] [--tracks mic] | export -o t.txt | 
 devcast audio channel mic [--clip c2] --volume 80 --gain 2 --mute --normalize --denoise | audio mute c2 [--off] | audio reset c2 [--channel mic]
 devcast audio add music.mp3 --at 5 [--track 1] [--duration 30] | audio set au1 --at --duration --offset --volume --normalize | audio rm au1
 devcast crop c1 x,y,w,h | aspect <free|source|16:9|16:10|4:3>
-devcast set <эффект>.<параметр>=<значение> ...   # стиль проекта: cursor.size=1.5 clicks.style=ripple
-devcast defaults show | defaults set ... | defaults from-project
-devcast style copy --from a.dcproj --to "*.dcproj"
+devcast set <настройка>.<аргумент>=<значение> ... # стиль проекта: cursor.size=1.5 clicks.style=ripple (через команду настроек эффекта)
+devcast defaults show | defaults set zoom.preset=smooth | defaults from-project | defaults reset
+devcast style copy --from a.dcproj --to *.dcproj       # настройки эффектов, без содержимого
 devcast frame --at 12.5 [--grid] -o f.png        # кадр с сеткой координат для проверки
-devcast sheet --from 10 --to 20 -n 6 -o s.png    # раскадровка
+devcast sheet --from 10 --to 20 -n 6 -o s.png    # раскадровка: начала n равных частей
 devcast apply plan.json [--dry-run]              # пачка команд = один шаг undo
 devcast undo [n] | redo | history
 devcast export [--format mp4|gif] [--res 1080p] [--fps 60] [--quality high] -o out.mp4 | export status
-devcast batch "<glob>.dcproj" -- <команда...>
+devcast batch <проекты|*.dcproj...> -- <команда...>   # своя запись истории в каждом проекте
 devcast skill install
 ```

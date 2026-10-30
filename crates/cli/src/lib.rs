@@ -2,8 +2,11 @@
 
 mod audio;
 mod autozoom;
+mod batch;
 mod builtin;
+mod builtin_groups;
 mod captions;
+mod defaults;
 mod edit;
 pub mod error;
 mod events;
@@ -13,6 +16,7 @@ mod export_job;
 mod export_queue;
 pub mod find;
 pub mod globals;
+mod grid;
 mod help;
 mod help_args;
 mod image;
@@ -23,10 +27,13 @@ mod record_args;
 mod record_control;
 pub mod registry;
 pub mod run;
+mod scene;
 mod silences;
 mod skill;
 mod sound;
 mod sources;
+mod still;
+mod style;
 mod telemetry;
 mod transcript;
 pub mod workspace;
@@ -64,6 +71,10 @@ mod silences_tests;
 #[cfg(test)]
 mod skill_tests;
 #[cfg(test)]
+mod still_tests;
+#[cfg(test)]
+mod style_tests;
+#[cfg(test)]
 mod test_util;
 #[cfg(test)]
 mod tests;
@@ -73,7 +84,7 @@ mod transcript_tests;
 use std::ffi::OsString;
 
 pub use error::CliError;
-pub use run::{Outcome, run};
+pub use run::{Outcome, run, run_with};
 
 /// `devcast` as the binary runs it: arguments from the OS, the current folder, all ops.
 pub fn main_outcome(args: Vec<OsString>) -> Outcome {
