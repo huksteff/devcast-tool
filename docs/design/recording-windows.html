@@ -316,8 +316,8 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
         <h4>Микрофон</h4>
         <div class="item"><svg class="ico" style="color:var(--text-3)"><use href="#i-micoff"/></svg><span class="grow" style="color:var(--text-2)">Без микрофона</span></div>
         <div class="item sel"><svg class="check ico"><use href="#i-check"/></svg><span class="grow">Микрофон (Rode NT-USB)</span><span class="meter" style="width:64px"><i class="y" style="width:78%"></i></span></div>
-        <div class="item hov"><span class="check"></span><span class="grow">Гарнитура (HyperX Cloud II)</span></div>
-        <div class="item"><span class="check"></span><span class="grow">Массив микрофонов (Realtek)</span></div>
+        <div class="item hov"><span class="check"></span><span class="grow">Гарнитура (HyperX Cloud II)</span><span class="meter" style="width:64px"><i style="width:12%"></i></span></div>
+        <div class="item"><span class="check"></span><span class="grow">Массив микрофонов (Realtek)</span><span class="meter" style="width:64px"><i style="width:0"></i></span></div>
       </div>
       <div class="hud">
         <span class="grip"><svg><use href="#grip"/></svg></span>
@@ -354,11 +354,11 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
     </div>
   </div>
 </div>
-<p class="src"><b>Взято:</b> из v1 — полоса с ручкой и поповерами вверх, порядок кнопок, индикатор уровня у микрофона (только у выбранного — решение владельца); из Cap — значок системного звука и уровень прямо в списке устройств, подписи отсчёта словами («3 с», «Нет»). Плитки «Экран/Окно/Область» Cap не берём — их роль у кнопки источника.</p>
+<p class="src"><b>Взято:</b> из v1 — полоса с ручкой и поповерами вверх, порядок кнопок, индикатор уровня у каждого микрофона (решение владельца); из Cap — значок системного звука и уровень прямо в списке устройств, подписи отсчёта словами («3 с», «Нет»). Плитки «Экран/Окно/Область» Cap не берём — их роль у кнопки источника.</p>
 <ul class="notes">
   <li><b>Размер:</b> полоса ≈ 404 × 48 px, окно без рамки, поверх всех, без фокуса; ручка слева, перетаскивается, позиция запоминается на каждом мониторе <span class="tag v2">v2</span> (в v1 сбрасывалась). Поповеры 220–300 px, открываются вверх, один за раз <span class="tag">v1</span>.</li>
   <li><b>Порядок как в v1</b> (источник → микрофон → отсчёт → «Запись» → «Ещё»), добавлены значки системного звука и fps прямо в полосе <span class="tag v2">v2</span>: в v1 системный звук был виден только в поповере. Значок отсчёта показывает число секунд.</li>
-  <li><b>Микрофон:</b> живой индикатор уровня 64 px (синий, &gt; 65 — жёлтый, &gt; 85 — красный) <span class="tag">v1</span> только у выбранного устройства; остальные без индикатора, их потоки не открываются <span class="tag v2">v2</span> (решение владельца). Подпись источника по-русски («Экран 1»), не "Screen".</li>
+  <li><b>Микрофон:</b> живой индикатор уровня 64 px у каждого устройства (синий, &gt; 65 — жёлтый, &gt; 85 — красный) <span class="tag">v1</span>, решение владельца: у выбранного поток открыт всегда, у остальных — пока открыт этот поповер. Подпись источника по-русски («Экран 1»), не "Screen".</li>
   <li><b>✕ «Закрыть приложение» убран из полосы</b> — «Выход» в меню «Ещё» и трее; ✕ значит только «отменить запись» <span class="tag v2">v2</span> (hud.md §7.1). «Место сохранения» ушло в окно настроек.</li>
   <li><b>Микрофон, fps и отсчёт</b> есть и в HUD, и в настройках: это одно хранилище, правка в одном месте сразу видна в другом <span class="tag v2">v2</span> (решение владельца).</li>
 </ul>
