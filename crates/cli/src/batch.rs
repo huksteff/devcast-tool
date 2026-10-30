@@ -71,7 +71,7 @@ pub(crate) fn each(
             globals: &globals,
             cwd: ctx.cwd,
             registry: ctx.registry,
-            defaults: ctx.defaults,
+            local: ctx.local,
         };
         match work(&one) {
             Ok(answer) => {

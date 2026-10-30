@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use crate::error::CliError;
 use crate::find::find_project;
 use crate::globals::Globals;
-use crate::run::Answer;
+use crate::run::{Answer, Local};
 use crate::workspace::Workspace;
 
 const DRY_RUN: &str = "dry-run, проект не изменён: ";
@@ -20,8 +20,7 @@ pub(crate) struct Ctx<'a> {
     pub globals: &'a Globals,
     pub cwd: &'a Path,
     pub registry: &'a Registry,
-    /// The app defaults file; `None` — the real one in the settings folder (tests give their own).
-    pub defaults: Option<&'a Path>,
+    pub local: Local<'a>,
 }
 
 impl Ctx<'_> {
@@ -31,7 +30,7 @@ impl Ctx<'_> {
     }
 
     pub(crate) fn defaults_file(&self) -> Result<PathBuf, CliError> {
-        match self.defaults {
+        match self.local.defaults {
             Some(path) => Ok(path.to_path_buf()),
             None => Ok(dc_project::settings::defaults_file()?),
         }

@@ -1,0 +1,49 @@
+---
+source: crates/cli/src/scope_e2e_tests.rs
+expression: log
+---
+$ devcast info
+Урок 5.dcproj: длительность 0:12.533, всё сохранено
+списки: annots 0, audio 0, callouts 0, captions 0, clips 1, zooms 0; подробно: devcast ls <список>
+
+$ devcast silences
+0:00.600–0:01.800  1.20 с
+0:06.550–0:07.500  0.95 с
+0:09.050–0:12.533  3.48 с
+тишина: 3, всего 5.63 с
+
+$ devcast cut 0.750-1.650,6.700-7.350 --dry-run
+dry-run, проект не изменён: вырез 0:00.750–0:01.650; вырез 0:06.700–0:07.350; клипы ~1 c1; длительность 0:12.533→0:10.983
+
+$ devcast cut 0.750-1.650,6.700-7.350
+вырез 0:00.750–0:01.650; вырез 0:06.700–0:07.350; клипы ~1 c1; длительность 0:12.533→0:10.983
+
+$ devcast zoom add --at clicks --dry-run
+dry-run, проект не изменён: зумы +1 z1
+
+$ devcast zoom add --at clicks
+зумы +1 z1
+
+$ devcast annot add text --at 0 --duration 1.5 --rect 0.05,0.05,0.5,0.12
+аннотации +1 a1
+
+$ devcast text set a1 --text "Запись экрана" --size 48 --background "#000000b0"
+аннотации ~1 a1
+
+$ devcast captions gen
+реплики +3 s1..s3
+
+$ devcast ls captions
+s1  0:00.260–0:00.750  text=Привет!
+s2  0:00.900–0:05.800  text=Сегодня я покажу, как записать видео с экрана и вырезать паузы.
+s3  0:05.810–0:07.930  text=Это занимает пару минут.
+
+$ devcast sheet -n 6 -o раскадровка.png
+раскадровка 6 кадров (3×2): 0:00.000, 0:01.830, 0:03.661, 0:05.491, 0:07.322, 0:09.152 → <проект>\раскадровка.png
+
+$ devcast export -o урок.mp4 --res 720p --fps 30
+e1 готово: <проект>\урок.mp4 — 1280×720, 30 fps, 11.0 с, <размер, кодек, время>
+
+$ devcast info
+Урок 5.dcproj: длительность 0:10.983, всё сохранено
+списки: annots 1, audio 0, callouts 0, captions 3, clips 1, zooms 1; подробно: devcast ls <список>

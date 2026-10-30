@@ -14,7 +14,7 @@ use dc_project::ProjectDir;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::{Outcome, registry::registry, run, run_with};
+use crate::{Local, Outcome, registry::registry, run, run_with};
 
 /// A clip of the whole recording `path`, `secs` long.
 fn recording(id: ClipId, path: String, secs: f64) -> Clip {
@@ -51,7 +51,11 @@ pub(crate) fn run_line_with(
     defaults: &Path,
 ) -> Outcome {
     let args = line.split(' ').map(str::to_owned).collect();
-    run_with(args, cwd, registry, Some(defaults))
+    let local = Local {
+        defaults: Some(defaults),
+        ..Local::default()
+    };
+    run_with(args, cwd, registry, local)
 }
 
 /// Where the tests keep the app defaults: next to the project, never in `%APPDATA%`.
@@ -301,4 +305,34 @@ pub(crate) fn fixture_copy(name: &str, to: &Path) {
         .join("../../fixtures/recordings")
         .join(name);
     copy_dir(&fixture, to);
+}
+
+/// Raw stdout of the FFmpeg command line from `.deps` with `args` after `-v error`.
+pub(crate) fn decoded(args: &[&str]) -> Vec<u8> {
+    let exe = Path::new(env!("FFMPEG_DIR"))
+        .join("bin")
+        .join(format!("ffmpeg{}", std::env::consts::EXE_SUFFIX));
+    let output = std::process::Command::new(exe)
+        .args(["-v", "error"])
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output.stdout
+}
+
+/// Seconds of `m:ss.mmm` as the CLI prints time.
+pub(crate) fn seconds(text: &str) -> f64 {
+    let (m, s) = text.split_once(':').unwrap();
+    m.parse::<f64>().unwrap() * 60.0 + s.parse::<f64>().unwrap()
+}
+
+/// The duration `info` reports.
+pub(crate) fn info_duration(info: &str) -> f64 {
+    let rest = info.split("длительность ").nth(1).unwrap();
+    seconds(rest.split(',').next().unwrap())
 }

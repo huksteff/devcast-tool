@@ -67,6 +67,10 @@ mod record_tests;
 #[cfg(test)]
 mod recover_tests;
 #[cfg(test)]
+mod scope_e2e_frames;
+#[cfg(test)]
+mod scope_e2e_tests;
+#[cfg(test)]
 mod silences_tests;
 #[cfg(test)]
 mod skill_tests;
@@ -84,7 +88,7 @@ mod transcript_tests;
 use std::ffi::OsString;
 
 pub use error::CliError;
-pub use run::{Outcome, run, run_with};
+pub use run::{Local, Outcome, run, run_with};
 
 /// `devcast` as the binary runs it: arguments from the OS, the current folder, all ops.
 pub fn main_outcome(args: Vec<OsString>) -> Outcome {

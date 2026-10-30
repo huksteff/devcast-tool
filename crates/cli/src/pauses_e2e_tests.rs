@@ -4,20 +4,11 @@
 
 use serde_json::Value;
 
+use crate::test_util::info_duration as duration;
 use crate::transcript_tests::Speech;
 
 /// Left of a pause on each side, so speech does not run together (SKILL.md).
 const MARGIN: f64 = 0.15;
-
-fn seconds(text: &str) -> f64 {
-    let (m, s) = text.split_once(':').unwrap();
-    m.parse::<f64>().unwrap() * 60.0 + s.parse::<f64>().unwrap()
-}
-
-fn duration(info: &str) -> f64 {
-    let rest = info.split("длительность ").nth(1).unwrap();
-    seconds(rest.split(',').next().unwrap())
-}
 
 #[test]
 fn cut_pauses_and_a_slip_of_the_tongue() {

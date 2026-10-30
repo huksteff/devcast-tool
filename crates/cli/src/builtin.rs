@@ -305,7 +305,11 @@ impl Cli {
             Builtin::Sheet(args) => still::sheet(ctx, &args),
             Builtin::Record { control, args } => record::record(ctx, control, &args),
             Builtin::Export { action, id, args } => {
-                export::export(ctx, action, id.as_deref(), &args, &export::channel()?)
+                let channel = match ctx.local.export_channel {
+                    Some(channel) => channel.to_owned(),
+                    None => export::channel()?,
+                };
+                export::export(ctx, action, id.as_deref(), &args, &channel)
             }
             Builtin::Skill {
                 action: SkillAction::Install,

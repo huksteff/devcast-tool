@@ -4,7 +4,6 @@
 
 use std::ops::ControlFlow;
 use std::path::Path;
-use std::process::Command;
 use std::sync::Arc;
 
 use dc_core::{SourceTime, TimeMap};
@@ -14,7 +13,7 @@ use dc_render::{AdapterChoice, Gpu};
 use crate::export_args::{Format, QualityArg, Res, Settings};
 use crate::export_job::{Spec, run};
 use crate::registry::registry;
-use crate::test_util::{ffmpeg, run_line};
+use crate::test_util::{decoded, ffmpeg, run_line};
 
 const FPS: u32 = 30;
 const RATE: usize = 48_000;
@@ -48,24 +47,6 @@ fn flashes(path: &Path) {
         "-shortest",
         path.to_str().unwrap(),
     ]);
-}
-
-/// Raw output of the FFmpeg command line from `.deps`.
-fn decoded(args: &[&str]) -> Vec<u8> {
-    let exe = Path::new(env!("FFMPEG_DIR"))
-        .join("bin")
-        .join(format!("ffmpeg{}", std::env::consts::EXE_SUFFIX));
-    let output = Command::new(exe)
-        .args(["-v", "error"])
-        .args(args)
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    output.stdout
 }
 
 /// Seconds of the first white frame and of the first loud sample at or after each of `expected`.

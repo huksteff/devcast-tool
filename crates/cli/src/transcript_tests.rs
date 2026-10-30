@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use dc_audio::SourceTrack;
 use dc_project::ProjectDir;
 use dc_transcribe::{Model, Recognized, Word, words_cache_path, write_words};
 
@@ -12,7 +13,7 @@ use crate::run::Outcome;
 use crate::test_util::{ffmpeg, run_line};
 
 /// Words of the speech, seconds, as recognized.
-const WORDS: [(&str, f64, f64); 16] = [
+pub(crate) const WORDS: [(&str, f64, f64); 16] = [
     ("Привет!", 0.34, 1.00),
     ("Сегодня", 1.88, 2.18),
     ("я", 2.18, 2.46),
@@ -64,25 +65,7 @@ impl Speech {
         let track = dc_audio::tracks(&dir, &project.clips[0].media)
             .unwrap()
             .remove(0);
-        let words = WORDS
-            .iter()
-            .map(|(text, start, end)| Word {
-                text: (*text).to_owned(),
-                start: (start * 1e6) as i64,
-                end: (end * 1e6) as i64,
-                probability: 0.9,
-            })
-            .collect();
-        let recognized = Recognized {
-            language: "ru".to_owned(),
-            words,
-        };
-        write_words(
-            &words_cache_path(&dir, &track, Model::Small, None),
-            &track,
-            &recognized,
-        )
-        .unwrap();
+        seed_words(&dir, &track);
         Self { _tmp: tmp, root }
     }
 
@@ -95,6 +78,29 @@ impl Speech {
         assert_eq!(out.code, 0, "{line}: {}", out.stderr);
         out.stdout.trim_end().to_owned()
     }
+}
+
+/// Puts [`WORDS`] into the words cache of `track` as the small model recognized them.
+pub(crate) fn seed_words(dir: &ProjectDir, track: &SourceTrack) {
+    let words = WORDS
+        .iter()
+        .map(|(text, start, end)| Word {
+            text: (*text).to_owned(),
+            start: (start * 1e6) as i64,
+            end: (end * 1e6) as i64,
+            probability: 0.9,
+        })
+        .collect();
+    let recognized = Recognized {
+        language: "ru".to_owned(),
+        words,
+    };
+    write_words(
+        &words_cache_path(dir, track, Model::Small, None),
+        track,
+        &recognized,
+    )
+    .unwrap();
 }
 
 #[test]

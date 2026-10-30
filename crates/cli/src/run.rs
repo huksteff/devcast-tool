@@ -56,22 +56,27 @@ impl Answer {
 }
 
 pub fn run(args: Vec<String>, cwd: &Path, registry: &Registry) -> Outcome {
-    run_with(args, cwd, registry, None)
+    run_with(args, cwd, registry, Local::default())
 }
 
-/// [`run`] with the app defaults file `defaults` instead of the real one (tests).
-pub fn run_with(
-    args: Vec<String>,
-    cwd: &Path,
-    registry: &Registry,
-    defaults: Option<&Path>,
-) -> Outcome {
+/// What a run uses outside the project folder. Tests give their own, so the real ones are never
+/// touched.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Local<'a> {
+    /// The app defaults file; `None` — the real one in the settings folder.
+    pub defaults: Option<&'a Path>,
+    /// The channel of the export queue; `None` — the real `devcast-export-<user>`.
+    pub export_channel: Option<&'a str>,
+}
+
+/// [`run`] with `local` instead of the real files and channels (tests).
+pub fn run_with(args: Vec<String>, cwd: &Path, registry: &Registry, local: Local<'_>) -> Outcome {
     let (globals, rest) = globals::split(args);
     let ctx = Ctx {
         globals: &globals,
         cwd,
         registry,
-        defaults,
+        local,
     };
     match rest.and_then(|rest| dispatch(rest, &ctx)) {
         Ok(answer) => Outcome {

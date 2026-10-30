@@ -10,7 +10,7 @@ use crate::error::CliError;
 use crate::export::{self, Action};
 use crate::export_args::ExportArgs;
 use crate::globals::Globals;
-use crate::run::Answer;
+use crate::run::{Answer, Local};
 use crate::test_util::{Fixture, ffmpeg};
 
 fn channel(name: &str) -> String {
@@ -30,7 +30,7 @@ fn call(
         globals: &globals,
         cwd,
         registry,
-        defaults: None,
+        local: Local::default(),
     };
     export::export(&ctx, action, id, args, channel)
 }
