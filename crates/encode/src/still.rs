@@ -6,16 +6,18 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::num::NonZeroU32;
 
-use dc_media::{Decoder, FramePool, cached_probe, decode_picture, encode_png, nv12_len};
+use dc_media::{Decoder, FramePool, Picture, cached_probe, decode_picture, encode_png, nv12_len};
 use dc_project::ProjectDir;
 use dc_render::{Bitmap, Compositor, Gpu, Image, Layer, Nv12, Scene};
 
 use crate::error::EncodeError;
 
-/// Decoders of a project's media, kept open between frames.
+/// Decoders of a project's media, kept open between frames, and its pictures decoded once: the
+/// frames of an animated picture are uploaded one by one as the scenes show them.
 pub struct Sources<'p> {
     project: &'p ProjectDir,
     decoders: HashMap<String, Decoder>,
+    pictures: HashMap<String, Picture>,
 }
 
 impl<'p> Sources<'p> {
@@ -23,6 +25,7 @@ impl<'p> Sources<'p> {
         Self {
             project,
             decoders: HashMap::new(),
+            pictures: HashMap::new(),
         }
     }
 
@@ -44,7 +47,12 @@ impl<'p> Sources<'p> {
                 }
                 Layer::Sprite(sprite) if !compositor.has_image(&sprite.image) => {
                     let key = &sprite.image;
-                    let picture = decode_picture(&self.project.root().join(&key.path))?;
+                    let picture = match self.pictures.entry(key.path.clone()) {
+                        Entry::Occupied(decoded) => decoded.into_mut(),
+                        Entry::Vacant(slot) => {
+                            slot.insert(decode_picture(&self.project.root().join(&key.path))?)
+                        }
+                    };
                     let frame = picture.frames.get(key.frame as usize).ok_or_else(|| {
                         EncodeError::NoPictureFrame {
                             path: key.path.clone(),

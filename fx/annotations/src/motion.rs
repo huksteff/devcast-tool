@@ -155,7 +155,7 @@ impl Pose {
         };
         let range = annotation.range;
         let seconds = |d: TimeDelta| d.as_secs_f64();
-        let since = output(range.start(), now).map_or(0.0, |s| seconds(t.since(s.start())));
+        let since = seconds(shown_for(annotation, map, now, t));
         let left = output(now, range.end()).map_or(0.0, |s| seconds(s.end().since(t)));
         let length = |stage: &Stage, room: f64| match stage.animation {
             Animation::None => 0.0,
@@ -171,4 +171,19 @@ impl Pose {
             Self::STILL
         }
     }
+}
+
+/// Output time since `annotation` first shows, at output moment `t`, which shows its recording
+/// at `now`: the clock of entrances and of animated pictures (a sped-up part does not hurry it,
+/// a cut does not skip it).
+pub fn shown_for(
+    annotation: &Annotation,
+    map: &TimeMap,
+    now: SourceTime,
+    t: OutputTime,
+) -> TimeDelta {
+    Range::new(annotation.range.start(), now)
+        .ok()
+        .and_then(|r| map.output_span(&annotation.media, r))
+        .map_or(TimeDelta::ZERO, |s| t.since(s.start()))
 }

@@ -21,7 +21,7 @@ pub use model::{
     AnnotId, AnnotKind, Annotation, Annotations, AnnotationsState, Kind, MIN_DURATION,
     POSITION_LIMIT, ROTATION_LIMIT, SIZE_MAX, SIZE_MIN, TRACKS,
 };
-pub use motion::{Animation, Pose, STAGE_DEFAULT, STAGE_MAX, Stage};
+pub use motion::{Animation, Pose, STAGE_DEFAULT, STAGE_MAX, Stage, shown_for};
 pub use place::{Placement, REFERENCE};
 
 use dc_core::{EffectInfo, IdKind, OpInfo};

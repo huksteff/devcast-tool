@@ -15,7 +15,7 @@ use crate::record;
 use crate::record_args::RecordArgs;
 use crate::record_control::Control;
 use crate::run::Answer;
-use crate::{autozoom, captions, events, import, silences, skill, sources, transcript};
+use crate::{autozoom, captions, events, image, import, silences, skill, sources, transcript};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -146,6 +146,12 @@ enum Builtin {
         #[command(subcommand)]
         command: CaptionsCommand,
     },
+    /// `image set`: the picture of an image annotation.
+    #[command(disable_help_subcommand = true)]
+    Image {
+        #[command(subcommand)]
+        command: ImageCommand,
+    },
     #[command(
         about = "Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
         after_help = "record --source screen:1 --duration 10 -o урок.dcproj"
@@ -243,6 +249,15 @@ enum CaptionsCommand {
     Op(Vec<String>),
 }
 
+#[derive(Debug, Subcommand)]
+enum ImageCommand {
+    #[command(
+        about = "Картинка аннотации image: файл копируется в assets/images/, вписывается в бокс с сохранением пропорций (с --at — в ключе)",
+        after_help = "image set a3 --file логотип.png --at 4.5"
+    )]
+    Set(image::SetArgs),
+}
+
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum SkillAction {
     Install,
@@ -296,6 +311,9 @@ impl Cli {
                     edit::op(ctx, &[vec!["captions".to_owned()], words].concat())
                 }
             },
+            Builtin::Image {
+                command: ImageCommand::Set(args),
+            } => image::set(ctx, &args),
             Builtin::Record { control, args } => record::record(ctx, control, &args),
             Builtin::Export { action, id, args } => {
                 export::export(ctx, action, id.as_deref(), &args, &export::channel()?)

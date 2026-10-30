@@ -1,11 +1,12 @@
 //! Annotations in the scene: those of the shown recording moment, bottom to top in their layer
 //! order (`AnnotationsState::shown_at`), each drawn by its kind's crate into `Band::Annotations`
-//! under the camera. A kind without drawing yet (5.34–5.36) is skipped.
+//! under the camera. A kind without drawing yet (5.35, 5.36) is skipped.
 
 use std::collections::HashMap;
 
 use dc_core::{OutputTime, TimeDelta, TimeMap};
-use dc_fx_annotations::{AnnotId, Annotation, AnnotationsState, Kind, Placement, keyed};
+use dc_fx_annotations::{AnnotId, Annotation, AnnotationsState, Kind, Placement, keyed, shown_for};
+use dc_fx_image::ImageBody;
 use dc_fx_shape::ShapeBody;
 use dc_fx_text::TextBody;
 use dc_render::{Band, Layer, Scene, TextMeasure};
@@ -25,6 +26,7 @@ pub(crate) struct Prepared {
 enum Look {
     Text(Fields<TextBody>),
     Shape(Fields<ShapeBody>),
+    Image(Fields<ImageBody>),
 }
 
 /// A kind's fields as typed values: the annotation's own and those of its keys, by key time.
@@ -93,6 +95,14 @@ impl Prepared {
                     let body = keyed(&fields.base, &fields.keys, offset);
                     Layer::Shapes(vec![dc_fx_shape::evaluate(&body, &placement, t)])
                 }
+                Look::Image(fields) => {
+                    let body = keyed(&fields.base, &fields.keys, offset);
+                    let elapsed = shown_for(annotation, map, now, t);
+                    match dc_fx_image::evaluate(&body, &placement, elapsed) {
+                        Some(sprite) => Layer::Sprite(sprite),
+                        None => continue,
+                    }
+                }
             };
             scene.push(Band::Annotations, layer);
         }
@@ -109,6 +119,7 @@ fn look(annotation: &Annotation, measure: &TextMeasure) -> Result<Option<Look>, 
             Some(Look::Text(fields))
         }
         Kind::Shape => Some(Look::Shape(Fields::read(annotation)?)),
-        Kind::Image | Kind::Drawing | Kind::Blur => None,
+        Kind::Image => Some(Look::Image(Fields::read(annotation)?)),
+        Kind::Drawing | Kind::Blur => None,
     })
 }

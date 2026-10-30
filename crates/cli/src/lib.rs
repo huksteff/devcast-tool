@@ -14,6 +14,7 @@ pub mod find;
 pub mod globals;
 mod help;
 mod help_args;
+mod image;
 mod import;
 mod ls;
 mod record;
@@ -42,6 +43,8 @@ mod edit_tests;
 mod events_tests;
 #[cfg(test)]
 mod export_tests;
+#[cfg(test)]
+mod image_tests;
 #[cfg(test)]
 mod import_tests;
 #[cfg(test)]

@@ -57,6 +57,12 @@ pub enum MediaError {
         source: ffmpeg_next::Error,
     },
 
+    #[error("«{}» — не картинка в поддерживаемом формате: подходят PNG, JPEG, WebP и GIF. Пересохрани файл в PNG", path.display())]
+    NotAPicture { path: PathBuf },
+
+    #[error("SVG «{}» пока не читается: сохрани картинку в PNG (или WebP) нужного размера и укажи этот файл", path.display())]
+    Svg { path: PathBuf },
+
     #[error("кадр не сохранился в PNG: {0}. Это ошибка программы: сообщи разработчику")]
     EncodePng(ffmpeg_next::Error),
 

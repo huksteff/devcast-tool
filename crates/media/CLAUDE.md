@@ -14,12 +14,13 @@
 - `Seeker`: декодер на своём потоке (открывается там же: scaler FFmpeg не `Send`), берёт только новейший запрос, ответ несёт поколение; `poll`/`wait` отбрасывают устаревшие.
 - Превью (`preview.rs`): первый кадр медиа, вписанный в 320×180 без увеличения (обоснование — в doc модуля), PNG `cache/<медиа>.preview-<байт>-<mtime>.png`; новый файл медиа — новое превью, старое удаляется. NV12 → RGB — фильтр FFmpeg `scale` по `Probe::color`. Превью проекта — превью медиа первого клипа.
 - Картинки (`picture.rs`, `decode_picture`): PNG, JPEG, WebP, GIF, анимированные GIF и WebP — все кадры целиком (GIF disposal делает декодер) в RGBA с прямой альфой и длительностью кадра; у неподвижной длительность 0. Все кадры вместе не больше `PICTURE_MAX_BYTES` (512 МБ) — иначе `PictureTooBig`. SVG FFmpeg не читает. Обратно RGBA → PNG — `encode_png` (кадры рендера, эталоны), без потерь.
+- Импорт картинок (`picture_import.rs`, `import_picture`): PNG, JPEG, WebP, GIF (SVG — `MediaError::Svg`); файл сначала декодируется, потом копируется в папку проекта (`assets/images` задаёт вызывающий) под своим именем, занято другим файлом — `-2`, `-3` …, тот же файл (байты совпали) не копируется второй раз (`copied: false`). `dry_run` только читает.
 - Аппаратного декодирования нет (решение 003, задача 7.34).
 - unsafe нельзя (только capture и encode). FFmpeg-типы наружу не торчат.
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-media`. Видео для тестов — `testsrc2` через `.deps/ffmpeg/bin/ffmpeg` во временных папках (`src/test_util.rs`): mp4/mov/mkv/webm, разный GOP, B-кадры, переменная частота. Эталон кадра — `reference_frames` (все кадры FFmpeg в NV12 по номеру) и `frame_times` (ffprobe). Картинки — из `color`/`geq` FFmpeg (`picture_tests.rs`). Замер seek — `seek_timing` (`--run-ignored only seek_timing --no-capture`). Наша запись — `fixtures/recordings/speech.dcproj` (Git LFS).
+- `cargo nextest run -p dc-media`. Видео для тестов — `testsrc2` через `.deps/ffmpeg/bin/ffmpeg` во временных папках (`src/test_util.rs`): mp4/mov/mkv/webm, разный GOP, B-кадры, переменная частота. Эталон кадра — `reference_frames` (все кадры FFmpeg в NV12 по номеру) и `frame_times` (ffprobe). Картинки — из `color`/`geq` FFmpeg (`picture_tests.rs`, импорт — `picture_import_tests.rs`). Замер seek — `seek_timing` (`--run-ignored only seek_timing --no-capture`). Наша запись — `fixtures/recordings/speech.dcproj` (Git LFS).
 
 ## Куда не лезть
 

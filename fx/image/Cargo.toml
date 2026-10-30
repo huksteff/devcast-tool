@@ -1,11 +1,21 @@
 [package]
 name = "dc-fx-image"
-description = "Image annotation."
+description = "Image annotation: a picture file of the project's assets/ in the annotation box."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
+
+[dependencies]
+dc-core = { path = "../../crates/core" }
+dc-fx-annotations = { path = "../annotations" }
+dc-render = { path = "../../crates/render" }
+schemars.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
 
 [lints]
 workspace = true

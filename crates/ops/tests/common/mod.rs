@@ -1,5 +1,6 @@
 //! Shared by the golden tests: projects of bar videos rendered on the software adapter like CI.
-//! Cursor pictures come from the fixture recording `clicks.dcproj`.
+//! Cursor pictures come from the fixture recording `clicks.dcproj`, pictures of image annotations
+//! from `fixtures/images`.
 
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -75,22 +76,33 @@ pub fn size(width: u32, height: u32) -> PixelSize {
 /// `clicks_fixture()` as sprites, and checks it against reference `name`.
 pub fn check(name: &str, project: &Project, cursors: CursorTracks, at: f64) -> TestResult {
     let evaluator = Evaluator::new(project, cursors, KeyTracks::new(), &mut measure()?)?;
-    render(
-        name,
-        project,
-        &evaluator.evaluate(OutputTime::from_secs_f64(at)),
-    )
+    let scene = evaluator.evaluate(OutputTime::from_secs_f64(at));
+    render(name, project, &scene, &clicks_fixture())
 }
 
 /// [`check`] of a project without a cursor and with shortcuts `keys`, text in the fonts of
 /// `.deps/fonts`.
 pub fn check_keys(name: &str, project: &Project, keys: KeyTracks, at: f64) -> TestResult {
     let evaluator = Evaluator::new(project, CursorTracks::new(), keys, &mut measure()?)?;
-    render(
-        name,
+    let scene = evaluator.evaluate(OutputTime::from_secs_f64(at));
+    render(name, project, &scene, &clicks_fixture())
+}
+
+/// The folder `fixtures/` of the repository: pictures of image annotations are `images/…` there.
+pub fn fixtures() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures")
+}
+
+/// [`check`] of a project without a cursor whose pictures are paths in [`fixtures`].
+pub fn check_pictures(name: &str, project: &Project, at: f64) -> TestResult {
+    let evaluator = Evaluator::new(
         project,
-        &evaluator.evaluate(OutputTime::from_secs_f64(at)),
-    )
+        CursorTracks::new(),
+        KeyTracks::new(),
+        &mut measure()?,
+    )?;
+    let scene = evaluator.evaluate(OutputTime::from_secs_f64(at));
+    render(name, project, &scene, &fixtures())
 }
 
 /// The fonts of `.deps/fonts`, as the frames are drawn with.
@@ -100,7 +112,7 @@ fn measure() -> Result<TextMeasure, Box<dyn Error>> {
     Ok(measure)
 }
 
-fn render(name: &str, project: &Project, scene: &Scene) -> TestResult {
+fn render(name: &str, project: &Project, scene: &Scene, pictures: &Path) -> TestResult {
     let gpu = Gpu::new(AdapterChoice::Software)?;
     let mut compositor = Compositor::new(&gpu);
     compositor.load_fonts(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.deps/fonts"))?;
@@ -117,8 +129,9 @@ fn render(name: &str, project: &Project, scene: &Scene) -> TestResult {
                 compositor.upload(&gpu, &video.source, nv12);
             }
             Layer::Sprite(sprite) => {
-                let picture = dc_media::decode_picture(&clicks_fixture().join(&sprite.image.path))?;
-                let frame = picture.frames.first().ok_or("picture without frames")?;
+                let picture = dc_media::decode_picture(&pictures.join(&sprite.image.path))?;
+                let frame = picture.frames.get(sprite.image.frame as usize);
+                let frame = frame.ok_or("no such frame of the picture")?;
                 let bitmap = Bitmap::new(picture.size, &frame.rgba)?;
                 compositor.upload_image(&gpu, &sprite.image, bitmap)?;
             }
