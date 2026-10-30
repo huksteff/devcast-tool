@@ -24,7 +24,7 @@ fn harness() -> egui_kittest::Harness<'static, State> {
     dc_ui_kit::testing::harness()
         .with_size(SIZE)
         .build_ui_state(
-            |ui, state: &mut State| state.window.ui(ui, &mut state.store, 0.4).unwrap(),
+            |ui, state: &mut State| state.window.ui(ui, &mut state.store, 0.4, &[]).unwrap(),
             state,
         )
 }

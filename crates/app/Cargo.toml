@@ -21,6 +21,7 @@ dc-ipc = { path = "../ipc" }
 dc-project = { path = "../project" }
 dc-ui-kit = { path = "../ui-kit" }
 dirs = "6"
+global-hotkey = "0.9"
 minidumper = "0.8"
 # `inspection` stays off at run time until EGUI_INSPECTION=1 is set (decision 012).
 eframe = { version = "0.37", default-features = false, features = ["wgpu", "accesskit", "inspection"] }

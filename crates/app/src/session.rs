@@ -10,6 +10,7 @@ use eframe::egui;
 
 use crate::app::Shared;
 use crate::error::AppError;
+use crate::hotkeys::Command;
 use crate::hud::popover;
 use crate::recorder::{Event, Recorder, Request};
 use crate::tray::TrayView;
@@ -289,6 +290,22 @@ impl Shared {
                 self.session = Session::Live(live);
             }
             other => self.session = other,
+        }
+    }
+
+    /// A global hotkey: start/stop starts at rest, cancels the countdown, stops a recording;
+    /// pause and cancel work on a recording only.
+    pub fn hotkey(&mut self, command: Command) {
+        match (command, &self.session) {
+            (Command::StartStop, Session::Idle) => self.record(),
+            (Command::StartStop, _) => self.stop(),
+            (Command::Pause, _) => self.toggle_pause(),
+            (Command::Cancel, Session::Live(live)) if !live.asking => {
+                self.show_hud();
+                self.ask_cancel(0.0);
+            }
+            (Command::Cancel, Session::Countdown(_)) => self.cancel_countdown(),
+            (Command::Cancel, _) => {}
         }
     }
 

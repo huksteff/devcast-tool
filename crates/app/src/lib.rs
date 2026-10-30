@@ -10,6 +10,7 @@ mod countdown;
 )]
 mod crash;
 mod error;
+mod hotkeys;
 mod hud;
 mod instance;
 mod logging;
@@ -17,6 +18,7 @@ mod meters;
 mod recorder;
 mod session;
 mod settings;
+mod settings_hotkeys;
 mod settings_window;
 mod tray;
 
@@ -68,7 +70,8 @@ pub fn run() -> Result<(), AppError> {
             let shown = instance::serve(listener, cc.egui_ctx.clone());
             let shared = app::Shared::new(cc.egui_ctx.clone(), store);
             let tray = tray::Tray::new(&cc.egui_ctx)?;
-            Ok(Box::new(app::App::new(shown, shared, hwnd, tray)))
+            let keys = hotkeys::GlobalKeys::new(&cc.egui_ctx)?;
+            Ok(Box::new(app::App::new(shown, shared, hwnd, tray, keys)))
         }),
     )
     .map_err(|e| AppError::Window(e.to_string()))

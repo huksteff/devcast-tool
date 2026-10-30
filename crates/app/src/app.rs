@@ -11,9 +11,11 @@ use dc_ui_kit::tokens::SURFACE;
 use dc_ui_kit::widgets::{ToastKind, Toasts};
 use eframe::egui;
 
+use crate::hotkeys::{Command, GlobalKeys};
 use crate::hud::{HudWindow, picker, popover};
 use crate::meters::Meters;
 use crate::session::Session;
+use crate::settings::Hotkeys;
 use crate::settings::Store;
 use crate::settings_window::{self, SettingsWindow};
 use crate::tray::{Tray, TrayAction};
@@ -38,6 +40,8 @@ pub struct Shared {
     pub meters: Meters,
     /// The recording: countdown, recorder, timer.
     pub session: Session,
+    /// Hotkeys whose shortcut the system or another program holds.
+    pub taken_hotkeys: Vec<Command>,
     pub toasts: Toasts,
 }
 
@@ -57,6 +61,7 @@ impl Shared {
             microphones: Vec::new(),
             meters: Meters::default(),
             session: Session::Idle,
+            taken_hotkeys: Vec::new(),
             toasts: Toasts::default(),
         };
         shared.refresh_sources();
@@ -129,10 +134,17 @@ pub struct App {
     shared: Arc<Mutex<Shared>>,
     hud: HudWindow,
     tray: Tray,
+    keys: GlobalKeys,
 }
 
 impl App {
-    pub fn new(shown: Receiver<()>, shared: Shared, hwnd: isize, tray: Tray) -> Self {
+    pub fn new(
+        shown: Receiver<()>,
+        shared: Shared,
+        hwnd: isize,
+        tray: Tray,
+        keys: GlobalKeys,
+    ) -> Self {
         let mut shared = shared;
         let hud = HudWindow::new(hwnd, &mut shared);
         Self {
@@ -140,6 +152,34 @@ impl App {
             shared: Arc::new(Mutex::new(shared)),
             hud,
             tray,
+            keys,
+        }
+    }
+
+    /// Registers the shortcuts of the settings (none while one is being pressed in the settings,
+    /// so it does not fire) and runs the pressed ones.
+    fn hotkeys(&mut self) {
+        let mut shared = lock(&self.shared);
+        let capturing = shared
+            .settings
+            .as_ref()
+            .is_some_and(|s| s.hotkeys.capture.is_some());
+        let wanted = if capturing {
+            Hotkeys {
+                start_stop: None,
+                pause: None,
+                cancel: None,
+            }
+        } else {
+            shared.store.get().hotkeys.clone()
+        };
+        if let Some(taken) = self.keys.apply(&wanted)
+            && !capturing
+        {
+            shared.taken_hotkeys = taken;
+        }
+        for command in self.keys.presses() {
+            shared.hotkey(command);
         }
     }
 
@@ -181,6 +221,7 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
         lock(&self.shared).tick();
+        self.hotkeys();
         self.tray();
     }
 
@@ -227,6 +268,7 @@ fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
                 settings,
                 meters,
                 toasts,
+                taken_hotkeys,
                 ..
             } = &mut *shared;
             let Some(window) = settings else {
@@ -236,7 +278,7 @@ fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
                 Some(mic) => meters.level(ctx, &AudioSource::Microphone(mic.clone())),
                 None => 0.0,
             };
-            if let Err(error) = window.ui(ui, store, level) {
+            if let Err(error) = window.ui(ui, store, level, taken_hotkeys) {
                 toasts.push(ui.ctx(), ToastKind::Error, error.to_string());
             }
             toasts.show(ui.ctx());

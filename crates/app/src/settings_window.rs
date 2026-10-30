@@ -12,7 +12,9 @@ use dc_ui_kit::widgets::{Button, LevelBar, Toggle, dropdown, segmented};
 use eframe::egui::{self, Color32, RichText, Stroke, Ui, vec2};
 
 use crate::error::AppError;
+use crate::hotkeys::Command;
 use crate::settings::{AppSettings, Countdown, SpeechModel, Store};
+use crate::settings_hotkeys::HotkeyPage;
 
 /// Size of the window, points (mockup: 760 × 480, at least 640 × 420).
 pub const SIZE: egui::Vec2 = vec2(760.0, 480.0);
@@ -26,14 +28,16 @@ const METER: f32 = 64.0;
 pub enum Page {
     #[default]
     Recording,
+    Hotkeys,
     Captions,
     Updates,
     About,
 }
 
 impl Page {
-    const ALL: [(Self, &'static str); 4] = [
+    const ALL: [(Self, &'static str); 5] = [
         (Self::Recording, text::RECORDING),
+        (Self::Hotkeys, text::HOTKEYS),
         (Self::Captions, text::CAPTIONS),
         (Self::Updates, text::UPDATES),
         (Self::About, text::ABOUT),
@@ -46,6 +50,7 @@ pub struct SettingsWindow {
     pub page: Page,
     /// Microphone names, read when the window opens.
     pub microphones: Vec<String>,
+    pub hotkeys: HotkeyPage,
     /// «Проверить обновления» was pressed.
     updates_checked: bool,
 }
@@ -59,8 +64,14 @@ impl SettingsWindow {
     }
 
     /// The whole window; a failed save is returned (the change is not kept). `mic_level` fills
-    /// the indicator of the selected microphone, 0..1.
-    pub fn ui(&mut self, ui: &mut Ui, store: &mut Store, mic_level: f32) -> Result<(), AppError> {
+    /// the indicator of the selected microphone, 0..1; `taken` are hotkeys the system holds.
+    pub fn ui(
+        &mut self,
+        ui: &mut Ui,
+        store: &mut Store,
+        mic_level: f32,
+        taken: &[Command],
+    ) -> Result<(), AppError> {
         let mut next = store.get().clone();
         egui::Panel::left("settings-nav")
             .exact_size(NAV)
@@ -76,6 +87,7 @@ impl SettingsWindow {
             .frame(egui::Frame::new().inner_margin(egui::Margin::symmetric(S5 as i8, S4 as i8)))
             .show(ui, |ui| match self.page {
                 Page::Recording => self.recording(ui, &mut next, mic_level),
+                Page::Hotkeys => self.hotkeys.ui(ui, &mut next.hotkeys, taken),
                 Page::Captions => captions(ui, &mut next),
                 Page::Updates => self.updates(ui, &mut next),
                 Page::About => about(ui),
