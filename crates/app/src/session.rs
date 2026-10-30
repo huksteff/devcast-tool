@@ -12,6 +12,8 @@ use crate::app::Shared;
 use crate::error::AppError;
 use crate::hud::popover;
 use crate::recorder::{Event, Recorder, Request};
+use crate::tray::TrayView;
+use dc_ui_kit::strings::tray;
 
 /// One step of the countdown.
 const SECOND: Duration = Duration::from_secs(1);
@@ -287,6 +289,50 @@ impl Shared {
                 self.session = Session::Live(live);
             }
             other => self.session = other,
+        }
+    }
+
+    /// «Выход»: at once at rest; while recording the HUD asks «Сохранить и выйти?» first.
+    pub fn quit(&mut self) {
+        match self.session {
+            Session::Starting(_) | Session::Live(_) => {
+                self.show_hud();
+                self.popover = Some(popover::Open {
+                    kind: popover::Kind::Quit,
+                    anchor: 0.0,
+                });
+            }
+            _ => self
+                .ctx
+                .send_viewport_cmd_to(egui::ViewportId::ROOT, egui::ViewportCommand::Close),
+        }
+    }
+
+    /// The tray's status and «Остановить».
+    pub fn tray_view(&self) -> TrayView {
+        let source =
+            || crate::hud::bar::source_label(&self.store.get().recording.source, &self.sources);
+        match &self.session {
+            Session::Live(live) => TrayView {
+                status: tray::recording(&live.timer(), &source()),
+                recording: true,
+                can_stop: true,
+            },
+            Session::Preparing(_) => TrayView {
+                status: dc_ui_kit::strings::hud::PREPARING.to_owned(),
+                recording: true,
+                can_stop: false,
+            },
+            Session::Starting(_) | Session::Cancelling(_) => TrayView {
+                status: tray::recording("00:00", &source()),
+                recording: true,
+                can_stop: false,
+            },
+            Session::Idle | Session::Countdown(_) | Session::Launch => TrayView {
+                status: tray::READY.to_owned(),
+                recording: false,
+                can_stop: matches!(self.session, Session::Countdown(_)),
+            },
         }
     }
 

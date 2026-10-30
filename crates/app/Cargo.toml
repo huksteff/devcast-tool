@@ -29,6 +29,7 @@ rfd = "0.15"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tray-icon = "0.26"
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

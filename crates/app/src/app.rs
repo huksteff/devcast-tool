@@ -16,6 +16,7 @@ use crate::meters::Meters;
 use crate::session::Session;
 use crate::settings::Store;
 use crate::settings_window::{self, SettingsWindow};
+use crate::tray::{Tray, TrayAction};
 
 /// State of all windows.
 pub struct Shared {
@@ -127,17 +128,34 @@ pub struct App {
     shown: Receiver<()>,
     shared: Arc<Mutex<Shared>>,
     hud: HudWindow,
+    tray: Tray,
 }
 
 impl App {
-    pub fn new(shown: Receiver<()>, shared: Shared, hwnd: isize) -> Self {
+    pub fn new(shown: Receiver<()>, shared: Shared, hwnd: isize, tray: Tray) -> Self {
         let mut shared = shared;
         let hud = HudWindow::new(hwnd, &mut shared);
         Self {
             shown,
             shared: Arc::new(Mutex::new(shared)),
             hud,
+            tray,
         }
+    }
+
+    fn tray(&mut self) {
+        let mut shared = lock(&self.shared);
+        for action in self.tray.actions() {
+            match action {
+                TrayAction::ShowHud => shared.show_hud(),
+                TrayAction::Stop => shared.stop(),
+                TrayAction::Settings => shared.open_settings(),
+                TrayAction::Quit => shared.quit(),
+            }
+        }
+        let view = shared.tray_view();
+        let synced = self.tray.sync(view);
+        shared.report(synced);
     }
 }
 
@@ -163,6 +181,7 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
         lock(&self.shared).tick();
+        self.tray();
     }
 
     /// A running recording is stopped and saved before the app goes.

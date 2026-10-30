@@ -22,6 +22,8 @@ pub enum AppError {
         name: &'static str,
         source: std::io::Error,
     },
+    #[error("не удалось создать значок в трее: {0}. Перезапусти программу")]
+    Tray(String),
     #[error("не удалось открыть окно: {0}. Обнови драйвер видеокарты")]
     Window(String),
     #[error("файл настроек {path} испорчен ({message}): удали его, DevCast создаст новый")]

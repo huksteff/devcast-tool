@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
-use dc_ui_kit::strings::hud;
+use dc_ui_kit::strings::{hud, tray};
 use dc_ui_kit::tokens::{BORDER, FS_M, ICON, R1, S2, SURFACE, SURFACE_2, TEXT};
 use dc_ui_kit::widgets::{Answer, Confirm, Kind as ButtonKind, Toggle, panel_frame};
 use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo, pos2, vec2};
@@ -29,6 +29,8 @@ pub enum Kind {
     More,
     /// «Отменить запись?» over ✕ while recording.
     Cancel,
+    /// «Идёт запись»: the tray's «Выход» while recording.
+    Quit,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -58,7 +60,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::Sound => super::menus::SOUND_WIDTH,
         Kind::Timing => super::menus::TIMING_WIDTH,
         Kind::More => 260.0,
-        Kind::Cancel => 280.0,
+        Kind::Cancel | Kind::Quit => 280.0,
     };
     let builder = egui::ViewportBuilder::default()
         .with_title(hud::MORE)
@@ -81,6 +83,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
                     Kind::Timing => timing(ui, &mut shared),
                     Kind::More => more(ui, &mut shared),
                     Kind::Cancel => cancel(ui, &mut shared),
+                    Kind::Quit => quit(ui, &mut shared),
                 }
             })
             .response;
@@ -128,6 +131,25 @@ fn cancel(ui: &mut Ui, shared: &mut Shared) {
     };
     if let Some(answer) = question.show(ui) {
         shared.answer_cancel(answer == Answer::Confirm);
+    }
+}
+
+/// «Остановить и сохранить запись перед выходом?» (mockup 6).
+fn quit(ui: &mut Ui, shared: &mut Shared) {
+    let question = Confirm {
+        title: tray::QUIT_TITLE,
+        text: tray::QUIT_TEXT,
+        cancel: tray::QUIT_CANCEL,
+        confirm: tray::QUIT_SAVE,
+        kind: ButtonKind::Primary,
+    };
+    match question.show(ui) {
+        // The app stops and saves the recording on its way out.
+        Some(Answer::Confirm) => ui
+            .ctx()
+            .send_viewport_cmd_to(egui::ViewportId::ROOT, egui::ViewportCommand::Close),
+        Some(Answer::Cancel) => shared.popover = None,
+        None => {}
     }
 }
 

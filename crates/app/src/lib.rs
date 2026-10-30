@@ -18,6 +18,7 @@ mod recorder;
 mod session;
 mod settings;
 mod settings_window;
+mod tray;
 
 pub use error::AppError;
 
@@ -66,7 +67,8 @@ pub fn run() -> Result<(), AppError> {
             without_frame(cc)?;
             let shown = instance::serve(listener, cc.egui_ctx.clone());
             let shared = app::Shared::new(cc.egui_ctx.clone(), store);
-            Ok(Box::new(app::App::new(shown, shared, hwnd)))
+            let tray = tray::Tray::new(&cc.egui_ctx)?;
+            Ok(Box::new(app::App::new(shown, shared, hwnd, tray)))
         }),
     )
     .map_err(|e| AppError::Window(e.to_string()))
