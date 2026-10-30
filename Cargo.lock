@@ -1211,6 +1211,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "winit",
 ]
 
 [[package]]

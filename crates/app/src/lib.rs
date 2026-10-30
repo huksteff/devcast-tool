@@ -60,12 +60,25 @@ pub fn run() -> Result<(), AppError> {
         Box::new(move |cc| {
             dc_ui_kit::install(&cc.egui_ctx)?;
             let hwnd = window_handle(cc)?;
+            without_frame(cc)?;
             let shown = instance::serve(listener, cc.egui_ctx.clone());
             let shared = app::Shared::new(cc.egui_ctx.clone(), store);
             Ok(Box::new(app::App::new(shown, shared, hwnd)))
         }),
     )
     .map_err(|e| AppError::Window(e.to_string()))
+}
+
+/// egui asks winit for the shadow of a borderless window, and winit gets it by keeping one
+/// row of the caption above the content: a light 1 px line across the top of the HUD on
+/// Windows 10, and the content 1 px lower than the window. The HUD has its own rounded shape.
+fn without_frame(cc: &eframe::CreationContext<'_>) -> Result<(), AppError> {
+    use winit::platform::windows::WindowExtWindows;
+    let window = cc
+        .winit_window()
+        .ok_or_else(|| AppError::Window("у главного окна нет окна winit".to_owned()))?;
+    window.set_undecorated_shadow(false);
+    Ok(())
 }
 
 /// The Win32 handle of the main window (the HUD).
