@@ -8,7 +8,9 @@ use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::{hud, tray};
 use dc_ui_kit::tokens::{BORDER, FS_M, ICON, R1, S2, SURFACE, SURFACE_2, TEXT};
-use dc_ui_kit::widgets::{Answer, Confirm, Kind as ButtonKind, Toggle, panel_frame};
+use dc_ui_kit::widgets::{
+    Answer, Confirm, ErrorAction, ErrorPanel, Kind as ButtonKind, Toggle, panel_frame,
+};
 use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo, pos2, vec2};
 
 use dc_capture::Source;
@@ -31,6 +33,8 @@ pub enum Kind {
     Cancel,
     /// «Идёт запись»: the tray's «Выход» while recording.
     Quit,
+    /// «Запись не подготовлена» with «Открыть папку записи» (mockup 7).
+    Failed,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -64,6 +68,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::Timing => super::menus::TIMING_WIDTH,
         Kind::More => 260.0,
         Kind::Cancel | Kind::Quit => 280.0,
+        Kind::Failed => 360.0,
     };
     let builder = egui::ViewportBuilder::default()
         .with_title(hud::MORE)
@@ -92,6 +97,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
                             Kind::More => more(ui, &mut shared),
                             Kind::Cancel => cancel(ui, &mut shared),
                             Kind::Quit => quit(ui, &mut shared),
+                            Kind::Failed => failed(ui, &mut shared),
                         }
                     })
                     .response
@@ -141,6 +147,28 @@ fn cancel(ui: &mut Ui, shared: &mut Shared) {
     };
     if let Some(answer) = question.show(ui) {
         shared.answer_cancel(answer == Answer::Confirm);
+    }
+}
+
+/// The stop did not finish: the error, «Копировать», «Открыть папку записи», «Закрыть». The
+/// recording stays in its folder and is recovered on the next open of the project.
+fn failed(ui: &mut Ui, shared: &mut Shared) {
+    let Some((message, root)) = shared.failure.clone() else {
+        shared.popover = None;
+        return;
+    };
+    let panel = ErrorPanel {
+        title: hud::PREPARE_FAILED,
+        text: &message,
+        extra: &[hud::OPEN_FOLDER],
+    };
+    match panel.show(ui) {
+        Some(ErrorAction::Extra(_)) => shared.report(crate::open_folder(&root)),
+        Some(ErrorAction::Close) => {
+            shared.failure = None;
+            shared.popover = None;
+        }
+        None => {}
     }
 }
 

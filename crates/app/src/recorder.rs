@@ -42,6 +42,8 @@ pub enum Event {
 }
 
 pub struct Recorder {
+    /// The project folder being recorded into.
+    root: PathBuf,
     requests: Sender<Request>,
     events: Receiver<Event>,
     thread: Option<JoinHandle<()>>,
@@ -57,7 +59,7 @@ impl Recorder {
     ) -> Result<Self, AppError> {
         let (requests, received) = mpsc::channel();
         let (sender, events) = mpsc::channel();
-        let ctx = ctx.clone();
+        let (ctx, folder) = (ctx.clone(), root.clone());
         let thread = std::thread::Builder::new()
             .name("devcast-recorder".to_owned())
             .spawn(move || {
@@ -73,10 +75,15 @@ impl Recorder {
                 source,
             })?;
         Ok(Self {
+            root: folder,
             requests,
             events,
             thread: Some(thread),
         })
+    }
+
+    pub fn root(&self) -> &std::path::Path {
+        &self.root
     }
 
     pub fn send(&self, request: Request) {

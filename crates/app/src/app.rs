@@ -1,6 +1,7 @@
 //! The eframe app: repaints only on events (decision 002), so it uses no CPU while idle. Other
 //! windows are deferred viewports that share [`Shared`] with the main one.
 
+use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
@@ -11,6 +12,7 @@ use dc_ui_kit::tokens::SURFACE;
 use dc_ui_kit::widgets::{ToastKind, Toasts};
 use eframe::egui;
 
+use crate::editor::EditorWindow;
 use crate::hotkeys::{Command, GlobalKeys};
 use crate::hud::{HudWindow, picker, popover};
 use crate::meters::Meters;
@@ -40,6 +42,10 @@ pub struct Shared {
     pub meters: Meters,
     /// The recording: countdown, recorder, timer.
     pub session: Session,
+    /// The open editor.
+    pub editor: Option<EditorWindow>,
+    /// Why the last recording was not prepared, and its project folder.
+    pub failure: Option<(String, PathBuf)>,
     /// Hotkeys whose shortcut the system or another program holds.
     pub taken_hotkeys: Vec<Command>,
     pub toasts: Toasts,
@@ -62,6 +68,8 @@ impl Shared {
             meters: Meters::default(),
             session: Session::Idle,
             taken_hotkeys: Vec::new(),
+            editor: None,
+            failure: None,
             toasts: Toasts::default(),
         };
         shared.refresh_sources();
@@ -242,6 +250,7 @@ impl eframe::App for App {
             crate::area::show(ui.ctx(), &self.shared);
         }
         crate::countdown::show(ui.ctx(), &self.shared);
+        crate::editor::show(ui.ctx(), &self.shared);
         let bar = ui.input(|i| i.viewport().outer_rect);
         if let (Some(open), Some(bar)) = (open, bar) {
             popover::show(ui.ctx(), &self.shared, open, bar);

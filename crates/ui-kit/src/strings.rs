@@ -116,6 +116,21 @@ pub mod countdown {
     pub const CANCEL_HINT: &str = "Клик или Esc — отмена";
 }
 
+/// The editor window (stage 7 fills it; until then the project's facts).
+pub mod editor {
+    pub const OPEN_FOLDER: &str = "Открыть папку проекта";
+
+    /// «recording-1 — DevCast».
+    pub fn title(name: &str) -> String {
+        format!("{name} — DevCast")
+    }
+
+    /// «Клипов: 1 · 00:12 · 1920×1080».
+    pub fn facts(clips: usize, length: &str, width: u32, height: u32) -> String {
+        format!("Клипов: {clips} · {length} · {width}×{height}")
+    }
+}
+
 /// The settings window.
 pub mod settings {
     pub const TITLE: &str = "Настройки — DevCast";

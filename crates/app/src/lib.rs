@@ -9,6 +9,9 @@ mod countdown;
     reason = "crash-handler's crash callback is an unsafe contract; the only unsafe of dc-app"
 )]
 mod crash;
+#[cfg(test)]
+mod e2e_tests;
+mod editor;
 mod error;
 mod hotkeys;
 mod hud;
@@ -87,6 +90,18 @@ fn without_frame(cc: &eframe::CreationContext<'_>) -> Result<(), AppError> {
         .ok_or_else(|| AppError::Window("у главного окна нет окна winit".to_owned()))?;
     window.set_undecorated_shadow(false);
     Ok(())
+}
+
+/// Opens `path` in Explorer.
+pub(crate) fn open_folder(path: &std::path::Path) -> Result<(), AppError> {
+    std::process::Command::new("explorer")
+        .arg(path)
+        .spawn()
+        .map(drop)
+        .map_err(|source| AppError::OpenFolder {
+            path: path.to_path_buf(),
+            source,
+        })
 }
 
 /// The Win32 handle of the main window (the HUD).

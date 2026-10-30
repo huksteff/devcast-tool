@@ -217,6 +217,16 @@ impl Shared {
                 self.recorded(*project);
             }
             (Event::Cancelled, session) => finished(session),
+            (Event::Failed(message), Session::Preparing(recorder)) => {
+                let root = recorder.root().to_path_buf();
+                recorder.join();
+                self.show_hud();
+                self.failure = Some((message, root));
+                self.popover = Some(popover::Open {
+                    kind: popover::Kind::Failed,
+                    anchor: 0.0,
+                });
+            }
             (Event::Failed(message), session) => {
                 finished(session);
                 self.show_hud();
@@ -229,10 +239,12 @@ impl Shared {
         }
     }
 
-    /// The recording is saved in its project.
+    /// The recording is saved in its project: the editor opens with it, the HUD hides until
+    /// the editor closes (v1).
     fn recorded(&mut self, project: dc_capture::win::RecordedProject) {
-        self.show_hud();
         tracing::info!("запись сохранена: {}", project.dir.root().display());
+        self.editor = Some(crate::editor::EditorWindow::new(&project));
+        self.hide_hud();
     }
 
     /// Pause or resume.

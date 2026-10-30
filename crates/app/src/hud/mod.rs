@@ -63,15 +63,8 @@ impl HudWindow {
             Stroke::new(1.0, border),
             StrokeKind::Inside,
         );
-        let inner = ui.horizontal_centered(|ui| content(ui, shared));
-        match inner.inner {
-            Some((bar::Clicked::Grip, _)) => {
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
-            }
-            Some((clicked, anchor)) => on_click(shared, clicked, anchor),
-            None => {}
-        }
-        fit(ui, inner.response.rect.width());
+        let width = bar_ui(ui, shared);
+        fit(ui, width);
         let rect = match hud_window::window_rect(self.hwnd) {
             Ok(rect) => rect,
             Err(error) => return shared.report(Err(error)),
@@ -116,6 +109,20 @@ impl HudWindow {
         });
         shared.report(result);
     }
+}
+
+/// The bar of the current state with its clicks done; returns its width. Everything of the
+/// HUD but the native window, so a test drives the app through it.
+pub fn bar_ui(ui: &mut Ui, shared: &mut Shared) -> f32 {
+    let inner = ui.horizontal_centered(|ui| content(ui, shared));
+    match inner.inner {
+        Some((bar::Clicked::Grip, _)) => {
+            ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
+        }
+        Some((clicked, anchor)) => on_click(shared, clicked, anchor),
+        None => {}
+    }
+    inner.response.rect.width()
 }
 
 /// The bar of the current state of the recording.
