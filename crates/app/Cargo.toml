@@ -15,12 +15,22 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
+dc-capture = { path = "../capture" }
 dc-ipc = { path = "../ipc" }
 dc-project = { path = "../project" }
+dc-ui-kit = { path = "../ui-kit" }
+dirs = "6"
 # `inspection` stays off at run time until EGUI_INSPECTION=1 is set (decision 012).
 eframe = { version = "0.37", default-features = false, features = ["wgpu", "accesskit", "inspection"] }
+rfd = "0.15"
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+dc-ui-kit = { path = "../ui-kit", features = ["kittest"] }
+egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
+tempfile.workspace = true

@@ -13,4 +13,23 @@ pub enum AppError {
     Instance(#[from] dc_ipc::IpcError),
     #[error("не удалось открыть окно: {0}. Обнови драйвер видеокарты")]
     Window(String),
+    #[error("файл настроек {path} испорчен ({message}): удали его, DevCast создаст новый")]
+    BadSettings {
+        path: std::path::PathBuf,
+        message: String,
+    },
+    #[error("не удалось записать или прочитать {path}: {source}. Проверь права на папку")]
+    SettingsFile {
+        path: std::path::PathBuf,
+        source: std::io::Error,
+    },
+}
+
+impl AppError {
+    pub fn settings_file(path: &std::path::Path, source: std::io::Error) -> Self {
+        Self::SettingsFile {
+            path: path.to_path_buf(),
+            source,
+        }
+    }
 }
