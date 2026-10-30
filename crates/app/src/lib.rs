@@ -13,6 +13,7 @@ mod crash;
 mod e2e_tests;
 mod editor;
 mod error;
+mod gpu;
 mod hotkeys;
 mod hud;
 mod instance;
@@ -54,6 +55,7 @@ pub fn run() -> Result<(), AppError> {
     };
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
+        wgpu_options: gpu::options(),
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title(APP_NAME)
             .with_inner_size(hud::START_SIZE)

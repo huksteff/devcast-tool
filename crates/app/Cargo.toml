@@ -19,6 +19,7 @@ crash-handler = "0.6"
 dc-capture = { path = "../capture" }
 dc-ipc = { path = "../ipc" }
 dc-project = { path = "../project" }
+dc-render = { path = "../render" }
 dc-ui-kit = { path = "../ui-kit" }
 dirs = "6"
 global-hotkey = "0.9"
