@@ -198,7 +198,7 @@ fn anim_rejects_what_does_not_fit() {
     assert!(error.contains("вида text"), "{error}");
     for seconds in [-0.1, 10.5] {
         let error = fail(&mut p, &anim(json!({"id": "a2", "exit_duration": seconds})));
-        assert!(error.contains("от 0 до 10 с"), "{error}");
+        assert!(error.contains("длительность анимации (с): нужно от 0 до 10"), "{error}");
     }
     let error = fail(&mut p, &anim(json!({"id": "a9", "enter": "fade"})));
     assert!(error.contains("a9"), "{error}");

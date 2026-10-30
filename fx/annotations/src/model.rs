@@ -124,7 +124,8 @@ impl Annotation {
     }
 
     /// Stores the kind's fields; `B` must serialize to a JSON object.
-    pub fn set_body<B: Serialize>(&mut self, body: &B) -> Result<(), serde_json::Error> {
+    #[cfg(test)]
+    pub(crate) fn set_body<B: Serialize>(&mut self, body: &B) -> Result<(), serde_json::Error> {
         self.body = fields(body)?;
         Ok(())
     }

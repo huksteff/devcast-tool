@@ -1,7 +1,7 @@
 //! `zoom add`, `zoom set`, `zoom rm`: zoom regions.
 
 use dc_core::time::Output;
-use dc_core::{Command, CommandError, Diff, Op, Point, Project, TimeArg, TimeDelta};
+use dc_core::{Command, CommandError, Diff, Op, Point, Project, TimeArg, TimeDelta, index_of};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -175,11 +175,7 @@ impl Op for ZoomRm {
 }
 
 fn position(state: &ZoomState, id: ZoomId) -> Result<usize, CommandError> {
-    state
-        .zooms
-        .iter()
-        .position(|z| z.id == id)
-        .ok_or_else(|| CommandError::not_found(id, state.zoom_ids()))
+    index_of(&state.zooms, id, |z| z.id)
 }
 
 fn check_scale(scale: f64) -> Result<f64, CommandError> {

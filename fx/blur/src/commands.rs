@@ -1,8 +1,8 @@
 //! `blur set`: how strong a blur annotation is, its tint and its corners.
 
 use dc_core::time::Output;
-use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg};
-use dc_fx_annotations::{AnnotId, Annotations, Kind, edit_body, key_offset};
+use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg, within};
+use dc_fx_annotations::{AnnotId, Kind, edit_kind};
 use dc_render::Rgba;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -45,28 +45,11 @@ impl Command for BlurSet {
     }
 
     fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
-        let mut state = project.state::<Annotations>()?;
-        let ids: Vec<AnnotId> = state.annot_ids().collect();
-        let annotation = state
-            .annotations
-            .iter_mut()
-            .find(|a| a.id == self.id)
-            .ok_or_else(|| CommandError::not_found(self.id, ids))?;
-        if annotation.kind != Kind::Blur {
-            return Err(CommandError::new(format!(
-                "{} — не размытие: blur set меняет только размытия (devcast ls annots покажет виды)",
-                self.id
-            )));
-        }
-        let at = match self.at {
-            Some(TimeArg(t)) => Some(key_offset(project, annotation, t)?),
-            None => None,
-        };
-        if !edit_body(annotation, at, |old: &BlurBody| self.change(old))? {
-            return Ok(Diff::default());
-        }
-        project.set_state::<Annotations>(&state)?;
-        Ok(Diff::changed(self.id))
+        let wrong = "не размытие: blur set меняет только размытия (devcast ls annots покажет виды)";
+        let at = self.at.map(|TimeArg(t)| t);
+        edit_kind(project, self.id, Kind::Blur, wrong, at, |old: &BlurBody| {
+            self.change(old)
+        })
     }
 }
 
@@ -75,13 +58,4 @@ impl Op for BlurSet {
     const ABOUT: &'static str = "Изменить размытие: силу, тонировку (альфа — от чистого размытия до сплошной заливки), радиус углов (с --at — в ключе)";
     const EXAMPLE: &'static str = "blur set a2 --strength 30 --tint \"#00000080\" --radius 16";
     const POSITIONAL: &'static [&'static str] = &["id"];
-}
-
-fn within(what: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {
-    if (min..=max).contains(&value) {
-        return Ok(value);
-    }
-    Err(CommandError::new(format!(
-        "{what}: нужно от {min} до {max}, а не {value}"
-    )))
 }

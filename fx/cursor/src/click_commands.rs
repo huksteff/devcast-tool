@@ -1,7 +1,9 @@
 //! `clicks`: the effect of every click; `click set` / `click reset`: one click otherwise.
 
 use dc_core::time::Output;
-use dc_core::{Command, CommandError, Diff, Op, Project, SourceTime, TimeArg, TimeDelta, TimeMap};
+use dc_core::{
+    Command, CommandError, Diff, Op, Project, SourceTime, TimeArg, TimeDelta, TimeMap, within,
+};
 use dc_render::Rgba;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -44,15 +46,6 @@ impl ClickArgs {
     fn duration(&self) -> Option<TimeDelta> {
         self.duration.map(TimeDelta::from_secs_f64)
     }
-}
-
-fn within(what: &str, value: f64, min: f64, max: f64) -> Result<(), CommandError> {
-    if (min..=max).contains(&value) {
-        return Ok(());
-    }
-    Err(CommandError::new(format!(
-        "{what}: нужно от {min} до {max}, а не {value}"
-    )))
 }
 
 /// `ripple, #2563ebff, ×1.00, 100 %, 0.60 с`.

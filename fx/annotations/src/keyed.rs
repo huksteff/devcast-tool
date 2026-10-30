@@ -9,8 +9,33 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::commands::position;
-use crate::model::{AnnotId, Annotation, Annotations, fields};
+use crate::model::{AnnotId, Annotation, Annotations, Kind, fields};
 use crate::span::Timeline;
+
+/// The `set` command of a kind: [`edit_body`] of annotation `id` in the key at output `at`, or
+/// everywhere without it. The annotation must be of `kind`, else the error is `{id} — {wrong}`.
+/// An empty `Diff` when nothing changed.
+pub fn edit_kind<B: Serialize + DeserializeOwned + PartialEq>(
+    project: &mut Project,
+    id: AnnotId,
+    kind: Kind,
+    wrong: &str,
+    at: Option<OutputTime>,
+    change: impl Fn(&B) -> Result<B, CommandError>,
+) -> Result<Diff, CommandError> {
+    let mut state = project.state::<Annotations>()?;
+    let index = position(&state, id)?;
+    let annotation = &mut state.annotations[index];
+    if annotation.kind != kind {
+        return Err(CommandError::new(format!("{id} — {wrong}")));
+    }
+    let at = at.map(|t| key_offset(project, annotation, t)).transpose()?;
+    if !edit_body(annotation, at, change)? {
+        return Ok(Diff::default());
+    }
+    project.set_state::<Annotations>(&state)?;
+    Ok(Diff::changed(id))
+}
 
 /// Key time of output moment `t` for `annotation`: `t` must show the annotation or be the end of
 /// it on the output video.

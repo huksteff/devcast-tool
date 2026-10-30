@@ -1,7 +1,7 @@
 //! `annot add`, `annot set`, `annot rm`: annotations, their time, box and rotation.
 
 use dc_core::time::Output;
-use dc_core::{Command, CommandError, Diff, Op, Project, Rect, TimeArg, TimeDelta};
+use dc_core::{Command, CommandError, Diff, Op, Project, Rect, TimeArg, TimeDelta, index_of};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::Map;
@@ -254,11 +254,7 @@ impl Op for AnnotRm {
 }
 
 pub(crate) fn position(state: &AnnotationsState, id: AnnotId) -> Result<usize, CommandError> {
-    state
-        .annotations
-        .iter()
-        .position(|a| a.id == id)
-        .ok_or_else(|| CommandError::not_found(id, state.annot_ids()))
+    index_of(&state.annotations, id, |a| a.id)
 }
 
 pub(crate) fn check_track(track: u32) -> Result<u32, CommandError> {

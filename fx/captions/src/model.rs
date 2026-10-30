@@ -1,7 +1,7 @@
 //! Caption cues as stored in `project.effects["captions"]`.
 
 use dc_core::time::Source;
-use dc_core::{CommandError, Effect, Id, IdCounter, IdKind, Item, Range};
+use dc_core::{CommandError, Effect, Id, IdCounter, IdKind, Item, Range, index_of};
 
 use crate::style::CaptionsSettings;
 use schemars::JsonSchema;
@@ -131,10 +131,7 @@ impl CaptionsState {
     }
 
     pub(crate) fn position(&self, id: CueId) -> Result<usize, CommandError> {
-        self.cues
-            .iter()
-            .position(|c| c.id == id)
-            .ok_or_else(|| CommandError::not_found(id, self.cue_ids()))
+        index_of(&self.cues, id, |c| c.id)
     }
 
     pub(crate) fn sort(&mut self) {

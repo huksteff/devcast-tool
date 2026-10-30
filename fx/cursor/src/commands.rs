@@ -1,6 +1,6 @@
 //! `cursor`: look and motion of the cursor of every recording.
 
-use dc_core::{Command, CommandError, Diff, Op, Project, TimeDelta};
+use dc_core::{Command, CommandError, Diff, Op, Project, TimeDelta, within};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -76,15 +76,6 @@ impl Op for CursorSet {
         "Курсор всех записей: показ, размер, сглаживание, blur, отскок, покачивание, loop";
     const EXAMPLE: &'static str = "cursor --size 3 --smoothing exact --sway 0";
     const SETTINGS: Option<&'static str> = Some("cursor");
-}
-
-fn within(what: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {
-    if (min..=max).contains(&value) {
-        return Ok(value);
-    }
-    Err(CommandError::new(format!(
-        "{what}: нужно от {min} до {max}, а не {value}"
-    )))
 }
 
 /// `курсор: размер 2.50→3.00, сглаживание focused→exact`.

@@ -1,7 +1,7 @@
 //! Look of the captions (docs/porting/captions.md §5–§8, decision 000 «Субтитры») and the
 //! command `captions style`.
 
-use dc_core::{Command, CommandError, Diff, Op, Project};
+use dc_core::{Command, CommandError, Diff, Op, Project, within};
 use dc_render::{FAMILIES, Rgba};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -139,7 +139,7 @@ impl Command for CaptionsStyle {
         new.shadow = self.shadow.unwrap_or(new.shadow);
         new.animation = self.animation.unwrap_or(new.animation);
         if let Some(rows) = self.rows {
-            new.rows = within("строк", f64::from(rows), 1.0, f64::from(ROWS_MAX))? as u32;
+            new.rows = within("строк субтитров", f64::from(rows), 1.0, f64::from(ROWS_MAX))? as u32;
         }
         let numbers = [
             (self.size, &mut new.size, "размер", SIZE_MIN, SIZE_MAX),
@@ -168,7 +168,7 @@ impl Command for CaptionsStyle {
         ];
         for (value, field, what, min, max) in numbers {
             if let Some(value) = value {
-                *field = within(what, value, min, max)?;
+                *field = within(&format!("{what} субтитров"), value, min, max)?;
             }
         }
         if *new == old {
@@ -199,13 +199,4 @@ fn family(font: &str) -> Result<String, CommandError> {
                 FAMILIES.join(", ")
             ))
         })
-}
-
-fn within(what: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {
-    if (min..=max).contains(&value) {
-        return Ok(value);
-    }
-    Err(CommandError::new(format!(
-        "{what} субтитров: нужно от {min} до {max}, а не {value}"
-    )))
 }

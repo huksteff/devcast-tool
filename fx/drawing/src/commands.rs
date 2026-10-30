@@ -2,8 +2,8 @@
 //! (an agent draws with numbers, the editor with the mouse, 7.24).
 
 use dc_core::time::Output;
-use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg};
-use dc_fx_annotations::{AnnotId, Annotations, Kind, edit_body, key_offset};
+use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg, within};
+use dc_fx_annotations::{AnnotId, Kind, edit_kind};
 use dc_render::Rgba;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -82,12 +82,7 @@ impl DrawingSet {
         let mut new = old.clone();
         let width = self.width.map(width).transpose()?;
         if let Some(opacity) = self.opacity {
-            if !(0.0..=1.0).contains(&opacity) {
-                return Err(CommandError::new(format!(
-                    "прозрачность рисунка: нужно от 0 до 1, а не {opacity}"
-                )));
-            }
-            new.opacity = opacity;
+            new.opacity = within("прозрачность рисунка", opacity, 0.0, 1.0)?;
         }
         let strokes: Vec<&mut Stroke> = match self.stroke {
             Some(n) => vec![&mut new.strokes[index(old, n)?]],
@@ -194,27 +189,15 @@ fn edit(
     at: Option<TimeArg<Output>>,
     change: impl Fn(&DrawingBody) -> Result<DrawingBody, CommandError>,
 ) -> Result<Diff, CommandError> {
-    let mut state = project.state::<Annotations>()?;
-    let ids: Vec<AnnotId> = state.annot_ids().collect();
-    let annotation = state
-        .annotations
-        .iter_mut()
-        .find(|a| a.id == id)
-        .ok_or_else(|| CommandError::not_found(id, ids))?;
-    if annotation.kind != Kind::Drawing {
-        return Err(CommandError::new(format!(
-            "{id} — не рисунок: команды drawing меняют только рисунки (devcast ls annots покажет виды, рисунок создаёт annot add drawing)"
-        )));
-    }
-    let at = match at {
-        Some(TimeArg(t)) => Some(key_offset(project, annotation, t)?),
-        None => None,
-    };
-    if !edit_body(annotation, at, change)? {
-        return Ok(Diff::default());
-    }
-    project.set_state::<Annotations>(&state)?;
-    Ok(Diff::changed(id))
+    let wrong = "не рисунок: команды drawing меняют только рисунки (devcast ls annots покажет виды, рисунок создаёт annot add drawing)";
+    edit_kind(
+        project,
+        id,
+        Kind::Drawing,
+        wrong,
+        at.map(|TimeArg(t)| t),
+        change,
+    )
 }
 
 /// `x1,y1,x2,y2,…` in fractions of the box, each 0..1, at least one point.
@@ -234,12 +217,7 @@ fn points(text: &str) -> Result<Vec<[f64; 2]>, CommandError> {
 }
 
 fn width(value: f64) -> Result<f64, CommandError> {
-    if (WIDTH_MIN..=WIDTH_MAX).contains(&value) {
-        return Ok(value);
-    }
-    Err(CommandError::new(format!(
-        "толщина штриха: нужно от {WIDTH_MIN} до {WIDTH_MAX} (px при 1080p), а не {value}"
-    )))
+    within("толщина штриха (px при 1080p)", value, WIDTH_MIN, WIDTH_MAX)
 }
 
 /// The colour given for a stroke of `tool`: an eraser has none.

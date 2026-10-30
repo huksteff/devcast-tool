@@ -5,6 +5,7 @@
 use dc_core::time::Output;
 use dc_core::{
     Command, CommandError, Diff, Op, OutputTime, Project, Range, TimeArg, TimeDelta, TimeMap,
+    index_of, within,
 };
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -174,11 +175,7 @@ impl Op for AudioRm {
 }
 
 fn position(state: &AudioState, id: AudioId) -> Result<usize, CommandError> {
-    state
-        .clips
-        .iter()
-        .position(|c| c.id == id)
-        .ok_or_else(|| CommandError::not_found(id, state.clip_ids()))
+    index_of(&state.clips, id, |c| c.id)
 }
 
 fn video_end(project: &Project) -> Result<OutputTime, CommandError> {
@@ -243,15 +240,6 @@ fn check_track(track: u32) -> Result<u32, CommandError> {
     Err(CommandError::new(format!(
         "дорожка звука {track} вне 0–{}: дорожек {TRACKS}",
         TRACKS - 1
-    )))
-}
-
-fn within(what: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {
-    if (min..=max).contains(&value) {
-        return Ok(value);
-    }
-    Err(CommandError::new(format!(
-        "{what}: нужно от {min} до {max}, а не {value}"
     )))
 }
 

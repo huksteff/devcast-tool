@@ -1,7 +1,9 @@
 //! `callout add`, `callout set`, `callout rm`: events of the callout track.
 
 use dc_core::time::Output;
-use dc_core::{Command, CommandError, Diff, Op, Project, SourceTime, TimeArg, TimeDelta, TimeMap};
+use dc_core::{
+    Command, CommandError, Diff, Op, Project, SourceTime, TimeArg, TimeDelta, TimeMap, index_of,
+};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -151,11 +153,7 @@ impl Op for CalloutRm {
 }
 
 fn position(state: &CalloutState, id: EventId) -> Result<usize, CommandError> {
-    state
-        .events
-        .iter()
-        .position(|e| e.id == id)
-        .ok_or_else(|| CommandError::not_found(id, state.event_ids()))
+    index_of(&state.events, id, |e| e.id)
 }
 
 /// The recording and its source moment shown at output time `t`.

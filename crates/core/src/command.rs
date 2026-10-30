@@ -41,6 +41,29 @@ impl CommandError {
     }
 }
 
+/// `value` if it is in `min..=max`, else an error naming `what`, e.g. «размер курсора».
+pub fn within(what: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {
+    if (min..=max).contains(&value) {
+        return Ok(value);
+    }
+    Err(CommandError::new(format!(
+        "{what}: нужно от {min} до {max}, а не {value}"
+    )))
+}
+
+/// Index of the object with `id` in `items` (`id_of` reads an object's id), else
+/// [`CommandError::not_found`].
+pub fn index_of<T, K: IdKind>(
+    items: &[T],
+    id: Id<K>,
+    id_of: impl Fn(&T) -> Id<K>,
+) -> Result<usize, CommandError> {
+    items
+        .iter()
+        .position(|item| id_of(item) == id)
+        .ok_or_else(|| CommandError::not_found(id, items.iter().map(&id_of)))
+}
+
 impl From<StateError> for CommandError {
     fn from(error: StateError) -> Self {
         Self::new(error.to_string())

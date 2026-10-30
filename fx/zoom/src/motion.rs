@@ -1,6 +1,6 @@
 //! `zoom motion`: camera motion of all zooms (presets and fine tuning).
 
-use dc_core::{Command, CommandError, Diff, Op, Project, TimeDelta};
+use dc_core::{Command, CommandError, Diff, Op, Project, TimeDelta, within};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -44,10 +44,10 @@ impl Command for ZoomMotion {
             new.zoom_out = transition("выход", secs)?;
         }
         if let Some(value) = self.smoothness {
-            new.smoothness = within("плавность", value, 1.0)?;
+            new.smoothness = within("плавность", value, 0.0, 1.0)?;
         }
         if let Some(value) = self.blur {
-            new.motion_blur = within("сила motion blur", value, MOTION_BLUR_MAX)?;
+            new.motion_blur = within("сила motion blur", value, 0.0, MOTION_BLUR_MAX)?;
         }
         new.connect = self.connect.unwrap_or(new.connect);
         if *new == old {
@@ -76,15 +76,6 @@ fn transition(what: &str, secs: f64) -> Result<TimeDelta, CommandError> {
         "{what} зума должен длиться от {} до {} с, а не {secs}",
         TRANSITION_MIN.as_secs_f64(),
         TRANSITION_MAX.as_secs_f64()
-    )))
-}
-
-fn within(what: &str, value: f64, max: f64) -> Result<f64, CommandError> {
-    if (0.0..=max).contains(&value) {
-        return Ok(value);
-    }
-    Err(CommandError::new(format!(
-        "{what} должна быть от 0 до {max}, а не {value}"
     )))
 }
 

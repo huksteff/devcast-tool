@@ -1,6 +1,6 @@
 //! `annot anim`: how an annotation comes in and goes out.
 
-use dc_core::{Command, CommandError, Diff, Op, Project, TimeDelta};
+use dc_core::{Command, CommandError, Diff, Op, Project, TimeDelta, within};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -73,11 +73,7 @@ fn change(
     }
     if let Some(seconds) = seconds {
         let max = STAGE_MAX.as_secs_f64();
-        if !(0.0..=max).contains(&seconds) {
-            return Err(CommandError::new(format!(
-                "длительность анимации должна быть от 0 до {max} с, а не {seconds}"
-            )));
-        }
+        let seconds = within("длительность анимации (с)", seconds, 0.0, max)?;
         stage.duration = TimeDelta::from_secs_f64(seconds);
     }
     Ok(())

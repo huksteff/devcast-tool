@@ -1,8 +1,8 @@
 //! `shape set`: which figure a shape annotation draws and how.
 
 use dc_core::time::Output;
-use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg};
-use dc_fx_annotations::{AnnotId, Annotations, Kind, edit_body, key_offset};
+use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg, within};
+use dc_fx_annotations::{AnnotId, Kind, edit_kind};
 use dc_render::{GradientColors, Rgba};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -97,28 +97,16 @@ impl Command for ShapeSet {
     }
 
     fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
-        let mut state = project.state::<Annotations>()?;
-        let ids: Vec<AnnotId> = state.annot_ids().collect();
-        let annotation = state
-            .annotations
-            .iter_mut()
-            .find(|a| a.id == self.id)
-            .ok_or_else(|| CommandError::not_found(self.id, ids))?;
-        if annotation.kind != Kind::Shape {
-            return Err(CommandError::new(format!(
-                "{} — не фигура: shape set меняет только фигуры (devcast ls annots покажет виды)",
-                self.id
-            )));
-        }
-        let at = match self.at {
-            Some(TimeArg(t)) => Some(key_offset(project, annotation, t)?),
-            None => None,
-        };
-        if !edit_body(annotation, at, |old: &ShapeBody| self.change(old))? {
-            return Ok(Diff::default());
-        }
-        project.set_state::<Annotations>(&state)?;
-        Ok(Diff::changed(self.id))
+        let wrong = "не фигура: shape set меняет только фигуры (devcast ls annots покажет виды)";
+        let at = self.at.map(|TimeArg(t)| t);
+        edit_kind(
+            project,
+            self.id,
+            Kind::Shape,
+            wrong,
+            at,
+            |old: &ShapeBody| self.change(old),
+        )
     }
 }
 
@@ -164,14 +152,5 @@ fn check_cycle(cycle: f64) -> Result<f64, CommandError> {
     }
     Err(CommandError::new(format!(
         "цикл градиента: нужно от {CYCLE_MIN} до {CYCLE_MAX} секунд или 0 (градиент стоит), а не {cycle}"
-    )))
-}
-
-fn within(what: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {
-    if (min..=max).contains(&value) {
-        return Ok(value);
-    }
-    Err(CommandError::new(format!(
-        "{what}: нужно от {min} до {max}, а не {value}"
     )))
 }

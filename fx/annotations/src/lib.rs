@@ -15,7 +15,7 @@ mod span;
 pub use animate::AnnotAnim;
 pub use arrange::{AnnotLayer, AnnotMove, Step};
 pub use commands::{AnnotAdd, AnnotRm, AnnotSet};
-pub use keyed::{AnnotKeyAdd, AnnotKeyCopy, AnnotKeyRm, edit_body, key_offset};
+pub use keyed::{AnnotKeyAdd, AnnotKeyCopy, AnnotKeyRm, edit_body, edit_kind, key_offset};
 pub use keys::{Blend, KEY_TOLERANCE, Key, keyed, step};
 pub use model::{
     AnnotId, AnnotKind, Annotation, Annotations, AnnotationsState, Kind, MIN_DURATION,

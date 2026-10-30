@@ -7,11 +7,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 fn index_of(project: &Project, id: ClipId) -> Result<usize, CommandError> {
-    project
-        .clips
-        .iter()
-        .position(|c| c.id == id)
-        .ok_or_else(|| CommandError::not_found(id, project.clips.iter().map(|c| c.id)))
+    dc_core::index_of(&project.clips, id, |c| c.id)
 }
 
 /// Adds a clip of the whole `media` at the end of the track. Not an [`Op`]: the media file must

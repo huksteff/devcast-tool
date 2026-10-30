@@ -1,6 +1,6 @@
 //! `callout style`: look of every callout and the text of `on`.
 
-use dc_core::{Command, CommandError, Diff, Op, Project};
+use dc_core::{Command, CommandError, Diff, Op, Project, within};
 use dc_render::{GradientColors, Rgba};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -46,14 +46,14 @@ impl Command for CalloutStyle {
         new.background = self.background.unwrap_or(new.background);
         new.text_color = self.text_color.unwrap_or(new.text_color);
         if let Some(size) = self.size {
-            new.size = within("размер", size, SIZE_MIN, SIZE_MAX)?;
+            new.size = within("размер облачка", size, SIZE_MIN, SIZE_MAX)?;
         }
         new.gradient = self.gradient.unwrap_or(new.gradient);
         if let Some(colors) = &self.colors {
             new.colors = parse_colors(colors)?;
         }
         if let Some(glow) = self.glow {
-            new.glow = within("свечение", glow, 0.0, GLOW_MAX)?;
+            new.glow = within("свечение облачка", glow, 0.0, GLOW_MAX)?;
         }
         if *new == old {
             return Ok(Diff::default());
@@ -71,15 +71,6 @@ impl Op for CalloutStyle {
     const EXAMPLE: &'static str =
         "callout style --gradient --colors \"#14b8c4ff,#a855f7ff\" --glow 14";
     const SETTINGS: Option<&'static str> = Some("callout");
-}
-
-fn within(name: &str, value: f64, min: f64, max: f64) -> Result<f64, CommandError> {
-    if (min..=max).contains(&value) {
-        return Ok(value);
-    }
-    Err(CommandError::new(format!(
-        "{name} облачка должен быть от {min} до {max}, а не {value}"
-    )))
 }
 
 fn parse_colors(text: &str) -> Result<GradientColors, CommandError> {

@@ -42,11 +42,7 @@ impl Command for ClipSplit {
             )));
         }
         let (id, at) = (segment.clip, segment.source_at(t));
-        let index = project
-            .clips
-            .iter()
-            .position(|c| c.id == id)
-            .ok_or_else(|| CommandError::not_found(id, project.clips.iter().map(|c| c.id)))?;
+        let index = dc_core::index_of(&project.clips, id, |c| c.id)?;
         let clip = &project.clips[index];
         let left = part(clip, range_of(clip.trim.start(), at)?);
         let mut right = part(clip, range_of(at, clip.trim.end())?);
