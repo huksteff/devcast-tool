@@ -10,6 +10,7 @@ use serde_json::{Value, json};
 use crate::edit::{Ctx, answer};
 use crate::error::CliError;
 use crate::ls::time;
+use crate::round::thousandths;
 use crate::run::Answer;
 use crate::telemetry::{self, Recorded, fraction, place};
 
@@ -103,12 +104,7 @@ pub(crate) fn events(
 }
 
 fn secs(t: OutputTime) -> f64 {
-    round(t.as_secs_f64())
-}
-
-/// Three decimals: milliseconds, or a pixel of a 1000-pixel frame.
-fn round(value: f64) -> f64 {
-    (value * 1000.0).round() / 1000.0
+    thousandths(t.as_secs_f64())
 }
 
 fn button(button: Button) -> &'static str {
@@ -155,7 +151,7 @@ fn clicks(map: &TimeMap, project: &Project, recorded: &[Recorded<'_>]) -> (Vec<R
             let p = clip
                 .crop
                 .to_local(fraction(recording.media, click.x, click.y));
-            let (x, y) = (round(p.x), round(p.y));
+            let (x, y) = (thousandths(p.x), thousandths(p.y));
             let name = button(click.button);
             let double = if click.double { " double" } else { "" };
             rows.push(Row {

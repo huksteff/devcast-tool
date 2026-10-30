@@ -15,14 +15,18 @@ use serde::{Deserialize, Deserializer, Serialize};
 /// A point in normalized frame coordinates.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
 pub struct Point {
+    /// From the left edge, 0..1 of the width.
     pub x: f64,
+    /// From the top edge, 0..1 of the height.
     pub y: f64,
 }
 
 /// Frame size in pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct PixelSize {
+    /// Width, px.
     pub width: u32,
+    /// Height, px.
     pub height: u32,
 }
 

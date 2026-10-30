@@ -48,6 +48,7 @@ pub enum MediaKind {
 pub struct Media {
     /// Path relative to the project folder, with `/` separators, e.g. `media/screen.mp4`.
     pub path: String,
+    /// Recording or imported video.
     pub kind: MediaKind,
     /// Full length of the source.
     pub duration: TimeDelta,
@@ -58,6 +59,7 @@ pub struct Media {
 /// A part of a source played faster or slower; pitch is preserved.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SpeedRange {
+    /// The part of the source, its own time.
     pub range: Range<crate::time::Source>,
     /// Playback factor, `SPEED_MIN..=SPEED_MAX`; 2.0 plays twice as fast.
     pub factor: f64,
@@ -66,7 +68,9 @@ pub struct SpeedRange {
 /// A clip on the main track. Everything inside is in the clip's own source time.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Clip {
+    /// `c<number>`, never reused.
     pub id: ClipId,
+    /// The source file.
     pub media: Media,
     /// The used part of the source (in/out points).
     pub trim: Range<crate::time::Source>,
@@ -111,9 +115,11 @@ pub fn crop_problem(rect: Rect) -> Option<String> {
 /// The whole edit.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Project {
+    /// Version of this format, `SCHEMA_VERSION`; another one needs a migration.
     pub schema_version: u32,
     /// Main track, in playback order (magnetic: no gaps between clips).
     pub clips: Vec<Clip>,
+    /// Next clip number.
     pub clip_ids: IdCounter<ClipKind>,
     /// State of each effect, keyed by effect id (`"zoom"`, `"cursor"`, …).
     #[serde(default)]

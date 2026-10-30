@@ -54,7 +54,6 @@ pub fn request<Q: Serialize, A: DeserializeOwned>(name: &str, request: &Q) -> Re
 
 /// Accepts connections on a name; only one listener per name can exist.
 pub struct Listener {
-    name: String,
     listener: interprocess::local_socket::Listener,
 }
 
@@ -70,14 +69,7 @@ impl Listener {
                 name: name.to_owned(),
                 source,
             })?;
-        Ok(Self {
-            name: name.to_owned(),
-            listener,
-        })
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
+        Ok(Self { listener })
     }
 
     pub fn accept(&self) -> Result<Connection, IpcError> {

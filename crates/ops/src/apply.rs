@@ -70,6 +70,11 @@ pub fn apply_commands(
     })
 }
 
+/// Commands of one type as the list [`apply_commands`] takes.
+pub fn as_commands<C: Command>(commands: &[C]) -> Vec<&dyn Command> {
+    commands.iter().map(|c| c as &dyn Command).collect()
+}
+
 impl fmt::Display for Applied {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.dry_run {

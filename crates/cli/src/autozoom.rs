@@ -4,16 +4,17 @@
 //! project's zoom setting `auto` is on.
 
 use dc_capture::input::{Button, CursorEvent};
-use dc_core::{Command, Op};
+use dc_core::Op;
 use dc_fx_zoom::{
     Action, DEFAULT_SCALE, Mode, Pointer, Recording, Suggestions, ZoomAdd, ZoomEffect,
 };
-use dc_ops::{Applied, Step};
+use dc_ops::{Applied, Step, as_commands};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::edit::{self, Ctx, answer};
 use crate::error::CliError;
+use crate::round::thousandths;
 use crate::run::Answer;
 use crate::telemetry::{self, fraction};
 use crate::workspace::Workspace;
@@ -113,7 +114,7 @@ pub(crate) fn suggest(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         .zooms
         .iter()
         .map(|z| {
-            let (x, y) = (round(z.focus.x), round(z.focus.y));
+            let (x, y) = (thousandths(z.focus.x), thousandths(z.focus.y));
             format!(
                 "{}–{}  clicks={}  x={x}  y={y}",
                 z.span.start(),
@@ -132,7 +133,7 @@ pub(crate) fn suggest(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         .map(|z| {
             json!({
                 "from": z.span.start().as_secs_f64(), "to": z.span.end().as_secs_f64(),
-                "clicks": z.clicks, "x": round(z.focus.x), "y": round(z.focus.y),
+                "clicks": z.clicks, "x": thousandths(z.focus.x), "y": thousandths(z.focus.y),
             })
         })
         .collect();
@@ -140,10 +141,6 @@ pub(crate) fn suggest(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         "items": items, "clicks": found.clicks, "hidden": found.hidden, "taken": found.taken,
     });
     Ok(answer(&mut workspace, lines.join("\n"), json))
-}
-
-fn round(value: f64) -> f64 {
-    (value * 1000.0).round() / 1000.0
 }
 
 /// `devcast zoom …` from the registry; `zoom add --at clicks` adds the suggested zooms.
@@ -175,10 +172,6 @@ fn commands(found: &Suggestions, args: &ClickArgs) -> Vec<ZoomAdd> {
         .iter()
         .map(|z| z.command(args.scale, args.mode))
         .collect()
-}
-
-fn as_commands(commands: &[ZoomAdd]) -> Vec<&dyn Command> {
-    commands.iter().map(|c| c as &dyn Command).collect()
 }
 
 /// A recording was just added to the project of `workspace` (the stop of `devcast record`, or a

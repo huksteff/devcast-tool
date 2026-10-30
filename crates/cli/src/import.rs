@@ -5,9 +5,9 @@
 use std::path::{Path, PathBuf};
 
 use dc_core::project::Media;
-use dc_core::{Command, History, Project};
+use dc_core::{History, Project};
 use dc_fx_cut::ClipAdd;
-use dc_ops::Applied;
+use dc_ops::{Applied, as_commands};
 use dc_project::dir::MEDIA_DIR;
 use dc_project::{Defaults, ProjectDir, ProjectLock};
 
@@ -72,10 +72,6 @@ fn failed(error: dc_media::MediaError) -> CliError {
 
 fn clip_adds(media: Vec<Media>) -> Vec<ClipAdd> {
     media.into_iter().map(|media| ClipAdd { media }).collect()
-}
-
-fn as_commands(commands: &[ClipAdd]) -> Vec<&dyn Command> {
-    commands.iter().map(|c| c as &dyn Command).collect()
 }
 
 /// The clips of a new project; its history starts empty.

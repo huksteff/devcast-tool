@@ -17,6 +17,7 @@ use serde_json::json;
 use crate::edit::{Ctx, answer};
 use crate::error::CliError;
 use crate::ls::time;
+use crate::round::thousandths;
 use crate::run::Answer;
 use crate::silences::pick;
 
@@ -238,7 +239,7 @@ pub(crate) fn media_cues(media: &MediaWords, words: &[Word]) -> Result<Vec<Cue>,
 }
 
 fn secs(t: OutputTime) -> f64 {
-    (t.as_secs_f64() * 1000.0).round() / 1000.0
+    thousandths(t.as_secs_f64())
 }
 
 /// How far a cut at a word boundary may move to the quietest moment (decision 010).

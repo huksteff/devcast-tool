@@ -13,6 +13,7 @@ use serde_json::json;
 use crate::edit::{Ctx, answer};
 use crate::error::CliError;
 use crate::ls::time;
+use crate::round::thousandths;
 use crate::run::Answer;
 
 /// Default track; a media without it (an imported video) uses its first track.
@@ -158,9 +159,9 @@ pub(crate) fn pick(
 }
 
 fn secs(t: OutputTime) -> f64 {
-    (t.as_secs_f64() * 1000.0).round() / 1000.0
+    thousandths(t.as_secs_f64())
 }
 
 fn secs_of(d: TimeDelta) -> f64 {
-    (d.as_secs_f64() * 1000.0).round() / 1000.0
+    thousandths(d.as_secs_f64())
 }

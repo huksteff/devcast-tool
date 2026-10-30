@@ -10,7 +10,7 @@ pub mod plan;
 pub mod registry;
 pub mod settings;
 
-pub use apply::{Applied, apply, apply_commands, duration_change};
+pub use apply::{Applied, apply, apply_commands, as_commands, duration_change};
 pub use argv::parse_args;
 pub use error::OpsError;
 pub use evaluate::{EvaluateError, Evaluator};

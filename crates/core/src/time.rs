@@ -85,6 +85,7 @@ impl Timeline for Output {}
 #[serde(transparent, bound = "")]
 #[schemars(transparent)]
 pub struct Time<K: Timeline> {
+    /// Microseconds.
     micros: i64,
     #[serde(skip)]
     #[schemars(skip)]
@@ -258,7 +259,9 @@ impl<K: Timeline> FromStr for Time<K> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(try_from = "RawRange<K>", into = "RawRange<K>", bound = "")]
 pub struct Range<K: Timeline> {
+    /// First moment inside.
     start: Time<K>,
+    /// First moment after the range.
     end: Time<K>,
 }
 

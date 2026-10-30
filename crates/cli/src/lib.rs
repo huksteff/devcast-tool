@@ -26,6 +26,7 @@ mod record;
 mod record_args;
 mod record_control;
 pub mod registry;
+mod round;
 pub mod run;
 mod scene;
 mod silences;
