@@ -45,8 +45,10 @@ impl BgraImage {
                     }
                 }
                 let count = u64::from((x1 - x0) * (y1 - y0));
-                let [b, g, r, a] = sum.map(|total| (total / count) as u8);
-                rgba.extend_from_slice(&[r, g, b, a]);
+                // A screen has no transparency, but WGC leaves alpha 0 in some windows' frames
+                // (such a preview drew as an empty card).
+                let [b, g, r, _] = sum.map(|total| (total / count) as u8);
+                rgba.extend_from_slice(&[r, g, b, 255]);
             }
         }
         Preview {
@@ -97,6 +99,8 @@ mod tests {
     fn swaps_channels_and_averages() {
         let p = image(2, 2, |_, _| [10, 20, 30, 255]).preview(2);
         assert_eq!(&p.rgba[..4], &[30, 20, 10, 255]);
+        let p = image(2, 2, |_, _| [10, 20, 30, 0]).preview(2);
+        assert_eq!(&p.rgba[..4], &[30, 20, 10, 255], "previews are opaque");
         // Left half black, right half white: one preview pixel per half.
         let p = image(4, 2, |x, _| if x < 2 { [0, 0, 0, 255] } else { [255; 4] }).preview(2);
         assert_eq!((p.width, p.height), (2, 1));

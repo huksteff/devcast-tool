@@ -140,6 +140,69 @@ fn more_menu() {
     assert_eq!(*harness.state(), (false, Some(MoreAction::Settings)));
 }
 
+/// Two screens and the windows of a usual desktop, with real titles.
+fn desktop() -> SourceList {
+    let titles = [
+        "main.rs — Visual Studio Code",
+        "DevCast v2 — окна записи (этап 6) — Google Chrome",
+        "Telegram (12)",
+        r"Проводник — D:\Kefir\recordy-fork",
+        "Unity 6000.0.23f1 — SampleScene — Android — DX11",
+        "Slack | #rendering | Kefir Games",
+        "Диспетчер задач",
+    ];
+    SourceList {
+        monitors: vec![
+            MonitorInfo {
+                index: 1,
+                name: None,
+                bounds: Area::new(0, 0, 1920, 1080).unwrap(),
+                primary: true,
+            },
+            MonitorInfo {
+                index: 2,
+                name: None,
+                bounds: Area::new(-1920, 11, 1920, 1080).unwrap(),
+                primary: false,
+            },
+        ],
+        windows: titles
+            .iter()
+            .enumerate()
+            .map(|(i, title)| WindowInfo {
+                id: 100 + i as u64,
+                title: (*title).to_owned(),
+                app: None,
+                minimized: false,
+            })
+            .collect(),
+    }
+}
+
+#[test]
+fn source_picker_with_a_real_desktop() {
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(egui::vec2(super::picker::WIDTH, super::popover::MAX_HEIGHT))
+        .build_ui_state(
+            |ui, chosen: &mut Source| {
+                dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
+                    ui.set_width(super::picker::WIDTH - 26.0);
+                    let textures = std::collections::HashMap::new();
+                    let picked = super::picker::picker(ui, &desktop(), chosen, &textures, None);
+                    if let Some(super::picker::Pick::Source(source)) = picked {
+                        *chosen = source;
+                    }
+                });
+            },
+            Source::Monitor(1),
+        );
+    harness.run();
+    harness.snapshot("hud_picker_desktop");
+    harness.get_by_label("Диспетчер задач").click();
+    harness.run();
+    assert_eq!(*harness.state(), Source::Window(106));
+}
+
 #[test]
 fn source_picker() {
     let mut harness = dc_ui_kit::testing::harness()
@@ -169,18 +232,20 @@ fn source_picker() {
 fn sound_menu_picks_a_microphone() {
     let mics = vec![
         "Микрофон (Rode NT-USB)".to_owned(),
-        "Гарнитура (HyperX Cloud II)".to_owned(),
+        "Микрофон (6- Usb Audio Device)".to_owned(),
+        "Массив микрофонов (Realtek(R) Audio)".to_owned(),
+        "Головной телефон (Гарнитура HyperX Cloud II Wireless Hands-Free AG Audio)".to_owned(),
     ];
     let start = dc_capture::RecordingConfig {
         microphone: Some(mics[0].clone()),
         ..AppSettings::default().recording
     };
     let mut harness = dc_ui_kit::testing::harness()
-        .with_size(egui::vec2(super::menus::SOUND_WIDTH, 300.0))
+        .with_size(egui::vec2(460.0, 330.0))
         .build_ui_state(
             move |ui, recording: &mut dc_capture::RecordingConfig| {
                 dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
-                    ui.set_width(super::menus::SOUND_WIDTH - 26.0);
+                    ui.set_width(super::menus::sound_width(ui.ctx(), &mics) - 26.0);
                     let level = |source: &dc_capture::audio::AudioSource| match source {
                         dc_capture::audio::AudioSource::System => 0.38,
                         dc_capture::audio::AudioSource::Microphone(name)
@@ -197,11 +262,13 @@ fn sound_menu_picks_a_microphone() {
         );
     harness.run();
     harness.snapshot("hud_sound");
-    harness.get_by_label("Гарнитура (HyperX Cloud II)").click();
+    harness
+        .get_by_label("Микрофон (6- Usb Audio Device)")
+        .click();
     harness.run();
     assert_eq!(
         harness.state().microphone.as_deref(),
-        Some("Гарнитура (HyperX Cloud II)")
+        Some("Микрофон (6- Usb Audio Device)")
     );
     harness.get_by_label(hud::NO_MIC).click();
     harness
@@ -242,125 +309,4 @@ fn countdown_turns_record_into_cancel() {
     harness.get_by_label("Отменить 3").click();
     harness.run();
     assert_eq!(harness.state().clicked, Some(Clicked::Record));
-}
-
-fn live_harness(view: super::live::LiveView) -> egui_kittest::Harness<'static, Option<Clicked>> {
-    dc_ui_kit::testing::harness()
-        .with_size(egui::vec2(380.0, 48.0))
-        .build_ui_state(
-            move |ui, clicked: &mut Option<Clicked>| {
-                let border = if view.paused {
-                    dc_ui_kit::tokens::PAUSE
-                } else {
-                    dc_ui_kit::tokens::BORDER
-                };
-                ui.painter().rect(
-                    ui.max_rect(),
-                    dc_ui_kit::tokens::R3,
-                    SURFACE,
-                    egui::Stroke::new(1.0, border),
-                    egui::StrokeKind::Inside,
-                );
-                let inner = ui.horizontal_centered(|ui| super::live::live_bar(ui, &view));
-                if let Some((c, _)) = inner.inner {
-                    *clicked = Some(c);
-                }
-            },
-            None,
-        )
-}
-
-#[test]
-fn recording_bar() {
-    let mut harness = live_harness(super::live::LiveView {
-        timer: "12:47".to_owned(),
-        paused: false,
-        mic: Some(0.6),
-    });
-    harness.run();
-    harness.snapshot("hud_recording");
-    for (label, clicked) in [
-        (hud::STOP, Clicked::Stop),
-        (hud::PAUSE, Clicked::Pause),
-        (hud::CANCEL, Clicked::Cancel),
-        (hud::HIDE, Clicked::Hide),
-    ] {
-        harness.get_by_label(label).click();
-        harness.run();
-        assert_eq!(*harness.state(), Some(clicked));
-    }
-}
-
-#[test]
-fn paused_bar() {
-    let mut harness = live_harness(super::live::LiveView {
-        timer: "12:47".to_owned(),
-        paused: true,
-        mic: None,
-    });
-    harness.run();
-    harness.snapshot("hud_paused");
-    harness.get_by_label(hud::RESUME).click();
-    harness.run();
-    assert_eq!(*harness.state(), Some(Clicked::Pause));
-}
-
-#[test]
-fn cancel_question() {
-    let mut harness = dc_ui_kit::testing::harness()
-        .with_size(egui::vec2(280.0, 150.0))
-        .build_ui_state(
-            |ui, answer: &mut Option<dc_ui_kit::widgets::Answer>| {
-                dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
-                    let text = hud::cancel_text("12:47");
-                    let question = dc_ui_kit::widgets::Confirm {
-                        title: hud::CANCEL_TITLE,
-                        text: &text,
-                        cancel: hud::KEEP_RECORDING,
-                        confirm: hud::DELETE_RECORDING,
-                        kind: dc_ui_kit::widgets::Kind::Danger,
-                    };
-                    if let Some(a) = question.show(ui) {
-                        *answer = Some(a);
-                    }
-                });
-            },
-            None,
-        );
-    harness.run();
-    harness.snapshot("hud_cancel");
-    harness.get_by_label(hud::DELETE_RECORDING).click();
-    harness.run();
-    assert_eq!(*harness.state(), Some(dc_ui_kit::widgets::Answer::Confirm));
-}
-
-#[test]
-fn preparing_bar() {
-    let mut harness = dc_ui_kit::testing::harness()
-        .with_size(egui::vec2(super::live::PREPARING_WIDTH, 48.0))
-        .build_ui(|ui| {
-            ui.painter().rect_filled(ui.max_rect(), 0, SURFACE);
-            ui.horizontal_centered(super::live::preparing);
-        });
-    harness.run();
-    harness.snapshot("hud_preparing");
-}
-
-#[test]
-fn countdown_window() {
-    let mut harness = dc_ui_kit::testing::harness()
-        .with_size(egui::vec2(crate::countdown::SIDE, crate::countdown::SIDE))
-        .build_ui_state(
-            |ui, cancelled: &mut bool| {
-                if crate::countdown::face(ui, 3) {
-                    *cancelled = true;
-                }
-            },
-            false,
-        );
-    harness.run();
-    harness.snapshot("countdown");
-    harness.key_press(egui::Key::Escape);
-    harness.run();
-    assert!(*harness.state());
 }

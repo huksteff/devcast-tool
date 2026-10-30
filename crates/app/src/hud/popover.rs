@@ -47,6 +47,9 @@ pub enum MoreAction {
     Quit,
 }
 
+/// Highest a popover gets, points (mockup: the source picker scrolls past 620).
+pub const MAX_HEIGHT: f32 = 620.0;
+
 /// Gap between the bar and a popover, points.
 const GAP: f32 = 8.0;
 
@@ -57,7 +60,7 @@ pub const ID: &str = "hud-popover";
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: Rect) {
     let width = match open.kind {
         Kind::Source => super::picker::WIDTH,
-        Kind::Sound => super::menus::SOUND_WIDTH,
+        Kind::Sound => super::menus::sound_width(ctx, &lock(shared).microphones),
         Kind::Timing => super::menus::TIMING_WIDTH,
         Kind::More => 260.0,
         Kind::Cancel | Kind::Quit => 280.0,
@@ -73,20 +76,27 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
     let shared = Arc::clone(shared);
     ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
         let mut shared = lock(&shared);
-        let response = panel_frame()
-            .shadow(egui::Shadow::NONE)
-            .show(ui, |ui| {
-                ui.set_width(width - 2.0 * dc_ui_kit::tokens::S3 - 2.0);
-                match open.kind {
-                    Kind::Source => source(ui, &mut shared),
-                    Kind::Sound => sound(ui, &mut shared),
-                    Kind::Timing => timing(ui, &mut shared),
-                    Kind::More => more(ui, &mut shared),
-                    Kind::Cancel => cancel(ui, &mut shared),
-                    Kind::Quit => quit(ui, &mut shared),
-                }
+        // Laid out in the full popover height, not the window's current one: the window then
+        // takes the size of the content (it starts 40 px high).
+        let room = Rect::from_min_size(ui.max_rect().min, vec2(width, MAX_HEIGHT));
+        let response = ui
+            .scope_builder(egui::UiBuilder::new().max_rect(room), |ui| {
+                panel_frame()
+                    .shadow(egui::Shadow::NONE)
+                    .show(ui, |ui| {
+                        ui.set_width(width - 2.0 * dc_ui_kit::tokens::S3 - 2.0);
+                        match open.kind {
+                            Kind::Source => source(ui, &mut shared),
+                            Kind::Sound => sound(ui, &mut shared),
+                            Kind::Timing => timing(ui, &mut shared),
+                            Kind::More => more(ui, &mut shared),
+                            Kind::Cancel => cancel(ui, &mut shared),
+                            Kind::Quit => quit(ui, &mut shared),
+                        }
+                    })
+                    .response
             })
-            .response;
+            .inner;
         let size = response.rect.size();
         let current = ui.input(|i| i.viewport().inner_rect.map(|r| r.size()));
         if current.is_some_and(|c| (c - size).length() > 0.5) {

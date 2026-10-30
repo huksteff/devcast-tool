@@ -189,3 +189,7 @@ pub fn preparing(ui: &mut Ui) {
         );
     });
 }
+
+#[cfg(test)]
+#[path = "live_tests.rs"]
+mod tests;

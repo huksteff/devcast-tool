@@ -19,7 +19,7 @@ use eframe::egui::{
 /// Width of the picker popover, points.
 pub const WIDTH: f32 = 720.0;
 /// Its height limit; more scrolls.
-pub const MAX_HEIGHT: f32 = 620.0;
+pub const MAX_HEIGHT: f32 = super::popover::MAX_HEIGHT;
 /// Longer side of a preview, pixels.
 const PREVIEW_SIDE: u32 = 320;
 const COLUMNS: usize = 4;
@@ -86,7 +86,9 @@ impl Previews {
                         if sender.send((source, preview)).is_err() {
                             return;
                         }
-                        ctx.request_repaint();
+                        // The cards are in the popover's window: waking only the HUD left
+                        // them empty until the mouse moved over them.
+                        ctx.request_repaint_of(egui::ViewportId::from_hash_of(super::popover::ID));
                     }
                     Err(error) => tracing::info!("нет превью {source}: {error}"),
                 }

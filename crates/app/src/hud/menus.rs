@@ -8,7 +8,7 @@ use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::hud;
 use dc_ui_kit::tokens::{
-    ACCENT_HI, ACCENT_SOFT, FS_M, FS_S, ICON, R1, S2, SURFACE_2, TEXT, TEXT_2, TEXT_3,
+    ACCENT_HI, ACCENT_SOFT, FS_M, FS_S, ICON, R1, S2, S3, SURFACE_2, TEXT, TEXT_2, TEXT_3,
 };
 use dc_ui_kit::widgets::{LevelBar, Toggle};
 use eframe::egui::{self, Color32, Sense, Ui, WidgetInfo, pos2, vec2};
@@ -17,8 +17,10 @@ use super::popover::divider;
 use crate::settings::AppSettings;
 use crate::settings_window;
 
-/// Width of the sound popover, points (mockup `.pop`).
+/// Width of the sound popover, points: the mockup's 300 at least, wider for long device names
+/// up to this; longer names lose their middle.
 pub const SOUND_WIDTH: f32 = 300.0;
+const SOUND_MAX_WIDTH: f32 = 460.0;
 /// Width of the timing popover, points.
 pub const TIMING_WIDTH: f32 = 220.0;
 
@@ -68,6 +70,49 @@ pub fn sound_menu(
             recording.microphone = Some(mic.clone());
         }
     }
+}
+
+/// Width of the sound popover that shows `microphones` whole, if they fit under the limit.
+pub fn sound_width(ctx: &egui::Context, microphones: &[String]) -> f32 {
+    let longest = microphones
+        .iter()
+        .map(|name| text_width(ctx, name))
+        .fold(0.0, f32::max);
+    // Row: margins, icon, gaps and the meter; panel: frame margins and border.
+    let row = 2.0 * S2 + ICON + METER + 2.0 * 8.0 + 2.0 * S3 + 2.0;
+    (row + longest).clamp(SOUND_WIDTH, SOUND_MAX_WIDTH)
+}
+
+fn text_width(ctx: &egui::Context, text: &str) -> f32 {
+    ctx.fonts_mut(|f| {
+        f.layout_no_wrap(text.to_owned(), fonts::text(FS_M, Weight::Regular), TEXT)
+            .size()
+            .x
+    })
+}
+
+/// `text` cut in the middle with «…» to fit `width`: device names differ at their ends
+/// («Микрофон (6- Usb Audio Device)»), so both ends stay.
+pub fn elide_middle(ctx: &egui::Context, text: &str, width: f32) -> String {
+    if text_width(ctx, text) <= width {
+        return text.to_owned();
+    }
+    let chars: Vec<char> = text.chars().collect();
+    let cut = |keep: usize| {
+        let head: String = chars[..keep.div_ceil(2)].iter().collect();
+        let tail: String = chars[chars.len() - keep / 2..].iter().collect();
+        format!("{head}…{tail}")
+    };
+    let (mut fits, mut over) = (0, chars.len());
+    while over - fits > 1 {
+        let mid = (fits + over) / 2;
+        if text_width(ctx, &cut(mid)) <= width {
+            fits = mid;
+        } else {
+            over = mid;
+        }
+    }
+    cut(fits)
 }
 
 /// «Частота кадров» and «Обратный отсчёт», as in the settings window.
@@ -143,12 +188,12 @@ fn icon(ui: &mut Ui, icon: Icon, color: Color32) {
     icon.paint(ui.painter(), rect, color);
 }
 
-/// Text cut with «…» to `width`.
+/// Text cut in the middle to `width`.
 fn name(ui: &mut Ui, text: &str, color: Color32, width: f32) {
-    let format = egui::TextFormat::simple(fonts::text(FS_M, Weight::Regular), color);
-    let mut job = egui::text::LayoutJob::single_section(text.to_owned(), format);
-    job.wrap = egui::text::TextWrapping::truncate_at_width(width);
-    let galley = ui.painter().layout_job(job);
+    let shown = elide_middle(ui.ctx(), text, width);
+    let galley = ui
+        .painter()
+        .layout_no_wrap(shown, fonts::text(FS_M, Weight::Regular), color);
     let (rect, _) = ui.allocate_exact_size(vec2(width, galley.size().y), Sense::hover());
     ui.painter().galley(
         pos2(rect.left(), rect.center().y - galley.size().y / 2.0),
