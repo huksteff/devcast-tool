@@ -99,6 +99,12 @@ impl App {
     }
 }
 
+/// Background of the HUD window. eframe wants the colour as stored in the window (sRGB bytes
+/// / 255, like egui's own default), not linear: a linear #181a1f came out almost black.
+pub fn clear_color() -> [f32; 4] {
+    SURFACE.to_normalized_gamma_f32()
+}
+
 /// The shared state; a panic in another window does not lock the rest out.
 pub fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
@@ -106,7 +112,7 @@ pub fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
 
 impl eframe::App for App {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        egui::Rgba::from(SURFACE).to_array()
+        clear_color()
     }
 
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -164,4 +170,17 @@ fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
             }
         },
     );
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn clear_color_is_the_surface_token_as_bytes() {
+        let bytes = super::clear_color().map(|c| (c * 255.0).round() as u8);
+        assert_eq!(
+            bytes,
+            [0x18, 0x1a, 0x1f, 0xff],
+            "the HUD background is surface #181a1f"
+        );
+    }
 }
