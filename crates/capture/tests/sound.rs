@@ -21,7 +21,9 @@ use std::time::{Duration, Instant};
 
 use common::probe::{AudioProbe, Probe, audio_left};
 use common::{Running, TestPicture, fresh_dir, test_monitor, tone};
-use dc_capture::audio::{FLOOR_DB, LEVELS_PER_SECOND, LevelMeter, RATE, list_microphones};
+use dc_capture::audio::{
+    AudioSource, FLOOR_DB, LEVELS_PER_SECOND, LevelMeter, RATE, list_microphones,
+};
 use dc_capture::win::Recording;
 use dc_capture::{Fps, Manifest, RecordingConfig};
 
@@ -74,7 +76,7 @@ fn rms_db(samples: &[f32]) -> f64 {
 #[ignore = "listens to the default microphone"]
 fn meters_microphone_level() {
     let (sender, levels) = mpsc::channel();
-    let meter = LevelMeter::start(&default_microphone(), sender).unwrap();
+    let meter = LevelMeter::start(&AudioSource::Microphone(default_microphone()), sender).unwrap();
     let started = Instant::now();
     std::thread::sleep(Duration::from_secs(2));
     drop(meter);

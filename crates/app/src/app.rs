@@ -5,12 +5,14 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use dc_capture::SourceList;
+use dc_capture::audio::AudioSource;
 use dc_ui_kit::strings::settings as settings_text;
 use dc_ui_kit::tokens::SURFACE;
 use dc_ui_kit::widgets::{ToastKind, Toasts};
 use eframe::egui;
 
 use crate::hud::{HudWindow, picker, popover};
+use crate::meters::Meters;
 use crate::settings::Store;
 use crate::settings_window::{self, SettingsWindow};
 
@@ -29,6 +31,9 @@ pub struct Shared {
     pub previews: Option<picker::Previews>,
     /// Open area selection.
     pub area: Option<crate::area::AreaSession>,
+    /// Microphone names, read when the sound popover or the settings window opens.
+    pub microphones: Vec<String>,
+    pub meters: Meters,
     pub toasts: Toasts,
 }
 
@@ -45,6 +50,8 @@ impl Shared {
             popover: None,
             previews: None,
             area: None,
+            microphones: Vec::new(),
+            meters: Meters::default(),
             toasts: Toasts::default(),
         };
         shared.refresh_sources();
@@ -67,18 +74,49 @@ impl Shared {
         }
     }
 
+    pub fn refresh_microphones(&mut self) {
+        match dc_capture::audio::list_microphones() {
+            Ok(list) => self.microphones = list.into_iter().map(|m| m.name).collect(),
+            Err(error) => self.report(Err(error)),
+        }
+    }
+
     /// Opens the settings window with the current microphones.
     pub fn open_settings(&mut self) {
-        let microphones = match dc_capture::audio::list_microphones() {
-            Ok(list) => list.into_iter().map(|m| m.name).collect(),
-            Err(error) => {
-                self.report(Err(error));
-                Vec::new()
-            }
-        };
-        self.settings = Some(SettingsWindow::new(microphones));
+        self.refresh_microphones();
+        self.settings = Some(SettingsWindow::new(self.microphones.clone()));
+    }
+
+    /// Opens the level meters the open windows show and closes the rest.
+    fn sync_meters(&mut self) {
+        let recording = &self.store.get().recording;
+        let mut wanted = Vec::new();
+        if self.popover.is_some_and(|p| p.kind == popover::Kind::Sound) {
+            wanted.push(AudioSource::System);
+            wanted.extend(
+                self.microphones
+                    .iter()
+                    .cloned()
+                    .map(AudioSource::Microphone),
+            );
+        } else if let Some(mic) = &recording.microphone
+            && self.settings.is_some()
+        {
+            wanted.push(AudioSource::Microphone(mic.clone()));
+        }
+        let wake = [
+            egui::ViewportId::ROOT,
+            egui::ViewportId::from_hash_of(popover::ID),
+            egui::ViewportId::from_hash_of(SETTINGS_ID),
+        ];
+        for error in self.meters.sync(&self.ctx, &wake, &wanted) {
+            self.report(Err(error));
+        }
     }
 }
+
+/// The settings window.
+const SETTINGS_ID: &str = "settings";
 
 pub struct App {
     /// A second start of the app asked to show this one.
@@ -124,6 +162,7 @@ impl eframe::App for App {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let mut shared = lock(&self.shared);
+        shared.sync_meters();
         self.hud.ui(ui, &mut shared);
         shared.toasts.show(ui.ctx());
         let open = shared.popover;
@@ -148,20 +187,26 @@ fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
         .with_inner_size(settings_window::SIZE)
         .with_min_inner_size(settings_window::MIN_SIZE);
     ctx.show_viewport_deferred(
-        egui::ViewportId::from_hash_of("settings"),
+        egui::ViewportId::from_hash_of(SETTINGS_ID),
         builder,
         move |ui, _| {
             let mut shared = lock(&shared);
             let Shared {
+                ctx,
                 store,
                 settings,
+                meters,
                 toasts,
                 ..
             } = &mut *shared;
             let Some(window) = settings else {
                 return;
             };
-            if let Err(error) = window.ui(ui, store) {
+            let level = match &store.get().recording.microphone {
+                Some(mic) => meters.level(ctx, &AudioSource::Microphone(mic.clone())),
+                None => 0.0,
+            };
+            if let Err(error) = window.ui(ui, store, level) {
                 toasts.push(ui.ctx(), ToastKind::Error, error.to_string());
             }
             toasts.show(ui.ctx());

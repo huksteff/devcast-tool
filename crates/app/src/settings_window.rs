@@ -8,7 +8,7 @@ use dc_ui_kit::strings::{hud, settings as text};
 use dc_ui_kit::tokens::{
     BG, BORDER, FS_L, FS_S, R1, S2, S3, S4, S5, SURFACE_2, TEXT, TEXT_2, TEXT_3,
 };
-use dc_ui_kit::widgets::{Button, Toggle, dropdown, segmented};
+use dc_ui_kit::widgets::{Button, LevelBar, Toggle, dropdown, segmented};
 use eframe::egui::{self, Color32, RichText, Stroke, Ui, vec2};
 
 use crate::error::AppError;
@@ -19,6 +19,8 @@ pub const SIZE: egui::Vec2 = vec2(760.0, 480.0);
 pub const MIN_SIZE: egui::Vec2 = vec2(640.0, 420.0);
 const NAV: f32 = 190.0;
 const LABEL: f32 = 190.0;
+/// Width of the microphone level indicator, points (mockup).
+const METER: f32 = 64.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Page {
@@ -56,8 +58,9 @@ impl SettingsWindow {
         }
     }
 
-    /// The whole window; a failed save is returned (the change is not kept).
-    pub fn ui(&mut self, ui: &mut Ui, store: &mut Store) -> Result<(), AppError> {
+    /// The whole window; a failed save is returned (the change is not kept). `mic_level` fills
+    /// the indicator of the selected microphone, 0..1.
+    pub fn ui(&mut self, ui: &mut Ui, store: &mut Store, mic_level: f32) -> Result<(), AppError> {
         let mut next = store.get().clone();
         egui::Panel::left("settings-nav")
             .exact_size(NAV)
@@ -72,7 +75,7 @@ impl SettingsWindow {
         egui::CentralPanel::default()
             .frame(egui::Frame::new().inner_margin(egui::Margin::symmetric(S5 as i8, S4 as i8)))
             .show(ui, |ui| match self.page {
-                Page::Recording => self.recording(ui, &mut next),
+                Page::Recording => self.recording(ui, &mut next, mic_level),
                 Page::Captions => captions(ui, &mut next),
                 Page::Updates => self.updates(ui, &mut next),
                 Page::About => about(ui),
@@ -107,7 +110,7 @@ impl SettingsWindow {
         }
     }
 
-    fn recording(&mut self, ui: &mut Ui, next: &mut AppSettings) {
+    fn recording(&mut self, ui: &mut Ui, next: &mut AppSettings, mic_level: f32) {
         heading(ui, text::RECORDING);
         field(ui, text::FOLDER, None, |ui| {
             let path = next.recordings_dir.display().to_string();
@@ -136,8 +139,9 @@ impl SettingsWindow {
                 hud::MIC,
                 &mut next.recording.microphone,
                 &items,
-                ui.available_width() - S3,
+                ui.available_width() - S3 - METER - S2,
             );
+            ui.add(LevelBar::new(mic_level, METER, &hud::level(hud::MIC)));
         });
         field(ui, hud::SYSTEM_AUDIO, None, |ui| {
             ui.add(Toggle::new(

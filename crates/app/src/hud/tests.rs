@@ -153,3 +153,72 @@ fn source_picker() {
     harness.run();
     assert_eq!(*harness.state(), Source::Window(42));
 }
+
+#[test]
+fn sound_menu_picks_a_microphone() {
+    let mics = vec![
+        "Микрофон (Rode NT-USB)".to_owned(),
+        "Гарнитура (HyperX Cloud II)".to_owned(),
+    ];
+    let start = dc_capture::RecordingConfig {
+        microphone: Some(mics[0].clone()),
+        ..AppSettings::default().recording
+    };
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(egui::vec2(super::menus::SOUND_WIDTH, 300.0))
+        .build_ui_state(
+            move |ui, recording: &mut dc_capture::RecordingConfig| {
+                dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
+                    ui.set_width(super::menus::SOUND_WIDTH - 26.0);
+                    let level = |source: &dc_capture::audio::AudioSource| match source {
+                        dc_capture::audio::AudioSource::System => 0.38,
+                        dc_capture::audio::AudioSource::Microphone(name)
+                            if name.starts_with("Мик") =>
+                        {
+                            0.78
+                        }
+                        _ => 0.12,
+                    };
+                    super::menus::sound_menu(ui, recording, &mics, &level);
+                });
+            },
+            start,
+        );
+    harness.run();
+    harness.snapshot("hud_sound");
+    harness.get_by_label("Гарнитура (HyperX Cloud II)").click();
+    harness.run();
+    assert_eq!(
+        harness.state().microphone.as_deref(),
+        Some("Гарнитура (HyperX Cloud II)")
+    );
+    harness.get_by_label(hud::NO_MIC).click();
+    harness
+        .get_by_role_and_label(egui::Role::Switch, hud::SYSTEM_AUDIO)
+        .click();
+    harness.run();
+    assert_eq!(harness.state().microphone, None);
+    assert!(!harness.state().system_audio);
+}
+
+#[test]
+fn timing_menu_sets_fps_and_countdown() {
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(egui::vec2(super::menus::TIMING_WIDTH, 230.0))
+        .build_ui_state(
+            |ui, settings: &mut AppSettings| {
+                dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
+                    super::menus::timing_menu(ui, settings);
+                });
+            },
+            AppSettings::default(),
+        );
+    harness.run();
+    harness.snapshot("hud_timing");
+    harness.get_by_label("120").click();
+    harness.run();
+    harness.get_by_label("Нет").click();
+    harness.run();
+    assert_eq!(harness.state().recording.fps, dc_capture::Fps::Fps120);
+    assert_eq!(harness.state().countdown, Countdown::Off);
+}

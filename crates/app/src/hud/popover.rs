@@ -21,6 +21,10 @@ use crate::app::{Shared, lock};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Source,
+    /// System sound and microphones.
+    Sound,
+    /// Frame rate and countdown.
+    Timing,
     More,
 }
 
@@ -41,10 +45,15 @@ pub enum MoreAction {
 /// Gap between the bar and a popover, points.
 const GAP: f32 = 8.0;
 
+/// The popover's window; one at a time.
+pub const ID: &str = "hud-popover";
+
 /// Shows the open popover window above the bar whose outer rectangle is `bar`.
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: Rect) {
     let width = match open.kind {
         Kind::Source => super::picker::WIDTH,
+        Kind::Sound => super::menus::SOUND_WIDTH,
+        Kind::Timing => super::menus::TIMING_WIDTH,
         Kind::More => 260.0,
     };
     let builder = egui::ViewportBuilder::default()
@@ -56,38 +65,36 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         .with_inner_size(vec2(width, 40.0))
         .with_position(pos2(bar.left() + open.anchor - S2, bar.top() - GAP - 40.0));
     let shared = Arc::clone(shared);
-    ctx.show_viewport_deferred(
-        egui::ViewportId::from_hash_of("hud-popover"),
-        builder,
-        move |ui, _| {
-            let mut shared = lock(&shared);
-            let response = panel_frame()
-                .shadow(egui::Shadow::NONE)
-                .show(ui, |ui| {
-                    ui.set_width(width - 2.0 * dc_ui_kit::tokens::S3 - 2.0);
-                    match open.kind {
-                        Kind::Source => source(ui, &mut shared),
-                        Kind::More => more(ui, &mut shared),
-                    }
-                })
-                .response;
-            let size = response.rect.size();
-            let current = ui.input(|i| i.viewport().inner_rect.map(|r| r.size()));
-            if current.is_some_and(|c| (c - size).length() > 0.5) {
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-                let corner = pos2(bar.left() + open.anchor - S2, bar.top() - GAP - size.y);
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::OuterPosition(corner));
-            }
-            let lost_focus = ui.input(|i| i.viewport().focused == Some(false));
-            if lost_focus
-                || ui.input(|i| i.key_pressed(egui::Key::Escape) || i.viewport().close_requested())
-            {
-                shared.popover = None;
-            }
-        },
-    );
+    ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
+        let mut shared = lock(&shared);
+        let response = panel_frame()
+            .shadow(egui::Shadow::NONE)
+            .show(ui, |ui| {
+                ui.set_width(width - 2.0 * dc_ui_kit::tokens::S3 - 2.0);
+                match open.kind {
+                    Kind::Source => source(ui, &mut shared),
+                    Kind::Sound => sound(ui, &mut shared),
+                    Kind::Timing => timing(ui, &mut shared),
+                    Kind::More => more(ui, &mut shared),
+                }
+            })
+            .response;
+        let size = response.rect.size();
+        let current = ui.input(|i| i.viewport().inner_rect.map(|r| r.size()));
+        if current.is_some_and(|c| (c - size).length() > 0.5) {
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
+            let corner = pos2(bar.left() + open.anchor - S2, bar.top() - GAP - size.y);
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::OuterPosition(corner));
+        }
+        let lost_focus = ui.input(|i| i.viewport().focused == Some(false));
+        if lost_focus
+            || ui.input(|i| i.key_pressed(egui::Key::Escape) || i.viewport().close_requested())
+        {
+            shared.popover = None;
+        }
+    });
 }
 
 fn source(ui: &mut Ui, shared: &mut Shared) {
@@ -121,6 +128,24 @@ fn source(ui: &mut Ui, shared: &mut Shared) {
             }
         }
     }
+}
+
+fn sound(ui: &mut Ui, shared: &mut Shared) {
+    let mut recording = shared.store.get().recording.clone();
+    let ctx = ui.ctx().clone();
+    let meters = &shared.meters;
+    super::menus::sound_menu(ui, &mut recording, &shared.microphones, &|source| {
+        meters.level(&ctx, source)
+    });
+    let result = shared.store.update(|s| s.recording = recording);
+    shared.report(result);
+}
+
+fn timing(ui: &mut Ui, shared: &mut Shared) {
+    let mut next = shared.store.get().clone();
+    super::menus::timing_menu(ui, &mut next);
+    let result = shared.store.update(|s| *s = next);
+    shared.report(result);
 }
 
 fn more(ui: &mut Ui, shared: &mut Shared) {

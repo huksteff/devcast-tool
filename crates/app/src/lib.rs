@@ -12,6 +12,7 @@ mod error;
 mod hud;
 mod instance;
 mod logging;
+mod meters;
 mod settings;
 mod settings_window;
 

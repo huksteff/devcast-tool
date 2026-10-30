@@ -15,6 +15,13 @@ pub enum AppError {
     Crash(String),
     #[error(transparent)]
     Source(#[from] dc_capture::SourceError),
+    #[error(transparent)]
+    Capture(#[from] dc_capture::CaptureError),
+    #[error("не удалось запустить поток «{name}»: {source}. Перезапусти программу")]
+    Thread {
+        name: &'static str,
+        source: std::io::Error,
+    },
     #[error("не удалось открыть окно: {0}. Обнови драйвер видеокарты")]
     Window(String),
     #[error("файл настроек {path} испорчен ({message}): удали его, DevCast создаст новый")]

@@ -1,5 +1,6 @@
-//! Level of a microphone for its indicator: RMS and peak of each 50 ms of sound, without
-//! recording anything.
+//! Level of a microphone or of the system sound for its indicator: RMS and peak of each 50 ms
+//! of sound, without recording anything. System sound in silence sends no levels (loopback
+//! delivers nothing then): the indicator treats an old level as silence.
 
 use std::sync::mpsc::Sender;
 
@@ -25,16 +26,16 @@ pub struct LevelMeter {
 }
 
 impl LevelMeter {
-    /// Opens the microphone `name` and sends its level to `levels` [`LEVELS_PER_SECOND`] times
+    /// Opens `source` and sends its level to `levels` [`LEVELS_PER_SECOND`] times
     /// a second, or an error when the device fails (then levels stop). A glitch only costs a
     /// level and is not reported.
     pub fn start(
-        name: &str,
+        source: &AudioSource,
         levels: Sender<Result<AudioLevel, CaptureError>>,
     ) -> Result<Self, CaptureError> {
-        let device = Device::find(&AudioSource::Microphone(name.to_owned()))?;
+        let device = Device::find(source)?;
         let mut window = Window::new(device.rate() / LEVELS_PER_SECOND, device.channels());
-        let (errors, name) = (levels.clone(), name.to_owned());
+        let (errors, name) = (levels.clone(), device.name());
         let stream = device.start(
             move |_, samples| {
                 window.add(samples, |level| {

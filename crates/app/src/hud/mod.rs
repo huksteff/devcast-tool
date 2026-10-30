@@ -4,6 +4,7 @@
 //! remembered per monitor.
 
 pub mod bar;
+pub mod menus;
 pub mod picker;
 pub mod placement;
 pub mod popover;
@@ -62,6 +63,12 @@ impl HudWindow {
             }
             Some((bar::Clicked::More, anchor)) => toggle(shared, popover::Kind::More, anchor),
             Some((bar::Clicked::Source, anchor)) => toggle(shared, popover::Kind::Source, anchor),
+            Some((bar::Clicked::Mic | bar::Clicked::SystemAudio, anchor)) => {
+                toggle(shared, popover::Kind::Sound, anchor);
+            }
+            Some((bar::Clicked::Fps | bar::Clicked::Countdown, anchor)) => {
+                toggle(shared, popover::Kind::Timing, anchor);
+            }
             _ => {}
         }
         fit(ui, inner.response.rect.width());
@@ -128,6 +135,9 @@ fn toggle(shared: &mut Shared, kind: popover::Kind, anchor: f32) {
     let open = shared.popover.is_some_and(|open| open.kind == kind);
     shared.popover = (!open).then_some(popover::Open { kind, anchor });
     shared.previews = None;
+    if !open && kind == popover::Kind::Sound {
+        shared.refresh_microphones();
+    }
     if !open && kind == popover::Kind::Source {
         shared.refresh_sources();
         let (screens, windows) = picker::cards(&shared.sources);

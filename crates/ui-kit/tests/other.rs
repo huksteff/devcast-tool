@@ -1,9 +1,9 @@
-//! Colour, gradient, collapsible group, toast, question and error panels.
+//! Colour, gradient, collapsible group, toast, question and error panels, level indicator.
 
 use dc_ui_kit::tokens::{S3, SURFACE};
 use dc_ui_kit::widgets::{
-    Answer, Confirm, ErrorAction, ErrorPanel, Kind, Section, ToastKind, Toasts, color_button,
-    gradient_editor, panel_frame,
+    Answer, Confirm, ErrorAction, ErrorPanel, Kind, LevelBar, Section, ToastKind, Toasts,
+    color_button, gradient_editor, panel_frame,
 };
 use egui::Color32;
 use egui_kittest::Harness;
@@ -162,4 +162,17 @@ fn error_offers_copy() {
     harness.get_by_label("Открыть папку записи").click();
     harness.run();
     assert_eq!(*harness.state(), Some(ErrorAction::Extra(0)));
+}
+
+#[test]
+fn level_bars() {
+    let mut harness = harness(egui::vec2(120.0, 90.0), (), |ui, ()| {
+        for level in [0.0, 0.4, 0.78, 1.0] {
+            ui.add(LevelBar::new(level, 64.0, "Уровень"));
+        }
+        ui.add(LevelBar::new(0.6, 18.0, "Уровень").height(3.0));
+    });
+    harness.run();
+    harness.snapshot("level_bars");
+    assert_eq!(harness.get_all_by_label("Уровень").count(), 5);
 }

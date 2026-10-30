@@ -20,6 +20,7 @@ pub mod hud {
     pub const SOURCE: &str = "Источник записи";
     pub const MIC: &str = "Микрофон";
     pub const NO_MIC: &str = "Без микрофона";
+    pub const NO_MICS: &str = "Нет доступных микрофонов";
     pub const SYSTEM_AUDIO: &str = "Системный звук";
     pub const SOUND: &str = "Звук";
     pub const FPS: &str = "Частота кадров";
@@ -53,6 +54,11 @@ pub mod hud {
     /// «Экран 1 · 2560×1440».
     pub fn sized(name: &str, width: u32, height: u32) -> String {
         format!("{name} · {width}×{height}")
+    }
+
+    /// Accessible name of a level indicator: «Уровень: Системный звук».
+    pub fn level(source: &str) -> String {
+        format!("Уровень: {source}")
     }
 
     /// Countdown choice: «3 с».
