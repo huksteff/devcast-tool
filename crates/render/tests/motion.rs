@@ -155,6 +155,7 @@ fn camera_pan_smears_the_video_but_not_the_layers_over_it() -> TestResult {
         opacity: 1.0,
         rotation: 0.0,
         glow: None,
+        drawn: 1.0,
     };
     scene.push(Band::Annotations, Layer::Shapes(vec![dot]));
     let image = render(&gpu, &scene, &planes)?;

@@ -89,6 +89,7 @@ fn eraser_clears_earlier_strokes_of_its_drawing_but_not_what_lies_below() -> Tes
         opacity: 1.0,
         rotation: 0.0,
         glow: None,
+        drawn: 1.0,
     };
     scene.push(Band::Video, Layer::Shapes(vec![blue]));
     let strokes = vec![

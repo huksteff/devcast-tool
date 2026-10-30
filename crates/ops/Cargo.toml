@@ -16,6 +16,7 @@ dc-fx-crop = { path = "../../fx/crop" }
 dc-fx-cursor = { path = "../../fx/cursor" }
 dc-fx-cut = { path = "../../fx/cut" }
 dc-fx-keys = { path = "../../fx/keys" }
+dc-fx-shape = { path = "../../fx/shape" }
 dc-fx-text = { path = "../../fx/text" }
 dc-fx-zoom = { path = "../../fx/zoom" }
 dc-render = { path = "../render" }

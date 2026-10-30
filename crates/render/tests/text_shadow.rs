@@ -32,6 +32,7 @@ fn render(shadow: Option<Shadow>, camera: Camera) -> Result<Image, Box<dyn Error
         opacity: 1.0,
         rotation: 0.0,
         glow: None,
+        drawn: 1.0,
     };
     scene.push(Band::Annotations, Layer::Shapes(vec![white]));
     let text = Text {

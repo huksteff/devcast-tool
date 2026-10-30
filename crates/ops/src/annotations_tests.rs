@@ -57,10 +57,20 @@ fn texts_lie_in_their_layer_order_with_their_box_in_canvas_px() {
     let scene = scene(&p, 1.5).unwrap();
     let shown = texts(&scene);
     let words: Vec<&str> = shown.iter().map(|t| t.runs[0].text.as_str()).collect();
+    assert_eq!(words, ["низ", "верх"], "track 0 under track 1");
+    let kinds: Vec<&str> = scene
+        .painted()
+        .filter(|(band, _)| *band == Band::Annotations)
+        .map(|(_, layer)| match layer {
+            Layer::Text(_) => "text",
+            Layer::Shapes(_) => "shape",
+            _ => "other",
+        })
+        .collect();
     assert_eq!(
-        words,
-        ["низ", "верх"],
-        "track 0 under track 1; the shape draws nothing yet"
+        kinds,
+        ["text", "shape", "text"],
+        "the shape a3 over a2, under a1"
     );
     assert_eq!(
         shown[0].rect,

@@ -182,6 +182,7 @@ fn circle(c: [f64; 2], r: f64, fill: Option<Paint>, stroke: Option<Stroke>, alph
         opacity: alpha.clamp(0.0, 1.0) as f32,
         rotation: 0.0,
         glow: None,
+        drawn: 1.0,
     }
 }
 

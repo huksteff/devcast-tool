@@ -105,6 +105,7 @@ fn straight_alpha_blends_in_linear_light_and_opacity_fades() -> TestResult {
         opacity: 1.0,
         rotation: 0.0,
         glow: None,
+        drawn: 1.0,
     };
     let half_red = ("r.png", size(4, 4), bitmap(4, 4, |_, _| [255, 0, 0, 128]));
     let red = ("s.png", size(4, 4), bitmap(4, 4, |_, _| [255, 0, 0, 255]));

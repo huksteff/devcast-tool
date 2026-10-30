@@ -15,6 +15,7 @@ pub fn registry() -> Result<Registry, CliError> {
         dc_fx_captions::ops(),
         dc_fx_annotations::ops(),
         dc_fx_text::ops(),
+        dc_fx_shape::ops(),
     ]
     .concat();
     let effects = vec![

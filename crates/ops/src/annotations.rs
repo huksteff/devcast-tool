@@ -1,11 +1,12 @@
 //! Annotations in the scene: those of the shown recording moment, bottom to top in their layer
 //! order (`AnnotationsState::shown_at`), each drawn by its kind's crate into `Band::Annotations`
-//! under the camera. A kind without drawing yet (5.33–5.36) is skipped.
+//! under the camera. A kind without drawing yet (5.34–5.36) is skipped.
 
 use std::collections::HashMap;
 
 use dc_core::{OutputTime, TimeDelta, TimeMap};
 use dc_fx_annotations::{AnnotId, Annotation, AnnotationsState, Kind, Placement, keyed};
+use dc_fx_shape::ShapeBody;
 use dc_fx_text::TextBody;
 use dc_render::{Band, Layer, Scene, TextMeasure};
 use serde::de::DeserializeOwned;
@@ -23,6 +24,7 @@ pub(crate) struct Prepared {
 #[derive(Debug)]
 enum Look {
     Text(Fields<TextBody>),
+    Shape(Fields<ShapeBody>),
 }
 
 /// A kind's fields as typed values: the annotation's own and those of its keys, by key time.
@@ -77,12 +79,22 @@ impl Prepared {
         let now = segment.source_at(t);
         let shown = self.state.shown_at(&segment.media, now);
         for annotation in shown {
-            if let Some(Look::Text(fields)) = self.looks.get(&annotation.id) {
-                let placement = Placement::at(annotation, scene.size, map, now, t);
-                let body = keyed(&fields.base, &fields.keys, annotation.offset(now));
-                let text = dc_fx_text::evaluate(&body, &placement);
-                scene.push(Band::Annotations, Layer::Text(text));
-            }
+            let Some(look) = self.looks.get(&annotation.id) else {
+                continue;
+            };
+            let placement = Placement::at(annotation, scene.size, map, now, t);
+            let offset = annotation.offset(now);
+            let layer = match look {
+                Look::Text(fields) => {
+                    let body = keyed(&fields.base, &fields.keys, offset);
+                    Layer::Text(dc_fx_text::evaluate(&body, &placement))
+                }
+                Look::Shape(fields) => {
+                    let body = keyed(&fields.base, &fields.keys, offset);
+                    Layer::Shapes(vec![dc_fx_shape::evaluate(&body, &placement, t)])
+                }
+            };
+            scene.push(Band::Annotations, layer);
         }
     }
 }
@@ -96,6 +108,7 @@ fn look(annotation: &Annotation, measure: &TextMeasure) -> Result<Option<Look>, 
             }
             Some(Look::Text(fields))
         }
-        Kind::Shape | Kind::Image | Kind::Drawing | Kind::Blur => None,
+        Kind::Shape => Some(Look::Shape(Fields::read(annotation)?)),
+        Kind::Image | Kind::Drawing | Kind::Blur => None,
     })
 }

@@ -53,6 +53,7 @@ pub(super) fn decor(
                         color: glow.color,
                         sigma: glow.sigma * k / scale,
                     }),
+                    drawn: 1.0,
                 });
             }
         }
@@ -142,6 +143,7 @@ fn figure(rect: PxRect, radius: f32, color: Rgba) -> Shape {
         opacity: 1.0,
         rotation: 0.0,
         glow: None,
+        drawn: 1.0,
     }
 }
 

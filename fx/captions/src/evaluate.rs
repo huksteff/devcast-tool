@@ -174,6 +174,7 @@ fn push(
                 opacity: look.opacity as f32,
                 rotation: 0.0,
                 glow: None,
+                drawn: 1.0,
             }]),
         );
     }

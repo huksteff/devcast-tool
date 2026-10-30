@@ -21,6 +21,21 @@ pub struct Shape {
     /// Degrees, clockwise on screen, around the centre of the figure.
     pub rotation: f32,
     pub glow: Option<Glow>,
+    /// Part of the figure drawn, 0..1 of its path length (draw-in of shape annotations); the
+    /// fill of a closed figure fades in with it, the drawn part keeps round ends. Paths: a
+    /// rectangle from its top-left corner clockwise, an ellipse from the top clockwise, a line
+    /// from `from` to `to`, an arrow along its shaft and then both whiskers together. 1 (the
+    /// default, not written) is the whole figure, 0 nothing.
+    #[serde(default = "whole", skip_serializing_if = "is_whole")]
+    pub drawn: f32,
+}
+
+fn whole() -> f32 {
+    1.0
+}
+
+fn is_whole(drawn: &f32) -> bool {
+    *drawn >= 1.0
 }
 
 /// Soft light around what is visible of a figure (fill and outline): their coverage in `color`,
@@ -279,6 +294,7 @@ mod tests {
                 color: Rgba([0xa8, 0x55, 0xf7, 255]),
                 sigma: 10.5,
             }),
+            drawn: 1.0,
         };
         let json = serde_json::to_string(&shape).unwrap();
         assert!(

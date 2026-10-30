@@ -683,6 +683,7 @@ dependencies = [
  "dc-fx-cursor",
  "dc-fx-cut",
  "dc-fx-keys",
+ "dc-fx-shape",
  "dc-fx-text",
  "dc-fx-zoom",
  "dc-ipc",
@@ -828,6 +829,14 @@ dependencies = [
 [[package]]
 name = "dc-fx-shape"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "dc-fx-annotations",
+ "dc-render",
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "dc-fx-text"
@@ -890,6 +899,7 @@ dependencies = [
  "dc-fx-cursor",
  "dc-fx-cut",
  "dc-fx-keys",
+ "dc-fx-shape",
  "dc-fx-text",
  "dc-fx-zoom",
  "dc-media",

@@ -17,6 +17,8 @@ pub use plan::{Step, parse_plan};
 pub use registry::{RESERVED_FIELDS, Registry};
 
 #[cfg(test)]
+mod annotations_shape_tests;
+#[cfg(test)]
 mod annotations_tests;
 #[cfg(test)]
 mod evaluate_tests;

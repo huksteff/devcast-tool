@@ -2,6 +2,7 @@
 //! same instances drawn by `fs_mask` into a smaller texture make the masks that glows blur.
 
 mod pack;
+mod trim;
 
 use std::ops::Range;
 

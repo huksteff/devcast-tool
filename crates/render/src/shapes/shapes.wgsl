@@ -1,6 +1,7 @@
 // Instanced SDF figures: rounded rectangle (0), ellipse (1), line (2), arrow (3).
 // Fill: solid or 2-4 colour gradient (once or looping), outline, opacity, rotation; `fs_mask` draws
-// what is visible of a figure in its glow colour, to be blurred.
+// what is visible of a figure in its glow colour, to be blurred. Draw-in (`trim`) shows the path
+// up to a length (trim.rs) with round ends and fades the fill of closed figures in.
 // Colours arrive in sRGB with straight alpha and mix in sRGB like v1 and CSS gradients; the
 // result is converted to linear light and premultiplied for blending.
 struct Globals {
@@ -16,6 +17,8 @@ struct Shape {
     colors: array<vec4<f32>, 4>,
     stroke: vec4<f32>,
     glow: vec4<f32>,         // glow colour
+    trim: vec4<f32>,         // draw-in: x: drawn path px; y: drawn part (1 whole)
+    ends: vec4<f32>,         // draw-in: two ends of the drawn part (xy, zw)
 };
 @group(0) @binding(0) var<uniform> g: Globals;
 @group(0) @binding(1) var<storage, read> shapes: array<Shape>;
@@ -109,20 +112,113 @@ fn premultiplied(c: vec4<f32>, coverage: f32) -> vec4<f32> {
     return vec4<f32>(srgb_to_linear(c.rgb) * a, a);
 }
 
+const HALF_PI: f32 = 1.5707964;
+
+// Rounded rectangle, half size `h`, radius `r`: px along the outline from the start of the top
+// side clockwise to the outline point nearest `p` (trim.rs `rect_point` walks the same path).
+fn rect_position(p: vec2<f32>, h: vec2<f32>, radius: f32) -> f32 {
+    let r = max(min(radius, min(h.x, h.y)), 0.0);
+    let i = h - vec2<f32>(r);
+    let q = clamp(p, -i, i);
+    var n = p - q;
+    if n.x == 0.0 && n.y == 0.0 {
+        let gap = h - abs(p);
+        n = select(vec2<f32>(0.0, select(-1.0, 1.0, p.y > 0.0)), vec2<f32>(select(-1.0, 1.0, p.x > 0.0), 0.0), gap.x < gap.y);
+    }
+    let side = 2.0 * i;
+    let arc = r * HALF_PI;
+    if n.x >= 0.0 && n.y < 0.0 {
+        return q.x + i.x + r * atan2(n.x, -n.y);
+    }
+    if n.x > 0.0 && n.y >= 0.0 {
+        return side.x + arc + q.y + i.y + r * atan2(n.y, n.x);
+    }
+    if n.x <= 0.0 && n.y > 0.0 {
+        return side.x + side.y + 2.0 * arc + i.x - q.x + r * atan2(-n.x, n.y);
+    }
+    return 2.0 * side.x + side.y + 3.0 * arc + i.y - q.y + r * atan2(-n.y, -n.x);
+}
+
+// Length of the ellipse arc from the top to parametric angle `x` (0..π/2), Simpson on 8 intervals.
+fn ellipse_arc(a: f32, b: f32, x: f32) -> f32 {
+    let h = x / 8.0;
+    var sum = 0.0;
+    for (var i = 0u; i <= 8u; i++) {
+        let u = f32(i) * h;
+        let weight = select(select(2.0, 4.0, (i & 1u) == 1u), 1.0, i == 0u || i == 8u);
+        sum += weight * length(vec2<f32>(a * cos(u), b * sin(u)));
+    }
+    return sum * h / 3.0;
+}
+
+// Ellipse, half axes `k`: px along it from the top clockwise to the parametric angle of `p`.
+fn ellipse_position(p: vec2<f32>, k: vec2<f32>) -> f32 {
+    let a = max(k.x, 1e-3);
+    let b = max(k.y, 1e-3);
+    var t = atan2(p.x / a, -p.y / b);
+    if t < 0.0 {
+        t += 4.0 * HALF_PI;
+    }
+    let quarter = ellipse_arc(a, b, HALF_PI);
+    let q = min(floor(t / HALF_PI), 3.0);
+    let tau = t - q * HALF_PI;
+    let within = select(quarter - ellipse_arc(a, b, HALF_PI - tau), ellipse_arc(a, b, tau), (u32(q) & 1u) == 0u);
+    return q * quarter + within;
+}
+
+// Closed figures: px along the outline (trim.rs) to the point nearest `p`.
+fn path_position(s: Shape, p: vec2<f32>) -> f32 {
+    if u32(s.style.x) == 1u {
+        return ellipse_position(p, s.geometry.xy);
+    }
+    return rect_position(p, s.geometry.xy, s.geometry.z);
+}
+
+// Lines and arrows: distance to the drawn part, `length` px of the shaft and then of both
+// whiskers together; its ends stay round.
+fn drawn_distance(s: Shape, p: vec2<f32>, length: f32) -> f32 {
+    let k = s.geometry;
+    let start = vec2<f32>(-k.x, 0.0);
+    var d = sd_segment(p, start, start + vec2<f32>(min(length, 2.0 * k.x), 0.0));
+    let whisker = min(length - 2.0 * k.x, k.z) * 0.70710677;
+    if u32(s.style.x) == 3u && whisker > 0.0 {
+        let tip = vec2<f32>(k.x, 0.0);
+        d = min(d, min(
+            sd_segment(p, tip, tip + vec2<f32>(-whisker, -whisker)),
+            sd_segment(p, tip, tip + vec2<f32>(-whisker, whisker))));
+    }
+    return d - k.y;
+}
+
 // Premultiplied colour of the figure at the fragment.
 fn shade(v: VsOut) -> vec4<f32> {
     let s = shapes[v.id];
-    let d = shape_distance(s, v.local);
+    let body = shape_distance(s, v.local);
+    // Draw-in: past the drawn length the figure is only its round ends.
+    let trimmed = s.trim.y < 1.0;
+    // Lines and arrows are painted by their fill, closed figures trim their outline.
+    let open = u32(s.style.x) >= 2u;
+    var d = body;
+    var undrawn = false;
+    if trimmed && open {
+        d = drawn_distance(s, v.local, s.trim.x);
+    } else if trimmed {
+        undrawn = path_position(s, v.local) > s.trim.x;
+    }
+    let tip = min(distance(v.local, s.ends.xy), distance(v.local, s.ends.zw));
+    let edge = select(abs(d), tip, undrawn);
     let aa = max(fwidth(d), 1e-3);
+    let edge_aa = select(aa, max(fwidth(edge), 1e-3), trimmed);
     var color = vec4<f32>(0.0);
     if s.style.y > 0.5 {
-        color = premultiplied(fill_color(v.id, v.local), clamp(0.5 - d / aa, 0.0, 1.0));
+        let fade = select(1.0, s.trim.y, trimmed && !open);
+        color = premultiplied(fill_color(v.id, v.local), clamp(0.5 - d / aa, 0.0, 1.0) * fade);
     }
     if s.transform.z > 0.0 {
-        let stroke = premultiplied(s.stroke, clamp(0.5 - (abs(d) - s.transform.z * 0.5) / aa, 0.0, 1.0));
+        let stroke = premultiplied(s.stroke, clamp(0.5 - (edge - s.transform.z * 0.5) / edge_aa, 0.0, 1.0));
         color = stroke + color * (1.0 - stroke.a);
     }
-    return color * s.transform.w;
+    return color * s.transform.w * select(1.0, 0.0, s.trim.y <= 0.0);
 }
 
 @fragment fn fs(v: VsOut) -> @location(0) vec4<f32> {

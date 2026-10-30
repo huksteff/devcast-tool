@@ -1,9 +1,10 @@
 //! Figures as the `Shape` struct of shapes.wgsl, camera applied.
 
+use super::trim::{ARROW, ELLIPSE, LINE, RECT, trim};
 use crate::scene::{Camera, Geometry, Paint, Shape};
 
-/// Floats of one figure in the storage buffer: `Shape` of shapes.wgsl, 11 × vec4.
-pub(super) const FLOATS: usize = 44;
+/// Floats of one figure in the storage buffer: `Shape` of shapes.wgsl, 13 × vec4.
+pub(super) const FLOATS: usize = 52;
 
 /// Kind, centre, half size of the bounds, per-kind lengths and own angle (radians) of a figure.
 struct Placed {
@@ -35,15 +36,15 @@ fn place(geometry: &Geometry) -> Placed {
         }
     };
     match *geometry {
-        Geometry::Rect { ref rect, radius } => box_of(0.0, rect, radius),
-        Geometry::Ellipse { ref rect } => box_of(1.0, rect, 0.0),
-        Geometry::Line { from, to, width } => segment(2.0, from, to, width, 0.0),
+        Geometry::Rect { ref rect, radius } => box_of(RECT, rect, radius),
+        Geometry::Ellipse { ref rect } => box_of(ELLIPSE, rect, 0.0),
+        Geometry::Line { from, to, width } => segment(LINE, from, to, width, 0.0),
         Geometry::Arrow {
             from,
             to,
             width,
             head,
-        } => segment(3.0, from, to, width, head),
+        } => segment(ARROW, from, to, width, head),
     }
 }
 
@@ -87,9 +88,10 @@ pub(super) fn pack(shape: &Shape, camera: Camera) -> [f32; FLOATS] {
     let geometry = [l0, l1, l2, 0.0];
     let direction = [dir_x, dir_y, 0.0, 0.0];
     let glow = shape.glow.as_ref().map_or([0.0; 4], |g| unit(g.color.0));
+    let (cut, ends) = trim(p.kind, [l0, l1, l2], shape.drawn);
     let rows = [
         head, transform, style, geometry, direction, colors[0], colors[1], colors[2], colors[3],
-        stroke, glow,
+        stroke, glow, cut, ends,
     ];
     let mut out = [0.0; FLOATS];
     out.copy_from_slice(rows.as_flattened());
@@ -126,6 +128,7 @@ mod tests {
             opacity: 1.0,
             rotation: 0.0,
             glow: None,
+            drawn: 1.0,
         }
     }
 
