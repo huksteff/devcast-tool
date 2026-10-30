@@ -25,7 +25,7 @@
 | Тесты крейта | `cargo nextest run -p <пакет>` |
 | Справка xtask | `cargo xtask help` |
 
-Stop-хук (`.claude/settings.json`) сам запускает `cargo xtask hook-stop`. Если менялся код и verify красный, сессия не закончится: чини.
+Stop-хук (`.claude/settings.json`) запускает `cargo xtask hook-stop`: только быстрые проверки (`verify --quick`, без сборки и тестов). Если они красные, сессия не закончится: чини. Сборку и тесты (`cargo xtask verify`) запускаешь сам, один раз после порции правок (docs/PROCESS.md).
 
 ## Инструменты
 

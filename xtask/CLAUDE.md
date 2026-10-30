@@ -1,6 +1,6 @@
 # xtask (`xtask`)
 
-Служебные команды: `cargo xtask verify` (все проверки «готово») и `cargo xtask hook-stop` (Stop-хук Claude Code).
+Служебные команды: `cargo xtask verify` (все проверки «готово») и `cargo xtask hook-stop` (Stop-хук Claude Code: `verify --quick` — без сборки и тестов, полную проверку агент запускает сам после порции правок).
 
 ## Инварианты
 

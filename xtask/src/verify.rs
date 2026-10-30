@@ -12,6 +12,9 @@ pub struct Options {
     pub full: bool,
     /// Also run tests marked `#[ignore]` (long tests, run nightly).
     pub include_ignored: bool,
+    /// Only the checks that need no build (no clippy, no tests): seconds instead of minutes,
+    /// for the Stop hook on the owner's PC (docs/PROCESS.md).
+    pub quick: bool,
 }
 
 impl Options {
@@ -19,11 +22,13 @@ impl Options {
         let mut options = Self {
             full: false,
             include_ignored: false,
+            quick: false,
         };
         for arg in args {
             match arg.as_str() {
                 "--full" => options.full = true,
                 "--include-ignored" => options.include_ignored = true,
+                "--quick" => options.quick = true,
                 other => return Err(format!("неизвестный флаг `{other}`")),
             }
         }
@@ -78,15 +83,15 @@ impl Report {
 }
 
 pub fn run(options: &Options) -> Report {
-    let mut steps = vec![
-        (
-            "fmt",
-            run::cargo(
-                &["fmt", "--all", "--check", "--", "--color=never"],
-                "Запусти `cargo fmt --all` и повтори.",
-            ),
+    let mut steps = vec![(
+        "fmt",
+        run::cargo(
+            &["fmt", "--all", "--check", "--", "--color=never"],
+            "Запусти `cargo fmt --all` и повтори.",
         ),
-        (
+    )];
+    if !options.quick {
+        steps.push((
             "clippy",
             run::cargo(
                 &[
@@ -100,8 +105,8 @@ pub fn run(options: &Options) -> Report {
                 ],
                 "Исправь замечания. #[allow] допустим только с reason = \"...\" и настоящей причиной.",
             ),
-        ),
-    ];
+        ));
+    }
     match Workspace::load() {
         Ok(workspace) => {
             steps.push(("limits", limits::check(&workspace.root)));
@@ -109,7 +114,9 @@ pub fn run(options: &Options) -> Report {
             steps.push(("deps", deps::check(&workspace)));
             steps.push(("todo", todo::check(&workspace.root)));
             steps.push(("features", features::check(&workspace.root)));
-            steps.push(("tests", tests(options, &workspace)));
+            if !options.quick {
+                steps.push(("tests", tests(options, &workspace)));
+            }
         }
         Err(error) => steps.push(("metadata", Outcome::Fail(error))),
     }
@@ -156,5 +163,18 @@ fn tests(options: &Options, workspace: &Workspace) -> Outcome {
         }
         (Outcome::Pass(_), None) => Outcome::Pass("весь workspace".to_owned()),
         (failed, _) => failed,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn quick_flag_parses_and_unknown_flags_fail() {
+        let options = Options::parse(&["--quick".to_owned()]).unwrap();
+        assert!(options.quick && !options.full && !options.include_ignored);
+        assert!(!Options::parse(&[]).unwrap().quick);
+        assert!(Options::parse(&["--fast".to_owned()]).is_err());
     }
 }

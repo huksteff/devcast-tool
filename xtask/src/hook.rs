@@ -1,7 +1,7 @@
 //! `cargo xtask hook-stop`: the Claude Code Stop hook (configured in .claude/settings.json).
 //!
-//! If code changed and `verify` fails, the hook blocks the stop (exit code 2) and hands the
-//! report to the agent, so a session cannot end with "done" on red checks. To avoid an endless
+//! If code changed and the quick `verify` (no build, no tests: the owner works on the same PC,
+//! docs/PROCESS.md) fails, the hook blocks the stop (exit code 2) and hands the report to the agent, so a session cannot end with "done" on red checks. To avoid an endless
 //! loop it blocks only once in a row: when the agent is already continuing because of this hook
 //! (`stop_hook_active`), a still-red report is shown to the owner instead.
 
@@ -31,6 +31,7 @@ pub fn stop() -> ExitCode {
     let report = verify::run(&verify::Options {
         full: false,
         include_ignored: false,
+        quick: true,
     });
     match decide(report.is_ok(), active) {
         Decision::Allow => ExitCode::SUCCESS,
