@@ -13,3 +13,14 @@ path = "src/main.rs"
 
 [lints]
 workspace = true
+
+[dependencies]
+dc-ipc = { path = "../ipc" }
+dc-project = { path = "../project" }
+# `inspection` stays off at run time until EGUI_INSPECTION=1 is set (decision 012).
+eframe = { version = "0.37", default-features = false, features = ["wgpu", "accesskit", "inspection"] }
+serde.workspace = true
+thiserror.workspace = true
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
