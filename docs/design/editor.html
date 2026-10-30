@@ -1,0 +1,1308 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DevCast редактор</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#0f1115;
+  --surface:#181a1f;
+  --surface-2:#22252c;
+  --surface-3:#2c3038;
+  --border:#353a43;
+  --text:#e8eaed;
+  --text-2:#a3a8b3;
+  --text-3:#8a909b;
+  --accent:#2563eb;
+  --accent-hi:#3b82f6;
+  --accent-soft:rgba(37,99,235,.18);
+  --rec:#f43f5e;
+  --rec-strong:#e11d48;
+  --rec-soft:rgba(244,63,94,.16);
+  --pause:#fbbf24;
+  --ok:#22c55e;
+  --scrim:rgba(0,0,0,.55);
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  --r1:6px; --r2:8px; --r3:12px;
+  --fs-s:12px; --fs-m:13px; --fs-l:15px; --fs-xl:20px;
+  --ctl:32px; --hud-h:48px;
+  --shadow:0 8px 24px rgba(0,0,0,.45);
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ color-scheme:dark; } }
+:root[data-theme="dark"]{ color-scheme:dark; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:400 var(--fs-m)/1.45 Inter,system-ui,sans-serif}
+.page{max-width:1040px;margin:0 auto;padding:var(--s5) var(--s4) 64px}
+h1{font-size:24px;margin:0 0 var(--s2)}
+h2{font-size:18px;margin:56px 0 var(--s3);padding-top:var(--s4);border-top:1px solid var(--border)}
+h3{font-size:var(--fs-l);margin:var(--s5) 0 var(--s2);color:var(--text-2);font-weight:500}
+p.lead{color:var(--text-2);margin:0 0 var(--s4)}
+.notes{margin:var(--s3) 0 0;padding-left:20px;color:var(--text-2)}
+.notes li{margin:2px 0}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;background:var(--surface-3);color:var(--text-2);margin-right:4px}
+.tag.v2{background:var(--accent-soft);color:var(--accent-hi)}
+.tag.q{background:rgba(251,191,36,.15);color:var(--pause)}
+.stage{position:relative;background:linear-gradient(135deg,#2a3340,#1b2029 60%,#262b35);border:1px solid var(--border);border-radius:var(--r3);padding:var(--s5);overflow-x:auto}
+.stage.tall{min-height:340px}
+.row{display:flex;gap:var(--s5);flex-wrap:wrap;align-items:flex-end}
+.cap{font-size:var(--fs-s);color:var(--text-3);margin-bottom:6px}
+
+/* tokens table */
+.tokens{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--s2)}
+.tok{display:flex;gap:var(--s2);align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:6px 8px;font-size:var(--fs-s)}
+.sw{width:22px;height:22px;border-radius:5px;border:1px solid rgba(255,255,255,.12);flex:none}
+.tok code{font-family:var(--mono);font-size:11px;color:var(--text-2);display:block}
+.flow{display:flex;flex-wrap:wrap;gap:6px;font-size:var(--fs-s);color:var(--text-2);margin-top:var(--s3)}
+.flow span{background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:2px 10px}
+
+/* generic controls */
+.ico{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn{height:var(--ctl);display:inline-flex;align-items:center;gap:6px;padding:0 var(--s3);border-radius:var(--r1);border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:500 var(--fs-m) Inter,sans-serif;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent)}
+.btn.danger{background:var(--rec-strong);border-color:var(--rec-strong);color:#fff}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--text-2)}
+.btn.sm{height:26px;padding:0 var(--s2);font-size:var(--fs-s)}
+.ib{width:var(--ctl);height:var(--ctl);display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r1);color:var(--text-2);flex:none;position:relative}
+.ib.on{color:var(--accent-hi);background:var(--accent-soft)}
+.ib.hover{background:var(--surface-3);color:var(--text)}
+.ib.off{color:var(--text-3)}
+.ib .badge{position:absolute;right:1px;bottom:1px;font:600 9px/1 Inter;background:var(--surface-3);color:var(--text);border-radius:3px;padding:2px 3px}
+.ib.on .badge{background:var(--accent)}
+.sep{width:1px;height:24px;background:var(--border);flex:none}
+.toggle{width:34px;height:20px;border-radius:99px;background:var(--surface-3);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text-2)}
+.toggle.on{background:var(--accent)}
+.toggle.on::after{left:16px;background:#fff}
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r1);padding:2px;gap:2px}
+.seg b{font-weight:500;font-size:var(--fs-s);padding:3px 10px;border-radius:4px;color:var(--text-2)}
+.seg b.sel{background:var(--surface-3);color:var(--text)}
+.select{height:var(--ctl);display:flex;align-items:center;justify-content:space-between;gap:var(--s2);padding:0 10px;border:1px solid var(--border);border-radius:var(--r1);background:var(--surface-2);min-width:0}
+.select span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meter{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;flex:none}
+.meter i{display:block;height:100%;background:var(--accent-hi)}
+.meter i.y{background:linear-gradient(90deg,var(--accent-hi) 0 70%,var(--pause) 70%)}
+.kbd{font:500 var(--fs-s) var(--mono);background:var(--surface-3);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--text)}
+:root{
+  --c-clip:#2f4a75; --c-clip-hi:#5b86cc;
+  --c-zoom:#4c3696; --c-zoom-hi:#8b6cf0;
+  --c-cur:#0f625b; --c-cur-hi:#2dd4bf;
+  --c-keys:#38414f; --c-keys-hi:#8a99b0;
+  --c-cap:#6e5210; --c-cap-hi:#e0b23a;
+  --c-ann:#7e2450; --c-ann-hi:#f0609e;
+  --c-aud:#125a3b; --c-aud-hi:#34d399;
+  --c-speed:#8a4210; --c-speed-hi:#fb923c;
+  --kf:#7dd3fc;
+  --snap:#facc15;
+  --head-w:148px;
+}
+.page{max-width:1380px}
+.tag.v1{background:var(--surface-3)}
+.dec{width:100%;border-collapse:collapse;font-size:var(--fs-s);min-width:680px}
+.dec th,.dec td{text-align:left;vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--border)}
+.dec th{color:var(--text-3);font-weight:600}
+.dec td:first-child{color:var(--text)}
+.dec td{color:var(--text-2)}
+.tblwrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r2);background:var(--surface)}
+.src{font-size:var(--fs-s);color:var(--text-2);background:var(--surface);border-left:3px solid var(--accent);border-radius:0 var(--r1) var(--r1) 0;padding:6px 10px;margin:var(--s3) 0 0}
+.src b{color:var(--text)}
+.stage{position:relative;background:linear-gradient(135deg,#2a3340,#1b2029 60%,#262b35);border:1px solid var(--border);border-radius:var(--r3);padding:var(--s5);overflow-x:auto}
+.row{display:flex;gap:var(--s5);flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:var(--fs-s);color:var(--text-3);margin-bottom:6px}
+.pop{background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);box-shadow:var(--shadow);padding:var(--s2);width:300px}
+.pop h4{margin:4px 8px 8px;font-size:var(--fs-s);color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.item{display:flex;align-items:center;gap:var(--s2);min-height:34px;padding:4px 8px;border-radius:var(--r1)}
+.item.sel{background:var(--accent-soft)}
+.item.hov{background:var(--surface-2)}
+.item .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .hint{font:500 11px var(--mono);color:var(--text-3)}
+.divider{height:1px;background:var(--border);margin:6px 4px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:var(--fs-s);color:var(--text-2);margin-top:var(--s3)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:10px;border-radius:3px;border:1px solid}
+
+/* editor window */
+.ed{width:1280px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r3);overflow:hidden;box-shadow:var(--shadow);position:relative}
+.titlebar{height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 4px 0 var(--s3);background:var(--bg);border-bottom:1px solid var(--border);font-size:var(--fs-s);color:var(--text-2)}
+.titlebar .wc{display:flex}
+.titlebar .wc span{width:40px;text-align:center;color:var(--text-3)}
+.topbar{height:44px;display:flex;align-items:center;gap:4px;padding:0 var(--s2);background:var(--surface);border-bottom:1px solid var(--border)}
+.topbar .mid{flex:1;display:flex;justify-content:center;align-items:center;gap:8px;min-width:0}
+.pname{font-weight:600;font-size:var(--fs-l);display:flex;align-items:center;gap:6px}
+.pname .dot{width:7px;height:7px;border-radius:50%;background:var(--accent-hi)}
+.pname small{font-weight:400;color:var(--text-3);font-size:var(--fs-s)}
+.autosave{font-size:var(--fs-s);color:var(--text-3);display:flex;align-items:center;gap:4px}
+.qbtn{position:relative}
+.qbtn .ring{width:18px;height:18px;border-radius:50%;background:conic-gradient(var(--accent-hi) 0 47%,var(--surface-3) 47%);display:flex;align-items:center;justify-content:center}
+.qbtn .ring::after{content:"";width:12px;height:12px;border-radius:50%;background:var(--surface)}
+.edbody{display:grid;grid-template-columns:1fr 340px;height:448px}
+.viewer{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border)}
+.vbar{height:36px;display:flex;align-items:center;gap:6px;padding:0 var(--s2);border-bottom:1px solid var(--border);font-size:var(--fs-s);color:var(--text-2)}
+.vbar .grow{flex:1}
+.cwrap{flex:1;display:flex;align-items:center;justify-content:center;background:#0b0c0f;position:relative;min-height:0}
+.canvas{width:560px;aspect-ratio:16/9;position:relative;overflow:hidden;background:#e9edf2;border-radius:2px}
+.transport{height:48px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 var(--s2);border-top:1px solid var(--border);background:var(--surface)}
+.transport .l,.transport .r{display:flex;align-items:center;gap:2px}
+.transport .r{justify-content:flex-end}
+.transport .c{display:flex;align-items:center;gap:2px}
+.tc{font:500 var(--fs-m) var(--mono);color:var(--text);padding:0 8px}
+.tc.dim{color:var(--text-3)}
+.playb{width:36px;height:36px;border-radius:50%;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center}
+.playb .ico{fill:currentColor}
+
+/* mock screen content */
+.m-top{position:absolute;left:0;right:0;top:0;height:9%;background:#cfd6df}
+.m-card{position:absolute;left:33%;top:20%;width:34%;height:62%;background:#fff;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.m-line{position:absolute;left:12%;right:12%;height:9%;border:1px solid #c7ced8;border-radius:4px;background:#f8fafc}
+.m-btn{position:absolute;left:12%;right:12%;height:10%;border-radius:4px;background:#2563eb}
+.m-ttl{position:absolute;left:12%;top:8%;width:45%;height:6%;background:#334155;border-radius:2px}
+.m-cursor{position:absolute;width:14px;height:20px}
+.m-cursor svg{width:100%;height:100%}
+.ann-text{position:absolute;left:5%;top:16%;padding:6px 10px;background:rgba(15,17,21,.85);color:#fff;border-radius:6px;font:700 15px Inter}
+.selbox{position:absolute;outline:1.5px solid var(--accent-hi)}
+.selbox .h{position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid var(--accent-hi);border-radius:2px;transform:translate(-50%,-50%)}
+.selbox .rot{position:absolute;left:50%;top:-22px;width:10px;height:10px;border-radius:50%;background:#fff;border:1.5px solid var(--accent-hi);transform:translateX(-50%)}
+.selbox .rot::after{content:"";position:absolute;left:3px;top:10px;width:1.5px;height:11px;background:var(--accent-hi)}
+.guide{position:absolute;background:#e879f9}
+.capline{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#fff;font:600 14px Inter;padding:4px 12px;border-radius:6px;white-space:nowrap}
+.capline em{font-style:normal;color:#fde047}
+.capline u{text-decoration:none;color:#9ca3af}
+.zoomframe{position:absolute;border:2px dashed #c4b5fd;background:rgba(139,108,240,.08)}
+.zoomframe b{position:absolute;left:-2px;top:-22px;background:var(--c-zoom-hi);color:#fff;font:600 11px Inter;padding:2px 6px;border-radius:4px 4px 0 0;white-space:nowrap}
+
+/* inspector */
+.insp{display:flex;min-width:0;background:var(--surface)}
+.itabs{width:44px;flex:none;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:2px;background:var(--bg)}
+.itabs .ib{width:36px;height:36px}
+.ipanel{flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column}
+.panel{width:320px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);overflow:hidden;flex:none}
+.ipanel .panel{border:0;border-radius:0;width:auto}
+.ph{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 12px;border-bottom:1px solid var(--border);min-height:44px}
+.ph b{font-size:var(--fs-l)}
+.ph small{color:var(--text-3);font-size:var(--fs-s)}
+.ph .sp{flex:1}
+.chip{width:4px;height:22px;border-radius:2px;flex:none}
+.grp{border-bottom:1px solid var(--border)}
+.gh{display:flex;align-items:center;gap:6px;height:34px;padding:0 6px 0 10px;font-weight:600;font-size:var(--fs-m)}
+.gh .ico{width:14px;height:14px;color:var(--text-3)}
+.gh .r{margin-left:auto;display:flex;gap:2px}
+.gh .r .ib{width:26px;height:26px}
+.gh.closed{color:var(--text-2);font-weight:500}
+.gb{padding:2px 12px 12px;display:flex;flex-direction:column;gap:4px}
+.panel .seg b,.ipanel .seg b,.pop .seg b{padding:3px 7px}
+.prow{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;min-height:30px}
+.prow>span:first-child{color:var(--text-2);font-size:var(--fs-m)}
+.prow .c{display:flex;align-items:center;gap:8px;min-width:0}
+.sl{flex:1;height:4px;background:var(--surface-3);border-radius:2px;position:relative;min-width:40px}
+.sl i{position:absolute;left:0;top:0;bottom:0;background:var(--accent-hi);border-radius:2px}
+.sl i::after{content:"";position:absolute;right:-6px;top:-4px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.v{font:500 var(--fs-s) var(--mono);color:var(--text-2);min-width:44px;text-align:right;white-space:nowrap}
+.num{height:28px;display:inline-flex;align-items:center;padding:0 8px;border:1px solid var(--border);border-radius:var(--r1);background:var(--surface-2);font:500 var(--fs-s) var(--mono);min-width:0}
+.cs{width:22px;height:22px;border-radius:5px;border:1px solid rgba(255,255,255,.2);flex:none}
+.hint{font-size:var(--fs-s);color:var(--text-3)}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.tile{border:1px solid var(--border);border-radius:var(--r2);padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;color:var(--text-2);background:var(--surface-2);text-align:center}
+.tile.sel{border-color:var(--accent-hi);background:var(--accent-soft);color:var(--text)}
+.tile .pv{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.txtarea{border:1px solid var(--border);border-radius:var(--r1);background:var(--surface-2);padding:6px 8px;min-height:44px;font-size:var(--fs-m)}
+.ib.sm{width:28px;height:28px}
+.ib.act{background:var(--surface-3);color:var(--text)}
+.ib.danger{color:var(--rec)}
+.btn.block{width:100%;justify-content:center}
+.kfbar{display:flex;align-items:center;gap:4px;padding:6px 8px 6px 12px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:var(--fs-s);color:var(--text-2)}
+.kfbar .d{width:10px;height:10px;transform:rotate(45deg);background:var(--kf);flex:none;margin-right:4px}
+.kfbar .d.e{background:transparent;border:1.5px solid var(--kf)}
+.kfbar .sp{flex:1}
+.changed{color:var(--kf)}
+
+/* timeline */
+.tl{border-top:1px solid var(--border);background:var(--surface);position:relative}
+.tlbar{height:38px;display:flex;align-items:center;gap:2px;padding:0 var(--s2);border-bottom:1px solid var(--border)}
+.tlbar .grow{flex:1}
+.zoomsl{display:flex;align-items:center;gap:6px;width:150px}
+.trows{position:relative}
+.tr{display:grid;grid-template-columns:var(--head-w) 1fr;border-bottom:1px solid #1d2026}
+.thd{display:flex;align-items:center;gap:4px;padding:0 4px 0 8px;font-size:var(--fs-s);color:var(--text-2);background:var(--surface);border-right:1px solid var(--border);white-space:nowrap;overflow:hidden}
+.thd .nm{flex:1;overflow:hidden;text-overflow:ellipsis}
+.thd .sw{width:3px;height:14px;border-radius:2px;flex:none}
+.thd .ib{width:22px;height:22px}
+.thd .ib .ico{width:13px;height:13px}
+.ln{position:relative;height:28px;background:var(--bg);overflow:hidden}
+.tr.main .ln{height:50px}
+.tr.audio .ln{height:36px}
+.tr.ruler .ln{height:24px;background:var(--surface)}
+.tr.ruler .thd{background:var(--surface)}
+.tick{position:absolute;bottom:0;width:1px;height:6px;background:var(--text-3)}
+.tick.big{height:10px}
+.tick b{position:absolute;left:3px;bottom:7px;font:500 10px var(--mono);color:var(--text-3);white-space:nowrap}
+.rg{position:absolute;top:3px;bottom:3px;border-radius:5px;border:1px solid;color:#fff;font-size:11px;padding:0 6px;display:flex;align-items:center;gap:4px;overflow:hidden;white-space:nowrap}
+.rg.zoom{background:var(--c-zoom);border-color:var(--c-zoom-hi)}
+.rg.cap{background:var(--c-cap);border-color:var(--c-cap-hi)}
+.rg.ann{background:var(--c-ann);border-color:var(--c-ann-hi)}
+.rg.cur{background:var(--c-cur);border-color:var(--c-cur-hi)}
+.rg.keys{background:var(--c-keys);border-color:var(--c-keys-hi);font:500 10px var(--mono)}
+.rg.aud{background:rgba(18,90,59,.55);border-color:var(--c-aud-hi);align-items:flex-start;padding-top:2px}
+.rg.clip{background:var(--c-clip);border-color:var(--c-clip-hi);align-items:flex-start;flex-direction:column;justify-content:flex-start;gap:1px;padding:4px 8px 0}
+.rg.clip small{font:500 10px var(--mono);color:#c7d6f0}
+.rg.sel{box-shadow:0 0 0 2px #fff;z-index:2}
+.rg.sel::before,.rg.sel::after{content:"";position:absolute;top:3px;bottom:3px;width:3px;border-radius:2px;background:#fff}
+.rg.sel::before{left:2px}.rg.sel::after{right:2px}
+.rg.ghost{background:transparent;border:1.5px dashed var(--text-3);color:var(--text-2);justify-content:center}
+.rg.drag{opacity:.85;box-shadow:0 6px 16px rgba(0,0,0,.5);transform:translateY(-2px)}
+.rg.faded{opacity:.35}
+.rg .wave{position:absolute;left:0;right:0;bottom:0;height:70%;width:100%}
+.rg .lbl{position:relative;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.speed{position:absolute;bottom:5px;height:12px;background:var(--c-speed);border:1px solid var(--c-speed-hi);border-radius:3px;font:600 9px/10px var(--mono);color:#fff;padding:0 4px;z-index:1}
+.seam{position:absolute;top:6px;bottom:6px;width:0;border-left:1px dashed rgba(255,255,255,.5);z-index:1}
+.cdot{position:absolute;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--c-cur-hi)}
+.cdot.off{background:transparent;border:1.5px solid var(--text-3)}
+.kf{position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;transform:rotate(45deg);background:var(--kf);border:1px solid #0b0c0f;z-index:3}
+.kf.sel{background:#fff;box-shadow:0 0 0 2px var(--kf)}
+.link{position:absolute;top:50%;height:2px;background:var(--c-zoom-hi);opacity:.8}
+.playhead{position:absolute;top:0;bottom:0;width:0;border-left:2px solid var(--rec);z-index:5;pointer-events:none}
+.playhead b{position:absolute;top:2px;left:-1px;transform:translateX(-50%);background:var(--rec-strong);color:#fff;font:600 10px var(--mono);padding:2px 5px;border-radius:3px;white-space:nowrap}
+.snapline{position:absolute;top:0;bottom:0;width:0;border-left:1.5px solid var(--snap);z-index:4}
+.navbar{display:grid;grid-template-columns:var(--head-w) 1fr;height:14px;background:var(--surface)}
+.navbar .trk{position:relative;margin:3px 8px 3px 0;background:var(--surface-3);border-radius:4px}
+.navbar .trk i{position:absolute;top:0;bottom:0;background:var(--text-3);border-radius:4px}
+.addrow{display:grid;grid-template-columns:var(--head-w) 1fr;height:26px;align-items:center;font-size:var(--fs-s);color:var(--text-3);border-bottom:1px solid #1d2026}
+.addrow span{padding-left:8px;display:flex;align-items:center;gap:4px}
+.tip{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:var(--r1);box-shadow:var(--shadow);padding:4px 8px;font-size:var(--fs-s);color:var(--text);white-space:nowrap;z-index:6}
+.tip .kbd{font-size:11px;padding:0 4px}
+.tip.mono{font-family:var(--mono)}
+.rangesel{position:absolute;top:0;bottom:0;background:rgba(59,130,246,.18);border-left:1.5px solid var(--accent-hi);border-right:1.5px solid var(--accent-hi);z-index:3}
+.marquee{position:absolute;border:1px solid var(--accent-hi);background:rgba(59,130,246,.12);z-index:4}
+.bladecur{position:absolute;top:0;bottom:0;border-left:1.5px dashed #fff;z-index:4}
+.bladecur span{position:absolute;top:50%;left:4px;transform:translateY(-50%)}
+.mini{width:760px}
+.mini .tr{grid-template-columns:110px 1fr}
+.mini .navbar,.mini .addrow{grid-template-columns:110px 1fr}
+.ins{position:absolute;top:2px;bottom:2px;width:3px;background:#fff;border-radius:2px;z-index:4}
+
+/* dialogs */
+.dlg{background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);box-shadow:var(--shadow);overflow:hidden;flex:none}
+.dlg .dh{display:flex;align-items:center;justify-content:space-between;padding:10px 8px 10px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:var(--fs-l)}
+.dlg .db{padding:var(--s4)}
+.dlg .df{display:flex;gap:8px;justify-content:flex-end;align-items:center;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg);flex-wrap:wrap}
+.dlg .df .grow{flex:1;font-size:var(--fs-s);color:var(--text-3);min-width:120px}
+.field{display:grid;grid-template-columns:120px 1fr;gap:var(--s3);align-items:center;padding:7px 0}
+.field .lbl{color:var(--text-2)}
+.field .lbl small{display:block;color:var(--text-3);font-size:11px}
+.seg b.dis{color:#5b616c}
+.cropview{position:relative;width:100%;aspect-ratio:16/9;background:#0b0c0f;border-radius:var(--r2);overflow:hidden}
+.cropview .img{position:absolute;inset:0;background:#e9edf2}
+.cropview .rect{position:absolute;left:14%;top:12%;width:64%;height:72%;outline:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.6)}
+.cropview .rect::before,.cropview .rect::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 33.2%,rgba(255,255,255,.35) 33.3% 33.5%,transparent 33.6% 66.5%,rgba(255,255,255,.35) 66.6% 66.8%,transparent 66.9%)}
+.cropview .rect::after{background:linear-gradient(180deg,transparent 33.2%,rgba(255,255,255,.35) 33.3% 33.5%,transparent 33.6% 66.5%,rgba(255,255,255,.35) 66.6% 66.8%,transparent 66.9%)}
+.cropview .h{position:absolute;width:12px;height:12px;background:#fff;border-radius:2px;transform:translate(-50%,-50%)}
+.job{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center;padding:8px;border-radius:var(--r2)}
+.job+.job{border-top:1px solid var(--surface-2)}
+.job .t{font-size:var(--fs-m);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.job .s{font-size:var(--fs-s);color:var(--text-3)}
+.bar{height:4px;border-radius:2px;background:var(--surface-3);margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent-hi)}
+.toast{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r2);box-shadow:var(--shadow);padding:8px 8px 8px 12px;font-size:var(--fs-m);width:max-content;max-width:100%;flex-wrap:wrap}
+.toast.err{border-color:rgba(244,63,94,.5)}
+.toast.ok .ico{color:var(--ok)}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-2);text-align:center;border:1.5px dashed var(--border);border-radius:var(--r3);padding:24px}
+.empty .big{width:36px;height:36px;color:var(--text-3)}
+.thumbs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.th2{border-radius:var(--r2);background:var(--surface-2);padding:5px;border:2px solid transparent;position:relative}
+.th2.sel{border-color:var(--accent-hi);background:var(--accent-soft)}
+.th2 .im{aspect-ratio:16/9;border-radius:4px;background:linear-gradient(135deg,#334155,#1e293b);position:relative}
+.th2 .im.l{background:#e9edf2}
+.th2 .im.c{background:#1e1e1e}
+.th2 .d{position:absolute;right:4px;bottom:4px;font:500 10px var(--mono);background:rgba(0,0,0,.7);padding:1px 4px;border-radius:3px}
+.th2 .t{font-size:var(--fs-s);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.th2 .s{font-size:11px;color:var(--text-3)}
+.th2 .ck{position:absolute;left:9px;top:9px;width:16px;height:16px;border-radius:4px;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.th2 .ck .ico{width:12px;height:12px;color:#fff}
+.th2 .plus{position:absolute;right:9px;top:9px;width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.th2 .plus .ico{width:14px;height:14px;color:#fff}
+.th2 .cur{position:absolute;left:9px;top:9px;font-size:10px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:3px}
+.search{height:var(--ctl);border:1px solid var(--border);border-radius:var(--r1);background:var(--surface-2);display:flex;align-items:center;gap:6px;padding:0 10px;color:var(--text-3)}
+.cue{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;padding:6px 8px;border-radius:var(--r1);font-size:var(--fs-m)}
+.cue .tm{font:500 11px var(--mono);color:var(--text-3);grid-row:span 2;padding-top:2px}
+.cue.sel{background:var(--accent-soft)}
+.cue.now{box-shadow:inset 3px 0 0 var(--c-cap-hi)}
+.cue .w em{font-style:normal;background:rgba(224,178,58,.25);border-radius:3px;padding:0 2px}
+.cue .cedit{display:block;border:1px solid var(--accent-hi);border-radius:4px;background:var(--bg);padding:3px 6px;width:auto}
+.cue .acts{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.hk{display:grid;grid-template-columns:1fr auto;gap:8px;padding:5px 0;border-bottom:1px solid var(--surface-2);font-size:var(--fs-m);align-items:center}
+.hkcols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
+.hkcols h6{margin:12px 0 4px;font-size:var(--fs-s);color:var(--text-3);text-transform:uppercase;letter-spacing:.05em}
+.ph-notes{font-size:var(--fs-s);color:var(--text-3)}
+.anchors{display:grid;grid-template-columns:repeat(3,22px);gap:3px}
+.anchors i{height:16px;border-radius:3px;background:var(--surface-3)}
+.anchors i.sel{background:var(--accent-hi)}
+.lufs{font:500 11px var(--mono);color:var(--ok)}
+.meterv{width:8px;height:52px;border-radius:3px;background:var(--surface-3);position:relative;overflow:hidden;flex:none}
+.meterv i{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,var(--accent-hi) 0 70%,var(--pause) 70% 88%,var(--rec) 88%)}
+@media (max-width:640px){
+  .stage{padding:var(--s3)}
+  h2{margin-top:40px}
+  .hkcols{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-mon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-win" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></symbol>
+    <symbol id="i-area" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+    <symbol id="i-micoff" viewBox="0 0 24 24"><path d="M9 9v2a3 3 0 0 0 5 2.2M15 10V6a3 3 0 0 0-5.7-1.3M5 11a7 7 0 0 0 11.5 5.4M19 11a7 7 0 0 1-.6 2.8M12 18v3M3 3l18 18"/></symbol>
+    <symbol id="i-spk" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-hide" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.5M6.6 6.6C4.2 8.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></symbol>
+    <symbol id="i-proj" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 9h16"/></symbol>
+    <symbol id="i-quit" viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></symbol>
+  </defs>
+</svg>
+<svg width="0" height="0" style="position:absolute"><defs><symbol id="grip" viewBox="0 0 8 16"><circle cx="2" cy="3" r="1.3"/><circle cx="6" cy="3" r="1.3"/><circle cx="2" cy="8" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="2" cy="13" r="1.3"/><circle cx="6" cy="13" r="1.3"/></symbol></defs></svg>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></symbol>
+    <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 3l14 8-6 2-3 6z"/></symbol>
+    <symbol id="i-magnet" viewBox="0 0 24 24"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 7h4M14 7h4"/></symbol>
+    <symbol id="i-zoomin" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="M15 4V2M15 10V8M11 6h2M17 6h2M4 20L14 10"/><path d="M19 13v2M18 14h2M8 3v2M7 4h2"/></symbol>
+    <symbol id="i-cc" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 10a2 2 0 1 0 0 4M17 10a2 2 0 1 0 0 4"/></symbol>
+    <symbol id="i-kbd" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+    <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14M18 22V8a2 2 0 0 0-2-2H2"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-diamond" viewBox="0 0 24 24"><path d="M12 3l9 9-9 9-9-9z"/></symbol>
+    <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 1-1 1.7M12 17h.01"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-skipb" viewBox="0 0 24 24"><path d="M19 5L9 12l10 7zM5 5v14"/></symbol>
+    <symbol id="i-skipf" viewBox="0 0 24 24"><path d="M5 5l10 7-10 7zM19 5v14"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></symbol>
+    <symbol id="i-shape" viewBox="0 0 24 24"><rect x="3" y="3" width="11" height="11" rx="1"/><circle cx="16" cy="16" r="5"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></symbol>
+    <symbol id="i-blur" viewBox="0 0 24 24"><path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/><path d="M9 14h.01M12 17h.01M15 14h.01M12 11h.01"/></symbol>
+    <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5 3l6 17 2.5-7.5L21 10z"/></symbol>
+    <symbol id="i-bubble" viewBox="0 0 24 24"><path d="M4 5h16v10H9l-5 4z"/></symbol>
+    <symbol id="i-frame" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="1"/><path d="M7 3v3M17 3v3M7 18v3M17 18v3"/></symbol>
+    <symbol id="i-detach" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-lib" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-speed" viewBox="0 0 24 24"><path d="M12 14l4-6"/><path d="M3.5 18a10 10 0 1 1 17 0"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v6h8M7 21v-7h10v7"/></symbol>
+    <symbol id="i-cloudok" viewBox="0 0 24 24"><path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z"/><path d="M9.5 13.5l2 2 3.5-4"/></symbol>
+    <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18M5 8l-3 4 3 4M19 8l3 4-3 4"/></symbol>
+    <symbol id="i-merge" viewBox="0 0 24 24"><path d="M12 3v18M2 8l3 4-3 4M22 8l-3 4 3 4"/></symbol>
+    <symbol id="i-bold" viewBox="0 0 24 24"><path d="M7 4h6a4 4 0 0 1 0 8H7zM7 12h7a4 4 0 0 1 0 8H7z"/></symbol>
+    <symbol id="i-italic" viewBox="0 0 24 24"><path d="M14 4h-4M14 20h-4M15 4l-6 16"/></symbol>
+    <symbol id="i-under" viewBox="0 0 24 24"><path d="M7 4v7a5 5 0 0 0 10 0V4M5 21h14"/></symbol>
+    <symbol id="i-al" viewBox="0 0 24 24"><path d="M4 6h16M4 10h10M4 14h16M4 18h10"/></symbol>
+    <symbol id="i-ac" viewBox="0 0 24 24"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"/></symbol>
+    <symbol id="i-ar" viewBox="0 0 24 24"><path d="M4 6h16M10 10h10M4 14h16M10 18h10"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></symbol>
+    <symbol id="i-folderopen" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1H7l-4 9z"/><path d="M3 19l3-9h16l-3 9z"/></symbol>
+  </defs>
+</svg>
+
+<div class="page">
+<h1>DevCast v2 — редактор и всё после записи (этапы 7–8)</h1>
+<p class="lead">Статичные макеты редактора: главное окно, приёмы на таймлайне, панели всех эффектов, кроп, экспорт, проекты и библиотека, служебные окна этапа 8. Та же система, что в <code>stage6-mockups.html</code>: токены, шрифты Inter / JetBrains Mono, высота контрола 32 px, тема только тёмная. Пометки: <span class="tag v1">v1</span> <span class="tag">Cap</span> <span class="tag">DaVinci</span> — откуда взято, <span class="tag v2">v2</span> — отличие v2 по SCOPE / roadmap / решению 000, <span class="tag q">?</span> — вопрос владельцу. Правило владельца: «как в DaVinci, но не сложнее».</p>
+
+<h3>Решение → откуда → почему</h3>
+<div class="tblwrap"><table class="dec">
+<tr><th>Решение</th><th>Откуда</th><th>Почему (принцип)</th></tr>
+<tr><td>Превью по центру, инспектор справа (340 px), таймлайн внизу во всю ширину</td><td>Cap, DaVinci Edit; v1 — панель слева (отклонено)</td><td>Закон Якоба: так устроены все монтажки; таймлайн во всю ширину = больше времени на экране; взгляд идёт превью → настройки справа</td></tr>
+<tr><td>Инспектор сам открывает панель выделенного (зум, аннотация, реплика, клип); вкладки слева от панели — для общих настроек</td><td>v1 (автопереключение), DaVinci Inspector</td><td>Nielsen #6 узнавание вместо припоминания; Hick: на экране только настройки того, с чем работаешь</td></tr>
+<tr><td>У панели группы «Основное» (открыта) и «Тонкая настройка» (свёрнута), «Сбросить» ↺ в заголовке группы</td><td>SCOPE, DaVinci (сворачиваемые группы с reset)</td><td>Прогрессивное раскрытие; Nielsen #3 — выход в умолчание одним кликом</td></tr>
+<tr><td>Резать двумя способами: C — у указателя, «Лезвие» (B) — кликом в любом месте клипа</td><td>DaVinci (Blade B, Ctrl+B), Cap (режим разреза); C — v1</td><td>Fitts: режут там, куда смотрят; режим виден курсором ✂ и подсвеченной кнопкой (Nielsen #1)</td></tr>
+<tr><td>Главная дорожка всегда «рябит»: удалённый кусок не оставляет дыр, эффекты не съезжают</td><td>SCOPE (магнитная дорожка), DaVinci Cut page; ARCHITECTURE — source time</td><td>Меньше шагов, чем Blade + Delete + сдвиг; Nielsen #5 — нельзя случайно оставить чёрную дыру</td></tr>
+<tr><td>Цвет = вид эффекта и совпадает на дорожке, в полоске заголовка инспектора и на превью</td><td>Cap (цветные дорожки), DaVinci (цвет клипа)</td><td>Gestalt: сходство; цвет всегда с подписью — не единственный признак (WCAG 1.4.1)</td></tr>
+<tr><td>Выделение белой рамкой с ручками; мультивыделение Ctrl+клик и рамкой; привязка с жёлтой линией, переключатель N</td><td>решение 000, DaVinci (snapping N, рамка)</td><td>Согласованность: один вид выделения на всех дорожках; Nielsen #1 — видно, к чему прилипло</td></tr>
+<tr><td>Ключевой кадр — один ◆ на аннотацию (снимок всех параметров), а не ромбик у каждого параметра</td><td>v1 (модель ключа); DaVinci — ромб у каждого параметра (отклонено)</td><td>«Не сложнее DaVinci»: одна кнопка и одна строка состояния; изменённые параметры подсвечены</td></tr>
+<tr><td>Экспорт: короткий диалог → путь → очередь в фоне; кольцо прогресса в шапке</td><td>SCOPE, Cap (страница экспорта), DaVinci Deliver (очередь рендера)</td><td>Nielsen #1 видимость; работа не блокируется; ошибку можно скопировать (#9)</td></tr>
+<tr><td>Подсказка с клавишей у каждой кнопки, полная справка F1 строится из реестра команд</td><td>DaVinci (клавиши в меню), roadmap 7.3</td><td>Nielsen #7 ускорители, #10 справка; справка не врёт (урок v1 §7.1)</td></tr>
+<tr><td>Указатель (playhead) красный — единственное исключение из «красный = запись/опасно»</td><td>v1, DaVinci, Cap</td><td>Закон Якоба: красный указатель привычен во всех монтажках</td></tr>
+<tr><td>Текст на цветных регионах белый, заливки тёмные (≈ 6–9 : 1), подписи 11–12 px</td><td>своё</td><td>WCAG AA 4,5 : 1 (оценка по формуле, не замер)</td></tr>
+</table></div>
+
+<h3>Цвета дорожек (добавка к токенам этапа 6)</h3>
+<div class="legend">
+  <span><i style="background:var(--c-clip);border-color:var(--c-clip-hi)"></i>клипы</span>
+  <span><i style="background:var(--c-speed);border-color:var(--c-speed-hi)"></i>скорость</span>
+  <span><i style="background:var(--c-zoom);border-color:var(--c-zoom-hi)"></i>зумы</span>
+  <span><i style="background:var(--c-cur);border-color:var(--c-cur-hi)"></i>курсор, клики, облачко</span>
+  <span><i style="background:var(--c-keys);border-color:var(--c-keys-hi)"></i>клавиши</span>
+  <span><i style="background:var(--c-cap);border-color:var(--c-cap-hi)"></i>субтитры</span>
+  <span><i style="background:var(--c-ann);border-color:var(--c-ann-hi)"></i>аннотации</span>
+  <span><i style="background:var(--c-aud);border-color:var(--c-aud-hi)"></i>звук</span>
+  <span><i style="background:var(--kf);border-color:var(--kf);transform:rotate(45deg);width:9px;height:9px"></i>ключевой кадр</span>
+  <span><i style="background:var(--snap);border-color:var(--snap);width:2px"></i>привязка</span>
+</div>
+<ul class="notes">
+  <li>Заливка тёмная, рамка светлая того же тона; выбранный регион — белая рамка 2 px и белые ручки краёв. Один акцент (синий) остаётся за выбором в интерфейсе и «включено».</li>
+  <li>Высота строк: шкала 24, клипы 50, звук 36, остальные 28 px; Shift+колесо меняет все, ×0,5–3 <span class="tag v1">v1</span>. Голова дорожки 148 px.</li>
+</ul>
+<div class="flow" style="display:flex;flex-wrap:wrap;gap:6px;font-size:var(--fs-s);color:var(--text-2);margin-top:12px"><span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:2px 10px">1 Редактор</span><span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:2px 10px">2 Таймлайн: приёмы</span><span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:2px 10px">3 Панели эффектов</span><span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:2px 10px">4 Кроп</span><span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:2px 10px">5 Экспорт</span><span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:2px 10px">6 Проекты, библиотека, сохранение</span><span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:2px 10px">7 Окно таймлайна, справка</span><span style="background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:2px 10px">8 Этап 8</span></div>
+
+<!-- ============ 1 EDITOR ============ -->
+<h2>1. Главное окно редактора</h2>
+<div class="stage">
+<div class="ed">
+  <div class="titlebar"><span>Вход в аккаунт — DevCast</span><span class="wc"><span>—</span><span>☐</span><span>✕</span></span></div>
+  <div class="topbar">
+    <span class="btn sm ghost"><svg class="ico"><use href="#i-lib"/></svg>Записи</span>
+    <span class="btn sm ghost"><svg class="ico"><use href="#i-proj"/></svg>Проекты<svg class="ico" style="width:12px"><use href="#i-down"/></svg></span>
+    <span class="sep" style="margin:0 4px"></span>
+    <span class="ib" title="Отменить"><svg class="ico"><use href="#i-undo"/></svg></span>
+    <span class="ib off"><svg class="ico"><use href="#i-redo"/></svg></span>
+    <div class="mid">
+      <span class="pname"><span class="dot"></span>Вход в аккаунт<small>.devcast</small></span>
+      <span class="autosave"><svg class="ico" style="width:14px;height:14px"><use href="#i-cloudok"/></svg>автосохранение 14:32</span>
+    </div>
+    <span class="ib"><svg class="ico"><use href="#i-help"/></svg></span>
+    <span class="ib"><svg class="ico"><use href="#i-gear"/></svg></span>
+    <span class="ib qbtn"><span class="ring"></span></span>
+    <span class="btn primary" style="margin-left:4px"><svg class="ico"><use href="#i-export"/></svg>Экспорт</span>
+  </div>
+  <div class="edbody">
+    <div class="viewer">
+      <div class="vbar">
+        <span class="btn sm ghost"><svg class="ico"><use href="#i-crop"/></svg>Кроп и формат</span>
+        <span>16:9 · 1920 × 1080</span>
+        <span class="grow"></span>
+        <span>Превью</span><span class="seg"><b class="sel">Вписать</b><b>50%</b><b>100%</b></span>
+        <span class="seg"><b class="sel">Полное</b><b>Быстрое</b></span>
+      </div>
+      <div class="cwrap">
+        <div class="canvas">
+          <div class="m-top"></div>
+          <div class="m-card">
+            <div class="m-ttl"></div>
+            <div class="m-line" style="top:26%"></div>
+            <div class="m-line" style="top:42%"></div>
+            <div class="m-btn" style="top:62%"></div>
+          </div>
+          <div class="ann-text">Шаг 2: войдите в аккаунт</div>
+          <div class="selbox" style="left:5%;top:16%;width:38.5%;height:12%"><span class="rot"></span>
+            <span class="h" style="left:0;top:0"></span><span class="h" style="left:100%;top:0"></span><span class="h" style="left:0;top:100%"></span><span class="h" style="left:100%;top:100%"></span><span class="h" style="left:50%;top:0"></span><span class="h" style="left:50%;top:100%"></span><span class="h" style="left:0;top:50%"></span><span class="h" style="left:100%;top:50%"></span>
+          </div>
+          <div class="guide" style="left:5%;top:0;bottom:0;width:1px;opacity:.7"></div>
+          <svg style="position:absolute;left:46%;top:55%;width:15%;height:22%" viewBox="0 0 100 100"><path d="M5 10 L80 80" stroke="#f43f5e" stroke-width="7" stroke-linecap="round"/><path d="M80 80 L50 76 M80 80 L76 50" stroke="#f43f5e" stroke-width="7" stroke-linecap="round" fill="none"/></svg>
+          <div class="m-cursor" style="left:57%;top:76%"><svg viewBox="0 0 14 20"><path d="M1 1v16l4-4 3 6 2-1-3-6h5z" fill="#111" stroke="#fff" stroke-width="1.2"/></svg></div>
+          <div class="capline">Нажимаем <em>«Войти»</em> <u>и ждём перехода</u></div>
+        </div>
+      </div>
+      <div class="transport">
+        <div class="l">
+          <span class="ib act"><svg class="ico"><use href="#i-arrow"/></svg></span>
+          <span class="ib"><svg class="ico"><use href="#i-cut"/></svg></span>
+          <span class="sep" style="margin:0 4px"></span>
+          <span class="ib on"><svg class="ico"><use href="#i-diamond"/></svg></span>
+          <span class="ib"><svg class="ico"><use href="#i-eye"/></svg></span>
+        </div>
+        <div class="c">
+          <span class="tc">0:33.40</span>
+          <span class="ib"><svg class="ico"><use href="#i-skipb"/></svg></span>
+          <span class="ib"><svg class="ico"><use href="#i-left"/></svg></span>
+          <span class="playb"><svg class="ico"><use href="#i-play"/></svg></span>
+          <span class="ib"><svg class="ico"><use href="#i-right"/></svg></span>
+          <span class="ib"><svg class="ico"><use href="#i-skipf"/></svg></span>
+          <span class="tc dim">1:48.00</span>
+        </div>
+        <div class="r">
+          <span class="ib"><svg class="ico"><use href="#i-vol"/></svg></span><span class="sl" style="max-width:80px"><i style="width:80%"></i></span>
+        </div>
+      </div>
+    </div>
+    <div class="insp">
+      <div class="itabs">
+        <span class="ib"><svg class="ico"><use href="#i-frame"/></svg></span>
+        <span class="ib"><svg class="ico"><use href="#i-cursor"/></svg></span>
+        <span class="ib"><svg class="ico"><use href="#i-kbd"/></svg></span>
+        <span class="ib"><svg class="ico"><use href="#i-cc"/></svg></span>
+        <span class="ib"><svg class="ico"><use href="#i-vol"/></svg></span>
+        <span style="height:1px;width:24px;background:var(--border);margin:4px 0"></span>
+        <span class="ib on"><svg class="ico"><use href="#i-text"/></svg></span>
+      </div>
+      <div class="ipanel">
+        <div class="ph"><span class="chip" style="background:var(--c-ann-hi)"></span><div><b>Текст</b><br><small>Аннотации 1 · 0:29.00 – 0:39.00</small></div><span class="sp"></span><span class="ib sm"><svg class="ico"><use href="#i-copy"/></svg></span><span class="ib sm danger"><svg class="ico"><use href="#i-trash"/></svg></span></div>
+        <div class="kfbar"><span class="d"></span>Ключ 2 из 3 · 0:33.40<span class="sp"></span><span class="ib sm"><svg class="ico"><use href="#i-left"/></svg></span><span class="ib sm"><svg class="ico"><use href="#i-right"/></svg></span></div>
+        <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Основное<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div>
+          <div class="gb">
+            <div class="txtarea">Шаг 2: войдите в аккаунт</div>
+            <div class="prow"><span>Шрифт</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Inter</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span><span class="num">32</span></span></div>
+            <div class="prow"><span>Начертание</span><span class="c"><span class="ib sm act"><svg class="ico"><use href="#i-bold"/></svg></span><span class="ib sm"><svg class="ico"><use href="#i-italic"/></svg></span><span class="ib sm"><svg class="ico"><use href="#i-under"/></svg></span><span class="sep"></span><span class="ib sm act"><svg class="ico"><use href="#i-al"/></svg></span></span></div>
+            <div class="prow"><span class="changed">Цвет · фон</span><span class="c"><span class="cs" style="background:#fff"></span><span class="cs" style="background:rgba(15,17,21,.85)"></span><span class="hint changed">фон: 60% → 85%</span></span></div>
+          </div>
+        </div>
+        <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Вход и выход</div>
+          <div class="gb">
+            <div class="prow"><span>Вход</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Печать</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span><span class="num">0,6 с</span></span></div>
+            <div class="prow"><span>Выход</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Растворение</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span><span class="num">0,3 с</span></span></div>
+          </div>
+        </div>
+        <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="tl">
+    <div class="tlbar">
+      <span class="btn sm ghost"><svg class="ico"><use href="#i-plus"/></svg>Дорожка<svg class="ico" style="width:12px"><use href="#i-down"/></svg></span>
+      <span class="ib on"><svg class="ico"><use href="#i-magnet"/></svg></span>
+      <span class="sep" style="margin:0 4px"></span>
+      <span class="ib"><svg class="ico"><use href="#i-zoomin"/></svg></span>
+      <span class="btn sm ghost"><svg class="ico"><use href="#i-wand"/></svg>Подобрать зумы</span>
+      <span class="btn sm ghost"><svg class="ico"><use href="#i-cc"/></svg>Создать субтитры</span>
+      <span class="grow"></span>
+      <span class="zoomsl"><svg class="ico" style="color:var(--text-3)"><use href="#i-zoomin"/></svg><span class="sl"><i style="width:15%"></i></span></span>
+      <span class="ib"><svg class="ico"><use href="#i-fit"/></svg></span>
+      <span class="ib"><svg class="ico"><use href="#i-detach"/></svg></span>
+    </div>
+    <div class="trows">
+      <div class="tr ruler"><div class="thd"></div><div class="ln">
+        <span class="tick big" style="left:0%"><b>0:00</b></span><span class="tick" style="left:4.63%"></span>
+        <span class="tick big" style="left:9.26%"><b>0:10</b></span><span class="tick" style="left:13.89%"></span>
+        <span class="tick big" style="left:18.52%"><b>0:20</b></span><span class="tick" style="left:23.15%"></span>
+        <span class="tick big" style="left:27.78%"><b>0:30</b></span><span class="tick" style="left:32.41%"></span>
+        <span class="tick big" style="left:37.04%"><b>0:40</b></span><span class="tick" style="left:41.67%"></span>
+        <span class="tick big" style="left:46.3%"><b>0:50</b></span><span class="tick" style="left:50.93%"></span>
+        <span class="tick big" style="left:55.56%"><b>1:00</b></span><span class="tick" style="left:60.19%"></span>
+        <span class="tick big" style="left:64.81%"><b>1:10</b></span><span class="tick" style="left:69.44%"></span>
+        <span class="tick big" style="left:74.07%"><b>1:20</b></span><span class="tick" style="left:78.7%"></span>
+        <span class="tick big" style="left:83.33%"><b>1:30</b></span><span class="tick" style="left:87.96%"></span>
+        <span class="tick big" style="left:92.59%"><b>1:40</b></span><span class="tick" style="left:97.22%"></span>
+      </div></div>
+      <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-cap-hi)"></span><span class="nm">Субтитры</span><span class="ib"><svg class="ico"><use href="#i-eye"/></svg></span></div><div class="ln">
+        <span class="rg cap" style="left:1%;width:7%">Сегодня покажу вход</span>
+        <span class="rg cap" style="left:8.6%;width:9%">Открываем страницу логина</span>
+        <span class="rg cap" style="left:19%;width:8%">Вводим почту</span>
+        <span class="rg cap" style="left:28%;width:7%">Нажимаем «Войти»</span>
+        <span class="rg cap" style="left:36%;width:9%">Готово, мы внутри</span>
+        <span class="rg cap" style="left:56%;width:10%">Теперь настройки профиля</span>
+        <span class="rg cap" style="left:67%;width:8%">Меняем аватар</span>
+      </div></div>
+      <div class="tr main"><div class="thd"><span class="sw" style="background:var(--c-clip-hi)"></span><span class="nm">Клипы</span><span class="ib"><svg class="ico"><use href="#i-crop"/></svg></span></div><div class="ln">
+        <span class="rg clip" style="left:0%;width:48%"><span>Запись 30.10 14:05</span><small>0:52.0 · 2560 × 1440</small></span>
+        <span class="speed" style="left:18.5%;width:7.4%">4×</span>
+        <span class="seam" style="left:18.5%"></span><span class="seam" style="left:25.9%"></span>
+        <span class="rg clip" style="left:48.2%;width:35%"><span>Запись 30.10 14:12</span><small>0:38.0</small></span>
+        <span class="rg clip" style="left:83.4%;width:16.6%"><span>логотип.mp4</span><small>0:18.0 · 4:3</small></span>
+      </div></div>
+      <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-zoom-hi)"></span><span class="nm">Зумы</span></div><div class="ln">
+        <span class="rg zoom" style="left:4.6%;width:6.5%">1,5×</span>
+        <span class="link" style="left:11.1%;width:1.8%"></span>
+        <span class="rg zoom" style="left:12.9%;width:4.6%">2×</span>
+        <span class="rg zoom" style="left:38%;width:6.5%">1,8× · точка</span>
+        <span class="rg zoom" style="left:57.4%;width:7.4%">1,5×</span>
+      </div></div>
+      <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-cur-hi)"></span><span class="nm">Курсор</span></div><div class="ln">
+        <span class="cdot" style="left:5.5%"></span><span class="cdot" style="left:7%"></span><span class="cdot" style="left:13.5%"></span><span class="cdot" style="left:15%"></span><span class="cdot off" style="left:21%"></span><span class="cdot" style="left:30.5%"></span><span class="cdot" style="left:39%"></span><span class="cdot" style="left:41.5%"></span><span class="cdot" style="left:58%"></span><span class="cdot" style="left:61%"></span><span class="cdot" style="left:69%"></span>
+        <span class="rg cur" style="left:46.3%;width:1.4%;padding:0 3px">вкл</span>
+        <span class="rg cur" style="left:47.9%;width:5.5%">«Сохраните»</span>
+        <span class="rg cur" style="left:53.6%;width:1.4%;padding:0 3px">выкл</span>
+      </div></div>
+      <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-keys-hi)"></span><span class="nm">Клавиши</span><span class="ib off"><svg class="ico"><use href="#i-eyeoff"/></svg></span></div><div class="ln">
+        <span class="rg keys" style="left:22%;width:3.6%">Ctrl+S</span>
+        <span class="rg keys" style="left:53.7%;width:6%">Ctrl+Shift+P</span>
+        <span class="rg keys" style="left:69.4%;width:2%">F5</span>
+      </div></div>
+      <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-ann-hi)"></span><span class="nm">Аннотации 1</span><span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></div><div class="ln">
+        <span class="rg ann sel" style="left:26.85%;width:9.26%"><svg class="ico" style="width:12px"><use href="#i-text"/></svg>Шаг 2: войдите</span>
+        <span class="kf" style="left:27.3%"></span><span class="kf sel" style="left:30.93%"></span><span class="kf" style="left:35.2%"></span>
+        <span class="rg ann" style="left:38.9%;width:16.7%"><svg class="ico" style="width:12px"><use href="#i-blur"/></svg>Размытие</span>
+      </div></div>
+      <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-ann-hi)"></span><span class="nm">Аннотации 2</span><span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></div><div class="ln">
+        <span class="rg ann" style="left:28.7%;width:5.6%"><svg class="ico" style="width:12px"><use href="#i-arrow"/></svg>Стрелка</span>
+        <span class="rg ann" style="left:66.7%;width:7.4%"><svg class="ico" style="width:12px"><use href="#i-pen"/></svg>Рисунок</span>
+        <span class="rg ghost" style="left:78%;width:3.6%">+</span>
+      </div></div>
+      <div class="tr audio"><div class="thd"><span class="sw" style="background:var(--c-aud-hi)"></span><span class="nm">Микрофон</span><span class="ib"><svg class="ico"><use href="#i-vol"/></svg></span></div><div class="ln">
+        <span class="rg aud" style="left:0%;width:48%"><svg class="wave" viewBox="0 0 300 24" preserveAspectRatio="none"><path d="M1 3.9V20.1M3 6.3V17.7M5 5.1V18.9M7 3.3V20.7M9 11.4V12.6M11 4.9V19.1M13 7.1V16.9M15 3.6V20.4M17 2.7V21.3M19 7.2V16.8M21 11.4V12.6M23 6.2V17.8M25 6.4V17.6M27 11.4V12.6M29 7.1V16.9M31 8.4V15.6M33 8.3V15.7M35 9.8V14.2M37 9.3V14.7M39 10.4V13.6M41 9.1V14.9M43 9.4V14.6M45 8.0V16.0M47 8.1V15.9M49 6.8V17.2M51 6.5V17.5M53 5.1V18.9M55 5.6V18.4M57 11.4V12.6M59 5.6V18.4M61 4.7V19.3M63 3.9V20.1M65 4.9V19.1M67 3.2V20.8M69 5.1V18.9M71 7.0V17.0M73 11.4V12.6M75 4.6V19.4M77 6.8V17.2M79 3.6V20.4M81 5.8V18.2M83 7.4V16.6M85 5.4V18.6M87 7.6V16.4M89 7.9V16.1M91 9.7V14.3M93 8.6V15.4M95 9.5V14.5M97 9.8V14.2M99 9.4V14.6M101 11.4V12.6M103 8.8V15.2M105 7.5V16.5M107 7.5V16.5M109 6.0V18.0M111 6.2V17.8M113 11.4V12.6M115 4.9V19.1M117 3.6V20.4M119 3.3V20.7M121 3.0V21.0M123 6.6V17.4M125 11.4V12.6M127 5.9V18.1M129 11.4V12.6M131 7.0V17.0M133 5.1V18.9M135 6.5V17.5M137 6.1V17.9M139 6.4V17.6M141 11.4V12.6M143 8.3V15.7M145 11.4V12.6M147 9.1V14.9M149 8.4V15.6M151 11.4V12.6M153 9.7V14.3M155 9.1V14.9M157 8.7V15.3M159 7.0V17.0M161 7.6V16.4M163 6.6V17.4M165 6.3V17.7M167 5.6V18.4M169 11.4V12.6M171 3.7V20.3M173 3.5V20.5M175 2.8V21.2M177 5.1V18.9M179 7.0V17.0M181 6.9V17.1M183 2.3V21.7M185 6.3V17.7M187 2.6V21.4M189 5.1V18.9M191 6.1V17.9M193 5.1V18.9M195 7.4V16.6M197 11.4V12.6M199 7.2V16.8M201 6.6V17.4M203 9.5V14.5M205 9.2V14.8M207 9.0V15.0M209 10.5V13.5M211 9.0V15.0M213 9.3V14.7M215 7.9V16.1M217 6.4V17.6M219 6.5V17.5M221 11.4V12.6M223 7.4V16.6M225 5.4V18.6M227 6.1V17.9M229 6.1V17.9M231 4.4V19.6M233 2.9V21.1M235 4.4V19.6M237 11.4V12.6M239 11.4V12.6M241 3.1V20.9M243 4.3V19.7M245 5.6V18.4M247 6.6V17.4M249 11.4V12.6M251 5.8V18.2M253 6.7V17.3M255 6.1V17.9M257 9.0V15.0M259 9.2V14.8M261 11.4V12.6M263 11.4V12.6M265 10.0V14.0M267 11.4V12.6M269 8.7V15.3M271 11.4V12.6M273 6.7V17.3M275 8.0V16.0M277 7.0V17.0M279 11.4V12.6M281 11.4V12.6M283 6.5V17.5M285 5.5V18.5M287 7.0V17.0M289 2.5V21.5M291 6.6V17.4M293 4.0V20.0M295 4.4V19.6M297 3.9V20.1M299 4.6V19.4" stroke="#34d399" stroke-width="1.2" opacity=".85"/></svg></span>
+        <span class="rg aud" style="left:48.2%;width:35%"><svg class="wave" viewBox="0 0 300 24" preserveAspectRatio="none"><path d="M1 4.0V20.0M3 11.4V12.6M5 5.5V18.5M7 7.4V16.6M9 6.8V17.2M11 8.6V15.4M13 8.4V15.6M15 7.5V16.5M17 9.0V15.0M19 10.0V14.0M21 11.4V12.6M23 10.2V13.8M25 8.7V15.3M27 8.7V15.3M29 9.5V14.5M31 8.9V15.1M33 5.9V18.1M35 8.0V16.0M37 5.5V18.5M39 4.7V19.3M41 4.8V19.2M43 3.7V20.3M45 7.0V17.0M47 4.5V19.5M49 5.3V18.7M51 3.5V20.5M53 4.0V20.0M55 4.0V20.0M57 5.9V18.1M59 4.4V19.6M61 6.4V17.6M63 7.3V16.7M65 8.2V15.8M67 8.2V15.8M69 8.5V15.5M71 8.0V16.0M73 8.9V15.1M75 9.4V14.6M77 10.4V13.6M79 9.6V14.4M81 10.2V13.8M83 8.6V15.4M85 9.2V14.8M87 9.2V14.8M89 8.2V15.8M91 5.9V18.1M93 11.4V12.6M95 7.3V16.7M97 4.5V19.5M99 4.9V19.1M101 11.4V12.6M103 4.7V19.3M105 11.4V12.6M107 11.4V12.6M109 11.4V12.6M111 7.0V17.0M113 4.9V19.1M115 7.8V16.2M117 7.6V16.4M119 11.4V12.6M121 6.1V17.9M123 11.4V12.6M125 11.4V12.6M127 7.7V16.3M129 8.3V15.7M131 9.0V15.0M133 10.3V13.7M135 10.5V13.5M137 11.4V12.6M139 9.9V14.1M141 8.9V15.1M143 9.1V14.9M145 8.4V15.6M147 7.5V16.5M149 11.4V12.6M151 8.1V15.9M153 11.4V12.6M155 11.4V12.6M157 3.6V20.4M159 3.4V20.6M161 5.7V18.3M163 5.0V19.0M165 4.1V19.9M167 6.6V17.4M169 5.6V18.4M171 11.4V12.6M173 7.7V16.3M175 7.4V16.6M177 11.4V12.6M179 8.1V15.9M181 7.8V16.2M183 7.8V16.2M185 7.8V16.2M187 8.8V15.2M189 9.7V14.3M191 10.8V13.2M193 9.8V14.2M195 10.0V14.0M197 9.1V14.9M199 7.2V16.8M201 8.4V15.6M203 7.7V16.3M205 11.4V12.6M207 11.4V12.6M209 5.5V18.5M211 11.4V12.6M213 5.8V18.2M215 5.2V18.8M217 11.4V12.6M219 3.5V20.5M221 11.4V12.6M223 5.2V18.8M225 5.8V18.2M227 6.3V17.7M229 7.6V16.4M231 11.4V12.6M233 5.1V18.9M235 8.7V15.3M237 6.7V17.3M239 8.0V16.0M241 8.6V15.4M243 9.5V14.5M245 9.6V14.4M247 9.8V14.2M249 9.6V14.4M251 9.9V14.1M253 9.4V14.6M255 8.0V16.0M257 7.7V16.3M259 8.7V15.3M261 5.4V18.6M263 6.9V17.1M265 11.4V12.6M267 4.1V19.9M269 7.3V16.7M271 6.7V17.3M273 4.7V19.3M275 5.3V18.7M277 11.4V12.6M279 4.4V19.6M281 11.4V12.6M283 6.8V17.2M285 6.2V17.8M287 6.7V17.3M289 5.6V18.4M291 8.2V15.8M293 8.9V15.1M295 6.9V17.1M297 8.4V15.6M299 9.1V14.9" stroke="#34d399" stroke-width="1.2" opacity=".85"/></svg></span>
+      </div></div>
+      <div class="tr audio"><div class="thd"><span class="sw" style="background:var(--c-aud-hi)"></span><span class="nm">Системный звук</span><span class="ib off"><svg class="ico"><use href="#i-mute"/></svg></span></div><div class="ln">
+        <span class="rg aud faded" style="left:0%;width:48%"><svg class="wave" viewBox="0 0 300 24" preserveAspectRatio="none"><path d="M1 11.0V13.0M3 11.1V12.9M5 11.1V12.9M7 10.6V13.4M9 10.3V13.7M11 10.7V13.3M13 10.6V13.4M15 9.2V14.8M17 9.9V14.1M19 9.8V14.2M21 8.2V15.8M23 9.1V14.9M25 8.2V15.8M27 8.8V15.2M29 8.4V15.6M31 9.5V14.5M33 8.4V15.6M35 7.9V16.1M37 8.8V15.2M39 8.4V15.6M41 8.7V15.3M43 10.0V14.0M45 8.9V15.1M47 9.4V14.6M49 10.0V14.0M51 10.6V13.4M53 9.8V14.2M55 10.5V13.5M57 10.6V13.4M59 10.8V13.2M61 10.9V13.1M63 10.4V13.6M65 10.6V13.4M67 9.9V14.1M69 10.1V13.9M71 9.1V14.9M73 8.9V15.1M75 10.1V13.9M77 9.9V14.1M79 9.6V14.4M81 7.9V16.1M83 8.9V15.1M85 8.5V15.5M87 9.1V14.9M89 8.7V15.3M91 9.0V15.0M93 9.1V14.9M95 8.7V15.3M97 8.8V15.2M99 8.3V15.7M101 9.0V15.0M103 8.8V15.2M105 9.1V14.9M107 9.2V14.8M109 9.9V14.1M111 10.8V13.2M113 10.4V13.6M115 10.6V13.4M117 10.9V13.1M119 10.8V13.2M121 10.4V13.6M123 10.6V13.4M125 9.6V14.4M127 9.7V14.3M129 9.9V14.1M131 10.2V13.8M133 8.6V15.4M135 8.1V15.9M137 9.8V14.2M139 8.2V15.8M141 9.0V15.0M143 9.5V14.5M145 9.2V14.8M147 8.1V15.9M149 8.0V16.0M151 9.8V14.2M153 8.7V15.3M155 10.0V14.0M157 8.8V15.2M159 9.7V14.3M161 9.0V15.0M163 9.2V14.8M165 10.1V13.9M167 9.8V14.2M169 10.8V13.2M171 11.2V12.8M173 11.1V12.9M175 11.3V12.7M177 10.9V13.1M179 10.5V13.5M181 10.0V14.0M183 10.4V13.6M185 10.4V13.6M187 8.8V15.2M189 9.6V14.4M191 8.2V15.8M193 8.2V15.8M195 9.1V14.9M197 8.9V15.1M199 8.7V15.3M201 8.4V15.6M203 8.5V15.5M205 8.6V15.4M207 8.6V15.4M209 8.0V16.0M211 9.0V15.0M213 9.3V14.7M215 9.0V15.0M217 10.0V14.0M219 10.1V13.9M221 9.4V14.6M223 10.2V13.8M225 10.5V13.5M227 11.2V12.8M229 11.1V12.9M231 10.9V13.1M233 11.1V12.9M235 10.3V13.7M237 10.0V14.0M239 10.6V13.4M241 9.5V14.5M243 9.6V14.4M245 9.0V15.0M247 9.4V14.6M249 8.6V15.4M251 8.4V15.6M253 9.8V14.2M255 9.7V14.3M257 8.3V15.7M259 7.7V16.3M261 9.3V14.7M263 8.9V15.1M265 8.7V15.3M267 9.4V14.6M269 9.4V14.6M271 9.7V14.3M273 9.7V14.3M275 9.6V14.4M277 10.2V13.8M279 10.3V13.7M281 10.2V13.8M283 11.1V12.9M285 11.0V13.0M287 10.9V13.1M289 11.0V13.0M291 10.8V13.2M293 9.9V14.1M295 10.4V13.6M297 10.2V13.8M299 9.7V14.3" stroke="#34d399" stroke-width="1.2" opacity=".85"/></svg></span>
+        <span class="rg aud faded" style="left:48.2%;width:35%"><svg class="wave" viewBox="0 0 300 24" preserveAspectRatio="none"><path d="M1 10.1V13.9M3 10.2V13.8M5 9.5V14.5M7 9.9V14.1M9 10.0V14.0M11 9.3V14.7M13 8.3V15.7M15 8.5V15.5M17 8.6V15.4M19 9.7V14.3M21 9.2V14.8M23 9.8V14.2M25 10.1V13.9M27 10.3V13.7M29 10.2V13.8M31 9.5V14.5M33 9.8V14.2M35 10.1V13.9M37 10.4V13.6M39 11.1V12.9M41 11.3V12.7M43 11.1V12.9M45 10.8V13.2M47 10.4V13.6M49 10.1V13.9M51 10.7V13.3M53 9.9V14.1M55 9.6V14.4M57 9.7V14.3M59 10.1V13.9M61 9.4V14.6M63 10.0V14.0M65 8.4V15.6M67 8.5V15.5M69 9.0V15.0M71 9.5V14.5M73 8.4V15.6M75 9.0V15.0M77 8.6V15.4M79 8.7V15.3M81 9.5V14.5M83 9.8V14.2M85 9.6V14.4M87 10.1V13.9M89 10.6V13.4M91 10.6V13.4M93 10.3V13.7M95 11.2V12.8M97 11.4V12.6M99 11.2V12.8M101 11.1V12.9M103 10.7V13.3M105 10.6V13.4M107 10.5V13.5M109 9.5V14.5M111 10.3V13.7M113 9.9V14.1M115 10.1V13.9M117 9.2V14.8M119 9.7V14.3M121 9.5V14.5M123 8.7V15.3M125 9.5V14.5M127 9.0V15.0M129 8.4V15.6M131 9.9V14.1M133 10.0V14.0M135 9.8V14.2M137 9.0V15.0M139 9.4V14.6M141 10.1V13.9M143 10.2V13.8M145 10.5V13.5M147 10.4V13.6M149 11.0V13.0M151 10.6V13.4M153 10.8V13.2M155 11.0V13.0M157 10.9V13.1M159 10.5V13.5M161 11.0V13.0M163 10.6V13.4M165 9.6V14.4M167 9.6V14.4M169 9.9V14.1M171 8.9V15.1M173 9.3V14.7M175 8.8V15.2M177 9.6V14.4M179 9.8V14.2M181 9.2V14.8M183 9.8V14.2M185 9.3V14.7M187 8.3V15.7M189 9.5V14.5M191 10.2V13.8M193 10.2V13.8M195 10.1V13.9M197 9.3V14.7M199 10.1V13.9M201 10.3V13.7M203 10.7V13.3M205 10.0V14.0M207 10.8V13.2M209 11.2V12.8M211 11.4V12.6M213 11.4V12.6M215 11.1V12.9M217 10.5V13.5M219 10.8V13.2M221 10.8V13.2M223 10.0V14.0M225 10.2V13.8M227 8.9V15.1M229 10.1V13.9M231 9.3V14.7M233 8.8V15.2M235 9.4V14.6M237 8.2V15.8M239 9.2V14.8M241 9.6V14.4M243 9.3V14.7M245 10.1V13.9M247 9.4V14.6M249 9.8V14.2M251 8.9V15.1M253 9.1V14.9M255 9.8V14.2M257 10.6V13.4M259 10.5V13.5M261 10.7V13.3M263 10.9V13.1M265 11.1V12.9M267 10.9V13.1M269 11.4V12.6M271 11.3V12.7M273 10.4V13.6M275 10.4V13.6M277 9.7V14.3M279 10.2V13.8M281 9.3V14.7M283 9.5V14.5M285 9.1V14.9M287 9.0V15.0M289 9.3V14.7M291 10.0V14.0M293 9.7V14.3M295 8.4V15.6M297 8.3V15.7M299 8.3V15.7" stroke="#34d399" stroke-width="1.2" opacity=".85"/></svg></span>
+      </div></div>
+      <div class="tr audio"><div class="thd"><span class="sw" style="background:var(--c-aud-hi)"></span><span class="nm">Аудио 1</span><span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></div><div class="ln">
+        <span class="rg aud" style="left:0%;width:100%"><span class="lbl">музыка_фон.mp3 · 30%</span><svg class="wave" viewBox="0 0 300 24" preserveAspectRatio="none"><path d="M1 7.7V16.3M3 7.5V16.5M5 7.5V16.5M7 7.4V16.6M9 8.1V15.9M11 8.0V16.0M13 10.1V13.9M15 9.5V14.5M17 9.1V14.9M19 9.9V14.1M21 10.0V14.0M23 11.1V12.9M25 10.8V13.2M27 10.7V13.3M29 10.1V13.9M31 9.7V14.3M33 10.3V13.7M35 9.7V14.3M37 9.4V14.6M39 7.8V16.2M41 7.8V16.2M43 9.1V14.9M45 7.4V16.6M47 9.0V15.0M49 7.6V16.4M51 8.9V15.1M53 9.2V14.8M55 6.9V17.1M57 8.8V15.2M59 8.8V15.2M61 7.0V17.0M63 7.5V16.5M65 9.1V14.9M67 7.9V16.1M69 9.0V15.0M71 9.1V14.9M73 10.1V13.9M75 9.4V14.6M77 10.1V13.9M79 10.3V13.7M81 10.6V13.4M83 10.8V13.2M85 10.4V13.6M87 10.4V13.6M89 10.2V13.8M91 10.1V13.9M93 9.4V14.6M95 8.5V15.5M97 9.7V14.3M99 7.9V16.1M101 8.6V15.4M103 8.5V15.5M105 7.1V16.9M107 7.9V16.1M109 8.4V15.6M111 7.9V16.1M113 7.4V16.6M115 9.2V14.8M117 7.0V17.0M119 9.5V14.5M121 8.0V16.0M123 8.0V16.0M125 10.0V14.0M127 8.8V15.2M129 9.8V14.2M131 9.8V14.2M133 10.8V13.2M135 11.0V13.0M137 11.2V12.8M139 10.3V13.7M141 10.7V13.3M143 9.6V14.4M145 9.0V15.0M147 8.6V15.4M149 9.4V14.6M151 9.1V14.9M153 8.5V15.5M155 7.7V16.3M157 9.2V14.8M159 7.4V16.6M161 7.2V16.8M163 6.9V17.1M165 9.1V14.9M167 6.7V17.3M169 9.0V15.0M171 8.4V15.6M173 7.9V16.1M175 7.3V16.7M177 8.9V15.1M179 7.8V16.2M181 8.9V15.1M183 9.6V14.4M185 9.8V14.2M187 10.3V13.7M189 10.7V13.3M191 10.9V13.1M193 10.7V13.3M195 10.3V13.7M197 10.8V13.2M199 10.7V13.3M201 9.0V15.0M203 9.4V14.6M205 9.3V14.7M207 9.4V14.6M209 8.4V15.6M211 7.7V16.3M213 8.4V15.6M215 8.3V15.7M217 9.2V14.8M219 6.8V17.2M221 9.2V14.8M223 7.9V16.1M225 7.0V17.0M227 9.0V15.0M229 7.5V16.5M231 7.1V16.9M233 8.1V15.9M235 8.0V16.0M237 9.7V14.3M239 9.3V14.7M241 10.0V14.0M243 9.2V14.8M245 10.3V13.7M247 10.5V13.5M249 10.3V13.7M251 10.6V13.4M253 10.0V14.0M255 10.2V13.8M257 9.9V14.1M259 9.2V14.8M261 9.3V14.7M263 9.4V14.6M265 8.9V15.1M267 9.3V14.7M269 8.6V15.4M271 6.9V17.1M273 6.8V17.2M275 7.6V16.4M277 7.9V16.1M279 8.3V15.7M281 9.0V15.0M283 8.6V15.4M285 7.3V16.7M287 7.3V16.7M289 8.7V15.3M291 7.9V16.1M293 8.2V15.8M295 8.7V15.3M297 9.1V14.9M299 9.3V14.7" stroke="#34d399" stroke-width="1.2" opacity=".85"/></svg></span>
+      </div></div>
+      <div class="addrow"><span><svg class="ico" style="width:13px"><use href="#i-plus"/></svg>Аудиодорожка</span><span></span></div>
+      <div class="playhead" style="left:calc(var(--head-w) + (100% - var(--head-w)) * .3093)"><b>0:33.40</b></div>
+    </div>
+    <div class="navbar"><span></span><span class="trk"><i style="left:0;width:100%"></i></span></div>
+  </div>
+</div>
+</div>
+<p class="src"><b>Взято:</b> из Cap — раскладка «превью + инспектор справа + таймлайн снизу», цветные дорожки, «Подобрать зумы» над таймлайном, клип без кадров-миниатюр; из DaVinci Resolve Edit — головы дорожек слева с видимостью/звуком, инструменты «Выбор / Лезвие», магнит привязки, ползунок масштаба времени, инспектор с группами; из v1 — порядок дорожек (субтитры над клипами), ◆ и 👁 ключей, точка несохранённого у названия, «призрак» добавления, кнопка ↗ окна таймлайна.</p>
+<ul class="notes">
+  <li><b>Размер:</b> окно 1280 × 800 (минимум 1024 × 640): шапка 44, превью ≈ 450, таймлайн ≈ 300 px (тянется, 140 px … 75% <span class="tag v1">v1</span>), инспектор 340 px. Высота таймлайна и дорожек, громкость превью, свёрнутость групп запоминаются <span class="tag v2">v2</span> (в v1 сбрасывались).</li>
+  <li><b>Шапка:</b> «Записи» (библиотека), «Проекты ▾», ↶ ↷ с подсказкой «Отменить: Зум 1,5× · Ctrl+Z»; по центру название (клик — переименовать), синяя точка = не сохранено, «автосохранение 14:32» = восстановится после вылета; справа справка, настройки, кольцо очереди экспорта (видно, только пока есть задания) и «Экспорт».</li>
+  <li><b>Транспорт:</b> слева «Выбор» (A) / «Лезвие» (B), ◆ авто-ключи, 👁 маркеры; центр — время, <span class="kbd">[</span> <span class="kbd">]</span> к ключу или ±5 с, ← → кадр, Space; справа громкость превью. Дорожка «Клавиши» видна, пока показ клавиш выключен — серая с перечёркнутым глазом <span class="tag q">?</span> отдельная дорожка «Клавиши» в roadmap 7.10 не названа.</li>
+  <li><b>Исходный звук</b> (Микрофон, Системный звук) — строки по клипам, не редактируются, клик выбирает клип <span class="tag v1">v1</span>; «Системный звук» здесь выключен (mute) — волна бледная. Субтитры поверх аннотаций и на превью, и в экспорте (решение 000).</li>
+</ul>
+
+<!-- ============ 2 TIMELINE ============ -->
+<h2>2. Таймлайн: приёмы</h2>
+
+<h3>2a. Выделение, мультивыделение рамкой, Ctrl+клик</h3>
+<div class="stage"><div class="ed mini">
+  <div class="trows">
+    <div class="tr ruler"><div class="thd"></div><div class="ln"><span class="tick big" style="left:0"><b>0:00</b></span><span class="tick big" style="left:25%"><b>0:15</b></span><span class="tick big" style="left:50%"><b>0:30</b></span><span class="tick big" style="left:75%"><b>0:45</b></span></div></div>
+    <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-zoom-hi)"></span><span class="nm">Зумы</span></div><div class="ln">
+      <span class="rg zoom sel" style="left:8%;width:14%">1,5×</span><span class="rg zoom sel" style="left:30%;width:10%">2×</span><span class="rg zoom" style="left:62%;width:12%">1,8×</span>
+    </div></div>
+    <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-ann-hi)"></span><span class="nm">Аннотации 1</span></div><div class="ln">
+      <span class="rg ann sel" style="left:20%;width:18%">Шаг 2</span><span class="rg ann sel" style="left:44%;width:12%">Стрелка</span><span class="rg ann" style="left:70%;width:14%">Размытие</span>
+    </div></div>
+    <div class="marquee" style="left:calc(110px + (100% - 110px)*.06);width:calc((100% - 110px)*.52);top:28px;height:52px"></div>
+    <div class="tip" style="right:12px;top:0">Выбрано: 4 · <span class="kbd">Delete</span> удалить · <span class="kbd">Ctrl</span>+<span class="kbd">C</span> копировать</div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из DaVinci — рамка по пустому месту и Ctrl+клик, общее выделение на всех дорожках; из решения 000 — именно эти два способа; из v1 — Ctrl+A «все зумы», Tab — следующая аннотация.</p>
+<ul class="notes">
+  <li><b>Клик</b> выбирает один регион и открывает его панель; <b>Ctrl+клик</b> добавляет или убирает; <b>рамка</b> с пустого места дорожки (не со шкалы — там указатель). Порог 4 px отличает клик от перетаскивания <span class="tag v1">v1</span>.</li>
+  <li>При нескольких выбранных инспектор показывает «Выбрано: 4» и общие действия (удалить, копировать); правка параметров — только у одного <span class="tag q">?</span> нужна ли общая правка однотипных (например, масштаб всех выбранных зумов).</li>
+  <li>Выделение не попадает в историю: Ctrl+Z не отменяет выбор <span class="tag v2">v2</span> (урок v1 §7.5).</li>
+</ul>
+
+<h3>2b. Перетаскивание и изменение длины с привязкой</h3>
+<div class="stage"><div class="ed mini">
+  <div class="trows">
+    <div class="tr ruler"><div class="thd"></div><div class="ln"><span class="tick big" style="left:0"><b>0:30</b></span><span class="tick big" style="left:25%"><b>0:35</b></span><span class="tick big" style="left:50%"><b>0:40</b></span><span class="tick big" style="left:75%"><b>0:45</b></span></div></div>
+    <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-cap-hi)"></span><span class="nm">Субтитры</span></div><div class="ln"><span class="rg cap" style="left:2%;width:30%">Нажимаем «Войти»</span><span class="rg cap" style="left:34%;width:36%">Готово, мы внутри</span></div></div>
+    <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-zoom-hi)"></span><span class="nm">Зумы</span></div><div class="ln"><span class="rg zoom sel" style="left:34%;width:30%">1,8× · точка</span></div></div>
+    <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-ann-hi)"></span><span class="nm">Аннотации 1</span></div><div class="ln"><span class="rg ann sel drag" style="left:12%;width:22%">Стрелка</span></div></div>
+    <div class="snapline" style="left:calc(110px + (100% - 110px)*.34)"></div>
+    <div class="playhead" style="left:calc(110px + (100% - 110px)*.58)"><b>0:41.60</b></div>
+    <div class="tip mono" style="left:calc(110px + (100% - 110px)*.10);top:2px">0:32.40 – 0:36.80</div>
+    <div class="tip" style="left:calc(110px + (100% - 110px)*.66);top:58px">край прилип к указателю</div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из v1 — подсказка «начало – конец» над регионом, порог привязки 8 px, зоны захвата края 28 px; из DaVinci — жёлтая линия привязки и переключатель «Привязка» (N); привязка к указателю — новое по SCOPE.</p>
+<ul class="notes">
+  <li><b>Цели привязки:</b> края всех регионов на всех дорожках, стыки клипов и указатель <span class="tag v2">v2</span>; порог 8 px, ближайшая цель выигрывает; Alt при перетаскивании временно выключает привязку (как в DaVinci — N) <span class="tag q">?</span>.</li>
+  <li><b>Перекрытия:</b> зумы, реплики и аудио на одной дорожке не перекрываются — край упирается в соседа; аннотации перекрываются (это слои) <span class="tag v1">v1</span>. Перенос аннотации на другую строку аннотаций меняет слой.</li>
+  <li>Esc во время перетаскивания возвращает регион на место. Всё перетаскивание — одна запись истории <span class="tag v2">v2</span>.</li>
+</ul>
+
+<h3>2c. Резка: C у указателя и «Лезвие» (B)</h3>
+<div class="stage"><div class="ed mini">
+  <div class="tlbar"><span class="ib"><svg class="ico"><use href="#i-arrow"/></svg></span><span class="ib on"><svg class="ico"><use href="#i-cut"/></svg></span><span style="font-size:var(--fs-s);color:var(--text-2);margin-left:6px">Лезвие: клик режет клип в точке под курсором · <span class="kbd">A</span> вернуть выбор</span></div>
+  <div class="trows">
+    <div class="tr ruler"><div class="thd"></div><div class="ln"><span class="tick big" style="left:0"><b>0:00</b></span><span class="tick big" style="left:25%"><b>0:15</b></span><span class="tick big" style="left:50%"><b>0:30</b></span><span class="tick big" style="left:75%"><b>0:45</b></span></div></div>
+    <div class="tr main"><div class="thd"><span class="sw" style="background:var(--c-clip-hi)"></span><span class="nm">Клипы</span></div><div class="ln">
+      <span class="rg clip" style="left:0;width:39.6%"><span>Запись 30.10 14:05</span><small>0:23.8</small></span>
+      <span class="rg clip" style="left:40%;width:60%"><span>Запись 30.10 14:05</span><small>0:36.2</small></span>
+      <span class="bladecur" style="left:71%"><span><svg class="ico" style="color:#fff"><use href="#i-cut"/></svg></span></span>
+    </div></div>
+    <div class="tr audio"><div class="thd"><span class="sw" style="background:var(--c-aud-hi)"></span><span class="nm">Микрофон</span></div><div class="ln"><span class="rg aud" style="left:0;width:39.6%"><svg class="wave" viewBox="0 0 300 24" preserveAspectRatio="none"><path d="M1 7.9V16.1M3 9.6V14.4M5 11.4V12.6M7 9.5V14.5M9 8.8V15.2M11 8.0V16.0M13 8.3V15.7M15 7.0V17.0M17 6.8V17.2M19 7.3V16.7M21 5.3V18.7M23 6.3V17.7M25 11.4V12.6M27 5.3V18.7M29 11.4V12.6M31 5.7V18.3M33 4.2V19.8M35 3.8V20.2M37 2.5V21.5M39 4.7V19.3M41 4.0V20.0M43 3.0V21.0M45 11.4V12.6M47 6.7V17.3M49 7.9V16.1M51 6.7V17.3M53 11.4V12.6M55 8.7V15.3M57 9.3V14.7M59 8.3V15.7M61 10.4V13.6M63 10.7V13.3M65 8.7V15.3M67 9.2V14.8M69 8.5V15.5M71 6.2V17.8M73 11.4V12.6M75 7.0V17.0M77 7.2V16.8M79 4.1V19.9M81 3.7V20.3M83 3.6V20.4M85 4.8V19.2M87 3.7V20.3M89 6.6V17.4M91 5.7V18.3M93 3.2V20.8M95 7.0V17.0M97 4.5V19.5M99 6.2V17.8M101 3.6V20.4M103 6.2V17.8M105 5.8V18.2M107 6.7V17.3M109 8.3V15.7M111 8.3V15.7M113 8.7V15.3M115 7.9V16.1M117 9.7V14.3M119 10.3V13.7M121 9.6V14.4M123 8.1V15.9M125 9.6V14.4M127 9.0V15.0M129 11.4V12.6M131 11.4V12.6M133 4.6V19.4M135 7.7V16.3M137 3.5V20.5M139 5.5V18.5M141 3.5V20.5M143 4.9V19.1M145 11.4V12.6M147 4.0V20.0M149 6.4V17.6M151 6.6V17.4M153 11.4V12.6M155 3.2V20.8M157 4.4V19.6M159 4.3V19.7M161 11.4V12.6M163 5.0V19.0M165 7.2V16.8M167 6.7V17.3M169 7.0V17.0M171 8.8V15.2M173 9.4V14.6M175 9.6V14.4M177 11.4V12.6M179 9.5V14.5M181 9.5V14.5M183 8.6V15.4M185 7.6V16.4M187 8.5V15.5M189 11.4V12.6M191 5.8V18.2M193 11.4V12.6M195 7.3V16.7M197 3.8V20.2M199 3.8V20.2M201 6.7V17.3M203 6.5V17.5M205 4.8V19.2M207 6.7V17.3M209 11.4V12.6M211 11.4V12.6M213 6.2V17.8M215 5.3V18.7M217 7.1V16.9M219 6.2V17.8M221 7.2V16.8M223 8.0V16.0M225 7.8V16.2M227 8.4V15.6M229 9.5V14.5M231 9.8V14.2M233 9.2V14.8M235 9.0V15.0M237 8.4V15.6M239 8.4V15.6M241 6.2V17.8M243 6.6V17.4M245 8.1V15.9M247 11.4V12.6M249 11.4V12.6M251 11.4V12.6M253 11.4V12.6M255 6.1V17.9M257 2.6V21.4M259 4.7V19.3M261 2.8V21.2M263 3.8V20.2M265 6.6V17.4M267 7.0V17.0M269 4.0V20.0M271 4.5V19.5M273 6.7V17.3M275 7.4V16.6M277 5.8V18.2M279 8.2V15.8M281 8.5V15.5M283 7.8V16.2M285 8.5V15.5M287 9.1V14.9M289 11.4V12.6M291 11.4V12.6M293 11.4V12.6M295 11.4V12.6M297 7.9V16.1M299 8.6V15.4" stroke="#34d399" stroke-width="1.2" opacity=".85"/></svg></span><span class="rg aud" style="left:40%;width:60%"><svg class="wave" viewBox="0 0 300 24" preserveAspectRatio="none"><path d="M1 8.2V15.8M3 8.2V15.8M5 6.9V17.1M7 11.4V12.6M9 11.4V12.6M11 11.4V12.6M13 4.1V19.9M15 6.6V17.4M17 3.4V20.6M19 5.9V18.1M21 7.5V16.5M23 6.6V17.4M25 7.5V16.5M27 5.0V19.0M29 6.3V17.7M31 7.4V16.6M33 8.7V15.3M35 11.4V12.6M37 8.5V15.5M39 8.6V15.4M41 9.7V14.3M43 9.6V14.4M45 10.2V13.8M47 9.1V14.9M49 9.6V14.4M51 9.5V14.5M53 7.5V16.5M55 7.7V16.3M57 11.4V12.6M59 6.6V17.4M61 7.1V16.9M63 5.8V18.2M65 6.1V17.9M67 3.8V20.2M69 4.8V19.2M71 11.4V12.6M73 3.2V20.8M75 6.4V17.6M77 4.8V19.2M79 11.4V12.6M81 7.4V16.6M83 11.4V12.6M85 7.4V16.6M87 5.6V18.4M89 11.4V12.6M91 6.6V17.4M93 7.2V16.8M95 8.9V15.1M97 8.5V15.5M99 10.3V13.7M101 10.6V13.4M103 9.9V14.1M105 9.7V14.3M107 11.4V12.6M109 8.1V15.9M111 7.2V16.8M113 7.0V17.0M115 8.4V15.6M117 5.5V18.5M119 5.1V18.9M121 6.3V17.7M123 11.4V12.6M125 11.4V12.6M127 6.9V17.1M129 7.4V16.6M131 11.4V12.6M133 11.4V12.6M135 11.4V12.6M137 7.3V16.7M139 6.7V17.3M141 7.8V16.2M143 5.0V19.0M145 7.2V16.8M147 11.4V12.6M149 8.7V15.3M151 9.3V14.7M153 11.4V12.6M155 10.2V13.8M157 10.7V13.3M159 9.4V14.6M161 9.1V14.9M163 9.2V14.8M165 7.8V16.2M167 7.2V16.8M169 8.3V15.7M171 5.4V18.6M173 5.5V18.5M175 5.4V18.6M177 5.9V18.1M179 7.7V16.3M181 11.4V12.6M183 4.6V19.4M185 5.6V18.4M187 3.3V20.7M189 6.1V17.9M191 6.8V17.2M193 7.0V17.0M195 4.4V19.6M197 6.4V17.6M199 5.6V18.4M201 11.4V12.6M203 6.6V17.4M205 8.0V16.0M207 7.7V16.3M209 8.3V15.7M211 9.6V14.4M213 9.4V14.6M215 10.6V13.4M217 10.2V13.8M219 8.5V15.5M221 7.8V16.2M223 7.6V16.4M225 7.4V16.6M227 8.7V15.3M229 6.2V17.8M231 4.8V19.2M233 4.6V19.4M235 7.0V17.0M237 6.5V17.5M239 5.1V18.9M241 5.8V18.2M243 3.6V20.4M245 5.6V18.4M247 3.8V20.2M249 4.0V20.0M251 5.8V18.2M253 8.1V15.9M255 7.7V16.3M257 11.4V12.6M259 7.4V16.6M261 7.6V16.4M263 8.2V15.8M265 8.2V15.8M267 11.4V12.6M269 10.2V13.8M271 10.3V13.7M273 9.4V14.6M275 9.3V14.7M277 8.7V15.3M279 7.7V16.3M281 7.6V16.4M283 5.9V18.1M285 5.6V18.4M287 7.4V16.6M289 4.4V19.6M291 7.4V16.6M293 5.9V18.1M295 11.4V12.6M297 11.4V12.6M299 3.7V20.3" stroke="#34d399" stroke-width="1.2" opacity=".85"/></svg></span></div></div>
+    <div class="playhead" style="left:calc(110px + (100% - 110px)*.398)"><b>0:23.80</b></div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из DaVinci — инструмент Blade (B) с пунктирной линией под курсором и Ctrl+B / C «разрезать у указателя»; из Cap — режим резки кнопкой ✂ в панели таймлайна; из v1 — C режет у указателя, выделение остаётся на левой половине.</p>
+<ul class="notes">
+  <li><b>C</b> режет клип под указателем (здесь уже разрезан на 0:23.80). <b>B</b> включает «Лезвие»: линия ✂ идёт за мышью и прилипает к указателю и краям регионов; клик режет; A или Esc возвращают «Выбор» <span class="tag q">?</span> «Лезвие» — дополнение к C из SCOPE.</li>
+  <li>Режется только главная дорожка: эффекты привязаны ко времени исходника и не делятся (ARCHITECTURE §2). Кроп и скорость копируются в обе половины.</li>
+  <li>Стык клипов — зазор 4 px без времени; указатель его перескакивает <span class="tag v1">v1</span> (в v1 24 px — много при плотной нарезке).</li>
+</ul>
+
+<h3>2d. Вырезать участок с рябью и задать скорость</h3>
+<div class="stage"><div class="ed mini" style="overflow:visible">
+  <div class="trows">
+    <div class="tr ruler"><div class="thd"></div><div class="ln"><span class="tick big" style="left:0"><b>0:00</b></span><span class="tick big" style="left:25%"><b>0:15</b></span><span class="tick big" style="left:50%"><b>0:30</b></span><span class="tick big" style="left:75%"><b>0:45</b></span></div></div>
+    <div class="tr main"><div class="thd"><span class="sw" style="background:var(--c-clip-hi)"></span><span class="nm">Клипы</span></div><div class="ln">
+      <span class="rg clip" style="left:0;width:100%"><span>Запись 30.10 14:05</span><small>0:60.0</small></span>
+      <span class="speed" style="left:62%;width:20%">4× · пауза при загрузке</span>
+    </div></div>
+    <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-zoom-hi)"></span><span class="nm">Зумы</span></div><div class="ln"><span class="rg zoom" style="left:6%;width:12%">1,5×</span><span class="rg zoom" style="left:44%;width:12%">2×</span></div></div>
+    <div class="rangesel" style="left:calc(110px + (100% - 110px)*.22);width:calc((100% - 110px)*.16)"></div>
+    <div class="pop" style="position:absolute;left:calc(110px + (100% - 110px)*.12);top:96px;width:250px;z-index:7">
+      <div class="item"><span class="grow">Участок 0:13.20 – 0:22.80 · 9,6 с</span></div>
+      <div class="divider"></div>
+      <div class="item hov"><svg class="ico"><use href="#i-cut"/></svg><span class="grow">Вырезать участок</span><span class="hint">Shift+Delete</span></div>
+      <div class="item"><svg class="ico"><use href="#i-speed"/></svg><span class="grow">Скорость участка…</span><span class="hint">R</span></div>
+      <div class="item"><svg class="ico"><use href="#i-zoomin"/></svg><span class="grow">Зум на участок</span></div>
+    </div>
+    <div class="pop" style="position:absolute;right:8px;top:96px;width:250px;z-index:7">
+      <h4>Скорость участка</h4>
+      <div style="padding:0 8px 6px"><span class="seg"><b>0,5×</b><b>1×</b><b>2×</b><b class="sel">4×</b><b>8×</b><b>16×</b></span></div>
+      <div class="prow" style="padding:0 8px"><span>Своя</span><span class="c"><span class="num">4,00×</span><span class="hint">0,25–16×</span></span></div>
+      <div class="hint" style="padding:4px 8px">Высота голоса сохраняется. 16,0 с → 4,0 с</div>
+    </div>
+  </div>
+  <div style="height:150px"></div>
+</div></div>
+<p class="src"><b>Взято:</b> из DaVinci — выделение диапазона и Ripple Delete (Shift+Delete), «Change Clip Speed» с готовыми значениями; из Cap — плашка скорости прямо на клипе; из v1 — значок «4×» на клипе, шаг 0,25.</p>
+<ul class="notes">
+  <li><b>Диапазон:</b> протянуть по шкале с Shift (без Shift шкала двигает указатель) <span class="tag q">?</span>. Меню по ПКМ или сразу клавиши: Shift+Delete — вырезать с рябью (без дыры), R — скорость. Это быстрее, чем C, C, выбрать, Delete — результат тот же <span class="tag q">?</span> диапазона нет в SCOPE явно.</li>
+  <li><b>Скорость</b> — оранжевая плашка над клипом с подписью; клик по ней открывает тот же поповер, края тянутся как у регионов. 0,25–16×, тон сохраняется <span class="tag v2">v2</span> по SCOPE.</li>
+  <li>После вырезки клипы смыкаются, зумы и аннотации остаются на своих кадрах записи; регион, весь материал которого вырезан, исчезает (вернуть — Ctrl+Z) <span class="tag v1">v1</span>.</li>
+</ul>
+
+<h3>2e. Перестановка клипов, «призрак», удаление дорожки, ключи</h3>
+<div class="stage"><div class="ed mini" style="overflow:visible">
+  <div class="trows">
+    <div class="tr ruler"><div class="thd"></div><div class="ln"><span class="tick big" style="left:0"><b>0:00</b></span><span class="tick big" style="left:25%"><b>0:30</b></span><span class="tick big" style="left:50%"><b>1:00</b></span><span class="tick big" style="left:75%"><b>1:30</b></span></div></div>
+    <div class="tr main"><div class="thd"><span class="sw" style="background:var(--c-clip-hi)"></span><span class="nm">Клипы</span></div><div class="ln">
+      <span class="rg clip" style="left:0;width:48%"><span>Запись 30.10 14:05</span><small>0:52.0</small></span>
+      <span class="ins" style="left:48.1%"></span>
+      <span class="rg clip" style="left:48.4%;width:35%;opacity:.35"><span>Запись 30.10 14:12</span><small>0:38.0</small></span>
+      <span class="rg clip sel drag" style="left:30%;width:16.6%;top:8px"><span>логотип.mp4</span><small>0:18.0</small></span>
+    </div></div>
+    <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-zoom-hi)"></span><span class="nm">Зумы</span></div><div class="ln"><span class="rg zoom" style="left:4.6%;width:6.5%">1,5×</span><span class="rg ghost" style="left:22%;width:4%;border-color:var(--c-zoom-hi);color:var(--c-zoom-hi)">+ 1,5×</span></div></div>
+    <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-ann-hi)"></span><span class="nm">Аннотации 1</span><span class="ib hover" style="color:var(--rec)"><svg class="ico"><use href="#i-x"/></svg></span></div><div class="ln">
+      <span class="rg ann" style="left:26%;width:24%">Шаг 2: войдите</span>
+      <span class="kf" style="left:27%"></span><span class="kf sel" style="left:36%"></span><span class="kf" style="left:46%"></span>
+    </div></div>
+    <div class="tip" style="left:calc(110px + (100% - 110px)*.14);top:136px;width:230px;white-space:normal;line-height:1.4">
+      <b>Ключ 2 · 0:33.40</b><br><span class="hint">по сравнению с ключом 1:</span><br>Позиция: 120, 80 → 120, 140<br>Фон: 60% → 85%
+    </div>
+    <div class="pop" style="position:absolute;right:8px;top:100px;width:280px;padding:var(--s3);z-index:7">
+      <div style="font-weight:600;margin-bottom:4px">Удалить «Аннотации 1»?</div>
+      <div class="hint" style="margin-bottom:var(--s3)">На дорожке 2 аннотации, они удалятся вместе с ней. Вернуть — Ctrl+Z.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><span class="btn sm">Отмена</span><span class="btn sm danger">Удалить дорожку</span></div>
+    </div>
+  </div>
+  <div style="height:140px"></div>
+</div></div>
+<p class="src"><b>Взято:</b> из v1 — магнитная перестановка по центру клипа, «призрак» с размером будущего региона, подсказка ключа «было → стало», подтверждение только для непустой дорожки; из DaVinci — белая метка места вставки; из Cap — призрак «+» на дорожке зумов.</p>
+<ul class="notes">
+  <li><b>Перестановка:</b> тянем клип — белая метка показывает место вставки, остальные клипы раздвигаются после отпускания <span class="tag v1">v1</span>; зумы едут со своим материалом.</li>
+  <li><b>Призрак:</b> наведение на пустое место дорожки — полупрозрачный регион того размера, что создастся (зум 1 с, аннотация 1 с, реплика 1,5 с) <span class="tag v1">v1</span>; Z / T / клик — создать.</li>
+  <li><b>Ключи:</b> ромбы на блоке аннотации, выбранный белый; перетаскивание по времени внутри блока, <span class="kbd">I</span> поставить, <span class="kbd">[</span> <span class="kbd">]</span> перейти, Delete удалить; подсказка по-русски <span class="tag v2">v2</span>.</li>
+  <li><b>Удаление дорожки</b> — подтверждение в поповере у кнопки ✕, а не системный диалог; пустая дорожка удаляется сразу <span class="tag v2">v2</span>.</li>
+</ul>
+
+<!-- ============ 3 PANELS ============ -->
+<h2>3. Панели эффектов (инспектор)</h2>
+<p class="lead" style="margin-top:0">Каждая панель 320 px: шапка с цветной полоской вида, группы «Основное» и «Тонкая настройка» (свёрнута, запоминается), ↺ «Сбросить» — к настройкам по умолчанию. Ниже открыта «Тонкая настройка», чтобы показать её состав.</p>
+
+<h3>3a. Зум · Курсор и клики · Облачко</h3>
+<div class="stage"><div class="row">
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-zoom-hi)"></span><div><b>Зум</b><br><small>0:41.00 – 0:48.00 · 7,0 с</small></div><span class="sp"></span><span class="ib sm danger"><svg class="ico"><use href="#i-trash"/></svg></span></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Основное<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Режим</span><span class="c"><span class="seg"><b>За курсором</b><b class="sel">Точка</b></span></span></div>
+      <div class="hint">Камера стоит на точке. Перетащите рамку на превью, чтобы сдвинуть.</div>
+      <div class="prow"><span>Масштаб</span><span class="c"><span class="sl"><i style="width:20%"></i></span><span class="v">1,8×</span></span></div>
+      <div class="prow"><span>Движение</span><span class="c"><span class="seg"><b class="sel">Focused</b><b>Smooth</b></span></span></div>
+      <div class="prow"><span>Склеить с соседним</span><span class="c"><span class="toggle on"></span></span></div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Плавность камеры</span><span class="c"><span class="hint">резко</span><span class="sl"><i style="width:55%"></i></span><span class="hint">мягко</span></span></div>
+      <div class="prow"><span>Вход</span><span class="c"><span class="sl"><i style="width:10%"></i></span><span class="v">0,20 с</span></span></div>
+      <div class="prow"><span>Выход</span><span class="c"><span class="sl"><i style="width:10%"></i></span><span class="v">0,20 с</span></span></div>
+      <div class="prow"><span>Motion blur</span><span class="c"><span class="sl"><i style="width:18%"></i></span><span class="v">0,35</span></span></div>
+    </div></div>
+    <div style="padding:10px 12px"><span class="btn sm block"><svg class="ico"><use href="#i-wand"/></svg>Подобрать зумы по кликам</span></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-cur-hi)"></span><div><b>Курсор и клики</b><br><small>для всего проекта</small></div><span class="sp"></span></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Курсор<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Показать</span><span class="c"><span class="toggle on"></span></span></div>
+      <div class="prow"><span>Набор</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Системный</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span></span></div>
+      <div class="prow"><span>Размер</span><span class="c"><span class="sl"><i style="width:21%"></i></span><span class="v">2,5×</span></span></div>
+      <div class="prow"><span>Движение</span><span class="c"><span class="seg"><b>Точно</b><b class="sel">Focused</b><b>Smooth</b></span></span></div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Эффект клика<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="tiles">
+        <div class="tile"><span class="pv"><svg class="ico"><use href="#i-x"/></svg></span>Выкл</div>
+        <div class="tile sel"><span class="pv" style="border:2px solid var(--accent-hi)"></span>Ripple</div>
+        <div class="tile"><span class="pv" style="background:radial-gradient(circle,#fff 0 30%,transparent 70%)"></span>Spotlight</div>
+        <div class="tile"><span class="pv" style="box-shadow:0 0 0 2px #fff,0 0 0 5px rgba(255,255,255,.4)"></span>Echo</div>
+        <div class="tile"><span class="pv" style="background:radial-gradient(circle,#fbbf24 0 20%,transparent 22%),conic-gradient(from 0deg,#fbbf24 0 5%,transparent 5% 12.5%,#fbbf24 12.5% 17.5%,transparent 17.5% 25%,#fbbf24 25% 30%,transparent 30% 37.5%,#fbbf24 37.5% 42.5%,transparent 42.5% 50%,#fbbf24 50% 55%,transparent 55% 62.5%,#fbbf24 62.5% 67.5%,transparent 67.5% 75%,#fbbf24 75% 80%,transparent 80% 87.5%,#fbbf24 87.5% 92.5%,transparent 92.5%)"></span>Вспышка</div>
+      </div>
+      <div class="prow"><span>Цвет</span><span class="c"><span class="cs" style="background:#2563eb;outline:2px solid #fff"></span><span class="cs" style="background:#ef4444"></span><span class="cs" style="background:#f59e0b"></span><span class="cs" style="background:#22c55e"></span><span class="cs" style="background:#a855f7"></span><span class="cs" style="background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)"></span></span></div>
+      <div class="prow"><span>Размер</span><span class="c"><span class="sl"><i style="width:33%"></i></span><span class="v">1,00×</span></span></div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Прозрачность клика</span><span class="c"><span class="sl"><i style="width:100%"></i></span><span class="v">100%</span></span></div>
+      <div class="prow"><span>Длительность клика</span><span class="c"><span class="sl"><i style="width:44%"></i></span><span class="v">0,60 с</span></span></div>
+      <div class="prow"><span>Отскок</span><span class="c"><span class="sl"><i style="width:40%"></i></span><span class="v">2,0</span></span></div>
+      <div class="prow"><span>Длина отскока</span><span class="c"><span class="sl"><i style="width:65%"></i></span><span class="v">0,35 с</span></span></div>
+      <div class="prow"><span>Покачивание</span><span class="c"><span class="sl"><i style="width:20%"></i></span><span class="v">0,4</span></span></div>
+      <div class="prow"><span>Motion blur</span><span class="c"><span class="sl"><i style="width:30%"></i></span><span class="v">0,6</span></span></div>
+      <div class="prow"><span>Зациклить</span><span class="c"><span class="toggle"></span><span class="hint">последние 0,67 с</span></span></div>
+    </div></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-cur-hi)"></span><div><b>Клик</b><br><small>0:21.40 · левая кнопка</small></div><span class="sp"></span></div>
+    <div class="gb" style="padding-top:10px">
+      <div class="prow"><span>Показывать</span><span class="c"><span class="toggle"></span><span class="hint">этот клик скрыт</span></span></div>
+      <div class="prow"><span>Свой стиль</span><span class="c"><span class="toggle"></span></span></div>
+    </div>
+    <div class="ph" style="border-top:1px solid var(--border)"><span class="chip" style="background:var(--c-cur-hi)"></span><div><b>Облачко: текст</b><br><small>событие 0:50.00 · печать 2,0 с</small></div><span class="sp"></span><span class="ib sm danger"><svg class="ico"><use href="#i-trash"/></svg></span></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Событие</div><div class="gb">
+      <div class="prow"><span>Действие</span><span class="c"><span class="seg"><b>Вкл</b><b class="sel">Текст</b><b>Выкл</b></span></span></div>
+      <div class="txtarea" style="min-height:32px">Сохраните изменения</div>
+      <div class="hint">19 / 80 · длина события = время печати</div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Стиль облачка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Фон · текст</span><span class="c"><span class="cs" style="background:#14b8c4"></span><span class="cs" style="background:#fff"></span></span></div>
+      <div class="prow"><span>Размер</span><span class="c"><span class="sl"><i style="width:33%"></i></span><span class="v">1,00×</span></span></div>
+      <div class="prow"><span>Градиент</span><span class="c"><span class="toggle on"></span><span class="cs" style="background:#14b8c4"></span><span class="cs" style="background:#a855f7"></span><span class="ib sm"><svg class="ico"><use href="#i-plus"/></svg></span></span></div>
+      <div class="prow"><span>Свечение</span><span class="c"><span class="sl"><i style="width:35%"></i></span><span class="v">14</span></span></div>
+    </div></div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из v1 — плитки эффекта клика, палитра 8 цветов, «Режим» зума с пояснением, облачко событиями «вкл / текст / выкл»; из Cap — масштаб зума ползунком в панели и сегмент «Auto / Manual»; из решения 000 — «Плавность камеры» одним ползунком, пресеты не трогают размер курсора.</p>
+<ul class="notes">
+  <li><b>Зум:</b> масштаб 1–5× — и ползунком, и рамкой на превью (они связаны); motion blur, длительности и плавность — в «Тонкой настройке» <span class="tag v2">v2</span> (в v1 их не было в UI).</li>
+  <li><b>Курсор:</b> вкладка «Курсор» инспектора; наборы «Системный» (по умолчанию), свой нарисованный (имя <span class="tag q">?</span>), «Свой…» — PNG/SVG/WebP/GIF до 1 МБ, точка клика задаётся кликом в диалоге. Пять стилей клика, включая «Вспышку с частицами» <span class="tag v2">v2</span>.</li>
+  <li><b>Отдельный клик</b> выбирается точкой на дорожке «Курсор»: скрыть или задать свой стиль <span class="tag v2">v2</span> по SCOPE. Скрытый клик — пустой кружок на дорожке.</li>
+</ul>
+
+<h3>3b. Показ клавиш · Субтитры (генерация, реплики, стиль)</h3>
+<div class="stage"><div class="row">
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-keys-hi)"></span><div><b>Показ клавиш</b><br><small>3 сочетания в записях</small></div><span class="sp"></span></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Основное<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Показывать</span><span class="c"><span class="toggle on"></span></span></div>
+      <div class="prow"><span>Где</span><span class="c"><span class="anchors"><i></i><i></i><i></i><i></i><i class="sel"></i><i></i></span></span></div>
+      <div class="prow"><span>Размер</span><span class="c"><span class="sl"><i style="width:20%"></i></span><span class="v">1,00×</span></span></div>
+      <div style="display:flex;justify-content:center;padding:6px 0"><span style="background:rgba(15,17,21,.9);border:1px solid #444;border-radius:8px;padding:6px 12px;font:600 15px Inter">Ctrl + Shift + P <span style="color:var(--text-3)">×2</span></span></div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Буквы · плашка</span><span class="c"><span class="cs" style="background:#fff"></span><span class="cs" style="background:rgba(15,17,21,.9)"></span></span></div>
+      <div class="prow"><span>Держать</span><span class="c"><span class="sl"><i style="width:30%"></i></span><span class="v">1,5 с</span></span></div>
+    </div></div>
+    <div class="hint" style="padding:10px 12px">Пишутся только сочетания с модификаторами и спецклавиши. Обычный ввод текста не записывается никогда.</div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-cap-hi)"></span><div><b>Субтитры</b><br><small>23 реплики · русский</small></div><span class="sp"></span><span class="toggle on"></span></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Распознавание</div><div class="gb">
+      <div class="prow"><span>Язык</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Авто</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span></span></div>
+      <div class="prow"><span>Дорожки</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Микрофон</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span></span></div>
+      <div style="display:flex;gap:6px;align-items:center"><span class="btn sm" style="flex:1;justify-content:center">Пересоздать</span><span class="btn sm ghost danger" style="color:var(--rec)">Очистить все</span></div>
+      <div><div class="hint">Распознаю… 64% · модель «Быстрая»</div><div class="bar"><i style="width:64%"></i></div></div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Реплики</div><div class="gb" style="padding:2px 4px 8px">
+      <div class="cue"><span class="tm">0:28.0</span><span class="w">Вводим почту и пароль</span></div>
+      <div class="cue sel now"><span class="tm">0:30.2</span><span class="w"><span class="cedit">Нажимаем <em>«Войти»</em> и ждём перехода</span><span class="acts"><span class="num">0:30.200</span><span class="num">0:33.900</span><span class="ib sm"><svg class="ico"><use href="#i-split"/></svg></span><span class="ib sm"><svg class="ico"><use href="#i-merge"/></svg></span><span class="ib sm danger"><svg class="ico"><use href="#i-trash"/></svg></span></span></span></div>
+      <div class="cue"><span class="tm">0:34.1</span><span class="w">Готово, мы внутри</span></div>
+      <div class="hint" style="padding:0 8px">Enter — применить, Esc — отмена. Исправленные слова получают время, остальные свои.</div>
+    </div></div>
+    <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Стиль<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div></div>
+    <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Тонкая настройка</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-cap-hi)"></span><div><b>Субтитры · стиль</b><br><small>группа «Стиль» открыта</small></div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Стиль<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Шрифт</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Inter</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span><span class="num">40</span></span></div>
+      <div class="prow"><span>Цвет · тень</span><span class="c"><span class="cs" style="background:#fff"></span><span class="toggle on"></span></span></div>
+      <div class="prow"><span>Активное слово</span><span class="c"><span class="toggle on"></span><span class="cs" style="background:#fde047"></span><span class="cs" style="background:#9ca3af" title="ещё не сказано"></span></span></div>
+      <div class="prow"><span>Анимация</span><span class="c"><span class="seg"><b>Нет</b><b class="sel">Fade</b><b>Rise</b><b>Pop</b></span></span></div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Строк</span><span class="c"><span class="seg"><b>1</b><b class="sel">2</b><b>3</b><b>4</b></span></span></div>
+      <div class="prow"><span>Отступ снизу</span><span class="c"><span class="sl"><i style="width:30%"></i></span><span class="v">6%</span></span></div>
+      <div class="prow"><span>Ширина</span><span class="c"><span class="sl"><i style="width:70%"></i></span><span class="v">70%</span></span></div>
+      <div class="prow"><span>Плашка</span><span class="c"><span class="sl"><i style="width:72%"></i></span><span class="v">72%</span><span class="num">r 8</span></span></div>
+    </div></div>
+    <div class="empty" style="margin:12px;padding:14px"><svg class="ico big"><use href="#i-cc"/></svg><b>Субтитров ещё нет</b><span class="hint">Модель «Быстрая» (≈ 480 МБ) скачается один раз</span><span class="btn sm primary">Создать субтитры</span></div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из v1 — список реплик с «Разделить / Объединить / Удалить», ввод времени <code>m:ss.mmm</code>, правка двойным кликом с Enter/Esc; из Cap — источник звука и язык рядом с кнопкой генерации, подсветка активного слова; из DaVinci — реплики как регионы на своей дорожке (Subtitle track). Плашка клавиш — по коду <code>fx/keys</code> (6 мест, 0,5–3×, держать 0,3–5 с).</p>
+<ul class="notes">
+  <li><b>Правка по тексту</b> = правка реплик: текущая реплика подсвечена полоской и идёт за указателем; клик по реплике переводит указатель, двойной — правка. Удаление слов из текста <u>не</u> режет видео (как в Descript) — этого нет в SCOPE <span class="tag q">?</span>.</li>
+  <li><b>Генерация</b> — честный прогресс (в v1 был поддельный), без модели кнопка сначала качает её с прогрессом и проверкой хэша <span class="tag v2">v2</span>. «Очистить все» — с отменой через Ctrl+Z, без диалога.</li>
+  <li><b>Показ клавиш</b> по умолчанию выключен; включение показывает дорожку «Клавиши» цветной <span class="tag v2">v2</span>. Шесть мест — сеткой 3 × 2 вместо списка (Fitts, узнавание).</li>
+</ul>
+
+<h3>3c. Аннотации: общее, виды, ключи и анимации</h3>
+<div class="stage"><div class="row">
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-ann-hi)"></span><div><b>Фигура</b><br><small>Аннотации 2 · 0:31.00 – 0:37.00</small></div><span class="sp"></span><span class="ib sm"><svg class="ico"><use href="#i-copy"/></svg></span><span class="ib sm danger"><svg class="ico"><use href="#i-trash"/></svg></span></div>
+    <div class="kfbar"><span class="d e"></span>Ключа нет · <span class="kbd">I</span><span class="sp"></span><span class="seg"><b class="sel">Авто</b><b>Вручную</b></span></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Основное<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="tiles" style="grid-template-columns:repeat(6,1fr)">
+        <div class="tile sel"><svg class="ico"><use href="#i-arrow"/></svg>Стрелка</div><div class="tile"><svg class="ico"><rect x="4" y="6" width="16" height="12" rx="2"/></svg>Прямоуг.</div><div class="tile"><svg class="ico"><ellipse cx="12" cy="12" rx="9" ry="6"/></svg>Эллипс</div><div class="tile"><svg class="ico"><circle cx="12" cy="12" r="8"/></svg>Круг</div><div class="tile"><svg class="ico"><path d="M4 20L20 4"/></svg>Линия</div><div class="tile"><svg class="ico"><rect x="3" y="8" width="18" height="8" rx="2" fill="currentColor" opacity=".4"/></svg>Подсв.</div>
+      </div>
+      <div class="prow"><span>Заливка</span><span class="c"><span class="seg"><b class="sel">Цвет</b><b>Градиент</b></span><span class="cs" style="background:#f43f5e"></span></span></div>
+      <div class="prow"><span>Толщина</span><span class="c"><span class="sl"><i style="width:50%"></i></span><span class="v">4 px</span></span></div>
+      <div class="prow"><span>Обводка</span><span class="c"><span class="toggle"></span></span></div>
+      <div class="prow"><span>Прозрачность</span><span class="c"><span class="sl"><i style="width:100%"></i></span><span class="v">100%</span></span></div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Вход и выход</div><div class="gb">
+      <div class="prow"><span>Вход</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Прорисовка</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span><span class="num">0,4 с</span></span></div>
+      <div class="prow"><span>Выход</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Нет</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span></span></div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Свечение</span><span class="c"><span class="sl"><i style="width:0%"></i></span><span class="v">0</span></span></div>
+      <div class="prow"><span>Поворот</span><span class="c"><span class="num">0°</span><span class="hint">или ручка на превью</span></span></div>
+      <div class="prow"><span>Позиция · размер</span><span class="c"><span class="num">820, 600</span><span class="num">240 × 180</span></span></div>
+    </div></div>
+  </div>
+
+  <div class="pop" style="width:240px;align-self:flex-start">
+    <h4>Анимация входа</h4>
+    <div class="item"><span class="grow">Нет</span></div>
+    <div class="item"><span class="grow">Растворение</span><span class="hint">fade</span></div>
+    <div class="item"><span class="grow">Появление</span><span class="hint">pop</span></div>
+    <div class="item"><span class="grow">Выезд слева</span></div>
+    <div class="item"><span class="grow">Выезд справа</span></div>
+    <div class="item"><span class="grow">Выезд сверху</span></div>
+    <div class="item"><span class="grow">Выезд снизу</span></div>
+    <div class="divider"></div>
+    <div class="item sel"><svg class="ico" style="color:var(--accent-hi)"><use href="#i-check"/></svg><span class="grow">Прорисовка</span><span class="hint">фигура, рисунок</span></div>
+    <div class="item" style="color:var(--text-3)"><span class="grow">Печать</span><span class="hint">только текст</span></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-ann-hi)"></span><div><b>Виды аннотаций</b><br><small>только группа «Основное»</small></div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-image"/></svg>Картинка</div><div class="gb">
+      <div class="prow"><span>Файл</span><span class="c"><span class="num" style="flex:1">схема.png · 240 КБ</span><span class="btn sm">Заменить…</span></span></div>
+      <div class="hint">PNG, JPG, WebP, SVG, GIF (анимация играет). Копируется в проект.</div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-pen"/></svg>Рисунок</div><div class="gb">
+      <div class="prow"><span>Кисть</span><span class="c"><span class="seg"><b class="sel">Карандаш</b><b>Ластик</b></span></span></div>
+      <div class="prow"><span>Толщина · цвет</span><span class="c"><span class="sl"><i style="width:15%"></i></span><span class="v">4 px</span><span class="cs" style="background:#2563eb"></span></span></div>
+      <div class="hint">Shift+ЛКМ — ластик, Alt+ЛКМ — прямая, ПКМ — двигать</div>
+      <span class="btn sm ghost" style="align-self:flex-start">Очистить рисунок</span>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-blur"/></svg>Размытие</div><div class="gb">
+      <div class="prow"><span>Сила</span><span class="c"><span class="sl"><i style="width:20%"></i></span><span class="v">20</span></span></div>
+      <div class="prow"><span>Тонировка</span><span class="c"><span class="cs" style="background:#000"></span><span class="sl"><i style="width:0%"></i></span><span class="v">0%</span></span></div>
+      <div class="hint">100% — сплошная заливка («цензура»)</div>
+    </div></div>
+    <div class="grp" style="border:0"><div class="gh"><svg class="ico"><use href="#i-text"/></svg>Текст</div><div class="gb">
+      <div class="hint">Шрифты: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono или свой .ttf/.otf; размер 12–128; B I U, выравнивание, фон и радиус плашки — см. главное окно.</div>
+    </div></div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из v1 — стадии «Вход / Выход» с длительностью, режим ключей авто/вручную и клавиша I, шесть фигур; из DaVinci — строка ключа над параметрами (◆ / ◇ «есть ключ здесь / нет») и стрелки к соседнему ключу, подсветка изменённых параметров; из решения 000 — названия «Выезд слева/справа/сверху/снизу», прорисовка у фигур, тонировка blur 0–100%.</p>
+<ul class="notes">
+  <li><b>Добавление:</b> «+ Дорожка ▾ → Аннотация» или T у указателя; вид выбирается плитками в панели (смена вида сохраняет время и позицию) <span class="tag q">?</span> или вид выбирается сразу в меню добавления.</li>
+  <li><b>Ключи:</b> строка над группами показывает, есть ли ключ у указателя (◆) и сколько всего; в режиме «Авто» любая правка пишет ключ, во «Вручную» — правит базу, пока указатель не стоит на ключе <span class="tag v1">v1</span>. Параметры, отличные от предыдущего ключа, подписаны голубым.</li>
+  <li><b>Анимации:</b> недоступные для вида пункты видны, но серые с причиной («только текст») — Nielsen #6, не прячем возможность. Длительности идут по времени выхода и на ускоренном участке не сжимаются (решение 000).</li>
+</ul>
+
+<h3>3d. Звук: дорожки, канал клипа, клип</h3>
+<div class="stage"><div class="row">
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-aud-hi)"></span><div><b>Звук</b><br><small>по умолчанию для всех клипов</small></div><span class="sp"></span></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-mic"/></svg>Микрофон<span class="r"><span class="ib"><svg class="ico"><use href="#i-vol"/></svg></span><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Громкость</span><span class="c"><span class="sl"><i style="width:100%"></i></span><span class="v">100%</span></span></div>
+      <div class="prow"><span>Усиление</span><span class="c"><span class="sl"><i style="width:10%"></i></span><span class="v">1,0×</span></span></div>
+      <div class="prow"><span>Нормализация</span><span class="c"><span class="toggle on"></span><span class="lufs">−16 LUFS</span></span></div>
+      <div class="prow"><span>Шумоподавление</span><span class="c"><span class="toggle on"></span><span class="hint">исходник не меняется</span></span></div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-spk"/></svg>Системный звук<span class="r"><span class="ib" style="color:var(--rec)"><svg class="ico"><use href="#i-mute"/></svg></span><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb" style="opacity:.5">
+      <div class="prow"><span>Громкость</span><span class="c"><span class="sl"><i style="width:60%"></i></span><span class="v">60%</span></span></div>
+      <div class="prow"><span>Нормализация</span><span class="c"><span class="toggle"></span></span></div>
+    </div></div>
+    <div class="grp" style="border:0"><div class="gh"><svg class="ico"><use href="#i-music"/></svg>Аудио 1<span class="r"><span class="ib"><svg class="ico"><use href="#i-vol"/></svg></span><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Громкость</span><span class="c"><span class="sl"><i style="width:30%"></i></span><span class="v">30%</span></span></div>
+      <div class="prow"><span>Нормализация</span><span class="c"><span class="toggle on"></span><span class="lufs">−16 LUFS</span></span></div>
+      <span class="btn sm" style="align-self:flex-start"><svg class="ico"><use href="#i-plus"/></svg>Добавить звук…</span>
+      <div class="hint">mp3, wav, aac, m4a, flac, ogg · ставится у указателя</div>
+    </div></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--c-clip-hi)"></span><div><b>Клип</b><br><small>Запись 30.10 14:05 · 0:52.0</small></div><span class="sp"></span><span class="ib sm"><svg class="ico"><use href="#i-crop"/></svg></span><span class="ib sm danger"><svg class="ico"><use href="#i-trash"/></svg></span></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Звук клипа<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+      <div class="prow"><span>Весь клип</span><span class="c"><span class="seg"><b class="sel">Звук</b><b>Без звука</b></span></span></div>
+      <div style="display:grid;grid-template-columns:auto 1fr auto;gap:6px 8px;align-items:center">
+        <svg class="ico" style="color:var(--text-2)"><use href="#i-mic"/></svg><span class="sl"><i style="width:100%"></i></span><span class="v">100%</span>
+        <svg class="ico" style="color:var(--text-2)"><use href="#i-spk"/></svg><span class="sl"><i style="width:35%"></i></span><span class="v changed">35% · свой</span>
+      </div>
+      <div class="hint">Пока параметр не менялся, клип берёт значение дорожки.</div>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Скорость</div><div class="gb">
+      <div class="hint">Участков скорости: 1 (4× на 0:20.0–0:28.0). Выделите участок на шкале с Shift → R.</div>
+    </div></div>
+    <div class="grp" style="border:0"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Кадр</div><div class="gb">
+      <div class="prow"><span>Кроп</span><span class="c"><span class="num">2400 × 1350</span><span class="btn sm">Кроп…</span></span></div>
+    </div></div>
+  </div>
+
+  <div class="panel" style="padding:12px">
+    <div class="cap">Голова аудиодорожки: уровень при воспроизведении</div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span class="meterv"><i style="height:62%"></i></span><span class="meterv"><i style="height:58%"></i></span>
+      <div style="flex:1;font-size:var(--fs-s);color:var(--text-2)">Микрофон · −14 dB<br><span class="hint">пик красный, если выше −1 dBTP</span></div>
+    </div>
+    <div class="cap" style="margin-top:12px">Подтверждение удаления непустой аудиодорожки</div>
+    <div class="hint">«Удалить «Аудио 1»? На дорожке 1 файл.» — тот же поповер, что у аннотаций.</div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из v1 — «Громкость» 0–100% и отдельное «Усиление» до 10×, уровни на клип поверх дорожки; из DaVinci — mute и уровень в голове дорожки, «свой» параметр клипа отмечен; из Cap — простой список дорожек в одной панели «Звук». Нормализация EBU R128 −16 LUFS и шумоподавление — новое по SCOPE.</p>
+<ul class="notes">
+  <li><b>Две плоскости:</b> вкладка «Звук» — уровни дорожек по умолчанию; выбранный клип — свои уровни каналов и mute целиком (решение 000: общего уровня клипа нет) <span class="tag v2">v2</span>.</li>
+  <li><b>Нормализация</b> показывает цель (−16 LUFS), а не множитель, как в v1 <span class="tag v2">v2</span>. Шумоподавление — только у микрофона.</li>
+  <li>Доп. дорожки идут по времени выхода и при нарезке не сдвигаются (решение 000). Измеритель уровня в голове дорожки — предложение <span class="tag q">?</span>.</li>
+</ul>
+
+<!-- ============ 4 CROP ============ -->
+<h2>4. Кроп и формат выхода</h2>
+<div class="stage">
+  <div class="dlg" style="width:760px">
+    <div class="dh">Кроп и формат — Запись 30.10 14:05<span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></div>
+    <div class="db">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <span class="hint">Формат видео</span>
+        <span class="seg"><b class="sel">Свободный</b><b>Исходный</b><b>16:9</b><b>16:10</b><b>4:3</b></span>
+        <span style="flex:1"></span>
+        <span class="hint" style="font-family:var(--mono)">1640 × 1036 px · 1,58 : 1</span>
+      </div>
+      <div class="cropview">
+        <div class="img"><div class="m-top"></div><div class="m-card" style="left:30%;top:22%"><div class="m-ttl"></div><div class="m-line" style="top:26%"></div><div class="m-line" style="top:42%"></div><div class="m-btn" style="top:62%"></div></div></div>
+        <div class="rect">
+          <span class="h" style="left:0;top:0"></span><span class="h" style="left:50%;top:0"></span><span class="h" style="left:100%;top:0"></span><span class="h" style="left:0;top:50%"></span><span class="h" style="left:100%;top:50%"></span><span class="h" style="left:0;top:100%"></span><span class="h" style="left:50%;top:100%"></span><span class="h" style="left:100%;top:100%"></span>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:8px">Тяните рамку или края · Shift — сохранить пропорцию · двойной клик — весь кадр</div>
+    </div>
+    <div class="df"><span class="grow">Формат задаёт кадр всего видео. Клипы другой формы вписываются с чёрными полями.</span><span class="btn sm ghost"><svg class="ico"><use href="#i-reset"/></svg>Сбросить</span><span class="btn sm">Отмена</span><span class="btn sm primary">Применить</span></div>
+  </div>
+</div>
+<p class="src"><b>Взято:</b> из Cap — диалог кропа с превью кадра, сеткой третей и выбором пропорции над картинкой; из v1 — кнопка «Кроп» над превью с точкой, если кроп задан; из DaVinci — рамка с 8 ручками и затемнение вне неё. Вертикальных форматов и 1:1 нет — SCOPE.</p>
+<ul class="notes">
+  <li><b>Открывается</b> кнопкой «Кроп и формат» над превью, из панели клипа и двойным кликом по клипу <span class="tag q">?</span>. Модальный: правка кадра требует внимания, превью большое.</li>
+  <li><b>Формат:</b> «Свободный» (по рамке первого клипа, по умолчанию), «Исходный», 16:9, 16:10, 4:3 — по коду <code>fx/crop</code>. При фиксированном формате рамка тянется с сохранением пропорции.</li>
+  <li><b>Минимум</b> рамки 5% стороны, размер в физических px исходника. «Применить» — одна команда в истории; Esc = «Отмена».</li>
+</ul>
+
+<!-- ============ 5 EXPORT ============ -->
+<h2>5. Экспорт</h2>
+<div class="stage"><div class="row">
+  <div class="dlg" style="width:400px">
+    <div class="dh">Экспорт<span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></div>
+    <div class="db">
+      <div class="field"><span class="lbl">Формат</span><span class="seg"><b class="sel">MP4</b><b>GIF</b></span></div>
+      <div class="field"><span class="lbl">Разрешение</span><span class="select"><span>1080p · 1920 × 1080</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span></div>
+      <div class="field"><span class="lbl">Кадров в секунду</span><span class="seg"><b>30</b><b class="sel">60</b><b class="dis">120</b></span></div>
+      <div class="field"><span class="lbl">Качество</span><span class="seg"><b>Низкое</b><b>Среднее</b><b class="sel">Высокое</b></span></div>
+      <div class="field"><span class="lbl">Кодирует<small>самопроверка прошла</small></span><span style="font-size:var(--fs-s);color:var(--text-2)">видеокарта NVIDIA (NVENC)</span></div>
+    </div>
+    <div class="df"><span class="grow">1:48 · ≈ 90 МБ <span class="tag q">?</span></span><span class="btn sm">Отмена</span><span class="btn sm primary">Сохранить как…</span></div>
+  </div>
+
+  <div class="dlg" style="width:400px">
+    <div class="dh">Экспорт<span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></div>
+    <div class="db">
+      <div class="field"><span class="lbl">Формат</span><span class="seg"><b>MP4</b><b class="sel">GIF</b></span></div>
+      <div class="field"><span class="lbl">Размер</span><span class="seg"><b class="sel">720p</b><b>1080p</b><b>Исходный</b></span></div>
+      <div class="field"><span class="lbl">Кадров в секунду</span><span class="seg"><b class="sel">15</b><b>20</b><b>25</b><b>30</b></span></div>
+      <div class="field"><span class="lbl">Зациклить</span><span class="toggle on"></span></div>
+    </div>
+    <div class="df"><span class="grow">GIF без звука</span><span class="btn sm">Отмена</span><span class="btn sm primary">Сохранить как…</span></div>
+  </div>
+
+  <div class="pop" style="width:340px;padding:6px">
+    <h4 style="margin:6px 8px">Очередь экспорта</h4>
+    <div class="job"><span class="ib on" style="width:28px;height:28px"><svg class="ico"><use href="#i-film"/></svg></span><div><div class="t">Вход в аккаунт.mp4</div><div class="s">47% · осталось ≈ 0:38 · NVENC</div><div class="bar"><i style="width:47%"></i></div></div><span class="ib sm"><svg class="ico"><use href="#i-x"/></svg></span></div>
+    <div class="job"><span class="ib" style="width:28px;height:28px"><svg class="ico"><use href="#i-image"/></svg></span><div><div class="t">Вход в аккаунт.gif</div><div class="s">в очереди</div></div><span class="ib sm"><svg class="ico"><use href="#i-x"/></svg></span></div>
+    <div class="job"><span class="ib" style="width:28px;height:28px;color:var(--ok)"><svg class="ico"><use href="#i-check"/></svg></span><div><div class="t">Настройки профиля.mp4</div><div class="s">готово · 54 МБ · 14:20</div></div><span class="btn sm">Показать в папке</span></div>
+    <div class="job"><span class="ib" style="width:28px;height:28px;color:var(--rec)"><svg class="ico"><use href="#i-warn"/></svg></span><div><div class="t">Демо.mp4</div><div class="s" style="color:var(--rec)">Не хватает места на диске D:. Освободите место или выберите другую папку.</div></div><span class="ib sm"><svg class="ico"><use href="#i-copy"/></svg></span></div>
+  </div>
+</div>
+<div class="row" style="margin-top:16px">
+  <div class="toast ok"><svg class="ico"><use href="#i-check"/></svg>Экспорт готов: Вход в аккаунт.mp4<span class="btn sm">Показать в папке</span><span class="ib sm"><svg class="ico"><use href="#i-x"/></svg></span></div>
+  <div class="toast err"><svg class="ico" style="color:var(--rec)"><use href="#i-warn"/></svg>Экспорт не удался: Демо.mp4<span class="btn sm"><svg class="ico"><use href="#i-copy"/></svg>Копировать ошибку</span></div>
+</div>
+</div>
+<p class="src"><b>Взято:</b> из Cap — отдельный экран формата MP4 / GIF с сегментами fps и разрешения, итог «длительность · размер»; из DaVinci Deliver — очередь рендера, работа во время экспорта; из v1 — «Показать в папке», «Копировать ошибку», зацикливание GIF.</p>
+<ul class="notes">
+  <li><b>Набор по SCOPE:</b> MP4 — 720p / 1080p / 1440p / 4K / исходное, 30 / 60 (120 — только если запись 120), качество отдельно от разрешения <span class="tag v2">v2</span>; GIF — 15–30 fps, 720p / 1080p / исходный, зацикливание. Последний выбор запоминается.</li>
+  <li><b>Путь каждый раз</b> — «Сохранить как…» открывает системный диалог; после него диалог закрывается, задача уходит в очередь. Кольцо в шапке показывает общий прогресс, клик — эта очередь <span class="tag v2">v2</span>.</li>
+  <li><b>Ошибка</b> говорит, что делать, и копируется кнопкой (Nielsen #9). Оценка размера до экспорта — <span class="tag q">?</span> нужна ли: это догадка по битрейту, легко соврать.</li>
+</ul>
+
+<!-- ============ 6 PROJECTS ============ -->
+<h2>6. Проекты, библиотека, сохранение, пустые состояния</h2>
+<div class="stage"><div class="row">
+  <div class="panel" style="width:300px">
+    <div class="ph"><b>Записи</b><span class="sp"></span><span class="ib sm"><svg class="ico"><use href="#i-folderopen"/></svg></span><span class="btn sm">Импорт…</span></div>
+    <div style="padding:10px 12px;display:flex;flex-direction:column;gap:10px">
+      <div class="search"><svg class="ico"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Поиск</div>
+      <div class="thumbs">
+        <div class="th2 sel"><div class="im l"><span class="d">0:52</span></div><span class="ck"><svg class="ico"><use href="#i-check"/></svg></span><div class="t">Запись 30.10 14:05</div><div class="s">сегодня · 2560×1440</div></div>
+        <div class="th2 sel"><div class="im"><span class="d">0:38</span></div><span class="ck"><svg class="ico"><use href="#i-check"/></svg></span><div class="t">Запись 30.10 14:12</div><div class="s">сегодня</div></div>
+        <div class="th2"><div class="im c"><span class="d">4:10</span></div><span class="plus"><svg class="ico"><use href="#i-plus"/></svg></span><div class="t">Запись 29.10 18:40</div><div class="s">вчера</div></div>
+        <div class="th2"><div class="im"><span class="d">0:18</span></div><div class="t">логотип.mp4</div><div class="s">импорт · 4:3</div></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;font-size:var(--fs-s);color:var(--text-2)">Выбрано 2<span style="flex:1"></span><span class="btn sm">На таймлайн</span><span class="ib sm danger"><svg class="ico"><use href="#i-trash"/></svg></span></div>
+    </div>
+  </div>
+
+  <div class="pop" style="width:400px">
+    <h4>Последние проекты</h4>
+    <div class="thumbs" style="grid-template-columns:repeat(3,1fr);padding:0 4px">
+      <div class="th2 sel"><div class="im l"></div><span class="cur">открыт</span><div class="t">Вход в аккаунт</div><div class="s">сегодня 14:32</div></div>
+      <div class="th2"><div class="im c"></div><div class="t">Настройки профиля</div><div class="s">сегодня 11:05</div></div>
+      <div class="th2"><div class="im"></div><div class="t">Обзор билда 0.42</div><div class="s">28.10</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="item"><svg class="ico"><use href="#i-plus"/></svg><span class="grow">Новый проект</span><span class="hint">Ctrl+N</span></div>
+    <div class="item"><svg class="ico"><use href="#i-folderopen"/></svg><span class="grow">Открыть…</span><span class="hint">Ctrl+O</span></div>
+    <div class="item"><svg class="ico"><use href="#i-save"/></svg><span class="grow">Сохранить</span><span class="hint">Ctrl+S</span></div>
+    <div class="item"><span class="ico"></span><span class="grow">Сохранить как…</span><span class="hint">Ctrl+Shift+S</span></div>
+    <div class="item"><span class="ico"></span><span class="grow">Сохранить настройки как по умолчанию</span></div>
+    <div class="item"><span class="ico"></span><span class="grow">Сбросить к заводским</span></div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px;width:340px;max-width:100%">
+    <div class="dlg"><div class="dh" style="font-size:var(--fs-m)">Сохранить изменения в «Вход в аккаунт»?</div><div class="db hint" style="padding:12px 16px">Иначе изменения после 14:32 пропадут.</div><div class="df"><span class="btn sm">Отмена</span><span class="btn sm">Не сохранять</span><span class="btn sm primary">Сохранить</span></div></div>
+    <div class="dlg"><div class="dh" style="font-size:var(--fs-m)">Найдена несохранённая работа</div><div class="db hint" style="padding:12px 16px">«Вход в аккаунт» — автосохранение 14:31, DevCast закрылся неожиданно.</div><div class="df"><span class="btn sm">Отбросить</span><span class="btn sm primary">Восстановить</span></div></div>
+    <div class="toast"><svg class="ico"><use href="#i-trash"/></svg>2 записи в корзине<span class="btn sm">Отменить · Ctrl+Z</span></div>
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:var(--fs-s)">
+      <div class="cap" style="margin:0">Индикатор у названия</div>
+      <span class="pname" style="font-size:var(--fs-m);flex-wrap:wrap;white-space:nowrap">Вход в аккаунт<small>сохранено</small></span>
+      <span class="pname" style="font-size:var(--fs-m);flex-wrap:wrap;white-space:nowrap"><span class="dot"></span>Вход в аккаунт<small>есть изменения · автосохранение 14:32</small></span>
+      <span class="pname" style="font-size:var(--fs-m);flex-wrap:wrap;white-space:nowrap"><span class="dot" style="background:var(--pause)"></span>Вход в аккаунт<small style="color:var(--pause)">автосохранение не удалось · повтор через 30 с</small></span>
+    </div>
+  </div>
+</div>
+<div class="row" style="margin-top:16px">
+  <div class="ed" style="width:760px">
+    <div class="topbar"><span class="btn sm ghost"><svg class="ico"><use href="#i-lib"/></svg>Записи</span><div class="mid"><span class="pname">Новый проект</span></div><span class="btn primary" style="opacity:.45"><svg class="ico"><use href="#i-export"/></svg>Экспорт</span></div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:16px">
+      <div class="empty"><svg class="ico big"><use href="#i-film"/></svg><b>Пока пусто</b><span class="hint">Перетащите сюда запись или видео (mp4, mov, mkv, webm)</span><span style="display:flex;gap:8px"><span class="btn sm">Открыть записи</span><span class="btn sm">Импорт видео…</span></span></div>
+      <div class="toast err" style="max-width:100%"><svg class="ico" style="color:var(--rec)"><use href="#i-warn"/></svg>Не открылся файл «запись_старая.mkv»: формат не поддерживается. Перекодируйте в mp4 или выберите другой файл.<span class="btn sm"><svg class="ico"><use href="#i-copy"/></svg>Копировать</span></div>
+    </div>
+  </div>
+</div>
+</div>
+<p class="src"><b>Взято:</b> из v1 — «Видео» (библиотека) в шапке, последние 16 проектов с миниатюрами и отметкой текущего, Ctrl+S / Ctrl+Shift+S, диалог при закрытии, восстановление после вылета; из Cap — сетка записей с длительностью на миниатюре и кнопкой + при наведении; из DaVinci Media Pool — мультивыбор галочками и «На таймлайн».</p>
+<ul class="notes">
+  <li><b>Библиотека</b> — выдвижная панель слева поверх превью (300 px), закрывается Esc. Запись на таймлайн: перетащить, + или двойной клик; удаление — в системную корзину с отменой <span class="tag v1">v1</span>.</li>
+  <li><b>Два вида сохранения:</b> автосохранение (серый текст, только для восстановления) и Ctrl+S (синяя точка гаснет) — как в v1 и SCOPE. Ошибка автосохранения жёлтая, не красная: данные ещё в памяти.</li>
+  <li><b>Закрытие редактора</b> возвращает к HUD; с изменениями — диалог «Сохранить / Не сохранять / Отмена», по умолчанию «Сохранить» <span class="tag v1">v1</span>.</li>
+  <li><b>Пусто и ошибки:</b> пустой проект — одна понятная цель и две кнопки; «Экспорт» неактивен. Ошибки — тост с причиной и тем, что делать, плюс «Копировать».</li>
+</ul>
+
+<!-- ============ 7 TIMELINE WINDOW + HELP ============ -->
+<h2>7. Отдельное окно таймлайна и справка по клавишам</h2>
+<div class="stage"><div class="row">
+  <div class="ed" style="width:900px">
+    <div class="titlebar"><span>Таймлайн — Вход в аккаунт</span><span class="wc"><span>—</span><span>☐</span><span>✕</span></span></div>
+    <div class="tlbar">
+      <span class="ib act"><svg class="ico"><use href="#i-arrow"/></svg></span><span class="ib"><svg class="ico"><use href="#i-cut"/></svg></span><span class="ib on"><svg class="ico"><use href="#i-magnet"/></svg></span>
+      <span class="sep" style="margin:0 4px"></span>
+      <span class="btn sm ghost"><svg class="ico"><use href="#i-plus"/></svg>Дорожка</span><span class="ib"><svg class="ico"><use href="#i-zoomin"/></svg></span><span class="ib"><svg class="ico"><use href="#i-wand"/></svg></span><span class="ib"><svg class="ico"><use href="#i-cc"/></svg></span><span class="ib on"><svg class="ico"><use href="#i-diamond"/></svg></span>
+      <span class="grow"></span>
+      <span class="tc">0:33.40</span><span class="ib"><svg class="ico"><use href="#i-skipb"/></svg></span><span class="playb" style="width:30px;height:30px"><svg class="ico"><use href="#i-play"/></svg></span><span class="ib"><svg class="ico"><use href="#i-skipf"/></svg></span><span class="tc dim">1:48.00</span>
+      <span class="grow"></span>
+      <span class="zoomsl" style="width:120px"><span class="sl"><i style="width:45%"></i></span></span>
+    </div>
+    <div class="trows">
+      <div class="tr ruler"><div class="thd"></div><div class="ln"><span class="tick big" style="left:0"><b>0:20</b></span><span class="tick big" style="left:25%"><b>0:30</b></span><span class="tick big" style="left:50%"><b>0:40</b></span><span class="tick big" style="left:75%"><b>0:50</b></span></div></div>
+      <div class="tr main"><div class="thd"><span class="sw" style="background:var(--c-clip-hi)"></span><span class="nm">Клипы</span></div><div class="ln"><span class="rg clip" style="left:0;width:80%"><span>Запись 30.10 14:05</span><small>0:52.0</small></span><span class="rg clip" style="left:80.5%;width:19.5%"><span>Запись 30.10 14:12</span></span></div></div>
+      <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-zoom-hi)"></span><span class="nm">Зумы</span></div><div class="ln"><span class="rg zoom" style="left:52%;width:17%">1,8× · точка</span></div></div>
+      <div class="tr"><div class="thd"><span class="sw" style="background:var(--c-ann-hi)"></span><span class="nm">Аннотации 1</span></div><div class="ln"><span class="rg ann sel" style="left:22%;width:25%">Шаг 2: войдите</span></div></div>
+      <div class="playhead" style="left:calc(var(--head-w) + (100% - var(--head-w)) * .335)"><b>0:33.40</b></div>
+    </div>
+    <div class="navbar"><span></span><span class="trk"><i style="left:15%;width:40%"></i></span></div>
+  </div>
+
+  <div class="dlg" style="width:560px;max-width:100%">
+    <div class="dh">Горячие клавиши<span style="display:flex;gap:6px;align-items:center"><span class="btn sm ghost">Изменить в настройках</span><span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></span></div>
+    <div class="db" style="padding-top:4px">
+      <div class="hkcols">
+        <div>
+          <h6>Воспроизведение</h6>
+          <div class="hk"><span>Пуск / пауза</span><span class="kbd">Space</span></div>
+          <div class="hk"><span>Кадр назад / вперёд</span><span><span class="kbd">←</span> <span class="kbd">→</span></span></div>
+          <div class="hk"><span>К ключу или ±5 с</span><span><span class="kbd">[</span> <span class="kbd">]</span></span></div>
+          <h6>Монтаж</h6>
+          <div class="hk"><span>Разрезать у указателя</span><span class="kbd">C</span></div>
+          <div class="hk"><span>Лезвие / Выбор</span><span><span class="kbd">B</span> <span class="kbd">A</span></span></div>
+          <div class="hk"><span>Вырезать участок</span><span><span class="kbd">Shift</span>+<span class="kbd">Del</span></span></div>
+          <div class="hk"><span>Привязка вкл/выкл</span><span class="kbd">N</span></div>
+        </div>
+        <div>
+          <h6>Эффекты</h6>
+          <div class="hk"><span>Добавить зум</span><span class="kbd">Z</span></div>
+          <div class="hk"><span>Добавить аннотацию</span><span class="kbd">T</span></div>
+          <div class="hk"><span>Ключевой кадр</span><span class="kbd">I</span></div>
+          <div class="hk"><span>Следующая аннотация</span><span class="kbd">Tab</span></div>
+          <h6>Правка</h6>
+          <div class="hk"><span>Отменить / повторить</span><span><span class="kbd">Ctrl</span>+<span class="kbd">Z</span> / <span class="kbd">Y</span></span></div>
+          <div class="hk"><span>Копировать / вставить у указателя</span><span><span class="kbd">Ctrl</span>+<span class="kbd">C</span> / <span class="kbd">V</span></span></div>
+          <div class="hk"><span>Высота дорожек</span><span><span class="kbd">Shift</span>+колесо</span></div>
+          <div class="hk"><span>Масштаб времени</span><span><span class="kbd">Ctrl</span>+колесо</span></div>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:10px">Работают и в русской раскладке. Список строится из реестра команд — что здесь написано, то и делает клавиша.</div>
+    </div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из v1 — отдельное окно таймлайна со своей панелью (общие выделение и указатель, свой масштаб), справка по группам; из DaVinci — справка по разделам и переход «Изменить» в настройки клавиш; клавиши B / A / N / Shift+Del — из DaVinci.</p>
+<ul class="notes">
+  <li><b>Окно таймлайна:</b> 1280 × 460, минимум 720 × 260 <span class="tag v1">v1</span>; пока оно открыто, панель в главном окне скрыта. Space, стрелки и Ctrl+Z работают и здесь <span class="tag v2">v2</span> (в v1 не работали).</li>
+  <li><b>Справка</b> — F1 или «?» в шапке; поиск по командам и переназначение — в окне настроек (этап 6, раздел «Горячие клавиши»).</li>
+  <li><b>Аннотация на T, а не A</b>: A занята «Выбором» по DaVinci <span class="tag q">?</span> в v1 аннотация была на A. Умолчания — предложение, все переназначаются.</li>
+</ul>
+
+<!-- ============ 8 STAGE 8 ============ -->
+<h2>8. Этап 8: обновления, «Что нового», обратная связь, падение</h2>
+<div class="stage"><div class="row">
+  <div style="display:flex;flex-direction:column;gap:12px;width:360px;max-width:100%">
+    <div class="toast" style="width:100%"><svg class="ico" style="color:var(--accent-hi)"><use href="#i-export"/></svg><span style="flex:1;min-width:150px">Доступна версия 2.1.0. Скачать?</span><span class="btn sm ghost">Не сейчас</span><span class="btn sm primary">Скачать</span></div>
+    <div class="hint" style="padding-left:4px">«Пропустить версию» — в меню тоста «⋯». «Не сейчас» напомнит через 3 ч. Во время записи и экспорта тост не показывается.</div>
+    <div class="toast" style="width:100%"><span class="spin" style="width:16px;height:16px;border:2px solid var(--surface-3);border-top-color:var(--accent-hi);border-radius:50%"></span><span style="flex:1">Скачиваю 2.1.0… 62%</span></div>
+    <div class="toast" style="width:100%"><svg class="ico" style="color:var(--ok)"><use href="#i-check"/></svg><span style="flex:1">2.1.0 готова. Установится при выходе.</span><span class="btn sm">Перезапустить</span></div>
+  </div>
+  <div class="dlg" style="width:380px">
+    <div class="dh">Что нового в 2.1.0<span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></div>
+    <div class="db" style="font-size:var(--fs-m)">
+      <b>Новое</b>
+      <ul class="notes" style="margin-top:4px"><li>Лезвие (B) на таймлайне</li><li>Шумоподавление микрофона</li></ul>
+      <b>Исправлено</b>
+      <ul class="notes" style="margin-top:4px"><li>Субтитры не съезжают после вырезки</li></ul>
+      <div class="src" style="margin-top:12px"><b>Анонс:</b> в пятницу обновим модель Whisper — скачайте заранее.</div>
+    </div>
+    <div class="df"><span class="btn sm primary">Понятно</span></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px;width:340px;max-width:100%">
+    <div class="dlg"><div class="dh" style="font-size:var(--fs-m)">Обратная связь<span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></div><div class="db" style="font-size:var(--fs-m);display:flex;flex-direction:column;gap:8px">
+      <span>Нашли баг или есть идея — напишите:</span>
+      <span class="item" style="padding:0"><svg class="ico"><use href="#i-bubble"/></svg>Telegram: @devcast_team</span>
+      <span class="item" style="padding:0"><svg class="ico"><use href="#i-proj"/></svg>Репозиторий: github.com/…/devcast</span>
+      <span class="btn sm" style="align-self:flex-start"><svg class="ico"><use href="#i-folder"/></svg>Открыть папку логов</span>
+    </div></div>
+    <div class="dlg"><div class="dh" style="font-size:var(--fs-m)"><span style="display:flex;gap:8px;align-items:center"><svg class="ico" style="color:var(--pause)"><use href="#i-warn"/></svg>DevCast в прошлый раз упал</span></div><div class="db hint" style="padding:12px 16px">Отчёт о падении сохранён. Отправьте папку логов команде — так быстрее починим.</div><div class="df"><span class="btn sm">Закрыть</span><span class="btn sm primary">Открыть папку логов</span></div></div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из v1 — «Скачать?», «Не сейчас» (3 ч), «Пропустить версию», «Что нового» из CHANGELOG, контакты из конфиг-файла; из Cap — обновление тостом в углу без модального окна; из DaVinci — ничего (у него свой модальный апдейтер — отклонено, мешает работе).</p>
+<ul class="notes">
+  <li><b>Тосты</b> в правом нижнем углу редактора, не перекрывают таймлайн; модальных окон у обновлений нет (Nielsen #3: пользователь решает, когда).</li>
+  <li><b>«Что нового»</b> — один раз при первом запуске новой версии; анонсы из <code>announcements.json</code> — отдельной плашкой внутри.</li>
+  <li><b>Контакты</b> берутся из конфиг-файла, правятся без кода (roadmap 8.4); до публичного репозитория обновления ставятся вручную — тоста нет.</li>
+</ul>
+
+</div>
+</body>
+</html>
