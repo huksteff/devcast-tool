@@ -18,6 +18,7 @@ dc-capture = { path = "../capture" }
 dc-core = { path = "../core" }
 dc-encode = { path = "../encode" }
 dc-fx-annotations = { path = "../../fx/annotations" }
+dc-fx-blur = { path = "../../fx/blur" }
 dc-fx-callout = { path = "../../fx/callout" }
 dc-fx-captions = { path = "../../fx/captions" }
 dc-fx-crop = { path = "../../fx/crop" }

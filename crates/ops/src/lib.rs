@@ -17,6 +17,8 @@ pub use plan::{Step, parse_plan};
 pub use registry::{RESERVED_FIELDS, Registry};
 
 #[cfg(test)]
+mod annotations_blur_tests;
+#[cfg(test)]
 mod annotations_drawing_tests;
 #[cfg(test)]
 mod annotations_image_tests;

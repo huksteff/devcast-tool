@@ -677,6 +677,7 @@ dependencies = [
  "dc-core",
  "dc-encode",
  "dc-fx-annotations",
+ "dc-fx-blur",
  "dc-fx-callout",
  "dc-fx-captions",
  "dc-fx-crop",
@@ -748,6 +749,14 @@ version = "0.1.0"
 [[package]]
 name = "dc-fx-blur"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "dc-fx-annotations",
+ "dc-render",
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "dc-fx-callout"
@@ -911,6 +920,7 @@ dependencies = [
  "dc-capture",
  "dc-core",
  "dc-fx-annotations",
+ "dc-fx-blur",
  "dc-fx-callout",
  "dc-fx-captions",
  "dc-fx-crop",

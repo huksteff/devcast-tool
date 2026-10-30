@@ -22,7 +22,7 @@ use crate::uniform::Slots;
 use scratch::{ONE, Scratch, bind_group, scratch, scratch_pass};
 
 /// Floats of `Params` of blur.wgsl.
-pub(super) const PARAMS: usize = 24;
+pub(super) const PARAMS: usize = 28;
 /// Largest downsample: sigma up to ~1000 px still fits the kernel.
 const MAX_DOWN: f32 = 64.0;
 
@@ -46,6 +46,28 @@ enum Kind {
     TextShadow {
         renderer: usize,
     },
+}
+
+/// The rounded rectangle a region blur composites into, target px.
+struct Region {
+    /// Linear rgb; alpha: how much the tint covers the blur.
+    tint: [f32; 4],
+    center: [f32; 2],
+    half: [f32; 2],
+    radius: f32,
+    /// Cosine and sine of the turn (clockwise on screen) and the opacity 0..1.
+    turn: [f32; 3],
+}
+
+impl Region {
+    /// For glows and shadows, which composite their whole quad.
+    const NONE: Self = Self {
+        tint: [0.0; 4],
+        center: [0.0; 2],
+        half: [0.0; 2],
+        radius: 0.0,
+        turn: [1.0, 0.0, 1.0],
+    };
 }
 
 /// The part of the target a blur reads, the downsample and sigma in scratch texels.
@@ -138,14 +160,22 @@ impl BlurPass {
     pub(crate) fn push_region(&mut self, blur: &Blur) -> Option<Op> {
         let k = self.scale;
         let r = blur.rect;
-        let rect = [r.x * k, r.y * k, (r.x + r.w) * k, (r.y + r.h) * k];
+        let half = [r.w * k / 2.0, r.h * k / 2.0];
+        let center = [(r.x + r.w / 2.0) * k, (r.y + r.h / 2.0) * k];
+        let (sin, cos) = blur.rotation.to_radians().sin_cos();
+        let bounds = turned_bounds(center, half, [cos, sin]);
         let pad = (3.0 * blur.sigma * k).ceil();
-        let area = self.area(grow(rect, pad), blur.sigma * k)?;
-        overlaps(rect, self.target)?;
-        let half = [(rect[2] - rect[0]) / 2.0, (rect[3] - rect[1]) / 2.0];
-        let center = [rect[0] + half[0], rect[1] + half[1]];
-        let [tr, tg, tb, ta] = blur.tint.linear();
-        let values = self.values(&area, rect, [tr, tg, tb, ta], center, half, blur.radius * k);
+        let area = self.area(grow(bounds, pad), blur.sigma * k)?;
+        overlaps(bounds, self.target)?;
+        let region = Region {
+            tint: blur.tint.linear(),
+            center,
+            half,
+            radius: blur.radius * k,
+            turn: [cos, sin, blur.opacity.clamp(0.0, 1.0)],
+        };
+        // One px more than the bounds, so an antialiased edge of a turned box is covered.
+        let values = self.values(&area, grow(bounds, 1.0), &region);
         Some(Op {
             slot: self.params.push(&values),
             texels: area.texels,
@@ -176,7 +206,7 @@ impl BlurPass {
             area.origin[0] + area.texels[0] as f32 * area.down,
             area.origin[1] + area.texels[1] as f32 * area.down,
         ];
-        let values = self.values(&area, quad, [0.0; 4], [0.0; 2], [0.0; 2], 0.0);
+        let values = self.values(&area, quad, &Region::NONE);
         Some(Op {
             slot: self.params.push(&values),
             texels: area.texels,
@@ -206,7 +236,7 @@ impl BlurPass {
             area.origin[0] + area.texels[0] as f32 * area.down,
             area.origin[1] + area.texels[1] as f32 * area.down,
         ];
-        let values = self.values(&area, quad, [0.0; 4], [0.0; 2], [0.0; 2], 0.0);
+        let values = self.values(&area, quad, &Region::NONE);
         Ok(Some(Op {
             slot: self.params.push(&values),
             texels: area.texels,
@@ -306,25 +336,21 @@ impl BlurPass {
         })
     }
 
-    fn values(
-        &self,
-        area: &Area,
-        quad: [f32; 4],
-        tint: [f32; 4],
-        center: [f32; 2],
-        half: [f32; 2],
-        radius: f32,
-    ) -> [f32; PARAMS] {
+    fn values(&self, area: &Area, quad: [f32; 4], region: &Region) -> [f32; PARAMS] {
         let [ox, oy] = area.origin;
         let [tx, ty] = area.texels.map(|t| t as f32);
         let (w, h) = (self.target.width as f32, self.target.height as f32);
+        let [cx, cy] = region.center;
+        let [hx, hy] = region.half;
+        let [cos, sin, opacity] = region.turn;
         let rows = [
             [ox, oy, area.down, area.sigma],
             [tx, ty, 0.0, 0.0],
             quad,
-            tint,
-            [center[0], center[1], half[0], half[1]],
-            [radius, w, h, 0.0],
+            region.tint,
+            [cx, cy, hx, hy],
+            [region.radius, w, h, 0.0],
+            [cos, sin, opacity, 0.0],
         ];
         let mut out = [0.0; PARAMS];
         out.copy_from_slice(rows.as_flattened());
@@ -342,6 +368,14 @@ fn overlaps(rect: [f32; 4], target: PixelSize) -> Option<[f32; 4]> {
         rect[3].min(h),
     ];
     (clipped[0] < clipped[2] && clipped[1] < clipped[3]).then_some(clipped)
+}
+
+/// Left, top, right, bottom of a rectangle of `half` size around `center` turned by
+/// `[cos, sin]` (clockwise on screen).
+fn turned_bounds(center: [f32; 2], half: [f32; 2], [cos, sin]: [f32; 2]) -> [f32; 4] {
+    let x = half[0] * cos.abs() + half[1] * sin.abs();
+    let y = half[0] * sin.abs() + half[1] * cos.abs();
+    [center[0] - x, center[1] - y, center[0] + x, center[1] + y]
 }
 
 fn grow(rect: [f32; 4], by: f32) -> [f32; 4] {

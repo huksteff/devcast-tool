@@ -212,6 +212,8 @@ fn golden_blur() -> TestResult {
             radius: 12.0,
             sigma: 8.0,
             tint,
+            rotation: 0.0,
+            opacity: 1.0,
         };
         scene.push(Band::Annotations, Layer::Blur(blur));
     }

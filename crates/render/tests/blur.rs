@@ -46,6 +46,8 @@ fn blur(rect: PxRect, sigma: f32, tint: Rgba, radius: f32) -> Layer {
         radius,
         sigma,
         tint,
+        rotation: 0.0,
+        opacity: 1.0,
     })
 }
 
@@ -269,5 +271,85 @@ fn glow_covers_earlier_figures_only() -> TestResult {
         0,
         "later figure over the glow",
     );
+    Ok(())
+}
+
+fn turned(rect: PxRect, tint: Rgba, rotation: f32, opacity: f32) -> Layer {
+    Layer::Blur(Blur {
+        rect,
+        radius: 0.0,
+        sigma: 4.0,
+        tint,
+        rotation,
+        opacity,
+    })
+}
+
+/// A square turned by 45° around its centre is a diamond: its corners reach past the straight
+/// square along the axes, and the straight square's corners are left out.
+#[test]
+fn turned_region_is_turned_around_its_centre() -> TestResult {
+    let red = Rgba([255, 0, 0, 255]);
+    let mut scene = Scene::new(size(256, 256));
+    let square = rect(78.0, 78.0, 100.0, 100.0);
+    scene.push(Band::Annotations, turned(square, red, 45.0, 1.0));
+    let image = render(&scene)?;
+    for (x, y) in [(128, 128), (128, 66), (66, 128), (190, 128), (128, 190)] {
+        assert_near(
+            pixel(&image, x, y),
+            [255, 0, 0, 255],
+            0,
+            &format!("{x},{y}"),
+        );
+    }
+    for (x, y) in [(82, 82), (174, 82), (82, 174), (174, 174)] {
+        assert_near(pixel(&image, x, y), BLACK, 0, &format!("corner {x},{y}"));
+    }
+    Ok(())
+}
+
+/// A quarter turn of a wide region gives the tall one; a camera keeps the turn.
+#[test]
+fn quarter_turn_swaps_the_sides_under_the_camera() -> TestResult {
+    let tint = Rgba([0, 255, 0, 160]);
+    let frame = |layer: Layer, camera: Camera| -> Result<Image, Box<dyn std::error::Error>> {
+        let mut scene = half_white(vec![layer]);
+        scene.camera = camera;
+        render(&scene)
+    };
+    let zoom = Camera {
+        scale: 2.0,
+        x: -128.0,
+        y: -32.0,
+    };
+    for camera in [Camera::IDENTITY, zoom] {
+        let wide = frame(
+            turned(rect(96.0, 24.0, 64.0, 16.0), tint, 90.0, 1.0),
+            camera,
+        )?;
+        let tall = frame(turned(rect(120.0, 0.0, 16.0, 64.0), tint, 0.0, 1.0), camera)?;
+        let differ = wide
+            .rgba
+            .chunks(4)
+            .zip(tall.rgba.chunks(4))
+            .filter(|(a, b)| a.iter().zip(*b).any(|(a, b)| a.abs_diff(*b) > 1))
+            .count();
+        assert_eq!(differ, 0, "pixels off by more than 1 under {camera:?}");
+    }
+    Ok(())
+}
+
+/// The opacity fades the blur and its tint together: half of a solid red over black is half red
+/// in linear light, none leaves the frame as it was.
+#[test]
+fn opacity_fades_the_whole_region() -> TestResult {
+    let red = Rgba([255, 0, 0, 255]);
+    let square = rect(160.0, 0.0, 64.0, 64.0);
+    let image = render(&half_white(vec![turned(square, red, 0.0, 0.5)]))?;
+    let half = srgb_byte(0.5);
+    assert_near(pixel(&image, 192, 32), [half, 0, 0, 255], 1, "half faded");
+    let plain = render(&half_white(vec![]))?;
+    let gone = render(&half_white(vec![turned(square, red, 30.0, 0.0)]))?;
+    assert_eq!(plain, gone);
     Ok(())
 }

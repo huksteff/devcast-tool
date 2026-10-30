@@ -8,6 +8,7 @@ struct Params {
     tint: vec4<f32>,    // linear rgb; a: how much the tint covers the blur
     region: vec4<f32>,  // rounded rectangle, target px: centre xy, half size zw
     frame: vec4<f32>,   // x: corner radius px; yz: target size px
+    turn: vec4<f32>,    // xy: cos and sin of the region's turn, clockwise on screen; z: opacity
 };
 @group(0) @binding(0) var src: texture_2d<f32>;
 @group(0) @binding(1) var bilinear: sampler;
@@ -81,9 +82,12 @@ fn blurred(px: vec2<f32>) -> vec4<f32> {
 @fragment fn fs_region(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let rgb = mix(blurred(pos.xy).rgb, p.tint.rgb, p.tint.a);
     let r = min(p.frame.x, min(p.region.z, p.region.w));
-    let q = abs(pos.xy - p.region.xy) - p.region.zw + vec2<f32>(r);
+    // Into the region's own axes: turned back by its turn.
+    let v = pos.xy - p.region.xy;
+    let local = vec2<f32>(v.x * p.turn.x + v.y * p.turn.y, v.y * p.turn.x - v.x * p.turn.y);
+    let q = abs(local) - p.region.zw + vec2<f32>(r);
     let d = length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
-    let a = clamp(0.5 - d, 0.0, 1.0);
+    let a = clamp(0.5 - d, 0.0, 1.0) * p.turn.z;
     return vec4<f32>(rgb * a, a);
 }
 

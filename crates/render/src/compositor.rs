@@ -294,7 +294,8 @@ impl Compositor {
     }
 }
 
-/// `blur` seen through `camera`: the rectangle, corner radius and sigma move and scale with it.
+/// `blur` seen through `camera`: the rectangle, corner radius and sigma move and scale with it;
+/// the turn and the opacity stay.
 fn through(blur: &Blur, camera: Camera) -> Blur {
     let r = blur.rect;
     let [x, y] = camera.apply([r.x, r.y]);
@@ -308,6 +309,6 @@ fn through(blur: &Blur, camera: Camera) -> Blur {
         },
         radius: blur.radius * k,
         sigma: blur.sigma * k,
-        tint: blur.tint,
+        ..*blur
     }
 }

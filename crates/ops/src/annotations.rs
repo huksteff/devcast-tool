@@ -1,11 +1,12 @@
 //! Annotations in the scene: those of the shown recording moment, bottom to top in their layer
 //! order (`AnnotationsState::shown_at`), each drawn by its kind's crate into `Band::Annotations`
-//! under the camera. A kind without drawing yet (blur, 5.36) is skipped.
+//! under the camera.
 
 use std::collections::HashMap;
 
 use dc_core::{OutputTime, TimeDelta, TimeMap};
 use dc_fx_annotations::{AnnotId, Annotation, AnnotationsState, Kind, Placement, keyed, shown_for};
+use dc_fx_blur::BlurBody;
 use dc_fx_drawing::DrawingBody;
 use dc_fx_image::ImageBody;
 use dc_fx_shape::ShapeBody;
@@ -29,6 +30,7 @@ enum Look {
     Shape(Fields<ShapeBody>),
     Image(Fields<ImageBody>),
     Drawing(Fields<DrawingBody>),
+    Blur(Fields<BlurBody>),
 }
 
 /// A kind's fields as typed values: the annotation's own and those of its keys, by key time.
@@ -61,16 +63,14 @@ impl<B: DeserializeOwned> Fields<B> {
 }
 
 impl Prepared {
-    /// Reads the fields of every annotation that draws; a text's fonts must be in `measure`.
+    /// Reads the fields of every annotation; a text's fonts must be in `measure`.
     pub(crate) fn new(
         state: AnnotationsState,
         measure: &TextMeasure,
     ) -> Result<Self, EvaluateError> {
         let mut looks = HashMap::new();
         for annotation in &state.annotations {
-            if let Some(look) = look(annotation, measure)? {
-                looks.insert(annotation.id, look);
-            }
+            looks.insert(annotation.id, look(annotation, measure)?);
         }
         Ok(Self { state, looks })
     }
@@ -112,24 +112,28 @@ impl Prepared {
                         None => continue,
                     }
                 }
+                Look::Blur(fields) => {
+                    let body = keyed(&fields.base, &fields.keys, offset);
+                    Layer::Blur(dc_fx_blur::evaluate(&body, &placement))
+                }
             };
             scene.push(Band::Annotations, layer);
         }
     }
 }
 
-fn look(annotation: &Annotation, measure: &TextMeasure) -> Result<Option<Look>, EvaluateError> {
+fn look(annotation: &Annotation, measure: &TextMeasure) -> Result<Look, EvaluateError> {
     Ok(match annotation.kind {
         Kind::Text => {
             let fields = Fields::<TextBody>::read(annotation)?;
             for body in fields.all() {
                 measure.check(&body.font)?;
             }
-            Some(Look::Text(fields))
+            Look::Text(fields)
         }
-        Kind::Shape => Some(Look::Shape(Fields::read(annotation)?)),
-        Kind::Image => Some(Look::Image(Fields::read(annotation)?)),
-        Kind::Drawing => Some(Look::Drawing(Fields::read(annotation)?)),
-        Kind::Blur => None,
+        Kind::Shape => Look::Shape(Fields::read(annotation)?),
+        Kind::Image => Look::Image(Fields::read(annotation)?),
+        Kind::Drawing => Look::Drawing(Fields::read(annotation)?),
+        Kind::Blur => Look::Blur(Fields::read(annotation)?),
     })
 }
