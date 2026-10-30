@@ -15,7 +15,9 @@ use crate::record;
 use crate::record_args::RecordArgs;
 use crate::record_control::Control;
 use crate::run::Answer;
-use crate::{autozoom, captions, events, image, import, silences, skill, sources, transcript};
+use crate::{
+    audio, autozoom, captions, events, image, import, silences, skill, sources, transcript,
+};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -146,6 +148,12 @@ enum Builtin {
         #[command(subcommand)]
         command: CaptionsCommand,
     },
+    /// `audio add`; the other `audio …` commands are ops of the registry.
+    #[command(disable_help_subcommand = true)]
+    Audio {
+        #[command(subcommand)]
+        command: AudioCommand,
+    },
     /// `image set`: the picture of an image annotation.
     #[command(disable_help_subcommand = true)]
     Image {
@@ -258,6 +266,18 @@ enum ImageCommand {
     Set(image::SetArgs),
 }
 
+#[derive(Debug, Subcommand)]
+enum AudioCommand {
+    #[command(
+        about = "Добавить звук mp3/wav/aac/m4a/flac/ogg по времени готового видео (копия в assets/audio/)",
+        after_help = "audio add музыка.mp3 --at 5 --duration 30"
+    )]
+    Add(audio::AddArgs),
+    /// `audio channel`, `audio set` … from the registry.
+    #[command(external_subcommand)]
+    Op(Vec<String>),
+}
+
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum SkillAction {
     Install,
@@ -303,14 +323,8 @@ impl Cli {
             Builtin::Zoom {
                 command: ZoomCommand::Op(words),
             } => autozoom::op(ctx, &[vec!["zoom".to_owned()], words].concat()),
-            Builtin::Captions { command } => match command {
-                CaptionsCommand::Gen(args) => captions::generate(ctx, &args),
-                CaptionsCommand::Export { out } => captions::export(ctx, &out),
-                CaptionsCommand::Import { file } => captions::import(ctx, &file),
-                CaptionsCommand::Op(words) => {
-                    edit::op(ctx, &[vec!["captions".to_owned()], words].concat())
-                }
-            },
+            Builtin::Captions { command } => command.execute(ctx),
+            Builtin::Audio { command } => command.execute(ctx),
             Builtin::Image {
                 command: ImageCommand::Set(args),
             } => image::set(ctx, &args),
@@ -340,6 +354,26 @@ impl Cli {
                 action: SkillAction::Install,
             } => skill::install(&skill::target()?, ctx.globals.dry_run),
             Builtin::Op(words) => edit::op(ctx, &words),
+        }
+    }
+}
+
+impl CaptionsCommand {
+    fn execute(self, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
+        match self {
+            Self::Gen(args) => captions::generate(ctx, &args),
+            Self::Export { out } => captions::export(ctx, &out),
+            Self::Import { file } => captions::import(ctx, &file),
+            Self::Op(words) => edit::op(ctx, &[vec!["captions".to_owned()], words].concat()),
+        }
+    }
+}
+
+impl AudioCommand {
+    fn execute(self, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
+        match self {
+            Self::Add(args) => audio::add(ctx, &args),
+            Self::Op(words) => edit::op(ctx, &[vec!["audio".to_owned()], words].concat()),
         }
     }
 }

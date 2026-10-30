@@ -1,5 +1,6 @@
 //! devcast command-line tool: edit, analyse, render and export projects.
 
+mod audio;
 mod autozoom;
 mod builtin;
 mod captions;
@@ -24,11 +25,14 @@ pub mod registry;
 pub mod run;
 mod silences;
 mod skill;
+mod sound;
 mod sources;
 mod telemetry;
 mod transcript;
 pub mod workspace;
 
+#[cfg(test)]
+mod audio_tests;
 #[cfg(test)]
 mod autozoom_tests;
 #[cfg(test)]

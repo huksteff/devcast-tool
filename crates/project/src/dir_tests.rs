@@ -20,6 +20,7 @@ fn with_clip(mut project: Project) -> Project {
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: dc_core::Rect::FULL,
+        audio: Default::default(),
     });
     project
 }

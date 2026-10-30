@@ -34,6 +34,7 @@ fn recording(id: ClipId, path: String, secs: f64) -> Clip {
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     }
 }
 

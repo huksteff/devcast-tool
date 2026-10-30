@@ -27,6 +27,7 @@ fn clip(project: &mut Project, length: f64) -> &mut Clip {
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: dc_core::Rect::FULL,
+        audio: Default::default(),
     });
     project.clips.last_mut().unwrap()
 }

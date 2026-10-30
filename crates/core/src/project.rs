@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::clip_audio::ClipAudio;
 use crate::geom::{PixelSize, Rect};
 use crate::id::{Id, IdCounter, IdKind};
 use crate::time::{Range, SourceTime, TimeDelta};
@@ -78,6 +79,9 @@ pub struct Clip {
     /// Visible part of the source frame, in its fractions; a clip split in two keeps it in both.
     #[serde(default = "full_frame", skip_serializing_if = "is_full_frame")]
     pub crop: Rect,
+    /// Sound of the clip: its own levels of its sound tracks and a mute of the whole clip.
+    #[serde(default, skip_serializing_if = "ClipAudio::is_default")]
+    pub audio: ClipAudio,
 }
 
 fn full_frame() -> Rect {
@@ -182,6 +186,7 @@ impl Clip {
             ));
         }
         problems.extend(crop_problem(self.crop));
+        problems.extend(self.audio.problems());
         if self.trim.is_empty() {
             problems.push("пустой trim".to_owned());
         }

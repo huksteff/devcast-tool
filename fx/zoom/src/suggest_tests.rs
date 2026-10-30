@@ -31,6 +31,7 @@ fn project(lengths: &[f64]) -> Project {
             cuts: Vec::new(),
             speeds: Vec::new(),
             crop: Rect::FULL,
+            audio: Default::default(),
         });
     }
     p

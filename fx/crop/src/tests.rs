@@ -26,6 +26,7 @@ fn project(clips: u32) -> Project {
             cuts: Vec::new(),
             speeds: Vec::new(),
             crop: dc_core::Rect::FULL,
+            audio: Default::default(),
         });
     }
     project

@@ -20,6 +20,7 @@ fn clip_of(width: u32, height: u32, crop: Rect) -> Project {
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop,
+        audio: Default::default(),
     });
     project
 }

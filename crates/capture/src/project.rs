@@ -79,6 +79,7 @@ pub fn add_recording<'a>(
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     });
     Ok(&project.clips[index])
 }

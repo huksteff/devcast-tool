@@ -141,6 +141,18 @@ devcast annot rm a2
 devcast keys --show --position bottom_right --size 1.5
 ```
 
+Звук. Дорожки записи — `system` и `mic` (у импортированного видео — `audio-1`, `audio-2` …). Уровень дорожки: `--volume` 0–100 (%), `--gain` 1–10 (×; лимитер держит пики ниже −1 dBTP), `--mute`, `--normalize` (EBU R128 до −16 LUFS), `--denoise` (шумоподавление, запись не меняется); выключить — `--normalize false`. Без `--clip` — уровень по умолчанию для всех клипов; с `--clip` — свой у клипа: заданный параметр клипа больше не следует умолчанию, остальные следуют. Разрезанный клип сохраняет свои уровни в обеих половинах. Дополнительный звук (mp3, wav, aac, m4a, flac, ogg; id `au1`, `au2`) стоит по времени готового видео: вырезы и скорость его не сдвигают, играет в 1×.
+```
+devcast audio channel mic --volume 80 --denoise   # по умолчанию для всех клипов
+devcast audio channel system --clip c2 --mute     # свой уровень клипа c2
+devcast audio mute c1                             # весь клип; --off — вернуть звук
+devcast audio reset c2                            # уровни клипа снова по умолчанию (--channel mic — одна дорожка)
+devcast audio add музыка.mp3 --at 2 --duration 5  # копия в assets/audio/; --track 0–31, без него — первая свободная
+devcast audio set au1 --volume 30 --normalize     # --at, --duration, --offset (секунда файла в начале), --gain, --mute
+devcast ls audio
+devcast audio rm au1
+```
+
 Кроп клипа и формат кадра:
 ```
 devcast crop c2 0.1,0,0.8,1      # x,y,w,h в долях исходника; 0,0,1,1 снимает кроп

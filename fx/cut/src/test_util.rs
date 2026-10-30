@@ -45,6 +45,7 @@ pub fn project(durations: &[f64]) -> Project {
             cuts: Vec::new(),
             speeds: Vec::new(),
             crop: dc_core::Rect::FULL,
+            audio: Default::default(),
         });
     }
     p

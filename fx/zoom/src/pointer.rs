@@ -97,6 +97,7 @@ mod tests {
             cuts: vec![Range::new(secs(2.0), secs(4.0)).unwrap()],
             speeds: Vec::new(),
             crop: Rect::new(0.5, 0.0, 0.5, 1.0).unwrap(),
+            audio: Default::default(),
         });
         let moves = vec![
             CursorPoint {

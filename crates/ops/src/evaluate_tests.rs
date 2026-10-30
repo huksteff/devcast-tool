@@ -23,6 +23,7 @@ pub(crate) fn clip(project: &mut Project, path: &str, secs: f64, width: u32, hei
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     });
 }
 

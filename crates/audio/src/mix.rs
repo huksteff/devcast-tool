@@ -1,6 +1,6 @@
 //! The project's sound on the output timeline: every sound track of every segment of the time
-//! map at its clip's level (and EBU R128 normalization), with crossfades at the joins and speed through `atempo`, summed and
-//! limited.
+//! map at its clip's level (and EBU R128 normalization), with crossfades at the joins and speed
+//! through `atempo`, and the extra sound files at their places, summed and limited.
 //!
 //! One path for preview and export: both ask [`Mixer::render`] for output frames; preview
 //! jumps around, export goes through in order. Each frame depends only on the project, not on
@@ -12,7 +12,8 @@ use dc_core::{Project, TimeMap};
 use dc_project::ProjectDir;
 
 use crate::error::AudioError;
-use crate::levels::Levels;
+use crate::file::file_track;
+use crate::levels::{ChannelLevel, ExtraClip, Levels};
 use crate::limiter::Limited;
 use crate::loudness::LoudnessCache;
 use crate::part::{Part, PartStream};
@@ -33,8 +34,8 @@ struct Sum {
 }
 
 impl Mixer {
-    /// The mix of `project`, whose folder is `project_dir`, at `levels`; normalized tracks are
-    /// measured into `loudness` unless they are there already.
+    /// The mix of `project`, whose folder is `project_dir`, at `levels`, with their extra sound;
+    /// normalized tracks are measured into `loudness` unless they are there already.
     pub fn new(
         project_dir: &ProjectDir,
         project: &Project,
@@ -42,35 +43,9 @@ impl Mixer {
         loudness: &mut LoudnessCache,
     ) -> Result<Self, AudioError> {
         let map = TimeMap::build(project);
-        let mut media_tracks: HashMap<&str, Vec<SourceTrack>> = HashMap::new();
-        for clip in &project.clips {
-            if !media_tracks.contains_key(clip.media.path.as_str()) {
-                let found = tracks(project_dir, &clip.media)?;
-                media_tracks.insert(&clip.media.path, found);
-            }
-        }
-        let segments = map.segments();
-        let mut parts = Vec::new();
-        for (index, segment) in segments.iter().enumerate() {
-            for track in &media_tracks[segment.media.as_str()] {
-                let level = levels.channel(segment.clip, &track.name);
-                let normalization = if level.normalized() && level.factor() > 0.0 {
-                    loudness.normalization(track)?
-                } else {
-                    1.0
-                };
-                parts.push(Part {
-                    gain: level.factor() * normalization,
-                    denoise: level.denoised(),
-                    track: track.clone(),
-                    start: frame_at(segment.output_start.micros()),
-                    end: frame_at(segment.output_end().micros()),
-                    source: frame_at(segment.source.start().micros()),
-                    speed: segment.speed,
-                    join_before: index > 0,
-                    join_after: index + 1 < segments.len(),
-                });
-            }
+        let mut parts = clip_parts(project_dir, project, &map, levels, loudness)?;
+        for extra in &levels.extra {
+            parts.extend(extra_part(extra, loudness)?);
         }
         Ok(Self {
             sum: Sum {
@@ -95,6 +70,76 @@ impl Mixer {
         self.limited
             .render(start, out, |from, buffer| sum.fill(from, buffer))
     }
+}
+
+/// Every sound track of every segment of `map`, at its clip's level.
+fn clip_parts(
+    project_dir: &ProjectDir,
+    project: &Project,
+    map: &TimeMap,
+    levels: &Levels,
+    loudness: &mut LoudnessCache,
+) -> Result<Vec<Part>, AudioError> {
+    let mut media_tracks: HashMap<&str, Vec<SourceTrack>> = HashMap::new();
+    for clip in &project.clips {
+        if !media_tracks.contains_key(clip.media.path.as_str()) {
+            let found = tracks(project_dir, &clip.media)?;
+            media_tracks.insert(&clip.media.path, found);
+        }
+    }
+    let segments = map.segments();
+    let mut parts = Vec::new();
+    for (index, segment) in segments.iter().enumerate() {
+        for track in &media_tracks[segment.media.as_str()] {
+            let level = levels.channel(segment.clip, &track.name);
+            parts.push(Part {
+                gain: gain(level, track, loudness)?,
+                denoise: level.denoised(),
+                track: track.clone(),
+                start: frame_at(segment.output_start.micros()),
+                end: frame_at(segment.output_end().micros()),
+                source: frame_at(segment.source.start().micros()),
+                speed: segment.speed,
+                join_before: index > 0,
+                join_after: index + 1 < segments.len(),
+            });
+        }
+    }
+    Ok(parts)
+}
+
+/// The part of an extra sound file; none when it is silent or empty. Its edges fade like a
+/// join ([`crate::CROSSFADE`]), so a file cut short or started inside does not click.
+fn extra_part(extra: &ExtraClip, loudness: &mut LoudnessCache) -> Result<Option<Part>, AudioError> {
+    if extra.end <= extra.start || extra.level.factor() == 0.0 {
+        return Ok(None);
+    }
+    let track = file_track(&extra.path)?;
+    Ok(Some(Part {
+        gain: gain(extra.level, &track, loudness)?,
+        denoise: extra.level.denoised(),
+        start: frame_at(extra.start.micros()),
+        end: frame_at(extra.end.micros()),
+        source: frame_at(extra.offset.micros()),
+        track,
+        speed: 1.0,
+        join_before: true,
+        join_after: true,
+    }))
+}
+
+/// Factor of `level` on `track`, with its normalization.
+fn gain(
+    level: ChannelLevel,
+    track: &SourceTrack,
+    loudness: &mut LoudnessCache,
+) -> Result<f32, AudioError> {
+    let normalization = if level.normalized() && level.factor() > 0.0 {
+        loudness.normalization(track)?
+    } else {
+        1.0
+    };
+    Ok(level.factor() * normalization)
 }
 
 impl Sum {

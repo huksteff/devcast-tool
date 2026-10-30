@@ -43,6 +43,7 @@ pub fn clip(project: &mut Project, path: &str, secs: f64, size: PixelSize) {
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     });
 }
 

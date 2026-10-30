@@ -52,49 +52,12 @@ pub fn import_picture(
         });
     }
     let picture = decode_picture(source)?;
-    let dir = folder
-        .split('/')
-        .fold(project.root().to_path_buf(), |dir, part| dir.join(part));
-    let mut n = 1;
-    loop {
-        let name = match n {
-            1 => format!("{stem}.{extension}"),
-            _ => format!("{stem}-{n}.{extension}"),
-        };
-        let target = dir.join(&name);
-        let path = format!("{folder}/{name}");
-        if !target.exists() {
-            if !dry_run {
-                std::fs::create_dir_all(&dir).map_err(MediaError::io("создать папку", &dir))?;
-                std::fs::copy(source, &target).map_err(MediaError::io("скопировать", source))?;
-            }
-            let copied = !dry_run;
-            return Ok(ImportedPicture {
-                path,
-                picture,
-                copied,
-            });
-        }
-        if same_bytes(source, &target)? {
-            return Ok(ImportedPicture {
-                path,
-                picture,
-                copied: false,
-            });
-        }
-        n += 1;
-    }
-}
-
-fn same_bytes(a: &Path, b: &Path) -> Result<bool, MediaError> {
-    let size = |p: &Path| std::fs::metadata(p).map(|m| m.len());
-    if size(a).map_err(MediaError::io("прочитать", a))?
-        != size(b).map_err(MediaError::io("прочитать", b))?
-    {
-        return Ok(false);
-    }
-    let read = |p: &Path| std::fs::read(p).map_err(MediaError::io("прочитать", p));
-    Ok(read(a)? == read(b)?)
+    let file = dc_project::copy_in(project, folder, source, &stem, &extension, dry_run)?;
+    Ok(ImportedPicture {
+        path: file.path,
+        picture,
+        copied: file.copied,
+    })
 }
 
 #[cfg(test)]

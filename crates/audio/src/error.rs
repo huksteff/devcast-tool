@@ -22,6 +22,17 @@ pub enum AudioError {
     #[error("в файле {path} нет дорожки {stream}: файл подменили, верни исходный")]
     NoStream { path: PathBuf, stream: usize },
 
+    #[error(
+        "«{}» — не звук в поддерживаемом формате: подходят mp3, wav, aac, m4a, flac и ogg. Перекодируй файл в один из них", .0.display()
+    )]
+    NotSound(PathBuf),
+
+    #[error("нет файла «{}»: проверь путь", .0.display())]
+    NotFound(PathBuf),
+
+    #[error("в файле «{}» нет звука: выбери файл со звуковой дорожкой", .0.display())]
+    NoSound(PathBuf),
+
     #[error("запись {0} не собрана: открой проект в DevCast, он восстановит её, затем повтори")]
     Unfinished(PathBuf),
 

@@ -64,6 +64,7 @@ pub fn clip(project: &mut Project, path: &str, size: PixelSize, crop: Rect) -> T
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop,
+        audio: Default::default(),
     });
     Ok(())
 }

@@ -56,6 +56,7 @@ pub fn add_clip<'a>(project: &'a mut Project, path: &str, seconds: f64) -> &'a m
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     });
     project.clips.last_mut().unwrap()
 }

@@ -6,6 +6,7 @@
 
 mod denoise;
 pub mod error;
+pub mod file;
 pub mod levels;
 pub mod loudness;
 pub mod mix;
@@ -23,7 +24,8 @@ mod tempo;
 mod test_util;
 
 pub use error::AudioError;
-pub use levels::{ChannelLevel, ClipLevels, GAIN_MAX, Levels};
+pub use file::{AUDIO_EXTENSIONS, ImportedSound, file_duration, file_track, import_sound};
+pub use levels::{ChannelLevel, ClipLevels, ExtraClip, GAIN_MAX, Levels};
 pub use limiter::CEILING;
 pub use loudness::{LoudnessCache, Measurement, Meter, TARGET};
 pub use mix::Mixer;

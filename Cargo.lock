@@ -677,6 +677,7 @@ dependencies = [
  "dc-core",
  "dc-encode",
  "dc-fx-annotations",
+ "dc-fx-audio-tracks",
  "dc-fx-blur",
  "dc-fx-callout",
  "dc-fx-captions",
@@ -745,6 +746,12 @@ dependencies = [
 [[package]]
 name = "dc-fx-audio-tracks"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "dc-fx-blur"

@@ -1,7 +1,7 @@
 //! `devcast info` and `devcast ls <list>`: what is in the project, in output time.
 
 use dc_core::time::Output;
-use dc_core::{OutputTime, Project, Range, Rect, TimeMap};
+use dc_core::{OutputTime, Place, Project, Range, Rect, TimeMap};
 use dc_ops::Registry;
 use serde_json::{Map, Value, json};
 
@@ -68,8 +68,12 @@ fn rows(list: &str, project: &Project, registry: &Registry) -> Result<Vec<Row>, 
     for effect in effects {
         for item in (effect.items)(project).map_err(|e| CliError::Failed(e.to_string()))? {
             if item.list == list {
+                let span = match &item.place {
+                    Place::Source { media, range } => map.output_span(media, *range),
+                    Place::Output(range) => Some(*range),
+                };
                 rows.push(Row {
-                    span: map.output_span(&item.media, item.range),
+                    span,
                     id: item.id,
                     fields: item.fields,
                 });

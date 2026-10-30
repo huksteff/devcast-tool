@@ -33,6 +33,7 @@ pub(crate) fn project(lengths: &[f64]) -> Project {
             cuts: Vec::new(),
             speeds: Vec::new(),
             crop: Rect::FULL,
+            audio: Default::default(),
         });
     }
     p
@@ -252,7 +253,10 @@ fn kind_fields_round_trip_and_are_listed() {
     assert_eq!(state(&loaded).annotations[0].body::<Body>().unwrap(), body);
     let items = (crate::effect().items)(&p).unwrap();
     assert_eq!((items[0].id.as_str(), items[0].list), ("a1", "annots"));
-    assert_eq!(items[0].range, range(1.0, 2.0));
+    let dc_core::Place::Source { range: span, .. } = &items[0].place else {
+        panic!("{:?}", items[0].place)
+    };
+    assert_eq!(*span, range(1.0, 2.0));
     assert_eq!(items[0].fields["kind"], "text");
     assert_eq!(items[0].fields["rotation"], 15.0);
     assert_eq!(items[0].fields["rect"]["w"], 0.3);

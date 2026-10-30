@@ -3,11 +3,13 @@
 //! normalization; the clip as a whole has a mute. There is no common level of a clip.
 //!
 //! These are the levels in effect: which of them come from the project defaults and which the
-//! clip changed is the model of `fx/audio-tracks`, which passes the result here.
+//! clip changed is the model of `fx/audio-tracks`, which passes the result here, with the extra
+//! sound files it places on the output timeline ([`ExtraClip`]).
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
-use dc_core::ClipId;
+use dc_core::{ClipId, OutputTime, TimeDelta};
 
 use crate::error::AudioError;
 
@@ -112,10 +114,27 @@ pub struct ClipLevels {
     pub channels: BTreeMap<String, ChannelLevel>,
 }
 
-/// Levels of the clips of a project: a clip not listed plays at [`ClipLevels::default`].
+/// A sound file on the output timeline (an extra track of `fx/audio-tracks`): it does not move
+/// when the video is cut, and plays at 1×.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExtraClip {
+    /// The file, absolute.
+    pub path: PathBuf,
+    /// Where it plays on the output, `start..end`.
+    pub start: OutputTime,
+    pub end: OutputTime,
+    /// Time of the file played at `start`, from its first sample.
+    pub offset: TimeDelta,
+    /// Its level; normalization is measured on the whole file.
+    pub level: ChannelLevel,
+}
+
+/// What the mix takes from the project besides its clips: the levels of the clips (a clip not
+/// listed plays at [`ClipLevels::default`]) and the extra sound.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Levels {
     pub clips: BTreeMap<ClipId, ClipLevels>,
+    pub extra: Vec<ExtraClip>,
 }
 
 impl Levels {

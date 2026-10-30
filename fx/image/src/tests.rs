@@ -27,6 +27,7 @@ pub(crate) fn project() -> Project {
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     });
     for kind in ["image", "text"] {
         let add: AnnotAdd = serde_json::from_value(json!({"kind": kind, "at": 1})).unwrap();

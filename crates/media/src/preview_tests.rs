@@ -98,6 +98,7 @@ fn project_preview_is_of_the_first_clip() {
             cuts: Vec::new(),
             speeds: Vec::new(),
             crop: dc_core::Rect::FULL,
+            audio: Default::default(),
         });
     }
     let path = project_preview(&dir, &project).unwrap().unwrap();

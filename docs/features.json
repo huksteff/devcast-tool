@@ -75,7 +75,7 @@
     { "id": "cap.style", "area": "Субтитры", "title": "Стиль субтитров", "acceptance": "Шрифт, размер, цвет, тень, 1–4 строки, отступ, ширина, плашка, цвета активного и неактивного слова, анимации none/fade/rise/pop.", "verify": ["test", "golden", "visual"], "tasks": ["5.28"], "status": "pass" },
     { "id": "cap.translate", "area": "Субтитры", "title": "Перевод через CLI", "acceptance": "captions export → перевод → captions import сохраняет тайминг реплик.", "verify": ["test", "cli"], "tasks": ["5.27"], "status": "pass" },
 
-    { "id": "audio.tracks", "area": "Аудио", "title": "Дополнительные дорожки", "acceptance": "mp3, wav, aac, m4a, flac, ogg; клипы идут по времени выхода.", "verify": ["test", "cli"], "tasks": ["5.37"], "status": "todo" },
+    { "id": "audio.tracks", "area": "Аудио", "title": "Дополнительные дорожки", "acceptance": "mp3, wav, aac, m4a, flac, ogg; клипы идут по времени выхода.", "verify": ["test", "cli"], "tasks": ["5.37"], "status": "pass" },
     { "id": "audio.levels", "area": "Аудио", "title": "Громкость и усиление", "acceptance": "Громкость 0–100% и отдельно усиление до 10× без цифрового клиппинга.", "verify": ["test"], "tasks": ["4.7"], "status": "pass" },
     { "id": "audio.normalize", "area": "Аудио", "title": "Нормализация EBU R128", "acceptance": "Измеренная громкость результата совпадает с целевой.", "verify": ["test"], "tasks": ["4.8"], "status": "pass" },
     { "id": "audio.channels", "area": "Аудио", "title": "Каналы записи", "acceptance": "Уровни и mute системного звука и микрофона для каждого клипа.", "verify": ["test", "ui"], "tasks": ["4.7", "5.37", "7.19"], "status": "todo" },

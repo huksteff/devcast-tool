@@ -46,6 +46,7 @@ impl Command for ClipAdd {
             cuts: Vec::new(),
             speeds: Vec::new(),
             crop: Rect::FULL,
+            audio: Default::default(),
         });
         Ok(Diff::added(id))
     }

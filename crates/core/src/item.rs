@@ -1,21 +1,28 @@
-//! Objects an effect shows on its timeline track (zooms, annotations, captions), described one way
-//! for `devcast ls`: id, recording, source range and the rest of their fields.
+//! Objects an effect shows on its timeline track (zooms, annotations, captions, extra sound),
+//! described one way for `devcast ls`: id, where it is and the rest of their fields.
 
 use serde::Serialize;
 use serde::ser::Error as _;
 use serde_json::{Map, Value};
 
 use crate::id::{Id, IdKind};
-use crate::time::{Range, Source};
+use crate::time::{Output, Range, Source};
+
+/// Where an object of a track is.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Place {
+    /// On a recording (`Media.path`), in its source time: cutting moves it with the frames.
+    Source { media: String, range: Range<Source> },
+    /// On the output timeline: cutting does not move it (extra sound tracks).
+    Output(Range<Output>),
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Item {
     pub id: String,
     /// The list of `devcast ls <list>` it belongs to, e.g. `zooms`.
     pub list: &'static str,
-    /// Recording (`Media.path`) whose source time `range` is in.
-    pub media: String,
-    pub range: Range<Source>,
+    pub place: Place,
     /// The other fields of the object, as stored in the project.
     pub fields: Map<String, Value>,
 }
@@ -29,6 +36,24 @@ impl Item {
         range: Range<Source>,
         object: &impl Serialize,
     ) -> Result<Self, serde_json::Error> {
+        let media = media.to_owned();
+        Self::placed(id, Place::Source { media, range }, object)
+    }
+
+    /// An object of the output timeline at `range`; its `id` and `range` fields are left out.
+    pub fn on_output<K: IdKind>(
+        id: Id<K>,
+        range: Range<Output>,
+        object: &impl Serialize,
+    ) -> Result<Self, serde_json::Error> {
+        Self::placed(id, Place::Output(range), object)
+    }
+
+    fn placed<K: IdKind>(
+        id: Id<K>,
+        place: Place,
+        object: &impl Serialize,
+    ) -> Result<Self, serde_json::Error> {
         let Value::Object(mut fields) = serde_json::to_value(object)? else {
             return Err(serde_json::Error::custom(format!(
                 "{id}: объект дорожки должен быть JSON-объектом"
@@ -40,8 +65,7 @@ impl Item {
         Ok(Self {
             id: id.to_string(),
             list: K::LIST,
-            media: media.to_owned(),
-            range,
+            place,
             fields,
         })
     }

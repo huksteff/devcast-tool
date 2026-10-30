@@ -18,6 +18,7 @@ pub fn registry() -> Result<Registry, CliError> {
         dc_fx_shape::ops(),
         dc_fx_drawing::ops(),
         dc_fx_blur::ops(),
+        dc_fx_audio_tracks::ops(),
     ]
     .concat();
     let effects = vec![
@@ -28,6 +29,7 @@ pub fn registry() -> Result<Registry, CliError> {
         dc_fx_keys::effect(),
         dc_fx_captions::effect(),
         dc_fx_annotations::effect(),
+        dc_fx_audio_tracks::effect(),
     ];
     Registry::new(ops, effects).map_err(|e| {
         CliError::Failed(format!(

@@ -30,6 +30,7 @@ pub fn clip(project: &mut Project, duration: f64) -> ClipId {
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     });
     id
 }

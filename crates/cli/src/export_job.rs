@@ -1,11 +1,11 @@
 //! One export job: the project snapshot taken by `devcast export`, evaluated by
 //! `dc_ops::Evaluator`, rendered and encoded by `dc_encode::export` with the project's sound mixed
-//! by `dc-audio`.
+//! by `dc-audio` at the levels of `fx/audio-tracks` (`crate::sound`).
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use dc_audio::{CHANNELS, Levels, LoudnessCache, Mixer, RATE};
+use dc_audio::{CHANNELS, LoudnessCache, Mixer, RATE};
 use dc_core::Project;
 use dc_encode::export::{Exported, ProgressFn, Timeline, export_gif, export_mp4};
 use dc_encode::{AudioSettings, EncodeError, Sources};
@@ -52,8 +52,10 @@ pub(crate) fn run(
     for clip in &project.clips {
         source_fps = source_fps.max(cached_probe(&dir, &clip.media.path)?.fps);
     }
+    let levels =
+        crate::sound::levels(&spec.root, project).map_err(|e| EncodeError::Sound(Box::new(e)))?;
     let mut loudness = LoudnessCache::default();
-    let mut mixer = Mixer::new(&dir, project, &Levels::default(), &mut loudness)
+    let mut mixer = Mixer::new(&dir, project, &levels, &mut loudness)
         .map_err(|e| EncodeError::Sound(Box::new(e)))?;
     let mut scene = |t| evaluator.evaluate(t);
     let mut sound = |start, out: &mut [f32]| {

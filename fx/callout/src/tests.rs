@@ -28,6 +28,7 @@ pub(crate) fn clip(project: &mut Project, length: f64) -> &mut Clip {
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     });
     project.clips.last_mut().unwrap()
 }
@@ -282,7 +283,10 @@ fn state_round_trips_and_lists_events() {
     );
     let items = (crate::effect().items)(&p).unwrap();
     assert_eq!((items[0].id.as_str(), items[0].list), ("co1", "callouts"));
-    assert_eq!(items[0].range, Range::new(secs(1.0), secs(2.0)).unwrap());
+    let dc_core::Place::Source { range, .. } = &items[0].place else {
+        panic!("{:?}", items[0].place)
+    };
+    assert_eq!(*range, Range::new(secs(1.0), secs(2.0)).unwrap());
     assert_eq!(items[0].fields["text"], "Кириллица 🎬");
 }
 

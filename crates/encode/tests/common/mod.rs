@@ -107,6 +107,7 @@ pub fn synthetic(dir: &Path) -> (ProjectDir, Project) {
         ],
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     };
     project.clips.push(clip);
     (project_dir, project)

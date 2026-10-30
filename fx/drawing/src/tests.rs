@@ -30,6 +30,7 @@ fn project() -> Project {
         cuts: Vec::new(),
         speeds: Vec::new(),
         crop: Rect::FULL,
+        audio: Default::default(),
     });
     for kind in ["drawing", "shape"] {
         run::<AnnotAdd>(&mut p, json!({"kind": kind, "at": 1}));

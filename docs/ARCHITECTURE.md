@@ -150,7 +150,7 @@ devcast record --source <screen:1|window:<id>|area:x,y,w,h> [--fps 60] [--durati
 devcast ls sources                               # мониторы, окна, микрофоны для record
 devcast new <video...> -o name.dcproj | clip add <video...> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
 devcast info | save
-devcast ls <zooms|clips|annots|captions|tracks|clicks> [--from --to] [--fields]
+devcast ls <zooms|clips|annots|captions|audio|tracks|clicks> [--from --to] [--fields]
 devcast transcript [--from --to] [--words] [--model fast|accurate] [--language ru] [--track mic]   # реплики или слова с id
 devcast silences [--min 0.5] [--db -30] [--track mic] [--from --to]   # паузы по готовому видео
 devcast events <clicks|keys|activity> [--from --to]
@@ -161,6 +161,8 @@ devcast annot add <text|shape|image|drawing|blur> --at --duration --rect x,y,w,h
 devcast key add a3 --at 12.0 [параметры] | key rm
 devcast callout add ... | keys --show --position bottom_right
 devcast captions gen [--model fast|accurate] [--tracks mic] | export -o t.txt | import t.txt | clear
+devcast audio channel mic [--clip c2] --volume 80 --gain 2 --mute --normalize --denoise | audio mute c2 [--off] | audio reset c2 [--channel mic]
+devcast audio add music.mp3 --at 5 [--track 1] [--duration 30] | audio set au1 --at --duration --offset --volume --normalize | audio rm au1
 devcast crop c1 x,y,w,h | aspect <free|source|16:9|16:10|4:3>
 devcast set <эффект>.<параметр>=<значение> ...   # стиль проекта: cursor.size=1.5 clicks.style=ripple
 devcast defaults show | defaults set ... | defaults from-project
