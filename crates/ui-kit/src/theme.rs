@@ -7,7 +7,7 @@ use egui::{CornerRadius, Margin, Shadow, Stroke, Style, TextStyle, Theme, Visual
 use crate::fonts::{self, Weight};
 use crate::tokens::{
     ACCENT, ACCENT_HI, ACCENT_SOFT, BORDER, CONTROL, FS_L, FS_M, FS_S, PAUSE, R1, R3, REC, S1, S2,
-    S3, SURFACE, SURFACE_2, SURFACE_3, TEXT, TEXT_2, TEXT_3,
+    S3, SURFACE, SURFACE_2, SURFACE_3, TEXT, TEXT_3,
 };
 
 /// Panel and popover shadow: 0 8px 24px black 45%.
@@ -96,10 +96,7 @@ fn widgets() -> Widgets {
             fg_stroke: Stroke::new(1.0, TEXT),
             ..base
         },
-        inactive: WidgetVisuals {
-            fg_stroke: Stroke::new(1.0, TEXT_2),
-            ..base
-        },
+        inactive: base,
         hovered: WidgetVisuals {
             weak_bg_fill: SURFACE_3,
             ..base

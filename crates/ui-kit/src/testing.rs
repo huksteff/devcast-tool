@@ -6,6 +6,7 @@ use egui_kittest::{Harness, HarnessBuilder};
 pub fn harness<State>() -> HarnessBuilder<State> {
     Harness::<State>::builder()
         .wgpu_setup(wgpu_setup())
+        .with_render_cursor(false)
         .with_context_setup(|ctx| {
             crate::install(ctx).unwrap_or_else(|e| panic!("тему для теста не поставить: {e}"));
         })

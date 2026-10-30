@@ -8,6 +8,7 @@ pub mod icons;
 pub mod testing;
 pub mod theme;
 pub mod tokens;
+pub mod widgets;
 
 pub use error::UiKitError;
 pub use icons::Icon;
