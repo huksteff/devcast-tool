@@ -1,11 +1,12 @@
 //! Annotations in the scene: those of the shown recording moment, bottom to top in their layer
 //! order (`AnnotationsState::shown_at`), each drawn by its kind's crate into `Band::Annotations`
-//! under the camera. A kind without drawing yet (5.35, 5.36) is skipped.
+//! under the camera. A kind without drawing yet (blur, 5.36) is skipped.
 
 use std::collections::HashMap;
 
 use dc_core::{OutputTime, TimeDelta, TimeMap};
 use dc_fx_annotations::{AnnotId, Annotation, AnnotationsState, Kind, Placement, keyed, shown_for};
+use dc_fx_drawing::DrawingBody;
 use dc_fx_image::ImageBody;
 use dc_fx_shape::ShapeBody;
 use dc_fx_text::TextBody;
@@ -27,6 +28,7 @@ enum Look {
     Text(Fields<TextBody>),
     Shape(Fields<ShapeBody>),
     Image(Fields<ImageBody>),
+    Drawing(Fields<DrawingBody>),
 }
 
 /// A kind's fields as typed values: the annotation's own and those of its keys, by key time.
@@ -103,6 +105,13 @@ impl Prepared {
                         None => continue,
                     }
                 }
+                Look::Drawing(fields) => {
+                    let body = keyed(&fields.base, &fields.keys, offset);
+                    match dc_fx_drawing::evaluate(&body, &placement) {
+                        Some(drawing) => Layer::Drawing(drawing),
+                        None => continue,
+                    }
+                }
             };
             scene.push(Band::Annotations, layer);
         }
@@ -120,6 +129,7 @@ fn look(annotation: &Annotation, measure: &TextMeasure) -> Result<Option<Look>, 
         }
         Kind::Shape => Some(Look::Shape(Fields::read(annotation)?)),
         Kind::Image => Some(Look::Image(Fields::read(annotation)?)),
-        Kind::Drawing | Kind::Blur => None,
+        Kind::Drawing => Some(Look::Drawing(Fields::read(annotation)?)),
+        Kind::Blur => None,
     })
 }

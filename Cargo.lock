@@ -682,6 +682,7 @@ dependencies = [
  "dc-fx-crop",
  "dc-fx-cursor",
  "dc-fx-cut",
+ "dc-fx-drawing",
  "dc-fx-image",
  "dc-fx-keys",
  "dc-fx-shape",
@@ -810,6 +811,14 @@ dependencies = [
 [[package]]
 name = "dc-fx-drawing"
 version = "0.1.0"
+dependencies = [
+ "dc-core",
+ "dc-fx-annotations",
+ "dc-render",
+ "schemars",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "dc-fx-image"
@@ -907,6 +916,7 @@ dependencies = [
  "dc-fx-crop",
  "dc-fx-cursor",
  "dc-fx-cut",
+ "dc-fx-drawing",
  "dc-fx-image",
  "dc-fx-keys",
  "dc-fx-shape",

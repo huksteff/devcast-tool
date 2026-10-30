@@ -1,11 +1,21 @@
 [package]
 name = "dc-fx-drawing"
-description = "Brush drawing annotation."
+description = "Brush drawing annotation: pencil, eraser, straight lines."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
+
+[dependencies]
+dc-core = { path = "../../crates/core" }
+dc-fx-annotations = { path = "../annotations" }
+dc-render = { path = "../../crates/render" }
+schemars.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
 
 [lints]
 workspace = true
