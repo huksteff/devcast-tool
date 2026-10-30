@@ -10,7 +10,7 @@ use dc_ui_kit::tokens::SURFACE;
 use dc_ui_kit::widgets::{ToastKind, Toasts};
 use eframe::egui;
 
-use crate::hud::{HudWindow, popover};
+use crate::hud::{HudWindow, picker, popover};
 use crate::settings::Store;
 use crate::settings_window::{self, SettingsWindow};
 
@@ -25,6 +25,8 @@ pub struct Shared {
     pub settings: Option<SettingsWindow>,
     /// Open popover of the HUD.
     pub popover: Option<popover::Open>,
+    /// Previews of the open source picker.
+    pub previews: Option<picker::Previews>,
     pub toasts: Toasts,
 }
 
@@ -39,6 +41,7 @@ impl Shared {
             },
             settings: None,
             popover: None,
+            previews: None,
             toasts: Toasts::default(),
         };
         shared.refresh_sources();

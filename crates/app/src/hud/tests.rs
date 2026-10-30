@@ -128,3 +128,26 @@ fn more_menu() {
     harness.run();
     assert_eq!(*harness.state(), (false, Some(MoreAction::Settings)));
 }
+
+#[test]
+fn source_picker() {
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(egui::vec2(super::picker::WIDTH, 420.0))
+        .build_ui_state(
+            |ui, chosen: &mut Source| {
+                dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
+                    ui.set_width(super::picker::WIDTH - 26.0);
+                    let textures = std::collections::HashMap::new();
+                    if let Some(picked) = super::picker::picker(ui, &sources(), chosen, &textures) {
+                        *chosen = picked;
+                    }
+                });
+            },
+            Source::Monitor(1),
+        );
+    harness.run();
+    harness.snapshot("hud_picker");
+    harness.get_by_label("main.rs — Visual Studio Code").click();
+    harness.run();
+    assert_eq!(*harness.state(), Source::Window(42));
+}

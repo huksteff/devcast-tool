@@ -11,11 +11,14 @@ use dc_ui_kit::tokens::{BORDER, FS_M, ICON, R1, S2, SURFACE, SURFACE_2, TEXT};
 use dc_ui_kit::widgets::{Toggle, panel_frame};
 use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo, pos2, vec2};
 
+use dc_capture::Source;
+
 use crate::app::{Shared, lock};
 
 /// Which popover is open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
+    Source,
     More,
 }
 
@@ -39,6 +42,7 @@ const GAP: f32 = 8.0;
 /// Shows the open popover window above the bar whose outer rectangle is `bar`.
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: Rect) {
     let width = match open.kind {
+        Kind::Source => super::picker::WIDTH,
         Kind::More => 260.0,
     };
     let builder = egui::ViewportBuilder::default()
@@ -60,6 +64,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
                 .show(ui, |ui| {
                     ui.set_width(width - 2.0 * dc_ui_kit::tokens::S3 - 2.0);
                     match open.kind {
+                        Kind::Source => source(ui, &mut shared),
                         Kind::More => more(ui, &mut shared),
                     }
                 })
@@ -81,6 +86,30 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
             }
         },
     );
+}
+
+fn source(ui: &mut Ui, shared: &mut Shared) {
+    let Shared {
+        store,
+        sources,
+        previews,
+        ..
+    } = shared;
+    let Some(previews) = previews else {
+        return;
+    };
+    let textures = previews.textures(ui.ctx());
+    let chosen = store.get().recording.source;
+    let Some(picked) = super::picker::picker(ui, sources, &chosen, textures) else {
+        return;
+    };
+    let saved = shared.store.update(|s| s.recording.source = picked);
+    shared.report(saved);
+    shared.popover = None;
+    shared.previews = None;
+    if let Source::Window(id) = picked {
+        shared.report(dc_capture::win::hud_window::bring_to_front(id));
+    }
 }
 
 fn more(ui: &mut Ui, shared: &mut Shared) {

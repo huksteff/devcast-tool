@@ -1,13 +1,14 @@
 //! The app's HUD window as the recording sees it (decision 001): excluded from capture,
 //! rounded by DWM, moved in physical desktop pixels. `hwnd` is the window handle of the app.
+//! Also bringing a picked window to front.
 
 use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::Graphics::Dwm::{
     DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND, DwmSetWindowAttribute,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetWindowRect, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, SetWindowDisplayAffinity,
-    SetWindowPos, WDA_EXCLUDEFROMCAPTURE, WDA_NONE,
+    GetWindowRect, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, SetForegroundWindow,
+    SetWindowDisplayAffinity, SetWindowPos, WDA_EXCLUDEFROMCAPTURE, WDA_NONE,
 };
 
 use crate::error::CaptureError;
@@ -73,4 +74,17 @@ pub fn move_window(hwnd: isize, x: i32, y: i32) -> Result<(), CaptureError> {
         )
     }
     .map_err(|e| CaptureError::platform("передвинуть панель")(e.to_string()))
+}
+
+/// Brings the window `id` (a source of the picker) to front, as the user chose it to record.
+pub fn bring_to_front(id: u64) -> Result<(), CaptureError> {
+    // SAFETY: no pointers; a handle that is not a window makes the call return false.
+    let done = unsafe { SetForegroundWindow(HWND(id as *mut _)) };
+    if done.as_bool() {
+        Ok(())
+    } else {
+        Err(CaptureError::platform("вывести окно на передний план")(
+            "Windows не разрешила".to_owned(),
+        ))
+    }
 }

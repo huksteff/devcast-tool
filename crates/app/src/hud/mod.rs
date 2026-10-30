@@ -3,6 +3,7 @@
 //! записи» is on, dragged by its grip; its place is remembered per monitor.
 
 pub mod bar;
+pub mod picker;
 pub mod placement;
 pub mod popover;
 
@@ -59,6 +60,7 @@ impl HudWindow {
                 ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
             Some((bar::Clicked::More, anchor)) => toggle(shared, popover::Kind::More, anchor),
+            Some((bar::Clicked::Source, anchor)) => toggle(shared, popover::Kind::Source, anchor),
             _ => {}
         }
         fit(ui, inner.response.rect.width());
@@ -113,6 +115,17 @@ fn fit(ui: &Ui, width: f32) {
 fn toggle(shared: &mut Shared, kind: popover::Kind, anchor: f32) {
     let open = shared.popover.is_some_and(|open| open.kind == kind);
     shared.popover = (!open).then_some(popover::Open { kind, anchor });
+    shared.previews = None;
+    if !open && kind == popover::Kind::Source {
+        shared.refresh_sources();
+        let (screens, windows) = picker::cards(&shared.sources);
+        let all = screens
+            .iter()
+            .chain(&windows)
+            .map(|card| card.source)
+            .collect();
+        shared.previews = Some(picker::Previews::start(&shared.ctx, all));
+    }
 }
 
 #[cfg(test)]
