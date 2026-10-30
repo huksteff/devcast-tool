@@ -14,13 +14,14 @@ lyon = "1.0"
 schemars.workspace = true
 dc-media = { path = "../media", optional = true }
 nv-flip = { version = "0.1", optional = true }
+sysinfo = { version = "0.37", default-features = false, features = ["system"], optional = true }
 serde.workspace = true
 thiserror.workspace = true
 wgpu.workspace = true
 
 [features]
 # Reference frames for tests (`golden`): the tests of render and of the effects turn it on.
-golden = ["dep:dc-media", "dep:nv-flip"]
+golden = ["dep:dc-media", "dep:nv-flip", "dep:sysinfo"]
 
 [dev-dependencies]
 dc-media = { path = "../media" }

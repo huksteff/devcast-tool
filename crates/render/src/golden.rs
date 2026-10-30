@@ -1,8 +1,10 @@
 //! Reference frames (decision 012): a rendered frame against its PNG in
 //! `fixtures/golden/<backend>/<name>.png`, for the tests of render and of the effects.
 //!
-//! The adapter the references were made on (`adapter.txt` next to them; WARP on Windows) must
-//! match them byte for byte. Any other adapter rasterizes edges and rounds a little differently,
+//! The adapter and the CPU the references were made on (`adapter.txt` next to them; WARP on
+//! Windows) must match them byte for byte. The CPU is part of it: a software adapter compiles
+//! shaders for the CPU's instruction set, and WARP of one build gave blur, glow and sprite pixels
+//! 1–5 levels off on another CPU. Any other adapter rounds a little differently,
 //! so there the frames are compared by ꟻLIP (nv-flip, perceptual error 0..1 per pixel) under
 //! [`FLIP_MEAN_MAX`] and [`FLIP_P99_MAX`]. A failed check writes the frame and its ꟻLIP error map
 //! to `target/golden/<backend>/`. `UPDATE_GOLDEN=1` (`cargo xtask golden update`) rewrites the
@@ -30,7 +32,7 @@ pub struct Golden {
     dir: PathBuf,
     report: PathBuf,
     adapter: String,
-    /// The references were made on this adapter: frames must match them exactly.
+    /// The references were made on this adapter and CPU: frames must match them exactly.
     exact: bool,
     update: bool,
 }
@@ -59,6 +61,8 @@ pub enum GoldenError {
         actual: PathBuf,
         diff: PathBuf,
     },
+    #[error("не удалось узнать модель процессора: эталоны сверяются по адаптеру и процессору")]
+    NoCpu,
     #[error("эталон или отчёт не записался: {0}")]
     Media(#[from] MediaError),
     #[error("«{}»: {source}. Проверь, что папка доступна для записи", path.display())]
@@ -75,7 +79,13 @@ impl Golden {
         let info = gpu.info();
         let backend = info.backend.to_str();
         let dir = root.join("fixtures").join("golden").join(backend);
-        let adapter = format!("{} | {} | {}\n", info.name, info.driver, info.driver_info);
+        let adapter = format!(
+            "{} | {} | {} | {}\n",
+            info.name,
+            info.driver,
+            info.driver_info,
+            cpu()?
+        );
         let update = std::env::var_os(UPDATE).is_some_and(|v| v == "1");
         let made_on = dir.join("adapter.txt");
         if update {
@@ -100,7 +110,7 @@ impl Golden {
         })
     }
 
-    /// The adapter of the checked frames, as `adapter.txt` records it.
+    /// The adapter and the CPU of the checked frames, as `adapter.txt` records them.
     pub fn adapter(&self) -> &str {
         &self.adapter
     }
@@ -148,6 +158,14 @@ impl Golden {
             diff,
         })
     }
+}
+
+/// Model of the first CPU, `11th Gen Intel(R) Core(TM) i7-11700K @ 3.60GHz`.
+fn cpu() -> Result<String, GoldenError> {
+    let kind = sysinfo::RefreshKind::nothing().with_cpu(sysinfo::CpuRefreshKind::nothing());
+    let system = sysinfo::System::new_with_specifics(kind);
+    let first = system.cpus().first().ok_or(GoldenError::NoCpu)?;
+    Ok(first.brand().trim().to_owned())
 }
 
 /// Mean ꟻLIP error of `actual` against `expected` (frames of one size) and the error 99 % of

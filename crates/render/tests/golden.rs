@@ -350,11 +350,12 @@ fn golden_motion_blur() -> TestResult {
 }
 
 #[test]
-fn golden_frames_come_from_one_adapter() -> Result<(), Box<dyn Error>> {
+fn golden_frames_come_from_one_adapter_and_cpu() -> Result<(), Box<dyn Error>> {
     let gpu = Gpu::new(AdapterChoice::Software)?;
-    println!(
-        "adapter of the reference frames: {}",
-        Golden::new(&gpu)?.adapter()
-    );
+    let golden = Golden::new(&gpu)?;
+    println!("adapter of the reference frames: {}", golden.adapter());
+    let fields: Vec<&str> = golden.adapter().trim_end().split(" | ").collect();
+    assert_eq!(fields.len(), 4, "{fields:?}");
+    assert!(!fields[0].is_empty() && !fields[3].is_empty(), "{fields:?}");
     Ok(())
 }
