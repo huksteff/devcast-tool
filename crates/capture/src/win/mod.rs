@@ -7,6 +7,7 @@ mod cursor;
 mod d3d;
 mod frame;
 mod hooks;
+pub mod hud_window;
 mod input;
 mod keys;
 mod monitors;

@@ -8,6 +8,7 @@ use dc_capture::{RecordingConfig, Source};
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
+use crate::hud::placement::HudPlacement;
 
 /// File of the settings in the app settings folder.
 pub const FILE: &str = "settings.json";
@@ -114,6 +115,8 @@ pub struct AppSettings {
     pub hotkeys: Hotkeys,
     pub speech_model: SpeechModel,
     pub updates: Updates,
+    /// Where the HUD stood on each monitor.
+    pub hud: HudPlacement,
 }
 
 impl Default for AppSettings {
@@ -128,6 +131,7 @@ impl Default for AppSettings {
             hotkeys: Hotkeys::default(),
             speech_model: SpeechModel::default(),
             updates: Updates::default(),
+            hud: HudPlacement::default(),
         }
     }
 }

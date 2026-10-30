@@ -3,6 +3,7 @@
 
 mod app;
 mod error;
+mod hud;
 mod instance;
 mod logging;
 mod settings;
@@ -29,7 +30,13 @@ pub fn run() -> Result<(), AppError> {
     };
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
-        viewport: eframe::egui::ViewportBuilder::default().with_title(APP_NAME),
+        viewport: eframe::egui::ViewportBuilder::default()
+            .with_title(APP_NAME)
+            .with_inner_size(hud::START_SIZE)
+            .with_decorations(false)
+            .with_resizable(false)
+            .with_always_on_top()
+            .with_taskbar(false),
         ..Default::default()
     };
     eframe::run_native(
@@ -37,9 +44,23 @@ pub fn run() -> Result<(), AppError> {
         options,
         Box::new(move |cc| {
             dc_ui_kit::install(&cc.egui_ctx)?;
+            let hwnd = window_handle(cc)?;
             let shown = instance::serve(listener, cc.egui_ctx.clone());
-            Ok(Box::new(app::App::new(shown, store)))
+            let shared = app::Shared::new(cc.egui_ctx.clone(), store);
+            Ok(Box::new(app::App::new(shown, shared, hwnd)))
         }),
     )
     .map_err(|e| AppError::Window(e.to_string()))
+}
+
+/// The Win32 handle of the main window (the HUD).
+fn window_handle(cc: &eframe::CreationContext<'_>) -> Result<isize, AppError> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    let handle = cc
+        .window_handle()
+        .map_err(|e| AppError::Window(e.to_string()))?;
+    match handle.as_raw() {
+        RawWindowHandle::Win32(win32) => Ok(win32.hwnd.get()),
+        other => Err(AppError::Window(format!("окно не Win32: {other:?}"))),
+    }
 }

@@ -47,6 +47,13 @@ pub mod hud {
     pub const PREPARING_HINT: &str = "Редактор откроется через пару секунд";
     pub const PREPARE_FAILED: &str = "Запись не подготовлена";
     pub const OPEN_FOLDER: &str = "Открыть папку записи";
+    pub const WINDOW: &str = "Окно";
+    pub const AREA: &str = "Область";
+
+    /// «Экран 1 · 2560×1440».
+    pub fn sized(name: &str, width: u32, height: u32) -> String {
+        format!("{name} · {width}×{height}")
+    }
 
     /// Countdown choice: «3 с».
     pub fn seconds(n: u32) -> String {
