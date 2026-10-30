@@ -1,5 +1,6 @@
 //! The fields of a text annotation, kept in `Annotation::body` (fx/annotations).
 
+use dc_fx_annotations::{Blend, step};
 use dc_render::{Align, FAMILIES, Rgba};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -80,6 +81,26 @@ impl From<TextAlign> for Align {
             TextAlign::Left => Align::Left,
             TextAlign::Center => Align::Center,
             TextAlign::Right => Align::Right,
+        }
+    }
+}
+
+/// Between two keys: size and plate radius blend, colours blend by channel, the words, font,
+/// style and alignment step at the right key (the same rule `annot key add` applies to stored
+/// fields).
+impl Blend for TextBody {
+    fn blend(&self, to: &Self, e: f64) -> Self {
+        Self {
+            text: self.text.blend(&to.text, e),
+            font: self.font.blend(&to.font, e),
+            size: self.size.blend(&to.size, e),
+            bold: self.bold.blend(&to.bold, e),
+            italic: self.italic.blend(&to.italic, e),
+            underline: self.underline.blend(&to.underline, e),
+            align: step(&self.align, &to.align, e),
+            color: self.color.blend(&to.color, e),
+            background: self.background.blend(&to.background, e),
+            radius: self.radius.blend(&to.radius, e),
         }
     }
 }

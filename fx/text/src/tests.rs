@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use crate::{TextAlign, TextBody, TextSet};
 
 /// One 10 s recording with text annotation a1 and shape annotation a2.
-fn project() -> Project {
+pub(crate) fn project() -> Project {
     let mut p = Project::default();
     let id = p.clip_ids.allocate();
     let duration = TimeDelta::from_secs_f64(10.0);
@@ -34,7 +34,7 @@ fn project() -> Project {
     p
 }
 
-fn set(args: Value) -> TextSet {
+pub(crate) fn set(args: Value) -> TextSet {
     serde_json::from_value(args).unwrap()
 }
 

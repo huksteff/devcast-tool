@@ -1,7 +1,8 @@
 //! `text set`: what a text annotation says and how it looks.
 
-use dc_core::{Command, CommandError, Diff, Op, Project};
-use dc_fx_annotations::{AnnotId, Annotations, Kind};
+use dc_core::time::Output;
+use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg};
+use dc_fx_annotations::{AnnotId, Annotations, Kind, edit_body, key_offset};
 use dc_render::Rgba;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -30,6 +31,9 @@ pub struct TextSet {
     pub background: Option<Rgba>,
     /// Corner radius of the plates, px when the short side of the frame is 1080 px, 0..64.
     pub radius: Option<f64>,
+    /// Moment on the output video: the fields change in the key there (created with what is
+    /// shown). Without it they change in the annotation and in every key.
+    pub at: Option<TimeArg<Output>>,
 }
 
 impl TextSet {
@@ -77,12 +81,13 @@ impl Command for TextSet {
                 self.id
             )));
         }
-        let old: TextBody = annotation.body().map_err(|e| broken(self.id, &e))?;
-        let new = self.change(&old)?;
-        if new == old {
+        let at = match self.at {
+            Some(TimeArg(t)) => Some(key_offset(project, annotation, t)?),
+            None => None,
+        };
+        if !edit_body(annotation, at, |old: &TextBody| self.change(old))? {
             return Ok(Diff::default());
         }
-        annotation.set_body(&new).map_err(|e| broken(self.id, &e))?;
         project.set_state::<Annotations>(&state)?;
         Ok(Diff::changed(self.id))
     }
@@ -90,16 +95,10 @@ impl Command for TextSet {
 
 impl Op for TextSet {
     const NAME: &'static str = "text set";
-    const ABOUT: &'static str = "Изменить текстовую аннотацию: текст, шрифт, размер, начертание, выравнивание, цвета, плашку";
+    const ABOUT: &'static str = "Изменить текстовую аннотацию: текст, шрифт, размер, начертание, выравнивание, цвета, плашку (с --at — в ключе)";
     const EXAMPLE: &'static str =
         "text set a3 --text \"Нажми сюда\" --font Montserrat --size 48 --background \"#000000b0\"";
     const POSITIONAL: &'static [&'static str] = &["id"];
-}
-
-fn broken(id: AnnotId, error: &serde_json::Error) -> CommandError {
-    CommandError::new(format!(
-        "поля текста {id} в проекте испорчены ({error}): удали аннотацию (annot rm {id}) и создай заново"
-    ))
 }
 
 fn check_text(text: &str) -> Result<String, CommandError> {

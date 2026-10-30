@@ -9,6 +9,7 @@ use serde::ser::Error as _;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::keys::Key;
 use crate::motion::Stage;
 
 /// Number of annotation tracks: `track` is `0..TRACKS`.
@@ -106,9 +107,13 @@ pub struct Annotation {
     #[serde(default, skip_serializing_if = "Stage::is_default")]
     pub exit: Stage,
     /// Fields of the kind, described by the kind's commands (`devcast help`); a missing field
-    /// takes the kind's default.
+    /// takes the kind's default. With keys this is what shows once the keys are gone.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub body: Map<String, Value>,
+    /// Keyframes by time: with any key the box, rotation and kind fields come from the keys
+    /// (blended between them), not from `rect`, `rotation` and `body`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keys: Vec<Key>,
 }
 
 impl Annotation {
@@ -120,20 +125,23 @@ impl Annotation {
 
     /// Stores the kind's fields; `B` must serialize to a JSON object.
     pub fn set_body<B: Serialize>(&mut self, body: &B) -> Result<(), serde_json::Error> {
-        match serde_json::to_value(body)? {
-            Value::Object(fields) => {
-                self.body = fields;
-                Ok(())
-            }
-            other => Err(serde_json::Error::custom(format!(
-                "поля вида аннотации должны быть JSON-объектом, а не {other}"
-            ))),
-        }
+        self.body = fields(body)?;
+        Ok(())
     }
 
     /// Whether `other` is on screen at the same time: same recording, ranges overlap.
     pub fn meets(&self, other: &Self) -> bool {
         self.media == other.media && self.range.intersect(&other.range).is_some()
+    }
+}
+
+/// The kind's fields `body` as stored; `B` must serialize to a JSON object.
+pub(crate) fn fields<B: Serialize>(body: &B) -> Result<Map<String, Value>, serde_json::Error> {
+    match serde_json::to_value(body)? {
+        Value::Object(fields) => Ok(fields),
+        other => Err(serde_json::Error::custom(format!(
+            "поля вида аннотации должны быть JSON-объектом, а не {other}"
+        ))),
     }
 }
 

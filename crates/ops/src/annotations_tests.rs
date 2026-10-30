@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use dc_core::{Command, CursorTracks, KeyTracks, OutputTime, Project};
-use dc_fx_annotations::{AnnotAdd, AnnotAnim, Annotations};
+use dc_fx_annotations::{AnnotAdd, AnnotAnim, AnnotSet, Annotations};
 use dc_fx_text::TextSet;
-use dc_render::{Band, Layer, PxRect, Scene, Text, TextMeasure};
+use dc_render::{Band, Layer, PxRect, Rgba, Scene, Text, TextMeasure};
 use serde_json::{Value, json};
 
 use crate::evaluate_tests::two_clips;
@@ -135,4 +135,45 @@ fn animations_change_the_text_layer_by_output_time() {
         .map(|r| r.text.as_str())
         .collect();
     assert_eq!(typed, ["ве", "рх"], "0.5 s of the 1 s exit left");
+}
+
+#[test]
+fn keys_move_the_box_and_blend_the_text_fields() {
+    let mut p = layered();
+    // a2 shows output 0.2–2.2 s; a change at 2.0 s keys it from its start (output 0.2 s).
+    run::<AnnotSet>(
+        &mut p,
+        json!({"id": "a2", "at": 2.0, "x": 0.3, "rotation": -12}),
+    );
+    run::<TextSet>(
+        &mut p,
+        json!({"id": "a2", "at": 2.0, "size": 32, "color": "#000000ff"}),
+    );
+    // Output 0.6 s is source 0.6 s and 2.0 s is source 3.0 s (after the cut 1–2 s): 0.4 of the
+    // 2.8 s from the start key at source 0.2 s.
+    let s: f32 = 0.4 / 2.8;
+    let e = s * s * (3.0 - 2.0 * s);
+    let frame = scene(&p, 0.6).unwrap();
+    let low = texts(&frame)[0];
+    let close = |a: f32, b: f32| (a - b).abs() < 1e-3;
+    assert!(close(low.rect.x, 192.0 + 384.0 * e), "{}", low.rect.x);
+    assert!(close(low.rotation, 12.0 - 24.0 * e));
+    assert!(close(low.font.size, 64.0 - 32.0 * e));
+    let end = scene(&p, 2.1).unwrap();
+    let low = texts(&end)[0];
+    assert_eq!(
+        (low.rect.x, low.rotation, low.font.size),
+        (576.0, -12.0, 32.0)
+    );
+    assert_eq!(
+        low.runs[0].color,
+        Rgba([0, 0, 0, 255]),
+        "the last key holds"
+    );
+    run::<TextSet>(&mut p, json!({"id": "a2", "at": 1.0, "font": "Comic Sans"}));
+    let error = scene(&p, 0.3).unwrap_err();
+    assert!(
+        error.to_string().contains("Comic Sans"),
+        "a key's font is checked too"
+    );
 }

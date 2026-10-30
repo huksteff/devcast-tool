@@ -17,6 +17,7 @@ fn annotation(rect: Rect, rotation: f64) -> Annotation {
         enter: Default::default(),
         exit: Default::default(),
         body: Map::new(),
+        keys: Vec::new(),
     }
 }
 

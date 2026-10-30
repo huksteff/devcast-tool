@@ -53,7 +53,9 @@ impl Registry {
     /// how many words its name took. The longest matching name wins.
     pub fn resolve(&self, words: &[String]) -> Result<(&OpInfo, usize), OpsError> {
         let longest = self.ops.iter().map(|op| op.name.split(' ').count()).max();
-        let longest = longest.unwrap_or(1).min(words.len());
+        // A name never takes a flag: `zoom ad --at 1` is the unknown «zoom ad».
+        let named = words.iter().take_while(|w| !w.starts_with("--")).count();
+        let longest = longest.unwrap_or(1).min(named.max(1)).min(words.len());
         let prefixes: Vec<String> = (1..=longest).map(|n| words[..n].join(" ")).collect();
         for (n, name) in prefixes.iter().enumerate().rev() {
             if let Some(op) = self.get(name) {

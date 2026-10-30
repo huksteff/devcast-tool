@@ -99,9 +99,16 @@ devcast text set a1 --text Экспорт --font Montserrat --size 48 --radius 8
 devcast text set a1 --italic --underline --align left    # выключить — --italic false
 devcast annot anim a1 --enter slide_left --exit fade --exit-duration 0.5   # slide_left/right/top/bottom — с той стороны
 devcast annot anim a1 --enter typewriter --enter-duration 1  # pop, fade, none; typewriter — у текста, draw — у фигур и рисунков
+devcast annot key add a1 --at 5                          # ключ: запомнить вид аннотации в этот момент
+devcast annot set a1 --at 7 --x 0.6 --rotation 20        # правка в ключе в 7 с; без --at — во всех ключах
+devcast text set a1 --at 7 --size 64 --color "#fde047ff"
+devcast annot key copy a1 --at 7 --to 7.5                # --into a3 — в аннотацию того же вида
+devcast annot key rm a1 --at 5
 devcast ls annots
 devcast annot rm a2
 ```
+Ключи: время ключа — момент внутри аннотации на готовом видео; между ключами положение, размер, поворот, размер шрифта, цвета и радиус меняются плавно (smoothstep), текст, шрифт и начертание — скачком на ключе; до первого ключа держится первый, после последнего — последний. Первая правка с `--at` позже начала сама ставит ключ в начало: получается движение от исходного вида. Ключи привязаны к кадрам записи: едут с `annot move`, не сдвигаются от вырезов, на ускоренном участке движение ускоряется вместе с видео. Без последнего ключа аннотация остаётся такой, как в нём.
+
 Текст: `--text` (перевод строки — новая строка), `--font` Inter (по умолчанию), Montserrat, Roboto, PT Serif, JetBrains Mono; `--size` 12–128 (px при 1080p); `--bold`, `--italic`, `--underline`; `--align` left, center, right; `--color "#fde047ff"` — цвет букв, `--background "#000000b0"` — плашка (альфа 00 — без плашки), `--radius` 0–64 — её углы. Текст с пробелами — в кавычках: `--text "Нажми сюда"`.
 
 Показ нажатых клавиш (по умолчанию выключен; места top_left, top, top_right, bottom_left, bottom, bottom_right):

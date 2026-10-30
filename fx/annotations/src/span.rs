@@ -103,6 +103,11 @@ impl Timeline {
         Ok((media, range))
     }
 
+    /// Output moment of source moment `t` of recording `media`; `None` if it is cut out.
+    pub(crate) fn output_of(&self, media: &str, t: SourceTime) -> Option<OutputTime> {
+        self.map.locate(media, t).map(|(_, at)| at)
+    }
+
     /// Where the annotation plays on the output video; `None` if all of it is cut out.
     pub(crate) fn shown(&self, annotation: &Annotation) -> Option<Range<dc_core::time::Output>> {
         self.map.output_span(&annotation.media, annotation.range)

@@ -91,6 +91,23 @@ impl Rect {
         self.h
     }
 
+    /// Each coordinate from `self` (`e = 0`) to `to` (`e = 1`); `e` is clamped into 0..1, so the
+    /// sides stay non-negative.
+    pub fn lerp(&self, to: &Self, e: f64) -> Self {
+        let e = if e.is_finite() {
+            e.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let mix = |a: f64, b: f64| a + (b - a) * e;
+        Self {
+            x: mix(self.x, to.x),
+            y: mix(self.y, to.y),
+            w: mix(self.w, to.w),
+            h: mix(self.h, to.h),
+        }
+    }
+
     pub fn center(&self) -> Point {
         Point {
             x: self.x + self.w / 2.0,
@@ -287,6 +304,16 @@ mod tests {
         assert!(error.to_string().contains("не отрицательными"), "{error}");
         let error = serde_json::from_str::<Rect>("5").unwrap_err();
         assert!(error.to_string().contains("x,y,w,h"), "{error}");
+    }
+
+    #[test]
+    fn lerp_mixes_coordinates_and_clamps_the_share() {
+        let a = Rect::new(0.0, 0.2, 0.4, 0.1).unwrap();
+        let b = Rect::new(1.0, -0.2, 0.0, 0.3).unwrap();
+        assert_eq!(a.lerp(&b, 0.5), Rect::new(0.5, 0.0, 0.2, 0.2).unwrap());
+        assert_eq!(a.lerp(&b, 2.0), b);
+        assert_eq!(a.lerp(&b, -1.0), a);
+        assert_eq!(a.lerp(&b, f64::NAN), a);
     }
 
     #[test]

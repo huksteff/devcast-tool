@@ -19,4 +19,6 @@ pub fn ops() -> Vec<OpInfo> {
 #[cfg(test)]
 mod evaluate_tests;
 #[cfg(test)]
+mod keys_tests;
+#[cfg(test)]
 mod tests;
