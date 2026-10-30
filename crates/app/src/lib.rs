@@ -3,6 +3,7 @@
 
 mod app;
 mod area;
+mod countdown;
 #[allow(
     unsafe_code,
     reason = "crash-handler's crash callback is an unsafe contract; the only unsafe of dc-app"
@@ -13,6 +14,8 @@ mod hud;
 mod instance;
 mod logging;
 mod meters;
+mod recorder;
+mod session;
 mod settings;
 mod settings_window;
 

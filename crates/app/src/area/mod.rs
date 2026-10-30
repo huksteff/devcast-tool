@@ -173,7 +173,11 @@ fn start(shared: &mut Shared, index: u32) {
             s.last_area = Some(Source::Area(area));
         })
     });
+    let kept = result.is_ok();
     shared.report(result);
+    if kept {
+        shared.record();
+    }
 }
 
 #[cfg(test)]

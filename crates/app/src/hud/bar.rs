@@ -1,12 +1,13 @@
 //! The HUD bar at rest (mockup 1): grip, source, microphone, system sound, fps, countdown,
-//! «Запись», «Ещё». Draws itself and reports what was clicked; the window does the rest.
+//! «Запись», «Ещё»; during the countdown «Запись» is «Отменить N» (mockup 4). Draws itself and
+//! reports what was clicked; the window does the rest.
 
 use dc_capture::{Source, SourceList};
 use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::{hud, picker};
 use dc_ui_kit::tokens::{
-    BORDER, CONTROL, FS_M, ICON, R1, REC, REC_STRONG, S1, S2, SURFACE_3, TEXT, TEXT_3, WHITE,
+    BORDER, CONTROL, FS_M, ICON, PAUSE, R1, REC, REC_STRONG, S1, S2, SURFACE_3, TEXT, TEXT_3, WHITE,
 };
 use dc_ui_kit::widgets::IconButton;
 use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo, pos2, vec2};
@@ -23,8 +24,25 @@ pub enum Clicked {
     SystemAudio,
     Fps,
     Countdown,
+    /// «Запись», or «Отменить N» during the countdown.
     Record,
     More,
+    /// Stop with the timer on it (recording bar).
+    Stop,
+    /// Pause or resume.
+    Pause,
+    /// ✕: cancel the recording (asks first).
+    Cancel,
+    /// Hide the HUD.
+    Hide,
+}
+
+/// The «Запись» button: ready, counting down (seconds left) or waiting for the recorder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecordButton {
+    Ready,
+    Countdown(u32),
+    Busy,
 }
 
 /// The source as the bar names it: «Экран 1 · 2560×1440», a window title, «Область · 1280×720».
@@ -48,7 +66,12 @@ pub fn source_label(source: &Source, sources: &SourceList) -> String {
 
 /// Lays the bar out from the left; returns what was clicked.
 /// The second value is the left edge of the clicked button, points from the bar's left.
-pub fn bar(ui: &mut Ui, settings: &AppSettings, source: &str) -> Option<(Clicked, f32)> {
+pub fn bar(
+    ui: &mut Ui,
+    settings: &AppSettings,
+    source: &str,
+    record: RecordButton,
+) -> Option<(Clicked, f32)> {
     let mut clicked = None;
     ui.spacing_mut().item_spacing.x = 2.0;
     ui.add_space(S1);
@@ -90,7 +113,7 @@ pub fn bar(ui: &mut Ui, settings: &AppSettings, source: &str) -> Option<(Clicked
     }
     hit(&mut clicked, ui.add(timer), Clicked::Countdown);
     ui.add_space(S1);
-    hit(&mut clicked, record_button(ui), Clicked::Record);
+    hit(&mut clicked, record_button(ui, record), Clicked::Record);
     hit(
         &mut clicked,
         ui.add(IconButton::new(Icon::More, hud::MORE)),
@@ -101,13 +124,13 @@ pub fn bar(ui: &mut Ui, settings: &AppSettings, source: &str) -> Option<(Clicked
 }
 
 /// Keeps `what` when `response` was clicked.
-fn hit(clicked: &mut Option<(Clicked, f32)>, response: Response, what: Clicked) {
+pub fn hit(clicked: &mut Option<(Clicked, f32)>, response: Response, what: Clicked) {
     if response.clicked() {
         *clicked = Some((what, response.rect.left()));
     }
 }
 
-fn grip(ui: &mut Ui) -> Response {
+pub fn grip(ui: &mut Ui) -> Response {
     let (rect, response) = ui.allocate_exact_size(vec2(14.0, CONTROL), Sense::drag());
     response.widget_info(|| WidgetInfo::labeled(egui::Role::Button, true, hud::GRIP));
     let icon = Rect::from_center_size(rect.center(), vec2(ICON, ICON) * 1.4);
@@ -140,15 +163,44 @@ fn source_button(ui: &mut Ui, label: &str) -> Response {
     response
 }
 
-fn separator(ui: &mut Ui) {
+pub fn separator(ui: &mut Ui) {
     ui.add_space(S1);
     let (rect, _) = ui.allocate_exact_size(vec2(1.0, 24.0), Sense::hover());
     ui.painter().rect_filled(rect, 0, BORDER);
     ui.add_space(S1);
 }
 
-/// Red «● Запись».
-fn record_button(ui: &mut Ui) -> Response {
+/// Red «● Запись»; grey «Отменить N» with a yellow number during the countdown (mockup 4);
+/// faded while the recorder starts.
+fn record_button(ui: &mut Ui, state: RecordButton) -> Response {
+    let RecordButton::Countdown(left) = state else {
+        return ui
+            .add_enabled_ui(state == RecordButton::Ready, red_record)
+            .inner;
+    };
+    let font = fonts::text(FS_M, Weight::Semibold);
+    let text = ui
+        .painter()
+        .layout_no_wrap(hud::CANCEL_COUNTDOWN.to_owned(), font, TEXT);
+    let number = ui
+        .painter()
+        .layout_no_wrap(left.to_string(), fonts::mono(FS_M), PAUSE);
+    let width = 14.0 + text.size().x + 6.0 + number.size().x + 14.0;
+    let (rect, response) = ui.allocate_exact_size(vec2(width, CONTROL), Sense::click());
+    let label = format!("{} {left}", hud::CANCEL_COUNTDOWN);
+    response.widget_info(|| WidgetInfo::labeled(egui::Role::Button, true, &label));
+    ui.painter().rect_filled(rect, R1, SURFACE_3);
+    let x = rect.left() + 14.0;
+    let text_width = text.size().x;
+    ui.painter()
+        .galley(pos2(x, rect.center().y - text.size().y / 2.0), text, TEXT);
+    let y = rect.center().y - number.size().y / 2.0;
+    ui.painter()
+        .galley(pos2(x + text_width + 6.0, y), number, PAUSE);
+    response
+}
+
+fn red_record(ui: &mut Ui) -> Response {
     let font = fonts::text(FS_M, Weight::Semibold);
     let galley = ui
         .painter()
@@ -157,11 +209,19 @@ fn record_button(ui: &mut Ui) -> Response {
     let (rect, response) = ui.allocate_exact_size(vec2(width, CONTROL), Sense::click());
     response.widget_info(|| WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), hud::RECORD));
     let fill = if response.hovered() { REC } else { REC_STRONG };
-    ui.painter().rect_filled(rect, R1, fill);
+    let fade = if ui.is_enabled() { 1.0 } else { 0.45 };
     ui.painter()
-        .circle_filled(pos2(rect.left() + 16.0, rect.center().y), 6.0, WHITE);
+        .rect_filled(rect, R1, fill.gamma_multiply(fade));
+    ui.painter().circle_filled(
+        pos2(rect.left() + 16.0, rect.center().y),
+        6.0,
+        WHITE.gamma_multiply(fade),
+    );
     let top = rect.center().y - galley.size().y / 2.0;
-    ui.painter()
-        .galley(pos2(rect.left() + 30.0, top), galley, WHITE);
+    ui.painter().galley(
+        pos2(rect.left() + 30.0, top),
+        galley,
+        WHITE.gamma_multiply(fade),
+    );
     response
 }

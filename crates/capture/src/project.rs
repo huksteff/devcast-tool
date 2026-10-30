@@ -22,6 +22,19 @@ use crate::recover::recover;
 /// Name stem of recording folders in `media/`: `recording-1`, `recording-2`, …
 pub const RECORDING_FOLDER: &str = "recording";
 
+/// The first `recording-N.dcproj` that is not in the folder `dir` yet: where a new recording
+/// goes when nobody named its project.
+pub fn free_project_root(dir: &Path) -> PathBuf {
+    let mut n = 1;
+    loop {
+        let root = dir.join(format!("{RECORDING_FOLDER}-{n}.dcproj"));
+        if !root.exists() {
+            return root;
+        }
+        n += 1;
+    }
+}
+
 /// The first `recording-N` that is not in the folder `media` yet.
 pub fn free_recording_folder(media: &Path) -> String {
     let mut n = 1;

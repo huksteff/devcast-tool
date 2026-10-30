@@ -4,16 +4,19 @@
 //! remembered per monitor.
 
 pub mod bar;
+pub mod live;
 pub mod menus;
 pub mod picker;
 pub mod placement;
 pub mod popover;
 
+use dc_capture::audio::AudioSource;
 use dc_capture::win::hud_window;
-use dc_ui_kit::tokens::{BORDER, HUD_H, R3};
+use dc_ui_kit::tokens::{BORDER, HUD_H, PAUSE, R3};
 use eframe::egui::{self, Stroke, StrokeKind, Ui};
 
 use crate::app::Shared;
+use crate::session::Session;
 
 /// Size of the bar at rest before its first layout, points (mockup: ≈ 404 × 48; ours is wider:
 /// the source name «Экран 1 · 2560×1440» is shown whole).
@@ -52,24 +55,21 @@ impl HudWindow {
     /// The bar; called every frame of the main window.
     pub fn ui(&mut self, ui: &mut Ui, shared: &mut Shared) {
         self.sync_exclusion(shared);
-        let rect = ui.max_rect();
-        ui.painter()
-            .rect_stroke(rect, R3, Stroke::new(1.0, BORDER), StrokeKind::Inside);
-        let source = bar::source_label(&shared.store.get().recording.source, &shared.sources);
-        let inner = ui.horizontal_centered(|ui| bar::bar(ui, shared.store.get(), &source));
+        let paused = matches!(&shared.session, Session::Live(live) if live.paused());
+        let border = if paused { PAUSE } else { BORDER };
+        ui.painter().rect_stroke(
+            ui.max_rect(),
+            R3,
+            Stroke::new(1.0, border),
+            StrokeKind::Inside,
+        );
+        let inner = ui.horizontal_centered(|ui| content(ui, shared));
         match inner.inner {
             Some((bar::Clicked::Grip, _)) => {
                 ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
-            Some((bar::Clicked::More, anchor)) => toggle(shared, popover::Kind::More, anchor),
-            Some((bar::Clicked::Source, anchor)) => toggle(shared, popover::Kind::Source, anchor),
-            Some((bar::Clicked::Mic | bar::Clicked::SystemAudio, anchor)) => {
-                toggle(shared, popover::Kind::Sound, anchor);
-            }
-            Some((bar::Clicked::Fps | bar::Clicked::Countdown, anchor)) => {
-                toggle(shared, popover::Kind::Timing, anchor);
-            }
-            _ => {}
+            Some((clicked, anchor)) => on_click(shared, clicked, anchor),
+            None => {}
         }
         fit(ui, inner.response.rect.width());
         let rect = match hud_window::window_rect(self.hwnd) {
@@ -115,6 +115,56 @@ impl HudWindow {
             s.hud.remember(&monitors, rect);
         });
         shared.report(result);
+    }
+}
+
+/// The bar of the current state of the recording.
+fn content(ui: &mut Ui, shared: &Shared) -> Option<(bar::Clicked, f32)> {
+    let record = match &shared.session {
+        Session::Live(live) => {
+            let recording = &shared.store.get().recording;
+            let mic = recording.microphone.as_ref().map(|name| {
+                shared
+                    .meters
+                    .level(&shared.ctx, &AudioSource::Microphone(name.clone()))
+            });
+            let view = live::LiveView {
+                timer: live.timer(),
+                paused: live.paused(),
+                mic,
+            };
+            return live::live_bar(ui, &view);
+        }
+        Session::Preparing(_) => {
+            live::preparing(ui);
+            return None;
+        }
+        Session::Idle => bar::RecordButton::Ready,
+        Session::Countdown(countdown) => bar::RecordButton::Countdown(countdown.left),
+        Session::Launch | Session::Starting(_) | Session::Cancelling(_) => bar::RecordButton::Busy,
+    };
+    let settings = shared.store.get();
+    let source = bar::source_label(&settings.recording.source, &shared.sources);
+    bar::bar(ui, settings, &source, record)
+}
+
+fn on_click(shared: &mut Shared, clicked: bar::Clicked, anchor: f32) {
+    match clicked {
+        bar::Clicked::Grip => {}
+        bar::Clicked::More => toggle(shared, popover::Kind::More, anchor),
+        bar::Clicked::Source => toggle(shared, popover::Kind::Source, anchor),
+        bar::Clicked::Mic | bar::Clicked::SystemAudio => {
+            toggle(shared, popover::Kind::Sound, anchor);
+        }
+        bar::Clicked::Fps | bar::Clicked::Countdown => {
+            toggle(shared, popover::Kind::Timing, anchor);
+        }
+        bar::Clicked::Record if shared.session.is_idle() => shared.record(),
+        bar::Clicked::Record => shared.cancel_countdown(),
+        bar::Clicked::Stop => shared.stop(),
+        bar::Clicked::Pause => shared.toggle_pause(),
+        bar::Clicked::Cancel => shared.ask_cancel(anchor),
+        bar::Clicked::Hide => shared.hide_hud(),
     }
 }
 

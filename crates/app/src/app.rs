@@ -13,6 +13,7 @@ use eframe::egui;
 
 use crate::hud::{HudWindow, picker, popover};
 use crate::meters::Meters;
+use crate::session::Session;
 use crate::settings::Store;
 use crate::settings_window::{self, SettingsWindow};
 
@@ -34,6 +35,8 @@ pub struct Shared {
     /// Microphone names, read when the sound popover or the settings window opens.
     pub microphones: Vec<String>,
     pub meters: Meters,
+    /// The recording: countdown, recorder, timer.
+    pub session: Session,
     pub toasts: Toasts,
 }
 
@@ -52,6 +55,7 @@ impl Shared {
             area: None,
             microphones: Vec::new(),
             meters: Meters::default(),
+            session: Session::Idle,
             toasts: Toasts::default(),
         };
         shared.refresh_sources();
@@ -100,7 +104,7 @@ impl Shared {
                     .map(AudioSource::Microphone),
             );
         } else if let Some(mic) = &recording.microphone
-            && self.settings.is_some()
+            && (self.settings.is_some() || matches!(self.session, Session::Live(_)))
         {
             wanted.push(AudioSource::Microphone(mic.clone()));
         }
@@ -158,6 +162,12 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
+        lock(&self.shared).tick();
+    }
+
+    /// A running recording is stopped and saved before the app goes.
+    fn on_exit(&mut self) {
+        std::mem::take(&mut lock(&self.shared).session).finish();
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
@@ -171,6 +181,7 @@ impl eframe::App for App {
         if area {
             crate::area::show(ui.ctx(), &self.shared);
         }
+        crate::countdown::show(ui.ctx(), &self.shared);
         let bar = ui.input(|i| i.viewport().outer_rect);
         if let (Some(open), Some(bar)) = (open, bar) {
             popover::show(ui.ctx(), &self.shared, open, bar);

@@ -8,7 +8,7 @@ use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::hud;
 use dc_ui_kit::tokens::{BORDER, FS_M, ICON, R1, S2, SURFACE, SURFACE_2, TEXT};
-use dc_ui_kit::widgets::{Toggle, panel_frame};
+use dc_ui_kit::widgets::{Answer, Confirm, Kind as ButtonKind, Toggle, panel_frame};
 use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo, pos2, vec2};
 
 use dc_capture::Source;
@@ -16,6 +16,7 @@ use dc_capture::Source;
 use super::picker::Pick;
 
 use crate::app::{Shared, lock};
+use crate::session::Session;
 
 /// Which popover is open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +27,8 @@ pub enum Kind {
     /// Frame rate and countdown.
     Timing,
     More,
+    /// «Отменить запись?» over ✕ while recording.
+    Cancel,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -55,6 +58,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::Sound => super::menus::SOUND_WIDTH,
         Kind::Timing => super::menus::TIMING_WIDTH,
         Kind::More => 260.0,
+        Kind::Cancel => 280.0,
     };
     let builder = egui::ViewportBuilder::default()
         .with_title(hud::MORE)
@@ -76,6 +80,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
                     Kind::Sound => sound(ui, &mut shared),
                     Kind::Timing => timing(ui, &mut shared),
                     Kind::More => more(ui, &mut shared),
+                    Kind::Cancel => cancel(ui, &mut shared),
                 }
             })
             .response;
@@ -92,9 +97,38 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         if lost_focus
             || ui.input(|i| i.key_pressed(egui::Key::Escape) || i.viewport().close_requested())
         {
-            shared.popover = None;
+            close(&mut shared);
         }
     });
+}
+
+/// Closes the open popover; closing the cancel question means «Продолжить запись».
+pub fn close(shared: &mut Shared) {
+    match shared.popover {
+        Some(Open {
+            kind: Kind::Cancel, ..
+        }) => shared.answer_cancel(false),
+        _ => shared.popover = None,
+    }
+}
+
+/// «Отменить запись?» (mockup 1b): the recording is paused while it is shown.
+fn cancel(ui: &mut Ui, shared: &mut Shared) {
+    let Session::Live(live) = &shared.session else {
+        shared.popover = None;
+        return;
+    };
+    let text = hud::cancel_text(&live.timer());
+    let question = Confirm {
+        title: hud::CANCEL_TITLE,
+        text: &text,
+        cancel: hud::KEEP_RECORDING,
+        confirm: hud::DELETE_RECORDING,
+        kind: ButtonKind::Danger,
+    };
+    if let Some(answer) = question.show(ui) {
+        shared.answer_cancel(answer == Answer::Confirm);
+    }
 }
 
 fn source(ui: &mut Ui, shared: &mut Shared) {

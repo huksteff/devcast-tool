@@ -108,15 +108,8 @@ pub(crate) fn duration(args: &RecordArgs) -> Result<Option<Duration>, CliError> 
 
 /// The new project folder: `-o`, or the first free `recording-N.dcproj` in `cwd`.
 pub(crate) fn project_folder(cwd: &Path, out: Option<&Path>) -> Result<PathBuf, CliError> {
-    let Some(out) = out else {
-        let mut n = 1;
-        loop {
-            let root = cwd.join(format!("recording-{n}.dcproj"));
-            if !root.exists() {
-                return Ok(root);
-            }
-            n += 1;
-        }
-    };
-    new_folder(cwd, out)
+    match out {
+        Some(out) => new_folder(cwd, out),
+        None => Ok(dc_capture::project::free_project_root(cwd)),
+    }
 }
