@@ -110,13 +110,22 @@ impl Previews {
     }
 }
 
-/// The grid; returns the source the user picked.
+/// What the user picked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pick {
+    Source(Source),
+    /// «Область…»: select an area on the screen.
+    Area,
+}
+
+/// The grid; `last_area` is the size of the last area for its card.
 pub fn picker(
     ui: &mut Ui,
     sources: &SourceList,
     chosen: &Source,
     textures: &HashMap<Source, TextureHandle>,
-) -> Option<Source> {
+    last_area: Option<(u32, u32)>,
+) -> Option<Pick> {
     let (screens, windows) = cards(sources);
     ui.label(
         egui::RichText::new(text::TITLE)
@@ -137,8 +146,9 @@ pub fn picker(
                     continue;
                 }
                 ui.label(egui::RichText::new(caption).size(FS_S).color(TEXT_3));
-                if let Some(source) = grid(ui, cards, chosen, textures) {
-                    picked = Some(source);
+                let area = (caption == text::SCREENS).then_some(last_area);
+                if let Some(pick) = grid(ui, cards, chosen, textures, area) {
+                    picked = Some(pick);
                 }
                 ui.add_space(S3);
             }
@@ -146,27 +156,43 @@ pub fn picker(
     picked
 }
 
+/// Cards in rows of four; `area` adds the «Область…» card (with the last area's size).
 fn grid(
     ui: &mut Ui,
     cards: &[Card],
     chosen: &Source,
     textures: &HashMap<Source, TextureHandle>,
-) -> Option<Source> {
+    area: Option<Option<(u32, u32)>>,
+) -> Option<Pick> {
     let width = (ui.available_width() - S2 * (COLUMNS - 1) as f32) / COLUMNS as f32;
+    let area_card = area.map(|last| Card {
+        source: *chosen,
+        title: text::AREA.to_owned(),
+        sub: last.map_or_else(|| text::NO_AREA.to_owned(), |(w, h)| text::last_area(w, h)),
+    });
+    let all: Vec<&Card> = cards.iter().chain(area_card.as_ref()).collect();
     let mut picked = None;
-    for row in cards.chunks(COLUMNS) {
+    for row in all.chunks(COLUMNS) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = S2;
             for card in row {
-                let response = card_ui(
-                    ui,
-                    card,
-                    width,
-                    card.source == *chosen,
-                    textures.get(&card.source),
-                );
-                if response.clicked() {
-                    picked = Some(card.source);
+                let is_area = card.title == text::AREA;
+                let selected = if is_area {
+                    matches!(chosen, Source::Area(_))
+                } else {
+                    card.source == *chosen
+                };
+                let texture = if is_area {
+                    None
+                } else {
+                    textures.get(&card.source)
+                };
+                if card_ui(ui, card, width, selected, texture, is_area).clicked() {
+                    picked = Some(if is_area {
+                        Pick::Area
+                    } else {
+                        Pick::Source(card.source)
+                    });
                 }
             }
         });
@@ -180,6 +206,7 @@ fn card_ui(
     width: f32,
     chosen: bool,
     texture: Option<&TextureHandle>,
+    area: bool,
 ) -> Response {
     let thumb_height = (width - 12.0) * 9.0 / 16.0;
     let (rect, response) =
@@ -193,7 +220,16 @@ fn card_ui(
     };
     painter.rect(rect, R2, fill, Stroke::new(2.0, border), StrokeKind::Inside);
     let thumb = Rect::from_min_size(rect.min + vec2(6.0, 6.0), vec2(width - 12.0, thumb_height));
-    painter.rect_filled(thumb, 5, Color32::from_rgb(0x11, 0x11, 0x11));
+    let thumb_fill = if area {
+        SURFACE_3
+    } else {
+        Color32::from_rgb(0x11, 0x11, 0x11)
+    };
+    painter.rect_filled(thumb, 5, thumb_fill);
+    if area {
+        let icon = Rect::from_center_size(thumb.center(), vec2(28.0, 28.0));
+        dc_ui_kit::Icon::Area.paint(painter, icon, dc_ui_kit::tokens::TEXT_2);
+    }
     if let Some(texture) = texture {
         let size = texture.size_vec2();
         let scale = (thumb.width() / size.x).min(thumb.height() / size.y);

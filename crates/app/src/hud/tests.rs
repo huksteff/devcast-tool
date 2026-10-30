@@ -138,8 +138,10 @@ fn source_picker() {
                 dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
                     ui.set_width(super::picker::WIDTH - 26.0);
                     let textures = std::collections::HashMap::new();
-                    if let Some(picked) = super::picker::picker(ui, &sources(), chosen, &textures) {
-                        *chosen = picked;
+                    let last = Some((1280, 720));
+                    let picked = super::picker::picker(ui, &sources(), chosen, &textures, last);
+                    if let Some(super::picker::Pick::Source(source)) = picked {
+                        *chosen = source;
                     }
                 });
             },

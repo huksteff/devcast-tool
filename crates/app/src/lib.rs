@@ -2,6 +2,7 @@
 //! `main.rs` only reports the error of [`run`].
 
 mod app;
+mod area;
 mod error;
 mod hud;
 mod instance;

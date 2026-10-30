@@ -11,6 +11,8 @@ pub enum AppError {
     },
     #[error("не удалось проверить, запущен ли DevCast: {0}. Перезапусти программу")]
     Instance(#[from] dc_ipc::IpcError),
+    #[error(transparent)]
+    Source(#[from] dc_capture::SourceError),
     #[error("не удалось открыть окно: {0}. Обнови драйвер видеокарты")]
     Window(String),
     #[error("файл настроек {path} испорчен ({message}): удали его, DevCast создаст новый")]

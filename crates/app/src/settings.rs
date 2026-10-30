@@ -117,6 +117,8 @@ pub struct AppSettings {
     pub updates: Updates,
     /// Where the HUD stood on each monitor.
     pub hud: HudPlacement,
+    /// The last selected area (always `area:…`), offered when the selection opens again.
+    pub last_area: Option<Source>,
 }
 
 impl Default for AppSettings {
@@ -132,6 +134,7 @@ impl Default for AppSettings {
             speech_model: SpeechModel::default(),
             updates: Updates::default(),
             hud: HudPlacement::default(),
+            last_area: None,
         }
     }
 }

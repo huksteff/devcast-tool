@@ -27,6 +27,8 @@ pub struct Shared {
     pub popover: Option<popover::Open>,
     /// Previews of the open source picker.
     pub previews: Option<picker::Previews>,
+    /// Open area selection.
+    pub area: Option<crate::area::AreaSession>,
     pub toasts: Toasts,
 }
 
@@ -42,6 +44,7 @@ impl Shared {
             settings: None,
             popover: None,
             previews: None,
+            area: None,
             toasts: Toasts::default(),
         };
         shared.refresh_sources();
@@ -118,7 +121,11 @@ impl eframe::App for App {
         self.hud.ui(ui, &mut shared);
         shared.toasts.show(ui.ctx());
         let open = shared.popover;
+        let area = shared.area.is_some();
         drop(shared);
+        if area {
+            crate::area::show(ui.ctx(), &self.shared);
+        }
         let bar = ui.input(|i| i.viewport().outer_rect);
         if let (Some(open), Some(bar)) = (open, bar) {
             popover::show(ui.ctx(), &self.shared, open, bar);

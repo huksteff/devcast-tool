@@ -13,6 +13,8 @@ use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo, pos2, vec2};
 
 use dc_capture::Source;
 
+use super::picker::Pick;
+
 use crate::app::{Shared, lock};
 
 /// Which popover is open.
@@ -100,15 +102,24 @@ fn source(ui: &mut Ui, shared: &mut Shared) {
     };
     let textures = previews.textures(ui.ctx());
     let chosen = store.get().recording.source;
-    let Some(picked) = super::picker::picker(ui, sources, &chosen, textures) else {
+    let last = match store.get().last_area {
+        Some(Source::Area(area)) => Some((area.width(), area.height())),
+        _ => None,
+    };
+    let Some(picked) = super::picker::picker(ui, sources, &chosen, textures, last) else {
         return;
     };
-    let saved = shared.store.update(|s| s.recording.source = picked);
-    shared.report(saved);
     shared.popover = None;
     shared.previews = None;
-    if let Source::Window(id) = picked {
-        shared.report(dc_capture::win::hud_window::bring_to_front(id));
+    match picked {
+        Pick::Area => shared.area = Some(crate::area::AreaSession::open(shared)),
+        Pick::Source(source) => {
+            let saved = shared.store.update(|s| s.recording.source = source);
+            shared.report(saved);
+            if let Source::Window(id) = source {
+                shared.report(dc_capture::win::hud_window::bring_to_front(id));
+            }
+        }
     }
 }
 
