@@ -25,7 +25,7 @@ pub use clip_audio::{ChannelLevels, ClipAudio};
 pub use color::{ChromaSiting, ColorMatrix, ColorRange, VideoColor};
 pub use command::{Command, CommandError, Op, OpInfo, index_of, within};
 pub use cursor::{CursorPicture, CursorPoint, CursorShape, CursorTrack, CursorTracks};
-pub use diff::Diff;
+pub use diff::{Changes, Diff, on_off};
 pub use effect::{Effect, EffectInfo, EffectRegistry, StateError};
 pub use geom::{PixelSize, Point, Rect};
 pub use history::{Change, History};

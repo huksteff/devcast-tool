@@ -22,7 +22,7 @@ pub use model::{
     POSITION_LIMIT, ROTATION_LIMIT, SIZE_MAX, SIZE_MIN, TRACKS,
 };
 pub use motion::{Animation, Pose, STAGE_DEFAULT, STAGE_MAX, Stage, shown_for};
-pub use place::{Placement, REFERENCE};
+pub use place::Placement;
 
 use dc_core::{EffectInfo, IdKind, OpInfo};
 

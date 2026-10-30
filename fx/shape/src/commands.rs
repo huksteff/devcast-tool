@@ -71,7 +71,9 @@ impl ShapeSet {
             new.radius = within("радиус углов", radius, 0.0, RADIUS_MAX)?;
         }
         if let Some(colors) = &self.colors {
-            new.colors = parse_colors(colors)?;
+            new.colors = colors
+                .parse::<GradientColors>()
+                .map_err(|e| CommandError::new(e.to_string()))?;
         }
         if let Some(angle) = self.angle {
             new.angle = within("направление градиента", angle, -360.0, 360.0)?;
@@ -132,19 +134,6 @@ fn point(what: &str, text: &str) -> Result<BoxPoint, CommandError> {
             "{what} фигуры «{text}»: нужно x,y в долях бокса от 0 до 1, например 0,0.5 (бокс задаёт annot set --rect)"
         ))),
     }
-}
-
-fn parse_colors(text: &str) -> Result<GradientColors, CommandError> {
-    let colors = text
-        .split(',')
-        .map(|c| c.trim().parse::<Rgba>())
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| CommandError::new(e.to_string()))?;
-    GradientColors::try_from(colors).map_err(|e| {
-        CommandError::new(format!(
-            "{e}: перечисли их через запятую, например #ff4d9dff,#22d3eeff"
-        ))
-    })
 }
 
 fn check_cycle(cycle: f64) -> Result<f64, CommandError> {

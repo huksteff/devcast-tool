@@ -1,7 +1,7 @@
 //! The fields of a shape annotation, kept in `Annotation::body` (fx/annotations).
 
 use dc_fx_annotations::{Blend, step};
-use dc_render::{GradientColors, Rgba};
+use dc_render::{BLUE, GradientColors, Rgba};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -63,15 +63,14 @@ pub struct ShapeBody {
 /// v1 defaults: blue `#2563eb`, gradient colours `#ff4d9d`, `#22d3ee` flowing in 2.4 s.
 impl Default for ShapeBody {
     fn default() -> Self {
-        let blue = [0x25, 0x63, 0xeb];
         Self {
             figure: Figure::Arrow,
             from: BoxPoint { x: 0.0, y: 0.5 },
             to: BoxPoint { x: 1.0, y: 0.5 },
-            color: Rgba([blue[0], blue[1], blue[2], 255]),
+            color: BLUE,
             width: 6.0,
             outline: true,
-            fill: Rgba([blue[0], blue[1], blue[2], 0]),
+            fill: Rgba([BLUE.0[0], BLUE.0[1], BLUE.0[2], 0]),
             radius: 8.0,
             gradient: false,
             colors: GradientColors::two(

@@ -9,7 +9,7 @@ use crate::ramp::Ramp;
 
 /// Zooms at most this far apart on the output are connected (v1 `CHAINED_ZOOM_PAN_GAP_MS`);
 /// overlapping ones too.
-pub const CONNECT_GAP: f64 = 1.35;
+const CONNECT_GAP: f64 = 1.35;
 /// A connected zoom hands over to the next one this long after its end (v1).
 const HANDOVER: f64 = 0.2;
 

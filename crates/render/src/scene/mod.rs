@@ -21,12 +21,16 @@ pub use blur::Blur;
 pub use drawing::{BrushStroke, Drawing, Tool};
 pub use motion::Motion;
 pub use shape::{
-    Geometry, Glow, Gradient, GradientColors, GradientCount, Paint, ParseRgbaError, Rgba, Shape,
-    Stroke,
+    BLUE, Geometry, Glow, Gradient, GradientColors, GradientCount, Paint, ParseGradientError,
+    ParseRgbaError, Rgba, Shape, Stroke,
 };
 pub use sprite::{ImageKey, Sprite};
-pub use text::{Align, Beside, FAMILIES, Font, Plate, Shadow, Text, TextRun};
+pub use text::{Align, Beside, DEFAULT_FAMILY, FAMILIES, Font, Plate, Shadow, Text, TextRun};
 pub use video::{PxRect, Video, VideoSource};
+
+/// Lengths that effects give in reference px (font sizes, plate radii, strokes of captions,
+/// keys and annotations) are px of a frame whose short side is this many px.
+pub const REFERENCE: f64 = 1080.0;
 
 /// Everything drawn in one output frame. The frame starts black (the fields around a clip, SCOPE
 /// «Кадр»); layers are painted band by band, bottom to top, and in push order within a band.

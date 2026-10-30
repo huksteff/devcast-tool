@@ -6,7 +6,7 @@ use std::ops::Range as Span;
 
 use dc_core::time::Source;
 use dc_core::{PixelSize, Range, SourceTime};
-use dc_render::{Font, RenderError, TextMeasure};
+use dc_render::{Font, REFERENCE, RenderError, TextMeasure};
 
 use crate::model::{CaptionsState, Cue, Word};
 use crate::style::CaptionsSettings;
@@ -14,8 +14,6 @@ use crate::style::CaptionsSettings;
 /// v1 sizes in font sizes: padding, line height.
 pub(crate) const PAD: [f64; 2] = [1.1, 0.78];
 pub(crate) const LINE_HEIGHT: f64 = 1.32;
-/// Size in px when the short side of the frame is this.
-const REFERENCE: f64 = 1080.0;
 /// Line breaking of v1: a line filled less than this is penalised, the last one is cheap.
 const FULL: f64 = 0.72;
 const UNDERFULL: f64 = 26000.0;

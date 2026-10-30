@@ -2,14 +2,10 @@
 //! animations and keyframes change this, not the kinds.
 
 use dc_core::{OutputTime, PixelSize, Rect, SourceTime, TimeMap};
-use dc_render::PxRect;
+use dc_render::{PxRect, REFERENCE};
 
 use crate::model::Annotation;
 use crate::motion::Pose;
-
-/// Lengths of the kinds (font size, plate radius, stroke) are px when the short side of the
-/// frame is this many px, as captions and keys.
-pub const REFERENCE: f64 = 1080.0;
 
 /// An annotation in the canvas of one frame, before the zoom camera (decision 000): the scene
 /// camera moves and scales it.
@@ -19,7 +15,7 @@ pub struct Placement {
     pub rect: PxRect,
     /// Degrees clockwise around the box centre.
     pub rotation: f32,
-    /// Canvas px per reference px ([`REFERENCE`]); a pop scales it with the box.
+    /// Canvas px per reference px (`dc_render::REFERENCE`); a pop scales it with the box.
     pub k: f64,
     /// 0..1 for the whole annotation.
     pub opacity: f32,
@@ -65,7 +61,7 @@ impl Placement {
     }
 
     /// Scaled around the box centre, then shifted (the shift is not scaled, as v1).
-    pub fn posed(self, pose: &Pose) -> Self {
+    pub(crate) fn posed(self, pose: &Pose) -> Self {
         let s = pose.scale as f32;
         let [dx, dy] = pose.shift.map(|d| (d * self.k) as f32);
         let r = self.rect;

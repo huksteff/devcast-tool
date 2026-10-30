@@ -21,7 +21,7 @@ pub const STEP: f64 = 1.0 / 240.0;
 /// a long exposure); the strength scales it.
 const SHUTTER: f64 = 4.0 / 60.0;
 /// Samples of the camera blur (v1 kernel size).
-const BLUR_SAMPLES: NonZeroU32 = NonZeroU32::new(13).unwrap();
+const BLUR_SAMPLES: NonZeroU32 = NonZeroU32::MIN.saturating_add(12);
 
 /// Consecutive simulation steps where the camera is not at rest.
 #[derive(Debug, Clone, PartialEq)]

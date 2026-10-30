@@ -4,11 +4,11 @@
 use dc_core::time::Output;
 use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg, within};
 use dc_fx_annotations::{AnnotId, Kind, edit_kind};
-use dc_render::Rgba;
+use dc_render::{BLUE, Rgba};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::model::{BLUE, DrawingBody, Stroke, StrokeTool, WIDTH_MAX, WIDTH_MIN};
+use crate::model::{DrawingBody, Stroke, StrokeTool, WIDTH_MAX, WIDTH_MIN};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]

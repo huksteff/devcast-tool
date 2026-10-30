@@ -1,6 +1,6 @@
 //! `zoom motion`: camera motion of all zooms (presets and fine tuning).
 
-use dc_core::{Command, CommandError, Diff, Op, Project, TimeDelta, within};
+use dc_core::{Changes, Command, CommandError, Diff, Op, Project, TimeDelta, on_off, within};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -82,44 +82,20 @@ fn transition(what: &str, secs: f64) -> Result<TimeDelta, CommandError> {
 /// `движение зума: вход 0.200→1.523 с, выход 0.200→1.015 с (Smooth)`.
 fn changes(old: &ZoomSettings, new: &ZoomSettings) -> String {
     let secs = |t: TimeDelta| format!("{:.3}", t.as_secs_f64());
-    let switch = |on: bool| if on { "вкл" } else { "выкл" };
-    let mut parts = Vec::new();
-    if old.zoom_in != new.zoom_in {
-        parts.push(format!(
-            "вход {}→{} с",
-            secs(old.zoom_in),
-            secs(new.zoom_in)
-        ));
-    }
-    if old.zoom_out != new.zoom_out {
-        parts.push(format!(
-            "выход {}→{} с",
-            secs(old.zoom_out),
-            secs(new.zoom_out)
-        ));
-    }
-    if old.smoothness != new.smoothness {
-        parts.push(format!(
-            "плавность {:.2}→{:.2}",
-            old.smoothness, new.smoothness
-        ));
-    }
-    if old.motion_blur != new.motion_blur {
-        parts.push(format!(
-            "motion blur {:.2}→{:.2}",
-            old.motion_blur, new.motion_blur
-        ));
-    }
-    if old.connect != new.connect {
-        parts.push(format!(
-            "склейка {}→{}",
-            switch(old.connect),
-            switch(new.connect)
-        ));
-    }
+    let mut changes = Changes::default();
+    changes
+        .part(old.zoom_in != new.zoom_in, || {
+            format!("вход {}→{} с", secs(old.zoom_in), secs(new.zoom_in))
+        })
+        .part(old.zoom_out != new.zoom_out, || {
+            format!("выход {}→{} с", secs(old.zoom_out), secs(new.zoom_out))
+        })
+        .number("плавность", old.smoothness, new.smoothness, 2)
+        .number("motion blur", old.motion_blur, new.motion_blur, 2)
+        .value("склейка", on_off(old.connect), on_off(new.connect));
     let preset = new
         .preset()
         .map(|p| format!(" ({})", p.title()))
         .unwrap_or_default();
-    format!("движение зума: {}{preset}", parts.join(", "))
+    format!("движение зума: {}{preset}", changes.join())
 }

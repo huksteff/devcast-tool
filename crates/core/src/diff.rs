@@ -141,9 +141,65 @@ pub(crate) fn id_list(prefix: &str, numbers: &[u32]) -> String {
     parts.join(",")
 }
 
+/// Parts of the one-line answer of a settings command, `размер 1.00→1.50, тень вкл`: only the
+/// fields whose old and new values differ.
+#[derive(Debug, Default)]
+pub struct Changes(Vec<String>);
+
+impl Changes {
+    /// `name a→b`.
+    pub fn value<T: PartialEq + fmt::Display>(&mut self, name: &str, a: T, b: T) -> &mut Self {
+        self.part(a != b, || format!("{name} {a}→{b}"))
+    }
+
+    /// `name a→b` with `digits` after the point.
+    pub fn number(&mut self, name: &str, a: f64, b: f64, digits: usize) -> &mut Self {
+        self.part(a != b, || format!("{name} {a:.digits$}→{b:.digits$}"))
+    }
+
+    /// `name вкл` or `name выкл`: the new state.
+    pub fn switch(&mut self, name: &str, a: bool, b: bool) -> &mut Self {
+        self.part(a != b, || format!("{name} {}", on_off(b)))
+    }
+
+    /// Any other part, when `changed`.
+    pub fn part(&mut self, changed: bool, part: impl FnOnce() -> String) -> &mut Self {
+        if changed {
+            self.0.push(part());
+        }
+        self
+    }
+
+    /// The parts joined by `, `.
+    pub fn join(&self) -> String {
+        self.0.join(", ")
+    }
+}
+
+/// `вкл` or `выкл`.
+pub fn on_off(on: bool) -> &'static str {
+    if on { "вкл" } else { "выкл" }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn changes_list_only_what_differs() {
+        let mut changes = Changes::default();
+        changes
+            .value("строк", 1, 2)
+            .value("цвет", "a", "a")
+            .number("размер", 1.0, 1.5, 2)
+            .switch("тень", false, true)
+            .switch("loop", true, true)
+            .part(true, || "показаны".to_owned());
+        assert_eq!(
+            changes.join(),
+            "строк 1→2, размер 1.00→1.50, тень вкл, показаны"
+        );
+    }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
     struct Zoom;

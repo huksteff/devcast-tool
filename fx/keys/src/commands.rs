@@ -1,6 +1,6 @@
 //! `keys`: the pressed-keys plate of every recording.
 
-use dc_core::{Command, CommandError, Diff, Op, Project, TimeDelta, within};
+use dc_core::{Changes, Command, CommandError, Diff, Op, Project, TimeDelta, within};
 use dc_render::Rgba;
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -65,28 +65,25 @@ impl Op for KeysSet {
 
 /// `клавиши: показаны, позиция bottom→top_right, размер 1.00→1.50`.
 fn changes(old: &KeysSettings, new: &KeysSettings) -> String {
-    let number = |name: &str, a: f64, b: f64| (a != b).then(|| format!("{name} {a:.2}→{b:.2}"));
-    let color = |name: &str, a: Rgba, b: Rgba| (a != b).then(|| format!("{name} {a}→{b}"));
-    let parts = [
-        (old.show != new.show).then(|| {
+    let mut changes = Changes::default();
+    changes
+        .part(old.show != new.show, || {
             if new.show {
                 "показаны"
             } else {
                 "скрыты"
             }
             .to_owned()
-        }),
-        (old.position != new.position)
-            .then(|| format!("позиция {}→{}", old.position.name(), new.position.name())),
-        number("размер", old.size, new.size),
-        color("цвет", old.color, new.color),
-        color("плашка", old.background, new.background),
-        number(
+        })
+        .value("позиция", old.position.name(), new.position.name())
+        .number("размер", old.size, new.size, 2)
+        .value("цвет", old.color, new.color)
+        .value("плашка", old.background, new.background)
+        .number(
             "время показа (с)",
             old.duration.as_secs_f64(),
             new.duration.as_secs_f64(),
-        ),
-    ];
-    let parts: Vec<_> = parts.into_iter().flatten().collect();
-    format!("клавиши: {}", parts.join(", "))
+            2,
+        );
+    format!("клавиши: {}", changes.join())
 }

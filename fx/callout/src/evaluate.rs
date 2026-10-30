@@ -4,8 +4,8 @@
 
 use dc_core::{OutputTime, TimeMap};
 use dc_render::{
-    Align, Band, Beside, Font, Glow, Gradient, Layer, Paint, Plate, PxRect, Rgba, Scene, Text,
-    TextRun,
+    Align, Band, Beside, DEFAULT_FAMILY, Font, Glow, Gradient, Layer, Paint, Plate, PxRect, Rgba,
+    Scene, Text, TextRun,
 };
 
 use crate::model::{CalloutSettings, CalloutState};
@@ -22,7 +22,6 @@ const OFFSET: [f64; 2] = [0.60, 0.54];
 /// The bubble keeps this far from the frame edges, ref-px.
 const MARGIN: f64 = 16.0;
 const LINE_HEIGHT: f32 = 1.2;
-const FAMILY: &str = "Inter";
 /// One loop of the gradient colours (v1: a full cycle in 2.4 s), output time.
 const GRADIENT_LOOP_SECS: f64 = 2.4;
 /// Glow σ per glow unit and ref-px (v1 figures: `shadowBlur = glow · 1.5` = 2σ).
@@ -63,7 +62,7 @@ pub fn evaluate(
             color: settings.text_color,
         }],
         font: Font {
-            family: FAMILY.to_owned(),
+            family: DEFAULT_FAMILY.to_owned(),
             size: font as f32,
             bold: true,
             italic: false,

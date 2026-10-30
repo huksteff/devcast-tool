@@ -9,10 +9,6 @@ use serde::Deserialize;
 use crate::model::{Action, Callout, CalloutEvent, CalloutState, EventId, EventKind};
 use crate::text::check_text;
 
-fn one_second() -> f64 {
-    1.0
-}
-
 /// Action of an event as a command argument.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -35,7 +31,7 @@ pub struct CalloutAdd {
     /// Text to type, only for `text`: one line, up to 80 characters.
     pub text: Option<String>,
     /// Typing or erasing time, seconds at normal speed even over a sped-up part.
-    #[serde(default = "one_second")]
+    #[serde(default = "dc_core::arg::one_second")]
     pub duration: f64,
 }
 

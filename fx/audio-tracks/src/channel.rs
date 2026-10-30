@@ -3,7 +3,9 @@
 //! a level itself; that level is its own from then on).
 
 use dc_core::project::MediaKind;
-use dc_core::{ChannelLevels, Clip, ClipId, Command, CommandError, Diff, Op, Project};
+use dc_core::{
+    Changes, ChannelLevels, Clip, ClipId, Command, CommandError, Diff, Op, Project, on_off,
+};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -188,30 +190,26 @@ fn check_track(clip: &Clip, name: &str) -> Result<(), CommandError> {
 
 /// `громкость 100→80 %, шумоподавление вкл`.
 fn changes(old: &ChannelLevels, new: &ChannelLevels) -> String {
-    let number = |name: &str, unit: &str, a: Option<f64>, b: Option<f64>, neutral: f64| {
-        (a != b).then(|| {
-            let (a, b) = (a.unwrap_or(neutral), b.unwrap_or(neutral));
-            format!("{name} {a}→{b}{unit}")
+    let level = |a: Option<f64>, neutral: f64| a.unwrap_or(neutral);
+    let state = |b: Option<bool>| on_off(b == Some(true));
+    let mut changes = Changes::default();
+    changes
+        .part(old.volume != new.volume, || {
+            let (a, b) = (level(old.volume, 100.0), level(new.volume, 100.0));
+            format!("громкость {a}→{b} %")
         })
-    };
-    let switch = |name: &str, a: Option<bool>, b: Option<bool>| {
-        (a != b).then(|| {
-            format!(
-                "{name} {}",
-                if b == Some(true) {
-                    "вкл"
-                } else {
-                    "выкл"
-                }
-            )
+        .part(old.gain != new.gain, || {
+            let (a, b) = (level(old.gain, 1.0), level(new.gain, 1.0));
+            format!("усиление {a}→{b}×")
         })
-    };
-    let parts = [
-        number("громкость", " %", old.volume, new.volume, 100.0),
-        number("усиление", "×", old.gain, new.gain, 1.0),
-        switch("mute", old.muted, new.muted),
-        switch("нормализация", old.normalize, new.normalize),
-        switch("шумоподавление", old.denoise, new.denoise),
-    ];
-    parts.into_iter().flatten().collect::<Vec<_>>().join(", ")
+        .part(old.muted != new.muted, || {
+            format!("mute {}", state(new.muted))
+        })
+        .part(old.normalize != new.normalize, || {
+            format!("нормализация {}", state(new.normalize))
+        })
+        .part(old.denoise != new.denoise, || {
+            format!("шумоподавление {}", state(new.denoise))
+        });
+    changes.join()
 }

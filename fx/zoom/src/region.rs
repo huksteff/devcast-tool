@@ -10,10 +10,6 @@ use crate::model::{
 };
 use crate::span::{span, timeline};
 
-fn one_second() -> f64 {
-    1.0
-}
-
 fn default_scale() -> f64 {
     DEFAULT_SCALE
 }
@@ -29,7 +25,7 @@ pub struct ZoomAdd {
     /// on clusters of clicks, one undo step; then only `scale` and `mode` apply.
     pub at: TimeArg<Output>,
     /// Length, seconds of the output video.
-    #[serde(default = "one_second")]
+    #[serde(default = "dc_core::arg::one_second")]
     pub duration: f64,
     /// Magnification, 1..5.
     #[serde(default = "default_scale")]

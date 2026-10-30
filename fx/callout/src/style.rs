@@ -1,6 +1,6 @@
 //! `callout style`: look of every callout and the text of `on`.
 
-use dc_core::{Command, CommandError, Diff, Op, Project, within};
+use dc_core::{Changes, Command, CommandError, Diff, Op, Project, within};
 use dc_render::{GradientColors, Rgba};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -50,7 +50,9 @@ impl Command for CalloutStyle {
         }
         new.gradient = self.gradient.unwrap_or(new.gradient);
         if let Some(colors) = &self.colors {
-            new.colors = parse_colors(colors)?;
+            new.colors = colors
+                .parse::<GradientColors>()
+                .map_err(|e| CommandError::new(e.to_string()))?;
         }
         if let Some(glow) = self.glow {
             new.glow = within("свечение облачка", glow, 0.0, GLOW_MAX)?;
@@ -73,46 +75,23 @@ impl Op for CalloutStyle {
     const SETTINGS: Option<&'static str> = Some("callout");
 }
 
-fn parse_colors(text: &str) -> Result<GradientColors, CommandError> {
-    let colors = text
-        .split(',')
-        .map(|c| c.trim().parse::<Rgba>())
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| CommandError::new(e.to_string()))?;
-    GradientColors::try_from(colors).map_err(|e| {
-        CommandError::new(format!(
-            "{e}: перечисли их через запятую, например #14b8c4ff,#a855f7ff"
-        ))
-    })
-}
-
 /// `облачко: размер 1.00→1.50, градиент вкл`.
 fn changes(old: &CalloutSettings, new: &CalloutSettings) -> String {
-    let mut parts = Vec::new();
-    if old.text != new.text {
-        parts.push(format!("текст «{}»", new.text));
-    }
-    if old.background != new.background {
-        parts.push(format!("фон {}", new.background));
-    }
-    if old.text_color != new.text_color {
-        parts.push(format!("цвет текста {}", new.text_color));
-    }
-    if old.size != new.size {
-        parts.push(format!("размер {:.2}→{:.2}", old.size, new.size));
-    }
-    if old.gradient != new.gradient {
-        parts.push(format!(
-            "градиент {}",
-            if new.gradient { "вкл" } else { "выкл" }
-        ));
-    }
-    if old.colors != new.colors {
-        let colors: Vec<String> = new.colors.colors().iter().map(Rgba::to_string).collect();
-        parts.push(format!("цвета {}", colors.join(",")));
-    }
-    if old.glow != new.glow {
-        parts.push(format!("свечение {}→{}", old.glow, new.glow));
-    }
-    format!("облачко: {}", parts.join(", "))
+    let mut changes = Changes::default();
+    changes
+        .part(old.text != new.text, || format!("текст «{}»", new.text))
+        .part(old.background != new.background, || {
+            format!("фон {}", new.background)
+        })
+        .part(old.text_color != new.text_color, || {
+            format!("цвет текста {}", new.text_color)
+        })
+        .number("размер", old.size, new.size, 2)
+        .switch("градиент", old.gradient, new.gradient)
+        .part(old.colors != new.colors, || {
+            let colors: Vec<String> = new.colors.colors().iter().map(Rgba::to_string).collect();
+            format!("цвета {}", colors.join(","))
+        })
+        .value("свечение", old.glow, new.glow);
+    format!("облачко: {}", changes.join())
 }

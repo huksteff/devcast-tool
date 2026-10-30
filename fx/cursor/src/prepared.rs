@@ -15,7 +15,8 @@ use crate::state::{CursorSettings, CursorState};
 
 /// Arrow height in px at size 1 in a clip 1920 px wide (v1 `h = 28 · size · W / 1920`).
 const ARROW_PX: f64 = 28.0;
-const REFERENCE_WIDTH: f64 = 1920.0;
+/// v1 sizes and speeds (arrow, click effects, callout, sway) are ref-px: px of a clip this wide.
+pub(crate) const REFERENCE_WIDTH: f64 = 1920.0;
 /// A pointer this far outside the crop still counts as inside it (v1, fractions of the crop).
 const EDGE: f64 = 1e-6;
 

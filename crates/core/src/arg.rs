@@ -10,6 +10,12 @@ use serde::{Deserialize, Deserializer};
 
 use crate::time::{Range, Time, Timeline};
 
+/// Default length of a new object on the timeline, seconds of the output video
+/// (`#[serde(default = "dc_core::arg::one_second")]`).
+pub fn one_second() -> f64 {
+    1.0
+}
+
 /// Text that is not `start-end`.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error(

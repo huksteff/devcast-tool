@@ -7,6 +7,7 @@ use std::f64::consts::PI;
 
 use dc_core::{CursorPoint, Point, SourceTime, TimeDelta};
 
+use crate::prepared::REFERENCE_WIDTH;
 use crate::spring::{Axis, Spring};
 
 /// Steps of the springs per second of the recording.
@@ -15,7 +16,6 @@ const RATE: f64 = 240.0;
 const FULL_TILT_SPEED: f64 = 1400.0;
 /// Shorter moves in ref-px do not tilt (v1).
 const STILL: f64 = 0.01;
-const REFERENCE_WIDTH: f64 = 1920.0;
 
 /// The tilt in the direction of motion.
 #[derive(Debug, Clone, Copy, PartialEq)]

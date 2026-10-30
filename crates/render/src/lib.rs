@@ -28,9 +28,10 @@ pub use nv12_readback::{Nv12Readback, Planes};
 pub use offscreen::SHEET_GAP;
 pub use readback::Image;
 pub use scene::{
-    Align, Band, Beside, Blur, BrushStroke, Camera, Drawing, FAMILIES, Font, Geometry, Glow,
-    Gradient, GradientColors, ImageKey, Layer, Motion, Paint, Plate, PxRect, Rgba, Scene, Shadow,
-    Shape, Sprite, Stroke, Text, TextRun, Tool, Video, VideoSource,
+    Align, BLUE, Band, Beside, Blur, BrushStroke, Camera, DEFAULT_FAMILY, Drawing, FAMILIES, Font,
+    Geometry, Glow, Gradient, GradientColors, ImageKey, Layer, Motion, Paint, ParseGradientError,
+    Plate, PxRect, REFERENCE, Rgba, Scene, Shadow, Shape, Sprite, Stroke, Text, TextRun, Tool,
+    Video, VideoSource,
 };
 pub use sprites::{Bitmap, IMAGE_BUDGET};
 pub use text::{BUILTIN_FONTS, TextMeasure};

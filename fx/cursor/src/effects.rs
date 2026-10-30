@@ -7,9 +7,7 @@ use dc_render::{Geometry, Glow, Paint, PxRect, Shape, Stroke};
 
 use crate::click_state::{ClickKind, ClickStyle};
 use crate::clicks;
-use crate::prepared::{Place, Prepared};
-
-const REFERENCE_WIDTH: f64 = 1920.0;
+use crate::prepared::{Place, Prepared, REFERENCE_WIDTH};
 /// Particles of the flash and the golden angle between them (Vogel's spiral, v1).
 const PARTICLES: usize = 18;
 const GOLDEN_ANGLE: f64 = 2.399_963_229_728_653;

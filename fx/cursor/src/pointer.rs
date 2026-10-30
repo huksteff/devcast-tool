@@ -4,10 +4,7 @@
 use dc_core::{OutputTime, PixelSize, Project, TimeMap};
 
 use crate::pose::pose_at;
-use crate::prepared::Prepared;
-
-/// Click effects and the callout give their v1 sizes in ref-px of a clip this wide.
-const REFERENCE_WIDTH: f64 = 1920.0;
+use crate::prepared::{Prepared, REFERENCE_WIDTH};
 
 /// The cursor point at an output moment, px of the frame.
 #[derive(Debug, Clone, Copy, PartialEq)]

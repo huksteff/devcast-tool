@@ -79,6 +79,9 @@ pub const FAMILIES: [&str; 5] = [
     "JetBrains Mono",
 ];
 
+/// The family of captions, keys, callouts and new text annotations unless one is chosen.
+pub const DEFAULT_FAMILY: &str = FAMILIES[0];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Align {

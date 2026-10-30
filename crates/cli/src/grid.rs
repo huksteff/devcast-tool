@@ -4,8 +4,8 @@
 //! grid where no zoom is on).
 
 use dc_render::{
-    Align, Band, Beside, Font, Geometry, Layer, Paint, Plate, PxRect, Rgba, Scene, Shape, Text,
-    TextRun,
+    Align, Band, Beside, DEFAULT_FAMILY, Font, Geometry, Layer, Paint, Plate, PxRect, Rgba, Scene,
+    Shape, Text, TextRun,
 };
 
 const STEPS: u16 = 10;
@@ -62,7 +62,7 @@ fn label(value: &str, point: [f32; 2], w: f32, h: f32, k: f32) -> Text {
             color: LABEL,
         }],
         font: Font {
-            family: "Inter".to_owned(),
+            family: DEFAULT_FAMILY.to_owned(),
             size: 20.0 * k,
             bold: true,
             italic: false,

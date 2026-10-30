@@ -2,15 +2,15 @@
 //! count, over everything and outside the zoom camera.
 
 use dc_core::{OutputTime, TimeDelta};
-use dc_render::{Align, Band, Font, Layer, Paint, Plate, PxRect, Scene, Text, TextRun};
+use dc_render::{
+    Align, Band, DEFAULT_FAMILY, Font, Layer, Paint, Plate, PxRect, REFERENCE, Scene, Text, TextRun,
+};
 
 use crate::prepared::{Prepared, Shown};
 use crate::state::Position;
 
 /// Font size in px at size 1 when the short side of the frame is `REFERENCE` px.
 const FONT_PX: f64 = 36.0;
-const REFERENCE: f64 = 1080.0;
-const FAMILY: &str = "Inter";
 /// Distance between the plate and the frame edges, fractions of the short side.
 const MARGIN: f64 = 0.04;
 /// The plate around the letters and its corners, font sizes.
@@ -61,7 +61,7 @@ pub fn evaluate(prepared: &Prepared, t: OutputTime, scene: &mut Scene) {
             color: settings.color,
         }],
         font: Font {
-            family: FAMILY.to_owned(),
+            family: DEFAULT_FAMILY.to_owned(),
             size: font as f32,
             bold: true,
             italic: false,

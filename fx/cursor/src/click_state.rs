@@ -2,7 +2,7 @@
 //! (docs/porting/clicks-callout.md §1–§9).
 
 use dc_core::{SourceTime, TimeDelta};
-use dc_render::Rgba;
+use dc_render::{BLUE, Rgba};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -65,7 +65,7 @@ impl Default for ClickStyle {
     fn default() -> Self {
         Self {
             kind: ClickKind::Off,
-            color: Rgba([0x25, 0x63, 0xeb, 0xff]),
+            color: BLUE,
             scale: 1.0,
             opacity: 1.0,
             duration: TimeDelta::from_millis(600),

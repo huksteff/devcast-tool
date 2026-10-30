@@ -75,9 +75,6 @@ impl StrokeTool {
     }
 }
 
-/// v1 colour of a new stroke, `#2563eb`.
-pub(crate) const BLUE: Rgba = Rgba([0x25, 0x63, 0xeb, 255]);
-
 /// Between two keys: the opacity blends; the strokes are a list and step at the right key whole,
 /// as the key snapshot (`Blend for Value`) takes lists.
 impl Blend for DrawingBody {

@@ -121,6 +121,28 @@ impl TryFrom<Vec<Rgba>> for GradientColors {
     }
 }
 
+/// Text that is not 2 to 4 colours `#rrggbbaa` separated by commas.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ParseGradientError {
+    #[error(transparent)]
+    Color(#[from] ParseRgbaError),
+    #[error("{0}: перечисли их через запятую, например #ff4d9dff,#22d3eeff")]
+    Count(#[from] GradientCount),
+}
+
+/// `#14b8c4ff,#a855f7ff`, as commands take it.
+impl FromStr for GradientColors {
+    type Err = ParseGradientError;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let colors = text
+            .split(',')
+            .map(|c| c.trim().parse::<Rgba>())
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self::try_from(colors)?)
+    }
+}
+
 impl From<GradientColors> for Vec<Rgba> {
     fn from(colors: GradientColors) -> Self {
         colors.0
@@ -156,6 +178,9 @@ pub struct Stroke {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub struct Rgba(pub [u8; 4]);
+
+/// v1 accent `#2563ebff`: default colour of shapes, drawing strokes and click effects.
+pub const BLUE: Rgba = Rgba([0x25, 0x63, 0xeb, 0xff]);
 
 /// Text that is not `#rrggbbaa`.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -269,6 +294,19 @@ mod tests {
         assert!(GradientColors::try_from(vec![red; 5]).is_err());
         let error = serde_json::from_str::<GradientColors>(r##"["#ff0000ff"]"##).unwrap_err();
         assert!(error.to_string().contains("от 2 до 4"), "{error}");
+    }
+
+    #[test]
+    fn gradient_parses_from_comma_separated_colors() {
+        let colors: GradientColors = " #ff0000ff, #00ff00ff ".parse().unwrap();
+        assert_eq!(
+            colors.colors(),
+            [Rgba([255, 0, 0, 255]), Rgba([0, 255, 0, 255])]
+        );
+        let one = "#ff0000ff".parse::<GradientColors>().unwrap_err();
+        assert!(one.to_string().contains("через запятую"), "{one}");
+        let bad = "#ff0000ff,red".parse::<GradientColors>().unwrap_err();
+        assert!(bad.to_string().contains("не цвет"), "{bad}");
     }
 
     #[test]

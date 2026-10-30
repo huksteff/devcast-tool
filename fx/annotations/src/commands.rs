@@ -14,10 +14,6 @@ use crate::model::{
 use crate::motion::Stage;
 use crate::span::{span, timeline};
 
-fn one_second() -> f64 {
-    1.0
-}
-
 /// A box of 0.3×0.2 of the frame around its centre.
 fn centered() -> Result<Rect, CommandError> {
     Rect::new(0.35, 0.4, 0.3, 0.2).map_err(|e| CommandError::new(e.to_string()))
@@ -31,7 +27,7 @@ pub struct AnnotAdd {
     /// Start on the output video.
     pub at: TimeArg<Output>,
     /// Length, seconds of the output video, at least 0.1.
-    #[serde(default = "one_second")]
+    #[serde(default = "dc_core::arg::one_second")]
     pub duration: f64,
     /// Track, 0..31; a higher track lies above.
     #[serde(default)]

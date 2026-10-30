@@ -128,10 +128,6 @@ pub struct CaptionsState {
 }
 
 impl CaptionsState {
-    pub fn cue_ids(&self) -> impl Iterator<Item = CueId> + '_ {
-        self.cues.iter().map(|c| c.id)
-    }
-
     pub(crate) fn position(&self, id: CueId) -> Result<usize, CommandError> {
         index_of(&self.cues, id, |c| c.id)
     }

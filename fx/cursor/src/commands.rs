@@ -1,6 +1,6 @@
 //! `cursor`: look and motion of the cursor of every recording.
 
-use dc_core::{Command, CommandError, Diff, Op, Project, TimeDelta, within};
+use dc_core::{Changes, Command, CommandError, Diff, Op, Project, TimeDelta, within};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -80,42 +80,28 @@ impl Op for CursorSet {
 
 /// `курсор: размер 2.50→3.00, сглаживание focused→exact`.
 fn changes(old: &CursorSettings, new: &CursorSettings) -> String {
-    let number = |name: &str, a: f64, b: f64| (a != b).then(|| format!("{name} {a:.2}→{b:.2}"));
     let secs = |t: TimeDelta| t.as_secs_f64();
-    let parts = [
-        (old.show != new.show).then(|| {
+    let mut changes = Changes::default();
+    changes
+        .part(old.show != new.show, || {
             if new.show {
                 "показан"
             } else {
                 "скрыт"
             }
             .to_owned()
-        }),
-        number("размер", old.size, new.size),
-        (old.smoothing != new.smoothing).then(|| {
-            format!(
-                "сглаживание {}→{}",
-                old.smoothing.name(),
-                new.smoothing.name()
-            )
-        }),
-        number("blur", old.blur, new.blur),
-        number("отскок", old.bounce, new.bounce),
-        number(
+        })
+        .number("размер", old.size, new.size, 2)
+        .value("сглаживание", old.smoothing.name(), new.smoothing.name())
+        .number("blur", old.blur, new.blur, 2)
+        .number("отскок", old.bounce, new.bounce, 2)
+        .number(
             "время отскока (с)",
             secs(old.bounce_time),
             secs(new.bounce_time),
-        ),
-        number("покачивание", old.sway, new.sway),
-        (old.looped != new.looped).then(|| {
-            if new.looped {
-                "loop вкл"
-            } else {
-                "loop выкл"
-            }
-            .to_owned()
-        }),
-    ];
-    let parts: Vec<_> = parts.into_iter().flatten().collect();
-    format!("курсор: {}", parts.join(", "))
+            2,
+        )
+        .number("покачивание", old.sway, new.sway, 2)
+        .switch("loop", old.looped, new.looped);
+    format!("курсор: {}", changes.join())
 }

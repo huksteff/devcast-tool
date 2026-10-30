@@ -1,7 +1,7 @@
 //! The fields of a text annotation, kept in `Annotation::body` (fx/annotations).
 
 use dc_fx_annotations::{Blend, step};
-use dc_render::{Align, FAMILIES, Rgba};
+use dc_render::{Align, DEFAULT_FAMILY, Rgba};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -46,7 +46,7 @@ impl Default for TextBody {
     fn default() -> Self {
         Self {
             text: "Текст".to_owned(),
-            font: FAMILIES[0].to_owned(),
+            font: DEFAULT_FAMILY.to_owned(),
             size: 32.0,
             bold: true,
             italic: false,

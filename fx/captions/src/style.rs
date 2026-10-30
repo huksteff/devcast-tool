@@ -2,7 +2,7 @@
 //! command `captions style`.
 
 use dc_core::{Command, CommandError, Diff, Op, Project, within};
-use dc_render::{FAMILIES, Rgba};
+use dc_render::{DEFAULT_FAMILY, FAMILIES, Rgba};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -79,7 +79,7 @@ impl Default for CaptionsSettings {
     fn default() -> Self {
         Self {
             show: true,
-            font: "Inter".to_owned(),
+            font: DEFAULT_FAMILY.to_owned(),
             size: 30.0,
             color: Rgba([0xff, 0xff, 0xff, 0xff]),
             highlight: Rgba([0xfd, 0xe0, 0x47, 0xff]),
