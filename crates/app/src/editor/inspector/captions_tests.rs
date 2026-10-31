@@ -186,3 +186,43 @@ fn a_cue_picked_on_the_timeline_opens_its_editor() {
     assert_eq!(project_json(&harness), json(&after(&steps)));
     harness.snapshot("inspector_cue");
 }
+
+#[test]
+fn esc_in_a_cue_field_drops_the_draft() {
+    let mut harness = captions_tab();
+    click_line(&mut harness, "0:09.00", "Открываем страницу логина");
+    let untouched = project_json(&harness);
+    for hint in [text::CUE_TEXT, text::CUE_START] {
+        let before = harness.get_by_label(hint).value();
+        harness.get_by_label(hint).focus();
+        harness.run();
+        harness.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
+        harness.get_by_label(hint).type_text("0:05.000 черновик");
+        harness.run();
+        harness.key_press(egui::Key::Escape);
+        harness.run();
+        assert_eq!(
+            project_json(&harness),
+            untouched,
+            "{hint}: Esc applies nothing"
+        );
+        assert_eq!(
+            harness.get_by_label(hint).value(),
+            before,
+            "{hint}: the text is back"
+        );
+        let cue = Selected::Region(Item::Cue(CueId::from_number(2)));
+        let view = &harness.state().editor.view;
+        assert_eq!(
+            view.selection.single(),
+            Some(cue),
+            "{hint}: the cue stays picked"
+        );
+    }
+    click_line(&mut harness, "0:01.00", "Сегодня покажу вход");
+    assert_eq!(
+        project_json(&harness),
+        untouched,
+        "nothing left to apply later"
+    );
+}

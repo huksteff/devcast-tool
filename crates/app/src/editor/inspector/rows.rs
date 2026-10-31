@@ -221,7 +221,7 @@ fn pending_id() -> Id {
 /// A text field over the whole width named by `hint`, showing `now` of the object `key`: the
 /// command `apply` makes of the typed text once the field lets the keys go (Enter, a click
 /// away) and the text differs. While typing the text is a draft; picking another object
-/// applies it too ([`flush`]).
+/// applies it too ([`flush`]); Esc drops it.
 pub fn text(
     ui: &mut Ui,
     hint: &str,
@@ -262,7 +262,8 @@ pub fn text(
             d.remove::<Pending>(pending_id());
         }
     });
-    (response.lost_focus() && value != now).then(|| apply(value))
+    let dropped = ui.input(|i| i.key_pressed(egui::Key::Escape));
+    (response.lost_focus() && !dropped && value != now).then(|| apply(value))
 }
 
 /// The text typed into a field that is gone this pass (another object was picked): its
