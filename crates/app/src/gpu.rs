@@ -16,7 +16,18 @@ use crate::error::AppError;
 /// build stops the process on that (the crash on the «Звук» button). DX12 waits for the queue
 /// before releasing a swapchain.
 pub fn device() -> Result<Gpu, AppError> {
-    Gpu::new(AdapterChoice::Auto).map_err(|e| AppError::Window(e.to_string()))
+    let instance = eframe::wgpu::Instance::new(instance_descriptor());
+    Gpu::on(instance, AdapterChoice::Auto).map_err(|e| AppError::Window(e.to_string()))
+}
+
+/// dc-render's instance whose DX12 windows present through a DirectComposition visual: its
+/// swapchain has premultiplied alpha, so the transparent HUD, popovers and countdown show the
+/// desktop around their rounded panel (decision 020; with a swapchain of the window handle the
+/// see-through pixels were black).
+fn instance_descriptor() -> eframe::wgpu::InstanceDescriptor {
+    let mut desc = dc_render::instance_descriptor();
+    desc.backend_options.dx12.presentation_system = eframe::wgpu::Dx12SwapchainKind::DxgiFromVisual;
+    desc
 }
 
 /// eframe draws the windows with clones of `gpu`.
@@ -71,5 +82,16 @@ mod tests {
         assert_eq!(setup.adapter.get_info().backend, gpu.info().backend);
         #[cfg(windows)]
         assert_eq!(gpu.info().backend, eframe::wgpu::Backend::Dx12);
+    }
+
+    /// The transparent windows need the swapchain of a composition visual (decision 020).
+    #[test]
+    fn windows_present_through_a_composition_visual() {
+        let desc = instance_descriptor();
+        assert_eq!(
+            desc.backend_options.dx12.presentation_system,
+            eframe::wgpu::Dx12SwapchainKind::DxgiFromVisual
+        );
+        assert_eq!(desc.backends, dc_render::BACKEND);
     }
 }

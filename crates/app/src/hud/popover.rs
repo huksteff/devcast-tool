@@ -1,23 +1,24 @@
 //! Popovers of the HUD (decision 001: small windows of the same look): one at a time, opened
 //! upwards 8 px above the bar under the button that opened it; Esc or a click elsewhere closes
-//! it. Its window sizes itself to the content.
+//! it. Its transparent window sizes itself to the drawn panel and its shadow (decision 020).
 
 use std::sync::{Arc, Mutex};
 
-use dc_ui_kit::Icon;
-use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::{hud, picker as picker_text, tray};
-use dc_ui_kit::tokens::{BORDER, FS_M, ICON, R1, S2, SURFACE, SURFACE_2, TEXT};
+use dc_ui_kit::theme::WINDOW_SHADOW;
+use dc_ui_kit::tokens::{S2, S3};
 use dc_ui_kit::widgets::{
-    Answer, Confirm, ErrorAction, ErrorPanel, Kind as ButtonKind, Toggle, panel_frame,
+    Answer, Confirm, ErrorAction, ErrorPanel, Kind as ButtonKind, panel_frame,
 };
-use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo, pos2, vec2};
+use eframe::egui::{self, Rect, Ui, Vec2, pos2, vec2};
 
 use dc_capture::Source;
 
+use super::menus::{MoreAction, more_menu};
 use super::picker::Pick;
 
 use crate::app::{Shared, lock, other_window};
+use crate::borderless;
 use crate::session::Session;
 
 /// Which popover is open.
@@ -55,7 +56,7 @@ impl Kind {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Open {
     pub kind: Kind,
-    /// Left edge of the button under it, points from the bar's left edge.
+    /// Left edge of the button under it, points from the HUD window's left edge.
     pub anchor: f32,
     /// The window has had the focus. Until then losing it does not close the popover: Windows
     /// does not activate a window opened while another app is in front (a button pressed
@@ -97,13 +98,6 @@ impl Open {
     }
 }
 
-/// What the «Ещё» menu asks for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MoreAction {
-    Settings,
-    Quit,
-}
-
 /// Highest a popover gets, points (mockup: the source picker scrolls past 620).
 pub const MAX_HEIGHT: f32 = 620.0;
 
@@ -113,7 +107,7 @@ const GAP: f32 = 8.0;
 /// The popover's window; one at a time.
 pub const ID: &str = "hud-popover";
 
-/// Shows the open popover window above the bar whose outer rectangle is `bar`.
+/// Shows the open popover window above the HUD whose window rectangle is `bar`.
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: Rect) {
     let width = match open.kind {
         Kind::Source => super::picker::WIDTH,
@@ -132,12 +126,22 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
     });
 }
 
-/// The window of `open`, `width` wide, `GAP` above the bar (it starts 40 high, then fits).
+/// The window of `open` with a panel `width` wide (it starts 40 high, then fits).
 pub fn builder(open: Open, width: f32, bar: Rect) -> egui::ViewportBuilder {
-    crate::borderless::window(open.kind.title())
+    let window = window_rect(open, vec2(width, 40.0), bar);
+    borderless::floating(open.kind.title())
         .with_resizable(false)
-        .with_inner_size(vec2(width, 40.0))
-        .with_position(pos2(bar.left() + open.anchor - S2, bar.top() - GAP - 40.0))
+        .with_inner_size(window.size())
+        .with_position(window.min)
+}
+
+/// The transparent window of `open` around a panel of `panel` size, its shadow margin
+/// included: the panel stands `GAP` above the HUD's panel, under the button that opened it;
+/// `bar` is the HUD's window rectangle.
+pub fn window_rect(open: Open, panel: Vec2, bar: Rect) -> Rect {
+    let top = borderless::panel_rect(bar).top();
+    let corner = pos2(bar.left() + open.anchor - S2, top - GAP - panel.y);
+    Rect::from_min_size(corner, panel) + borderless::margin()
 }
 
 /// One frame of the popover window: its content, its size to fit, closing on Esc or lost focus.
@@ -149,13 +153,15 @@ fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
     }
     // Laid out in the full popover height, not the window's current one: the window then
     // takes the size of the content (it starts 40 px high).
-    let room = Rect::from_min_size(ui.max_rect().min, vec2(width, MAX_HEIGHT));
+    let margin = borderless::margin();
+    let corner = ui.max_rect().min + vec2(margin.left.into(), margin.top.into());
+    let room = Rect::from_min_size(corner, vec2(width, MAX_HEIGHT));
     let response = ui
         .scope_builder(egui::UiBuilder::new().max_rect(room), |ui| {
             panel_frame()
-                .shadow(egui::Shadow::NONE)
+                .shadow(WINDOW_SHADOW)
                 .show(ui, |ui| {
-                    ui.set_width(width - 2.0 * dc_ui_kit::tokens::S3 - 2.0);
+                    ui.set_width(width - 2.0 * S3 - 2.0);
                     match open.kind {
                         Kind::Source => source(ui, shared),
                         Kind::Sound => sound(ui, shared),
@@ -169,14 +175,13 @@ fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
                 .response
         })
         .inner;
-    let size = response.rect.size();
+    let window = window_rect(open, response.rect.size(), bar);
     let current = ui.input(|i| i.viewport().inner_rect.map(|r| r.size()));
-    if current.is_some_and(|c| (c - size).length() > 0.5) {
+    if current.is_some_and(|c| (c - window.size()).length() > 0.5) {
         ui.ctx()
-            .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-        let corner = pos2(bar.left() + open.anchor - S2, bar.top() - GAP - size.y);
+            .send_viewport_cmd(egui::ViewportCommand::InnerSize(window.size()));
         ui.ctx()
-            .send_viewport_cmd(egui::ViewportCommand::OuterPosition(corner));
+            .send_viewport_cmd(egui::ViewportCommand::OuterPosition(window.min));
     }
     let focused = ui.input(|i| i.viewport().focused);
     let lost_focus = shared
@@ -329,70 +334,4 @@ fn more(ui: &mut Ui, shared: &mut Shared) {
         }
         None => {}
     }
-}
-
-/// The «Ещё» menu (mockup 1): «Скрывать HUD из записи», «Настройки», «Выход».
-pub fn more_menu(ui: &mut Ui, hide: &mut bool) -> Option<MoreAction> {
-    ui.spacing_mut().item_spacing.y = 2.0;
-    ui.horizontal(|ui| {
-        ui.set_min_height(34.0);
-        icon(ui, Icon::EyeOff);
-        ui.label(
-            egui::RichText::new(hud::HIDE_FROM_RECORDING)
-                .font(fonts::text(FS_M, Weight::Regular))
-                .color(TEXT),
-        );
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.add(Toggle::new(hide, hud::HIDE_FROM_RECORDING));
-        });
-    });
-    divider(ui);
-    let mut action = None;
-    if item(ui, Icon::Gear, hud::SETTINGS).clicked() {
-        action = Some(MoreAction::Settings);
-    }
-    divider(ui);
-    if item(ui, Icon::Quit, hud::QUIT).clicked() {
-        action = Some(MoreAction::Quit);
-    }
-    action
-}
-
-fn icon(ui: &mut Ui, icon: Icon) {
-    let (rect, _) = ui.allocate_exact_size(vec2(ICON, ICON), Sense::hover());
-    icon.paint(ui.painter(), rect, TEXT);
-}
-
-/// A row of a popover menu: icon and text, lit when hovered.
-pub fn item(ui: &mut Ui, icon: Icon, text: &str) -> Response {
-    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), 34.0), Sense::click());
-    response.widget_info(|| WidgetInfo::labeled(egui::Role::MenuItem, true, text));
-    let fill = if response.hovered() {
-        SURFACE_2
-    } else {
-        SURFACE
-    };
-    ui.painter().rect_filled(rect, R1, fill);
-    let icon_rect = Rect::from_min_size(
-        pos2(rect.left() + S2, rect.center().y - ICON / 2.0),
-        vec2(ICON, ICON),
-    );
-    icon.paint(ui.painter(), icon_rect, TEXT);
-    ui.painter().text(
-        pos2(icon_rect.right() + S2, rect.center().y),
-        egui::Align2::LEFT_CENTER,
-        text,
-        fonts::text(FS_M, Weight::Regular),
-        TEXT,
-    );
-    response
-}
-
-pub fn divider(ui: &mut Ui) {
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 13.0), Sense::hover());
-    ui.painter().hline(
-        rect.x_range().shrink(4.0),
-        rect.center().y,
-        egui::Stroke::new(1.0, BORDER),
-    );
 }

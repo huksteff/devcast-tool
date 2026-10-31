@@ -147,6 +147,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
 }
 
 fn screen_ui(ui: &mut egui::Ui, shared: &mut Shared, index: u32) {
+    crate::borderless::opaque(ui);
     let Some(session) = shared.area.as_mut() else {
         return;
     };

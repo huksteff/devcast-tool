@@ -54,7 +54,7 @@
 
 | Тема | Решение |
 |---|---|
-| [001](decisions/001-hud-window.md) HUD | Прозрачных окон нет. HUD — непрозрачное окно по размеру панели со скруглением от DWM, исключённое из захвата. Выбор области — по стоп-кадру. |
+| [001](decisions/001-hud-window.md) HUD | HUD — окно без рамки поверх всех, исключённое из захвата. Выбор области — по стоп-кадру. Прозрачность — решение 020. |
 | [002](decisions/002-multi-window.md) Окна | Deferred viewports eframe, перерисовка только по запросу (в простое CPU 0%). Баг egui #8466 проверяется в 7.26. |
 | [003](decisions/003-video-decode.md) Видео | FFmpeg 9 shared (проба на BtbN; `xtask deps` качает GyanD 9.0.2) + ffmpeg-next 9. Декодирование программное. **Наши записи пишутся с GOP 1 с.** Пока тянут указатель — ближайший ключевой кадр, на отпускании — точный кадр. |
 | [004](decisions/004-overlays-wgsl.md) Эффекты | Свои WGSL-шейдеры: SDF-фигуры, двухпроходное размытие с уменьшением разрешения, свечение. 4K-кадр — 0,5 мс на RTX 3060 Ti. |
@@ -72,7 +72,8 @@
 | [016](decisions/016-text-measure.md) Ширина текста | `TextMeasure` в dc-render меряет строку теми же шрифтами и разметкой, что проход текста; его даёт `Evaluator::new`, и субтитры делятся на строки и страницы один раз, до кадров. |
 | [017](decisions/017-turned-text.md) Повёрнутый текст | glyphon не поворачивает глифы: текст с поворотом рисуется прямо в слой размера цели и ложится на кадр повёрнутым; часть больше цели — плитками. |
 | [018](decisions/018-recognition-process.md) Распознавание вне окна | `devcast-app` не линкует whisper и Vulkan: модели качает `dc-models`, речь распознаёт `devcast --captions-worker` рядом с exe (протокол `dc_ops::recognition`); правило в `xtask verify`. |
-| [019](decisions/019-patched-winit.md) Копии egui-winit и winit | `third_party/` — точные копии с двумя правками для Windows (тень окна без рамки по `has_shadow`, `SetFocus` окну переднего плана без фокуса), `[patch.crates-io]`; вне workspace, проверки их не трогают. |
+| [019](decisions/019-patched-winit.md) Копии egui-winit и winit | `third_party/` — точные копии с правками для Windows (тень окна без рамки по `has_shadow`, без битмапа перенаправления у прозрачного окна, `SetFocus` окну переднего плана без фокуса), `[patch.crates-io]`; вне workspace, проверки их не трогают. |
+| [020](decisions/020-transparent-windows.md) Прозрачные окна | HUD, поповеры и отсчёт — прозрачные окна (swapchain `DxgiFromVisual`, `WS_EX_NOREDIRECTIONBITMAP` при создании через egui-winit), панель, рамку и тень рисует egui; поле под тень маленькое — оно забирает клики. |
 
 ## Крейты
 

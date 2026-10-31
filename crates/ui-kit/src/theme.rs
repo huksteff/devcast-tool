@@ -18,6 +18,17 @@ pub const SHADOW: Shadow = Shadow {
     color: egui::Color32::from_black_alpha(115),
 };
 
+/// Shadow of the floating windows (HUD, popovers, countdown): their transparent window takes
+/// clicks in its whole rectangle, shadow included, so the shadow is smaller than [`SHADOW`]:
+/// 6 px at the sides, 4 above and 8 below — the popover's shadow ends at the HUD 8 px under it
+/// (decision 020).
+pub const WINDOW_SHADOW: Shadow = Shadow {
+    offset: [0, 2],
+    blur: 12,
+    spread: 0,
+    color: egui::Color32::from_black_alpha(115),
+};
+
 /// Sets the theme on `ctx` for both system themes, so the OS theme changes nothing.
 pub fn apply(ctx: &egui::Context) {
     for theme in [Theme::Dark, Theme::Light] {

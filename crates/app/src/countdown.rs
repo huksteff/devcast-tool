@@ -8,13 +8,14 @@ use std::sync::{Arc, Mutex};
 use dc_capture::{Source, SourceList};
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::countdown as text;
-use dc_ui_kit::tokens::{BORDER, FS_S, S2, SURFACE, TEXT_3, WHITE};
-use eframe::egui::{self, Rect, Sense, Stroke, StrokeKind, Ui, vec2};
+use dc_ui_kit::tokens::{BORDER, COUNTDOWN_FILL, FS_S, R_COUNTDOWN, S2, TEXT_3, WHITE};
+use eframe::egui::{self, Rect, Sense, Ui, vec2};
 
 use crate::app::{Shared, lock, other_window};
+use crate::borderless;
 use crate::session::Session;
 
-/// Side of the window, points.
+/// Side of the panel, points; the transparent window adds the shadow margin (decision 020).
 pub const SIDE: f32 = 200.0;
 
 /// The middle of what `source` records, physical desktop pixels.
@@ -52,15 +53,15 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         (countdown.left, target_center(source, &shared.sources))
     };
     let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
-    let mut builder = crate::borderless::window(text::CANCEL_HINT)
+    let size = borderless::outer_size(vec2(SIDE, SIDE));
+    let mut builder = borderless::floating(text::CANCEL_HINT)
         .with_resizable(false)
         .with_active(true)
-        .with_inner_size(vec2(SIDE, SIDE));
+        .with_inner_size(size);
     if let Some((x, y)) = center {
-        builder = builder.with_position(egui::pos2(
-            x as f32 / ppp - SIDE / 2.0,
-            y as f32 / ppp - SIDE / 2.0,
-        ));
+        let middle = egui::pos2(x as f32 / ppp, y as f32 / ppp);
+        let panel = Rect::from_center_size(middle, vec2(SIDE, SIDE));
+        builder = builder.with_position((panel + borderless::margin()).min);
     }
     let shared = Arc::clone(shared);
     ctx.show_viewport_deferred(
@@ -84,18 +85,17 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     );
 }
 
-/// The number and the hint; true when the user cancels (click or Esc).
+/// The panel with the number and the hint, in a window with the shadow margin around it; true
+/// when the user cancels (click or Esc).
 pub fn face(ui: &mut Ui, left: u32) -> bool {
-    let rect = ui.max_rect();
-    let response = ui.interact(rect, ui.scope_id().with("countdown"), Sense::click());
-    let painter = ui.painter();
-    painter.rect(
-        rect,
-        0,
-        SURFACE,
-        Stroke::new(1.0, BORDER),
-        StrokeKind::Inside,
+    let rect = borderless::panel_rect(ui.max_rect());
+    let response = ui.interact(
+        ui.max_rect(),
+        ui.scope_id().with("countdown"),
+        Sense::click(),
     );
+    let painter = ui.painter();
+    painter.add(borderless::panel(rect, R_COUNTDOWN, COUNTDOWN_FILL, BORDER));
     painter.text(
         rect.center() - vec2(0.0, S2),
         egui::Align2::CENTER_CENTER,

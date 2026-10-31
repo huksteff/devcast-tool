@@ -1,9 +1,8 @@
-//! The app's HUD window as the recording sees it (decision 001): excluded from capture,
-//! cut to a rounded rectangle, moved in physical desktop pixels. `hwnd` is the window handle of the app.
-//! Also bringing a picked window to front.
+//! The app's HUD window as the recording sees it (decision 001): excluded from capture, moved
+//! in physical desktop pixels. `hwnd` is the window handle of the app. Also bringing a picked
+//! window to front.
 
 use windows::Win32::Foundation::{HWND, RECT};
-use windows::Win32::Graphics::Gdi::{CreateRoundRectRgn, DeleteObject, SetWindowRgn};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetWindowRect, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, SetForegroundWindow,
     SetWindowDisplayAffinity, SetWindowPos, WDA_EXCLUDEFROMCAPTURE, WDA_NONE,
@@ -27,26 +26,6 @@ pub fn exclude_from_capture(hwnd: isize, exclude: bool) -> Result<(), CaptureErr
     unsafe { SetWindowDisplayAffinity(handle(hwnd), affinity) }.map_err(|e| {
         CaptureError::platform("скрыть панель из записи")(e.to_string())
     })
-}
-
-/// Cuts the window to a `width` × `height` rectangle with corners of `radius`, physical
-/// pixels: the corners outside show what is under the window. The same on Windows 10 and 11
-/// (DWM rounds only on 11, and a see-through eframe window shows white there, decision 001).
-pub fn round_window(hwnd: isize, width: u32, height: u32, radius: u32) -> Result<(), CaptureError> {
-    let failed = CaptureError::platform("скруглить углы панели");
-    let (w, h, d) = (width as i32 + 1, height as i32 + 1, 2 * radius as i32);
-    // SAFETY: no pointers; the region is ours until SetWindowRgn takes it.
-    let region = unsafe { CreateRoundRectRgn(0, 0, w, h, d, d) };
-    if region.is_invalid() {
-        return Err(failed("CreateRoundRectRgn".to_owned()));
-    }
-    // SAFETY: on success the system owns the region; a bad handle makes the call fail.
-    if unsafe { SetWindowRgn(handle(hwnd), Some(region), true) } == 0 {
-        // SAFETY: the call failed, so the region is still ours to delete.
-        let _ = unsafe { DeleteObject(region.into()) };
-        return Err(failed("SetWindowRgn".to_owned()));
-    }
-    Ok(())
 }
 
 /// Top-left corner and size of the window on the desktop, physical pixels.

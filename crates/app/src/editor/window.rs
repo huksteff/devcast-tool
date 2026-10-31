@@ -90,6 +90,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
 /// One frame of the editor window; closing it writes what is unsaved to the session and shows
 /// the HUD again.
 fn frame(ui: &mut Ui, shared: &mut Shared) {
+    crate::borderless::opaque(ui);
     let layout = shared.store.get().editor;
     let keys = shared.store.get().editor_keys.clone();
     let groups = shared.store.get().inspector.clone();

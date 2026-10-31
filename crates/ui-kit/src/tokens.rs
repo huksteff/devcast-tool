@@ -42,6 +42,10 @@ pub const R1: u8 = 6;
 pub const R2: u8 = 8;
 /// Panels and windows.
 pub const R3: u8 = 12;
+/// The countdown window (mockup 4).
+pub const R_COUNTDOWN: u8 = 24;
+/// Fill of the countdown window: surface at 88 % (mockup 4).
+pub const COUNTDOWN_FILL: Color32 = Color32::from_rgba_unmultiplied_const(0x18, 0x1a, 0x1f, 224);
 
 /// Captions.
 pub const FS_S: f32 = 12.0;

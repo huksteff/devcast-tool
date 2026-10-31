@@ -2454,6 +2454,11 @@ pub fn create_winit_window_attributes(
             && !fullscreen.unwrap_or(false)
             && _has_shadow.unwrap_or(true);
         window_attributes = window_attributes.with_undecorated_shadow(want_undecorated_shadow);
+
+        // DevCast patch: a transparent window gets no redirection bitmap, so a swapchain of a
+        // DirectComposition visual shows its see-through pixels as what is below, not white
+        window_attributes =
+            window_attributes.with_no_redirection_bitmap(transparent.unwrap_or(false));
     }
 
     #[cfg(target_os = "macos")]

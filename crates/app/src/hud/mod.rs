@@ -1,7 +1,7 @@
-//! The HUD: the app's main window, an opaque borderless bar on top of everything, as decision
-//! 001 says: no taskbar button, cut to a rounded rectangle (Windows 10 and 11 alike), excluded
-//! from capture while «Скрывать HUD из записи» is on, dragged by its grip; its place is
-//! remembered per monitor.
+//! The HUD: the app's main window, a borderless bar on top of everything (decision 001): no
+//! taskbar button, excluded from capture while «Скрывать HUD из записи» is on, dragged by its
+//! grip; its place is remembered per monitor. The window is transparent and egui draws the
+//! rounded bar with its border and shadow in it (decision 020).
 
 pub mod bar;
 pub mod live;
@@ -12,8 +12,10 @@ pub mod popover;
 
 use dc_capture::audio::AudioSource;
 use dc_capture::win::hud_window;
-use dc_ui_kit::tokens::{BORDER, HUD_H, PAUSE, R3};
-use eframe::egui::{self, Stroke, StrokeKind, Ui};
+use dc_ui_kit::tokens::{BORDER, HUD_H, PAUSE, R3, SURFACE};
+use eframe::egui::{self, Ui};
+
+use crate::borderless;
 
 use crate::app::Shared;
 use crate::session::Session;
@@ -29,8 +31,6 @@ pub struct HudWindow {
     excluded: Option<bool>,
     /// Desktop rectangle last remembered, physical pixels.
     rect: Option<(i32, i32, u32, u32)>,
-    /// Size and corner radius the window was last cut to, physical pixels.
-    shape: Option<(u32, u32, u32)>,
 }
 
 impl HudWindow {
@@ -48,7 +48,6 @@ impl HudWindow {
             hwnd,
             excluded: None,
             rect: None,
-            shape: None,
         }
     }
 
@@ -57,31 +56,26 @@ impl HudWindow {
         self.sync_exclusion(shared);
         let paused = matches!(&shared.session, Session::Live(live) if live.paused());
         let border = if paused { PAUSE } else { BORDER };
-        ui.painter().rect_stroke(
-            ui.max_rect(),
-            R3,
-            Stroke::new(1.0, border),
-            StrokeKind::Inside,
-        );
-        let width = bar_ui(ui, shared);
+        let window = ui.max_rect();
+        let panel = borderless::panel_rect(window);
+        let width = ui
+            .scope_builder(egui::UiBuilder::new().max_rect(panel), |ui| {
+                // The bar's width follows its content: the panel is painted under it after.
+                let layer = ui.painter().add(egui::Shape::Noop);
+                let width = bar_ui(ui, shared);
+                let drawn = egui::Rect::from_min_size(panel.min, egui::vec2(width.ceil(), HUD_H));
+                ui.painter()
+                    .set(layer, borderless::panel(drawn, R3, SURFACE, border));
+                width
+            })
+            .inner;
         fit(ui, width);
         let rect = match hud_window::window_rect(self.hwnd) {
             Ok(rect) => rect,
             Err(error) => return shared.report(Err(error)),
         };
-        self.round(ui, shared, rect);
         if !ui.input(|i| i.pointer.any_down()) {
             self.remember_place(shared, rect);
-        }
-    }
-
-    /// Cuts the corners of the window to the bar's radius again when its size or DPI changed.
-    fn round(&mut self, ui: &Ui, shared: &mut Shared, (_, _, width, height): (i32, i32, u32, u32)) {
-        let radius = (f32::from(R3) * ui.ctx().pixels_per_point()).round() as u32;
-        let shape = (width, height, radius);
-        if self.shape != Some(shape) {
-            shared.report(hud_window::round_window(self.hwnd, width, height, radius));
-            self.shape = Some(shape);
         }
     }
 
@@ -182,9 +176,9 @@ fn on_click(shared: &mut Shared, clicked: bar::Clicked, anchor: f32) {
     }
 }
 
-/// Resizes the window to the bar's width.
+/// Resizes the window to the bar of `width` and its shadow margin.
 fn fit(ui: &Ui, width: f32) {
-    let size = egui::vec2(width.ceil(), HUD_H);
+    let size = borderless::outer_size(egui::vec2(width.ceil(), HUD_H));
     let current = ui
         .ctx()
         .input(|i| i.viewport().inner_rect.map(|r| r.size()));

@@ -8,7 +8,6 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use dc_capture::SourceList;
 use dc_capture::audio::AudioSource;
 use dc_ui_kit::strings::settings as settings_text;
-use dc_ui_kit::tokens::SURFACE;
 use dc_ui_kit::widgets::{ToastKind, Toasts};
 use eframe::egui;
 
@@ -244,12 +243,6 @@ impl App {
     }
 }
 
-/// Background of the HUD window. eframe wants the colour as stored in the window (sRGB bytes
-/// / 255, like egui's own default), not linear: a linear #181a1f came out almost black.
-pub fn clear_color() -> [f32; 4] {
-    SURFACE.to_normalized_gamma_f32()
-}
-
 /// The shared state; a panic in another window does not lock the rest out.
 pub fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
@@ -282,7 +275,7 @@ pub fn other_window<R>(
 
 impl eframe::App for App {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        clear_color()
+        crate::borderless::clear_color()
     }
 
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -364,6 +357,7 @@ fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
 
 /// One frame of the settings window.
 fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
+    crate::borderless::opaque(ui);
     let Shared {
         ctx,
         store,

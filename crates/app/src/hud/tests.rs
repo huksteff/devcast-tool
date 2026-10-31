@@ -5,7 +5,8 @@ use eframe::egui;
 use egui_kittest::kittest::Queryable;
 
 use super::bar::{self, Clicked};
-use super::popover::{self, MoreAction};
+use super::menus::{self, MoreAction};
+use super::popover;
 use crate::settings::{AppSettings, Countdown};
 
 fn sources() -> SourceList {
@@ -124,7 +125,7 @@ fn more_menu() {
         .build_ui_state(
             |ui, state: &mut (bool, Option<MoreAction>)| {
                 dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
-                    if let Some(action) = popover::more_menu(ui, &mut state.0) {
+                    if let Some(action) = menus::more_menu(ui, &mut state.0) {
                         state.1 = Some(action);
                     }
                 });
@@ -340,14 +341,29 @@ fn every_popover_has_its_own_title() {
     assert_eq!(titles.len(), kinds.len());
 }
 
-/// Its shadow fell on the HUD 8 px below and darkened it (live check of stage 6).
+/// The window is transparent and draws its own shadow (decision 020); the system shadow fell on
+/// the HUD 8 px below and darkened it (live check of stage 6). The drawn one ends at the bar.
 #[test]
-fn popover_window_has_no_shadow_and_sits_above_the_bar() {
+fn popover_window_is_transparent_and_its_panel_sits_above_the_bar() {
     let open = popover::Open::new(popover::Kind::Sound, 100.0);
-    let bar = egui::Rect::from_min_size(egui::pos2(500.0, 900.0), egui::vec2(400.0, 56.0));
+    let bar = egui::Rect::from_min_size(egui::pos2(500.0, 900.0), egui::vec2(400.0, 62.0));
     let builder = popover::builder(open, 300.0, bar);
     assert_eq!(builder.has_shadow, Some(false));
     assert_eq!(builder.decorations, Some(false));
-    let position = builder.position.unwrap();
-    assert_eq!(position.y + 40.0, bar.top() - 8.0);
+    assert_eq!(builder.transparent, Some(true));
+    let start = popover::window_rect(open, egui::vec2(300.0, 40.0), bar);
+    assert_eq!(builder.position, Some(start.min));
+    assert_eq!(builder.inner_size, Some(start.size()));
+
+    let window = popover::window_rect(open, egui::vec2(300.0, 120.0), bar);
+    let panel = crate::borderless::panel_rect(window);
+    let hud = crate::borderless::panel_rect(bar);
+    assert_eq!(panel.size(), egui::vec2(300.0, 120.0));
+    assert_eq!(panel.bottom(), hud.top() - 8.0);
+    assert_eq!(panel.left(), bar.left() + 100.0 - 8.0);
+    assert_eq!(
+        window.bottom(),
+        hud.top(),
+        "the window ends at the bar, not over it"
+    );
 }

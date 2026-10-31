@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use eframe::egui;
 
-use super::{SETTINGS_ID, Shared, clear_color, lock, show_windows};
+use super::{SETTINGS_ID, Shared, lock, show_windows};
 use crate::hud::popover::{self, Kind, Open};
 use crate::settings::Store;
 
@@ -124,16 +124,6 @@ fn levels_and_previews_open_no_empty_window() {
         !after
             .viewport_output
             .contains_key(&egui::ViewportId::from_hash_of(SETTINGS_ID))
-    );
-}
-
-#[test]
-fn clear_color_is_the_surface_token_as_bytes() {
-    let bytes = clear_color().map(|c| (c * 255.0).round() as u8);
-    assert_eq!(
-        bytes,
-        [0x18, 0x1a, 0x1f, 0xff],
-        "the HUD background is surface #181a1f"
     );
 }
 

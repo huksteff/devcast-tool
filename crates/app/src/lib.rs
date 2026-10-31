@@ -68,8 +68,8 @@ pub fn run() -> Result<(), AppError> {
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: gpu::options(&gpu),
-        viewport: borderless::window(APP_NAME)
-            .with_inner_size(hud::START_SIZE)
+        viewport: borderless::floating(APP_NAME)
+            .with_inner_size(borderless::outer_size(hud::START_SIZE))
             .with_resizable(false),
         ..Default::default()
     };

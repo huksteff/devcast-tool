@@ -23,7 +23,7 @@ mod video;
 
 pub use compositor::Compositor;
 pub use error::{GpuError, RenderError};
-pub use gpu::{AdapterChoice, BACKEND, FORMAT, Gpu, SRGB_VIEW};
+pub use gpu::{AdapterChoice, BACKEND, FORMAT, Gpu, SRGB_VIEW, instance_descriptor};
 pub use nv12_readback::{Nv12Readback, Planes};
 pub use offscreen::SHEET_GAP;
 pub use readback::Image;

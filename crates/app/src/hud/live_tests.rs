@@ -112,7 +112,10 @@ fn preparing_bar() {
 #[test]
 fn countdown_window() {
     let mut harness = dc_ui_kit::testing::harness()
-        .with_size(egui::vec2(crate::countdown::SIDE, crate::countdown::SIDE))
+        .with_size(crate::borderless::outer_size(egui::vec2(
+            crate::countdown::SIDE,
+            crate::countdown::SIDE,
+        )))
         .build_ui_state(
             |ui, cancelled: &mut bool| {
                 if crate::countdown::face(ui, 3) {
