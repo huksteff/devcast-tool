@@ -14,6 +14,9 @@ pub struct Want {
     pub size: PixelSize,
     /// The playhead is being dragged: the keyframe before `time` will do (decision 003).
     pub scrub: bool,
+    /// Only the video of the clip at `time`: its whole source frame, uncropped, nothing over it
+    /// (the crop dialog). `size` has the aspect of that source frame.
+    pub source: bool,
 }
 
 /// What was asked and what is shown; `F` is a rendered frame.
@@ -102,6 +105,7 @@ mod tests {
                 height: width / 2,
             },
             scrub: false,
+            source: false,
         }
     }
 

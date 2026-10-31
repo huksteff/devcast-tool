@@ -1,8 +1,9 @@
 //! Track headers (mockup 1, 2e): swatch and name, the button at the right — the eye of the
 //! captions and keys (their `show` setting), the sound of a recording track (`audio channel
-//! --mute`), × of an annotation or extra sound row. × removes an empty row at once and asks
-//! first in a popover by the button when the row has regions (Ctrl+Z brings it back). An
-//! annotation header drags to another annotation row: the row order is the layer order.
+//! --mute`), the crop dialog of the clips, × of an annotation or extra sound row. × removes an
+//! empty row at once and asks first in a popover by the button when the row has regions (Ctrl+Z
+//! brings it back). An annotation header drags to another annotation row: the row order is the
+//! layer order.
 //! «+ Аудиодорожка» under the rows adds an empty extra sound row.
 
 use dc_ui_kit::icons::Icon;
@@ -77,6 +78,7 @@ fn button(ui: &mut Ui, head: Rect, track: &Track, height: f32) -> Option<Press> 
             (Press::Action(action), hint)
         }
         Row::Annotations(_) | Row::Audio(_) => (Press::Remove(track.row), text::REMOVE_TRACK),
+        Row::Clips => (Press::Action(Action::OpenCrop), text::CLIP_CROP),
         _ => {
             cell.add_enabled(false, button);
             return None;
@@ -86,8 +88,7 @@ fn button(ui: &mut Ui, head: Rect, track: &Track, height: f32) -> Option<Press> 
     clicked.then_some(press)
 }
 
-/// The header button of `track`: icon, accessible name, faded. The crop of the clips waits for
-/// 7.20.
+/// The header button of `track`: icon, accessible name, faded.
 fn look(track: &Track) -> Option<(Icon, &'static str, bool)> {
     let off = track.off;
     Some(match track.row {

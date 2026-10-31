@@ -3,17 +3,19 @@
 //! texture of the shared device — the path of `devcast frame` and the export, so the preview and
 //! the export show the same frame. The UI never waits: it sends requests and takes answers. Like
 //! `dc_media::Seeker`, the thread takes only the newest request waiting; the evaluator is built
-//! once per project revision, the telemetry is read again only when the recordings change.
+//! once per project revision, the telemetry is read again only when the recordings change. A request
+//! may ask for the source picture of the clip alone (the crop dialog, `Want::source`).
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
-use dc_core::{CursorTracks, KeyTracks, PixelSize, Project};
+use dc_core::{CursorTracks, KeyTracks, PixelSize, Project, Rect};
 use dc_encode::{Seek, Sources};
 use dc_ops::Evaluator;
 use dc_project::ProjectDir;
-use dc_render::{Compositor, Gpu, TextMeasure};
+use dc_render::{Band, Compositor, Gpu, Layer, PxRect, Scene, TextMeasure, Video};
+use dc_ui_kit::strings::crop as text;
 use eframe::wgpu;
 
 use super::fetch::Want;
@@ -77,10 +79,11 @@ impl Worker {
 
 /// Answers requests until the worker is dropped; a new revision rebuilds the evaluator.
 fn serve(gpu: &Gpu, dir: &ProjectDir, inbox: &Receiver<Request>, reply: &dyn Fn(Answer) -> bool) {
-    let mut painter = Painter::new(gpu, dir);
     let Some(mut request) = newest(inbox) else {
         return;
     };
+    // Built at the first request: the thread of the crop dialog may never get one.
+    let mut painter = Painter::new(gpu, dir);
     loop {
         let project = Arc::clone(&request.project);
         let revision = request.want.revision;
@@ -178,7 +181,10 @@ impl<'d> Painter<'d> {
         evaluator: &Evaluator<'_>,
         want: &Want,
     ) -> Result<Rendered, String> {
-        let scene = evaluator.evaluate(want.time);
+        let mut scene = evaluator.evaluate(want.time);
+        if want.source {
+            scene = source_scene(&scene, want.size)?;
+        }
         let seek = if want.scrub {
             Seek::Keyframe
         } else {
@@ -224,4 +230,30 @@ fn recordings(project: &Project) -> Vec<String> {
         .filter(|c| c.media.kind == dc_core::project::MediaKind::Recording)
         .map(|c| c.media.path.clone())
         .collect()
+}
+
+/// The scene of the crop dialog: the video of `scene`'s clip alone, its whole source frame
+/// filling a `size` target (the size has the aspect of the source).
+fn source_scene(scene: &Scene, size: PixelSize) -> Result<Scene, String> {
+    let video = scene
+        .painted()
+        .find_map(|(_, layer)| match layer {
+            Layer::Video(video) => Some(video),
+            _ => None,
+        })
+        .ok_or_else(|| text::NO_PICTURE.to_owned())?;
+    let mut only = Scene::new(size);
+    let rect = PxRect {
+        x: 0.0,
+        y: 0.0,
+        w: size.width as f32,
+        h: size.height as f32,
+    };
+    let video = Video {
+        source: video.source.clone(),
+        crop: Rect::FULL,
+        rect,
+    };
+    only.push(Band::Video, Layer::Video(video));
+    Ok(only)
 }

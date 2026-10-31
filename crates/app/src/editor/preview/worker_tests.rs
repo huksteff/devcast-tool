@@ -48,11 +48,24 @@ fn next(worker: &Worker, wakes: &Receiver<()>) -> Answer {
 }
 
 fn ask(worker: &Worker, generation: u64, project: &Arc<Project>, secs: f64, size: PixelSize) {
+    ask_for(worker, generation, project, secs, (size, false));
+}
+
+/// Asks for the frame at `secs` of `size`, or only the source picture of the clip (`true`);
+/// each request is a new revision of the project.
+fn ask_for(
+    worker: &Worker,
+    generation: u64,
+    project: &Arc<Project>,
+    secs: f64,
+    (size, source): (PixelSize, bool),
+) {
     let want = Want {
-        revision: 1,
+        revision: generation,
         time: OutputTime::from_secs_f64(secs),
         size,
         scrub: false,
+        source,
     };
     let project = Arc::clone(project);
     assert!(worker.send(Request {
@@ -148,4 +161,30 @@ fn a_project_without_clips_answers_why() {
     ask(&worker, 1, &Arc::new(project), 0.0, size);
     let error = next(&worker, &wakes).1.unwrap_err();
     assert!(error.contains("нет клипов"), "{error}");
+}
+
+#[test]
+fn the_source_picture_ignores_the_crop_and_what_lies_over_the_video() {
+    let gpu = Arc::new(Gpu::new(AdapterChoice::Software).unwrap());
+    let (_temp, dir, project) = fixture();
+    let mut cropped = project.clone();
+    cropped.clips[0].crop = dc_core::Rect::new(0.25, 0.25, 0.5, 0.5).unwrap();
+    let source = cropped.clips[0].media.size;
+    let size = PixelSize {
+        width: source.width / 2,
+        height: source.height / 2,
+    };
+    let (worker, wakes) = start(&gpu, &dir);
+    let picture = |generation, project: Project, source| {
+        ask_for(&worker, generation, &Arc::new(project), 2.0, (size, source));
+        let (answered, frame) = next(&worker, &wakes);
+        assert_eq!(answered, generation);
+        gpu.read(&frame.unwrap().texture).unwrap().rgba
+    };
+    let whole = picture(1, project, true);
+    let of_cropped = picture(2, cropped.clone(), true);
+    let frame = picture(3, cropped, false);
+    assert!(whole == of_cropped, "the crop does not change the picture");
+    assert!(whole != frame, "the frame shows the crop and the cursor");
+    assert!(whole.as_chunks::<4>().0.iter().any(|p| p[..3] != [0, 0, 0]));
 }

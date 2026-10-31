@@ -12,7 +12,7 @@ use super::playback::seek;
 use super::selection::{Item, Selected};
 use super::timeline::Least;
 use super::{EditorWindow, Way};
-use super::{adding, generation};
+use super::{adding, crop, generation};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
@@ -39,6 +39,8 @@ pub enum Action {
     /// An object picked from a list of a panel (the cues of «Субтитры»): picked alone, the
     /// panel with the list stays open.
     ListPick(Selected),
+    /// «Кроп и формат»: playback pauses, the crop dialog opens for the picked clip (`crop`).
+    OpenCrop,
 }
 
 /// Playback and the playhead.
@@ -112,6 +114,13 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
             Action::ListPick(picked) => {
                 editor.view.selection.only(picked);
                 editor.view.followed = Some(picked);
+                moved = true;
+            }
+            Action::OpenCrop => {
+                if editor.playback.is_playing() {
+                    editor.view.playhead = editor.playback.pause(now);
+                }
+                editor.crop = crop::CropDialog::open(editor);
                 moved = true;
             }
             Action::Transport(transport) => {

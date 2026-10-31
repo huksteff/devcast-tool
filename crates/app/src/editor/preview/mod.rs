@@ -6,7 +6,8 @@
 //! copy (`live.rs`). It is asked again when the project, the moment, or the size it is rendered
 //! at changes; nothing repaints while idle. «Вписать / 50% / 100%» size the frame (a frame larger
 //! than the area scrolls), «Полное / Быстрое» choose how many pixels are rendered (`fit.rs`).
-//! «Кроп и формат» opens its dialog in 7.20.
+//! «Кроп и формат» opens its dialog (`editor/crop`); its source picture comes from a second render
+//! thread on the same device (`Preview::source`), so the frame behind the dialog stays.
 
 mod fetch;
 mod fit;
@@ -36,7 +37,8 @@ use super::EditorWindow;
 use super::view::{PreviewScale, Quality};
 use crate::gpu::PreviewGpu;
 use fit::frame_rect;
-use live::{Live, Shown};
+use live::Live;
+pub use live::Shown;
 
 /// Heights of the preview toolbar and of the transport (mockup).
 const BAR: f32 = 36.0;
@@ -49,6 +51,8 @@ pub struct Preview {
     /// Grows with every change of the project: the thread rebuilds its evaluator then.
     revision: u64,
     live: Option<Live>,
+    /// The thread of the crop dialog's source picture: idle until the dialog asks.
+    source: Option<Live>,
 }
 
 impl Preview {
@@ -57,6 +61,7 @@ impl Preview {
             project: Arc::new(project.clone()),
             revision: 0,
             live: None,
+            source: None,
         }
     }
 
@@ -67,6 +72,7 @@ impl Preview {
         dir: ProjectDir,
         ctx: egui::Context,
     ) -> std::io::Result<()> {
+        self.source = Some(Live::start(gpu.clone(), dir.clone(), ctx.clone())?);
         self.live = Some(Live::start(gpu, dir, ctx)?);
         Ok(())
     }
@@ -84,7 +90,23 @@ impl Preview {
 
     /// A frame came since the last call: the editor window repaints.
     pub fn take_news(&self) -> bool {
-        self.live.as_ref().is_some_and(Live::take_news)
+        let source = self.source.as_ref().is_some_and(Live::take_news);
+        self.live.as_ref().is_some_and(Live::take_news) || source
+    }
+
+    /// The whole source picture of the clip playing at `time`, `size` px (its aspect).
+    pub fn source(&mut self, time: OutputTime, size: PixelSize) -> Shown {
+        let Some(live) = &mut self.source else {
+            return Shown::default();
+        };
+        let want = fetch::Want {
+            revision: self.revision,
+            time,
+            size,
+            scrub: false,
+            source: true,
+        };
+        live.frame(&self.project, want)
     }
 
     /// The frame of `canvas` at `time`, shown `shown` points large; a keyframe while `scrub`.
@@ -105,6 +127,7 @@ impl Preview {
             time,
             size: fit::render_size(canvas, shown, pixels_per_point, quality),
             scrub,
+            source: false,
         };
         live.frame(&self.project, want)
     }
@@ -130,13 +153,13 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) {
 fn toolbar(ui: &mut Ui, editor: &mut EditorWindow) {
     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
         ui.spacing_mut().item_spacing.x = S1;
-        ui.add_enabled(
-            false,
-            Button::new(text::CROP)
-                .kind(Kind::Ghost)
-                .small()
-                .icon(Icon::Crop),
-        );
+        let crop = Button::new(text::CROP)
+            .kind(Kind::Ghost)
+            .small()
+            .icon(Icon::Crop);
+        if ui.add_enabled(editor.canvas.is_some(), crop).clicked() {
+            editor.ask(super::Action::OpenCrop);
+        }
         ui.add_space(S1);
         if let Some(size) = editor.canvas {
             let format = text::format(aspect_name(editor.aspect), size.width, size.height);

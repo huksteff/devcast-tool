@@ -61,12 +61,12 @@ pub fn wired(key: EditorKey) -> bool {
     act(key).is_some()
 }
 
-/// Runs the shortcuts pressed this frame. None while a text field takes the keys; while the
-/// help is open only its own shortcut (it closes the help). A shortcut takes the keyboard
-/// focus from a widget: Tab (the next annotation) would otherwise move it to a button, and
-/// Space would press that button too.
+/// Runs the shortcuts pressed this frame. None while a text field takes the keys or the crop
+/// dialog is open; while the help is open only its own shortcut (it closes the help). A shortcut
+/// takes the keyboard focus from a widget: Tab (the next annotation) would otherwise move it to
+/// a button, and Space would press that button too.
 pub fn run(ui: &Ui, editor: &mut EditorWindow) {
-    if ui.ctx().text_edit_focused() {
+    if ui.ctx().text_edit_focused() || editor.crop.is_some() {
         return;
     }
     // Esc is not in the table: it always steps back (mockup 2b, 2c).

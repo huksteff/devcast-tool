@@ -12,8 +12,8 @@
 //! regions stick. The clips row is `clips.rs` (pick, drag to another place, the blade), the
 //! picked range of the ruler `range.rs` (Shift+drag, its menu and speed popover), the effect
 //! regions `regions.rs` with the ghost of quick adding `ghost.rs`, the track headers `heads.rs`
-//! (eye, mute, removing a row, the layer order of annotation rows; the crop waits for 7.20), the
-//! waves of the sound rows `wave.rs` (peaks from `editor/waves.rs`).
+//! (eye, mute, removing a row, the layer order of annotation rows, the crop dialog of the
+//! clips), the waves of the sound rows `wave.rs` (peaks from `editor/waves.rs`).
 
 mod clips;
 mod dots;

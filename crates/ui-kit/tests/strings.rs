@@ -1,5 +1,5 @@
 //! Every literal of `src/strings.rs` and of `src/strings/` (keys, inspector, captions,
-//! annotations, sound) is drawn with our fonts: kittest fails on a letter the fonts lack, so a new
+//! annotations, sound, crop) is drawn with our fonts: kittest fails on a letter the fonts lack, so a new
 //! string with such a letter fails here.
 
 /// The text inside the double quotes of each line that has some.
@@ -20,6 +20,7 @@ fn every_string_has_glyphs() {
     texts.extend(literals(include_str!("../src/strings/captions.rs")));
     texts.extend(literals(include_str!("../src/strings/annotations.rs")));
     texts.extend(literals(include_str!("../src/strings/sound.rs")));
+    texts.extend(literals(include_str!("../src/strings/crop.rs")));
     assert!(texts.iter().any(|t| t == "Горячие клавиши"));
     assert!(texts.len() > 80, "strings found: {}", texts.len());
     assert!(texts.iter().any(|t| t == "Отменить запись?"));

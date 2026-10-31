@@ -8,6 +8,7 @@
 mod actions;
 mod adding;
 mod clipboard;
+mod crop;
 mod document;
 mod generation;
 mod header;
@@ -101,6 +102,8 @@ pub struct EditorWindow {
     pub keys: EditorKeys,
     /// The shortcut help while it is open.
     pub help: Option<help::Help>,
+    /// The crop and format dialog while it is open.
+    pub crop: Option<crop::CropDialog>,
     /// The settings new projects start with: «Сбросить» of the inspector brings them back.
     pub defaults: dc_project::Defaults,
     /// Open and closed groups of the inspector, taken from the settings each frame.
@@ -154,6 +157,7 @@ impl EditorWindow {
             captions: generation::Generation::default(),
             keys: EditorKeys::default(),
             help: None,
+            crop: None,
             defaults: dc_project::Defaults::factory(),
             groups: InspectorGroups::default(),
             actions: Vec::new(),
@@ -335,6 +339,7 @@ pub fn editor_ui(
             open_settings = Some(Page::Hotkeys);
         }
     }
+    crop::show(ui, editor);
     let mut errors: Vec<String> = tick.error.into_iter().collect();
     errors.extend(actions::run(ui, editor, now));
     if editor.playback.is_playing() {
