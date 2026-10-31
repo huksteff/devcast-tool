@@ -14,6 +14,8 @@ pub struct Autosave {
     pending: Option<(Instant, Instant)>,
     /// The working state differs from `project.json`.
     unsaved: bool,
+    /// Writing failed: no new try before this moment (the caller shows the error each try).
+    retry: Option<Instant>,
 }
 
 impl Autosave {
@@ -26,6 +28,7 @@ impl Autosave {
             max_wait,
             pending: None,
             unsaved: false,
+            retry: None,
         }
     }
 
@@ -44,6 +47,9 @@ impl Autosave {
 
     /// Whether `session.json` should be written now.
     pub fn due(&self, now: Instant) -> bool {
+        if self.retry.is_some_and(|retry| now < retry) {
+            return false;
+        }
         self.pending.is_some_and(|(first, last)| {
             now.saturating_duration_since(last) >= self.delay
                 || now.saturating_duration_since(first) >= self.max_wait
@@ -55,17 +61,28 @@ impl Autosave {
         self.pending.map(|(first, last)| {
             let by_delay = (last + self.delay).saturating_duration_since(now);
             let by_max = (first + self.max_wait).saturating_duration_since(now);
-            by_delay.min(by_max)
+            let by_retry = self
+                .retry
+                .map_or(Duration::ZERO, |r| r.saturating_duration_since(now));
+            by_delay.min(by_max).max(by_retry)
         })
+    }
+
+    /// Writing `session.json` failed at `now`: the next try waits `max_wait`, so a broken disk
+    /// is not retried and reported on every frame.
+    pub fn failed(&mut self, now: Instant) {
+        self.retry = Some(now + self.max_wait);
     }
 
     pub fn session_written(&mut self) {
         self.pending = None;
+        self.retry = None;
     }
 
     /// Ctrl+S or «Не сохранять»: the working state equals `project.json` again.
     pub fn saved(&mut self) {
         self.pending = None;
+        self.retry = None;
         self.unsaved = false;
     }
 
@@ -111,6 +128,21 @@ mod tests {
         }
         assert!(a.due(t0 + secs(5)));
         assert_eq!(a.wait(t0 + secs(5)), Some(Duration::ZERO));
+    }
+
+    #[test]
+    fn a_failed_write_waits_max_wait_before_the_next_try() {
+        let t0 = Instant::now();
+        let mut a = Autosave::new(secs(2), secs(30));
+        a.changed(t0);
+        assert!(a.due(t0 + secs(2)));
+        a.failed(t0 + secs(2));
+        assert!(!a.due(t0 + secs(3)) && !a.due(t0 + secs(31)));
+        assert_eq!(a.wait(t0 + secs(3)), Some(secs(29)));
+        assert!(a.due(t0 + secs(32)));
+        a.session_written();
+        a.changed(t0 + secs(40));
+        assert!(a.due(t0 + secs(42)));
     }
 
     #[test]

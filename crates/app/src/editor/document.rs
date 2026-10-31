@@ -117,8 +117,11 @@ impl Document {
 
     /// Writes the session when autosave says it is time; how long until the next one is due.
     pub fn autosave(&mut self, now: Instant) -> Result<Option<Duration>, ProjectError> {
-        if self.autosave.due(now) {
-            self.write()?;
+        if self.autosave.due(now)
+            && let Err(error) = self.write()
+        {
+            self.autosave.failed(now);
+            return Err(error);
         }
         Ok(self.autosave.wait(now))
     }
