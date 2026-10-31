@@ -212,8 +212,10 @@ pub(super) struct State {
     _temp: tempfile::TempDir,
     pub editor: EditorWindow,
     outcome: Option<Outcome>,
-    /// Some frame asked for the settings window.
-    settings: bool,
+    /// Some frame asked for the settings window, on this page.
+    pub settings: Option<crate::settings_window::Page>,
+    /// The shortcuts the settings give the editor.
+    pub keys: crate::keymap::EditorKeys,
 }
 
 pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State> {
@@ -222,15 +224,17 @@ pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State>
         _temp: temp,
         editor,
         outcome: None,
-        settings: false,
+        settings: None,
+        keys: crate::keymap::EditorKeys::default(),
     };
     dc_ui_kit::testing::harness()
         .with_size(size)
         .build_ui_state(
             |ui, state: &mut State| {
-                let outcome = editor_ui(ui, &mut state.editor, 300.0, std::time::Instant::now());
+                let now = std::time::Instant::now();
+                let outcome = editor_ui(ui, &mut state.editor, 300.0, &state.keys, now);
                 assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
-                state.settings |= outcome.open_settings;
+                state.settings = state.settings.or(outcome.open_settings);
                 state.outcome = Some(outcome);
             },
             state,
@@ -284,10 +288,13 @@ fn controls_hold_their_state() {
     assert_eq!(view.scale, PreviewScale::Actual);
     assert_eq!(view.tool, super::view::Tool::Blade);
     assert!(view.fine_open);
-    assert!(!harness.state().settings);
+    assert_eq!(harness.state().settings, None);
     harness.get_by_label(text::SETTINGS).click();
     harness.run();
-    assert!(harness.state().settings);
+    assert_eq!(
+        harness.state().settings,
+        Some(crate::settings_window::Page::Recording)
+    );
 }
 
 #[test]

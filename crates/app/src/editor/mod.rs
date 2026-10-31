@@ -2,12 +2,15 @@
 //! its transport, inspector on the right, timeline under them. It opens with the project of a
 //! finished recording; the HUD hides meanwhile and comes back when the editor closes (v1).
 //! Controls change the project only by queueing an `Action` (a registry command, undo, redo);
-//! the frame runs them after its layout and rebuilds the view from the new project.
+//! the frame runs them after its layout and rebuilds the view from the new project. Shortcuts
+//! (`keys.rs`) come from the settings' table, F1 or «?» opens their help (`help.rs`).
 
 mod actions;
 mod document;
 mod header;
+mod help;
 mod inspector;
+mod keys;
 mod preview;
 mod timeline;
 mod transport;
@@ -15,6 +18,8 @@ mod view;
 
 #[cfg(test)]
 mod editing_tests;
+#[cfg(test)]
+mod keys_tests;
 #[cfg(test)]
 mod tests;
 
@@ -29,8 +34,11 @@ use dc_ui_kit::tokens::{BG, SURFACE};
 use eframe::egui::{self, Frame, Ui, vec2};
 
 use crate::app::{Shared, lock, on_hud_monitor, other_window};
+use crate::keymap::EditorKeys;
+use crate::settings_window::Page;
 pub use actions::Action;
 pub use document::{Document, DocumentError, LOCK_OWNER, Way};
+pub use keys::wired;
 pub use timeline::Tracks;
 pub use view::View;
 
@@ -60,6 +68,10 @@ pub struct EditorWindow {
     pub view: View,
     /// The frame of the project at the playhead.
     pub preview: preview::Preview,
+    /// Shortcuts of the settings, taken each frame.
+    pub keys: EditorKeys,
+    /// The shortcut help while it is open.
+    pub help: Option<help::Help>,
     /// Actions the controls asked for in this frame.
     actions: Vec<Action>,
 }
@@ -99,6 +111,8 @@ impl EditorWindow {
             canvas: None,
             view: View::default(),
             preview,
+            keys: EditorKeys::default(),
+            help: None,
             actions: Vec::new(),
         };
         editor.refresh();
@@ -139,6 +153,14 @@ impl EditorWindow {
     pub fn ask(&mut self, action: Action) {
         self.actions.push(action);
     }
+
+    /// Opens the shortcut help or closes it.
+    pub fn toggle_help(&mut self) {
+        self.help = match self.help {
+            Some(_) => None,
+            None => Some(help::Help::default()),
+        };
+    }
 }
 
 impl Shared {
@@ -165,7 +187,8 @@ impl Shared {
 /// What a frame of the editor asks of the app.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Outcome {
-    pub open_settings: bool,
+    /// The settings window to open on this page.
+    pub open_settings: Option<Page>,
     /// Height of the timeline after the frame, points.
     pub timeline_height: f32,
     /// Why an action failed, for a toast.
@@ -208,11 +231,12 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
 /// the HUD again.
 fn frame(ui: &mut Ui, shared: &mut Shared) {
     let height = shared.store.get().editor.timeline_height;
+    let keys = shared.store.get().editor_keys.clone();
     let Some(editor) = shared.editor.as_mut() else {
         return;
     };
     let now = Instant::now();
-    let outcome = editor_ui(ui, editor, height, now);
+    let outcome = editor_ui(ui, editor, height, &keys, now);
     let saved = editor.doc.autosave(now);
     if let Ok(Some(wait)) = saved {
         ui.ctx().request_repaint_after(wait);
@@ -224,8 +248,8 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
     }
     shared.report(saved.map(drop));
     shared.report(flushed);
-    if outcome.open_settings {
-        shared.open_settings();
+    if let Some(page) = outcome.open_settings {
+        shared.open_settings_at(page);
     }
     let released = ui.input(|i| !i.pointer.any_down());
     if released && (outcome.timeline_height - height).abs() >= 1.0 {
@@ -241,21 +265,28 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
 }
 
 /// The whole window: header, timeline at the bottom (`timeline_height` until dragged),
-/// inspector on the right, preview in the middle; then the actions of the frame, at `now`.
+/// inspector on the right, preview in the middle, the help over them; then the actions of the
+/// frame, at `now`. `keys` are the shortcuts of the settings.
 pub fn editor_ui(
     ui: &mut Ui,
     editor: &mut EditorWindow,
     timeline_height: f32,
+    keys: &EditorKeys,
     now: Instant,
 ) -> Outcome {
-    if let Some(action) = actions::shortcut(ui) {
-        editor.ask(action);
+    if editor.keys != *keys {
+        editor.keys = keys.clone();
     }
-    let mut open_settings = false;
+    keys::run(ui, editor);
+    let mut open_settings = None;
     egui::Panel::top("editor-header")
         .exact_size(HEADER)
         .frame(Frame::new().fill(SURFACE))
-        .show(ui, |ui| open_settings = header::ui(ui, editor));
+        .show(ui, |ui| {
+            if header::ui(ui, editor) {
+                open_settings = Some(Page::default());
+            }
+        });
     let most = (ui.available_height() * TIMELINE_MAX_SHARE).max(TIMELINE_MIN);
     let timeline = egui::Panel::bottom("editor-timeline")
         .resizable(true)
@@ -270,6 +301,15 @@ pub fn editor_ui(
     egui::CentralPanel::no_frame()
         .frame(Frame::new().fill(BG))
         .show(ui, |ui| preview::ui(ui, editor));
+    if let Some(help) = editor.help.as_mut() {
+        let answer = help::show(ui, help, &editor.keys);
+        if answer.close {
+            editor.help = None;
+        }
+        if answer.settings {
+            open_settings = Some(Page::Hotkeys);
+        }
+    }
     let errors = actions::run(ui, editor, now);
     Outcome {
         open_settings,

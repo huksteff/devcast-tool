@@ -1,9 +1,10 @@
 //! The 44 px header: library and projects, undo and redo, the project name in the middle with
 //! the blue dot of unsaved changes, help, settings and export.
 //!
-//! Undo and redo name their step in the tooltip. Disabled until their task: «Записи» (7.27),
-//! «Проекты» (7.28), help (7.3), export (7.31). Renaming by a click on the name waits for 7.28:
-//! the name is the project folder's and no registry command renames it (docs/QUESTIONS.md).
+//! Undo and redo name their step and shortcut in the tooltip, help opens the shortcut help
+//! (`help.rs`). Disabled until their task: «Записи» (7.27), «Проекты» (7.28), export (7.31).
+//! Renaming by a click on the name waits for 7.28: the name is the project folder's and no
+//! registry command renames it (docs/QUESTIONS.md).
 
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
@@ -12,7 +13,8 @@ use dc_ui_kit::tokens::{ACCENT_HI, BORDER, FS_L, FS_S, S1, S2, TEXT, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind};
 use eframe::egui::{self, Align, Layout, Rect, Sense, Ui, UiBuilder, pos2, vec2};
 
-use super::{Action, EditorWindow, Way};
+use super::{Action, EditorWindow, Way, keys};
+use crate::keymap::EditorKey;
 
 /// Side of the unsaved dot and the gap after it, points (mockup).
 const DOT: f32 = 7.0;
@@ -53,7 +55,14 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
             .add(IconButton::new(Icon::Gear, text::SETTINGS))
             .on_hover_text(text::SETTINGS)
             .clicked();
-        ui.add_enabled(false, IconButton::new(Icon::Help, text::HELP));
+        let help = keys::hint(text::HELP, EditorKey::Help, &editor.keys);
+        if ui
+            .add(IconButton::new(Icon::Help, text::HELP))
+            .on_hover_text(help)
+            .clicked()
+        {
+            editor.toggle_help();
+        }
         settings
     });
     name(ui, rect, editor);
@@ -62,11 +71,14 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
 
 /// Undo or redo: enabled when there is a step, the tooltip names it.
 fn travel(ui: &mut Ui, editor: &mut EditorWindow, way: Way) {
-    let (icon, label, hint): (_, _, fn(&str) -> String) = match way {
-        Way::Undo => (Icon::Undo, text::UNDO, text::undo_hint),
-        Way::Redo => (Icon::Redo, text::REDO, text::redo_hint),
+    let (icon, label, hint, key): (_, _, fn(&str) -> String, _) = match way {
+        Way::Undo => (Icon::Undo, text::UNDO, text::undo_step, EditorKey::Undo),
+        Way::Redo => (Icon::Redo, text::REDO, text::redo_step, EditorKey::Redo),
     };
-    let step = editor.doc.next(way).map(|change| hint(&change.summary));
+    let step = editor
+        .doc
+        .next(way)
+        .map(|change| keys::hint(&hint(&change.summary), key, &editor.keys));
     let button = ui.add_enabled(step.is_some(), IconButton::new(icon, label));
     if let Some(step) = step
         && button.on_hover_text(step).clicked()

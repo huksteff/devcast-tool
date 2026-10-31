@@ -125,11 +125,16 @@ impl Shared {
 
     /// Opens the settings window with the current microphones.
     pub fn open_settings(&mut self) {
+        self.open_settings_at(crate::settings_window::Page::default());
+    }
+
+    /// Opens the settings window on `page`.
+    pub fn open_settings_at(&mut self, page: crate::settings_window::Page) {
         self.refresh_microphones();
-        self.settings = Some(SettingsWindow::new(
-            self.microphones.clone(),
-            crate::models::Models::of_app(),
-        ));
+        let mut window =
+            SettingsWindow::new(self.microphones.clone(), crate::models::Models::of_app());
+        window.page = page;
+        self.settings = Some(window);
     }
 
     /// Opens the level meters the open windows show and closes the rest.

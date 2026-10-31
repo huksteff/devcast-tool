@@ -17,6 +17,8 @@ mod gpu;
 mod hotkeys;
 mod hud;
 mod instance;
+mod keycaps;
+mod keymap;
 mod logging;
 mod logo;
 mod meters;
@@ -29,6 +31,7 @@ mod settings_captions;
 mod settings_hotkeys;
 mod settings_rows;
 mod settings_window;
+mod shortcut;
 mod tray;
 
 pub use error::AppError;

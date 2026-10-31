@@ -1,11 +1,10 @@
-//! What the controls ask of the project and how it is done: registry commands through
-//! `Document::apply` (the path of `devcast`), undo and redo. Shortcuts go by the physical key, so
-//! Ctrl+Z works in the Russian layout and any other.
+//! What the controls and shortcuts (`keys.rs`) ask of the project and how it is done: registry
+//! commands through `Document::apply` (the path of `devcast`), undo and redo.
 
 use std::time::Instant;
 
 use dc_ops::Step;
-use eframe::egui::{self, Key, Modifiers, Ui};
+use eframe::egui::Ui;
 use serde_json::{Map, Value};
 
 use super::{EditorWindow, Way};
@@ -25,33 +24,6 @@ impl Action {
             .map(|(name, value)| (name.to_owned(), value))
             .collect();
         Self::Apply(Step::new(op, args))
-    }
-}
-
-/// Ctrl+Z undo, Ctrl+Y and Ctrl+Shift+Z redo, pressed this frame.
-pub fn shortcut(ui: &Ui) -> Option<Action> {
-    ui.input(|i| {
-        i.events.iter().find_map(|event| match event {
-            egui::Event::Key {
-                key,
-                physical_key,
-                pressed: true,
-                modifiers,
-                ..
-            } => travel(physical_key.unwrap_or(*key), *modifiers).map(Action::Travel),
-            _ => None,
-        })
-    })
-}
-
-fn travel(key: Key, modifiers: Modifiers) -> Option<Way> {
-    if !modifiers.command || modifiers.alt {
-        return None;
-    }
-    match (key, modifiers.shift) {
-        (Key::Z, false) => Some(Way::Undo),
-        (Key::Z, true) | (Key::Y, false) => Some(Way::Redo),
-        _ => None,
     }
 }
 

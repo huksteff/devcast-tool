@@ -2,7 +2,8 @@
 //! playback in the middle, preview volume on the right.
 //!
 //! The tools, the switches and the volume hold their state (see `View`); playback and the jumps
-//! are disabled until 7.5, the playhead does not move until then.
+//! are disabled until 7.5, the playhead does not move until then. Tooltips name the shortcut
+//! from the user's table (`keys::hint`).
 
 use dc_ui_kit::fonts;
 use dc_ui_kit::icons::Icon;
@@ -13,9 +14,10 @@ use eframe::egui::{
     self, Align, Layout, Rect, Response, Sense, Stroke, Ui, UiBuilder, WidgetInfo, vec2,
 };
 
-use super::EditorWindow;
 use super::timeline::timecode;
 use super::view::Tool;
+use super::{EditorWindow, keys};
+use crate::keymap::EditorKey;
 
 /// Diameter of the play button and width of the volume rail, points (mockup).
 const PLAY: f32 = 36.0;
@@ -44,12 +46,13 @@ fn row(ui: &mut Ui, rect: Rect, layout: Layout, add: impl FnOnce(&mut Ui)) {
 
 fn tools(ui: &mut Ui, editor: &mut EditorWindow) {
     let view = &mut editor.view;
-    for (tool, icon, label) in [
-        (Tool::Select, Icon::Pointer, text::SELECT),
-        (Tool::Blade, Icon::Blade, text::BLADE),
+    for (tool, icon, label, key) in [
+        (Tool::Select, Icon::Pointer, text::SELECT, EditorKey::Select),
+        (Tool::Blade, Icon::Blade, text::BLADE, EditorKey::Blade),
     ] {
         let button = IconButton::new(icon, label).held(view.tool == tool);
-        if ui.add(button).on_hover_text(label).clicked() {
+        let hint = keys::hint(label, key, &editor.keys);
+        if ui.add(button).on_hover_text(hint).clicked() {
             view.tool = tool;
         }
     }
@@ -88,11 +91,22 @@ fn playback(ui: &mut Ui, rect: Rect, editor: &EditorWindow) {
             ui.painter().galley(time.min, now, TEXT);
             ui.add_space(S2);
             ui.add_enabled_ui(false, |ui| {
-                ui.add(IconButton::new(Icon::SkipBack, text::PREV_KEY));
-                ui.add(IconButton::new(Icon::Left, text::PREV_FRAME));
-                play_button(ui);
-                ui.add(IconButton::new(Icon::Right, text::NEXT_FRAME));
-                ui.add(IconButton::new(Icon::SkipForward, text::NEXT_KEY));
+                let hint = |label, key| keys::hint(label, key, &editor.keys);
+                for (icon, label, key) in [
+                    (Icon::SkipBack, text::PREV_KEY, EditorKey::PrevKey),
+                    (Icon::Left, text::PREV_FRAME, EditorKey::PrevFrame),
+                ] {
+                    ui.add(IconButton::new(icon, label))
+                        .on_disabled_hover_text(hint(label, key));
+                }
+                play_button(ui).on_disabled_hover_text(hint(text::PLAY, EditorKey::PlayPause));
+                for (icon, label, key) in [
+                    (Icon::Right, text::NEXT_FRAME, EditorKey::NextFrame),
+                    (Icon::SkipForward, text::NEXT_KEY, EditorKey::NextKey),
+                ] {
+                    ui.add(IconButton::new(icon, label))
+                        .on_disabled_hover_text(hint(label, key));
+                }
             });
             ui.add_space(S2);
             let (time, _) = ui.allocate_exact_size(end.size(), Sense::hover());

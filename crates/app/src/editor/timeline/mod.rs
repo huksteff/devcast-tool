@@ -82,7 +82,8 @@ fn toolbar(ui: &mut Ui, editor: &mut EditorWindow) {
                 .menu(),
         );
         let magnet = IconButton::new(Icon::Magnet, text::MAGNET).on(editor.view.magnet);
-        if ui.add(magnet).on_hover_text(text::MAGNET).clicked() {
+        let hint = super::keys::hint(text::MAGNET, crate::keymap::EditorKey::Snap, &editor.keys);
+        if ui.add(magnet).on_hover_text(hint).clicked() {
             editor.view.magnet = !editor.view.magnet;
         }
         separator(ui);

@@ -51,34 +51,6 @@ impl Command {
     }
 }
 
-/// The shortcut of a key press as text, or `None` without Ctrl or Alt (a global hotkey needs
-/// one). `key` is the physical key: the Latin name works in any layout.
-pub fn combo(modifiers: egui::Modifiers, key: egui::Key) -> Option<String> {
-    if !(modifiers.ctrl || modifiers.alt) {
-        return None;
-    }
-    let mut parts = Vec::new();
-    if modifiers.ctrl {
-        parts.push("Ctrl");
-    }
-    if modifiers.alt {
-        parts.push("Alt");
-    }
-    if modifiers.shift {
-        parts.push("Shift");
-    }
-    parts.push(key.name());
-    Some(parts.join("+"))
-}
-
-/// Another command that already has `keys`.
-pub fn taken_by(hotkeys: &Hotkeys, keys: &str, except: Command) -> Option<Command> {
-    Command::ALL
-        .into_iter()
-        .filter(|c| *c != except)
-        .find(|c| c.keys(hotkeys).as_deref() == Some(keys))
-}
-
 type Bound = Arc<Mutex<Vec<(u32, Command)>>>;
 
 /// The registered hotkeys and their presses.
@@ -164,21 +136,7 @@ impl GlobalKeys {
 
 #[cfg(test)]
 mod tests {
-    use eframe::egui::{Key, Modifiers};
-
     use super::*;
-
-    #[test]
-    fn shortcut_needs_ctrl_or_alt() {
-        let ctrl_shift = Modifiers {
-            ctrl: true,
-            shift: true,
-            ..Modifiers::default()
-        };
-        assert_eq!(combo(ctrl_shift, Key::R).as_deref(), Some("Ctrl+Shift+R"));
-        assert_eq!(combo(Modifiers::SHIFT, Key::R), None);
-        assert_eq!(combo(Modifiers::ALT, Key::F5).as_deref(), Some("Alt+F5"));
-    }
 
     #[test]
     fn stored_shortcuts_parse_for_registration() {
@@ -191,15 +149,5 @@ mod tests {
         ] {
             assert!(HotKey::from_str(keys).is_ok(), "{keys}");
         }
-    }
-
-    #[test]
-    fn a_shortcut_of_another_command_is_found() {
-        let hotkeys = Hotkeys::default();
-        assert_eq!(
-            taken_by(&hotkeys, "Ctrl+Shift+R", Command::Cancel),
-            Some(Command::StartStop)
-        );
-        assert_eq!(taken_by(&hotkeys, "Ctrl+Shift+R", Command::StartStop), None);
     }
 }

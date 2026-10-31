@@ -170,14 +170,14 @@ pub mod editor {
     pub const RESET: &str = "Сбросить";
     pub const PANEL_EMPTY: &str = "Настройки эффекта появятся здесь";
 
-    /// Tooltip of undo: «Отменить: зум 1,50× · Ctrl+Z»; `step` — summary of the step.
-    pub fn undo_hint(step: &str) -> String {
-        format!("{UNDO}: {step} · Ctrl+Z")
+    /// Undo with its step: «Отменить: зум 1,50×»; `step` — summary of the step.
+    pub fn undo_step(step: &str) -> String {
+        format!("{UNDO}: {step}")
     }
 
-    /// Tooltip of redo: «Повторить: зум 1,50× · Ctrl+Y».
-    pub fn redo_hint(step: &str) -> String {
-        format!("{REDO}: {step} · Ctrl+Y")
+    /// Redo with its step: «Повторить: зум 1,50×».
+    pub fn redo_step(step: &str) -> String {
+        format!("{REDO}: {step}")
     }
 
     /// «recording-1 — DevCast».
@@ -298,6 +298,9 @@ pub mod settings {
     }
 }
 
+/// Editor shortcuts and their help.
+pub mod keys;
+
 /// Global hotkeys in the settings.
 pub mod hotkeys {
     pub const SEARCH: &str = "Найти команду или сочетание";
@@ -314,7 +317,7 @@ pub mod hotkeys {
     pub const CHANGE: &str = "Изменить";
     pub const REPLACE: &str = "Заменить";
     pub const CANCEL_CAPTURE: &str = "Отмена";
-    pub const HELP: &str = "Нажмите нужные клавиши. Esc — отмена, Delete — убрать сочетание. Нужен Ctrl или Alt. В русской раскладке работает так же.";
+    pub const HELP: &str = "Нажмите нужные клавиши. Esc — отмена, Backspace — убрать сочетание. Глобальным нужен Ctrl или Alt. В русской раскладке работает так же.";
 
     /// «Ctrl+Shift+R уже назначено на «Начать / остановить запись»».
     pub fn taken_by(keys: &str, command: &str) -> String {

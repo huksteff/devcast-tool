@@ -149,6 +149,8 @@ pub struct AppSettings {
     pub last_area: Option<Source>,
     /// Sizes of the editor panels the user dragged.
     pub editor: EditorLayout,
+    /// Editor shortcuts the user reassigned (`keymap.rs`).
+    pub editor_keys: crate::keymap::EditorKeys,
 }
 
 impl Default for AppSettings {
@@ -166,6 +168,7 @@ impl Default for AppSettings {
             hud: HudPlacement::default(),
             last_area: None,
             editor: EditorLayout::default(),
+            editor_keys: crate::keymap::EditorKeys::default(),
         }
     }
 }

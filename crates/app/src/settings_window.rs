@@ -1,6 +1,6 @@
 //! The settings window (mockup 5): sections on the left, changes apply at once, no «Save».
-//! Hotkeys get their section with the global hotkeys (6.14); effect defaults are changed in the
-//! editor (stage 7).
+//! Hotkeys get their section with the global hotkeys (6.14) and the editor shortcuts (7.3); effect
+//! defaults are changed in the editor (stage 7).
 
 use dc_capture::Fps;
 use dc_ui_kit::Icon;
@@ -99,7 +99,7 @@ impl SettingsWindow {
                     Ok(())
                 }
                 Page::Hotkeys => {
-                    self.hotkeys.ui(ui, &mut next.hotkeys, taken);
+                    self.hotkeys.ui(ui, &mut next, taken);
                     Ok(())
                 }
                 Page::Captions => {
