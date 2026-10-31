@@ -1,4 +1,4 @@
-//! Every literal of `src/strings.rs` and `src/strings/keys.rs` is drawn with our fonts: kittest fails on a letter the
+//! Every literal of `src/strings.rs`, `src/strings/keys.rs` and `src/strings/inspector.rs` is drawn with our fonts: kittest fails on a letter the
 //! fonts lack, so a new string with such a letter fails here.
 
 /// The text inside the double quotes of each line that has some.
@@ -15,6 +15,7 @@ fn literals(source: &str) -> Vec<String> {
 fn every_string_has_glyphs() {
     let mut texts = literals(include_str!("../src/strings.rs"));
     texts.extend(literals(include_str!("../src/strings/keys.rs")));
+    texts.extend(literals(include_str!("../src/strings/inspector.rs")));
     assert!(texts.iter().any(|t| t == "Горячие клавиши"));
     assert!(texts.len() > 80, "strings found: {}", texts.len());
     assert!(texts.iter().any(|t| t == "Отменить запись?"));

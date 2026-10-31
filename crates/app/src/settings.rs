@@ -2,6 +2,7 @@
 //! window read and change the same [`Store`], so a change in one is seen in the other at once
 //! (owner's decision on the mockups). Each change is written atomically right away.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use dc_capture::{RecordingConfig, Source};
@@ -132,6 +133,12 @@ impl Default for EditorLayout {
     }
 }
 
+/// Groups of the inspector panels the user opened or closed: `panel.group` (`keys.fine`) → open.
+/// A group not here has the default of its panel (v2 remembers, v1 did not).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct InspectorGroups(pub BTreeMap<String, bool>);
+
 /// Everything the app remembers. A field missing in the file takes its default.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -154,6 +161,8 @@ pub struct AppSettings {
     pub editor: EditorLayout,
     /// Editor shortcuts the user reassigned (`keymap.rs`).
     pub editor_keys: crate::keymap::EditorKeys,
+    /// Open and closed groups of the editor's inspector.
+    pub inspector: InspectorGroups,
 }
 
 impl Default for AppSettings {
@@ -172,6 +181,7 @@ impl Default for AppSettings {
             last_area: None,
             editor: EditorLayout::default(),
             editor_keys: crate::keymap::EditorKeys::default(),
+            inspector: InspectorGroups::default(),
         }
     }
 }

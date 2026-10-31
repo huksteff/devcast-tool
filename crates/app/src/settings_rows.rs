@@ -1,5 +1,6 @@
 //! Rows of the settings window (mockup `.field`): a caption with an optional grey hint under it
 //! on the left, the control on the right, both centred vertically; a thin line under each row.
+//! The editor's inspector lays its parameter rows out with the same caption and row (`labelled`).
 
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::tokens::{CONTROL, FS_L, FS_M, S1, S3, SURFACE_2, TEXT, TEXT_2, TEXT_3};
@@ -46,12 +47,36 @@ pub fn separator(ui: &Ui) {
 /// A caption of `LABEL` width and the control after it.
 pub fn field(ui: &mut Ui, label: &str, hint: Option<&str>, value: impl FnOnce(&mut Ui)) {
     let height = row_height(caption_height(ui, label, hint, LABEL));
-    row(ui, height, |ui| {
-        caption(ui, label, hint, LABEL);
-        ui.add_space(S3 - ui.spacing().item_spacing.x);
-        value(ui);
-    });
+    pair(ui, (label, hint, LABEL), S3, height, value);
     separator(ui);
+}
+
+/// A caption of `width` and the control `gap` after it in a row at least `least` high, without a
+/// line under it; returns the control's answer (the inspector's `.prow`: caption, 8 px
+/// gap, 30 px rows).
+pub fn labelled<R>(
+    ui: &mut Ui,
+    label: &str,
+    (width, gap, least): (f32, f32, f32),
+    value: impl FnOnce(&mut Ui) -> R,
+) -> R {
+    let height = caption_height(ui, label, None, width).max(least);
+    pair(ui, (label, None, width), gap, height, value)
+}
+
+/// The caption (text, hint, width) and the control in a row of `height`.
+fn pair<R>(
+    ui: &mut Ui,
+    (label, hint, width): (&str, Option<&str>, f32),
+    gap: f32,
+    height: f32,
+    value: impl FnOnce(&mut Ui) -> R,
+) -> R {
+    row(ui, height, |ui| {
+        caption(ui, label, hint, width);
+        ui.add_space(gap - ui.spacing().item_spacing.x);
+        value(ui)
+    })
 }
 
 /// The caption takes the row, the control of `control_width` stands at the right edge

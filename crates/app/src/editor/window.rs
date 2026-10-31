@@ -18,6 +18,12 @@ impl Shared {
     pub fn open_editor(&mut self, recorded: &dc_capture::win::RecordedProject) {
         match EditorWindow::new(recorded) {
             Ok((mut editor, problems)) => {
+                let defaults = dc_project::settings::defaults_file()
+                    .and_then(|file| dc_project::Defaults::load(&file));
+                match defaults {
+                    Ok(defaults) => editor.defaults = defaults,
+                    Err(error) => self.report(Err(error)),
+                }
                 if let Some(gpu) = self.gpu.clone() {
                     let started = editor.start_preview(gpu, self.ctx.clone());
                     self.report(started);
@@ -75,11 +81,12 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
 fn frame(ui: &mut Ui, shared: &mut Shared) {
     let layout = shared.store.get().editor;
     let keys = shared.store.get().editor_keys.clone();
+    let groups = shared.store.get().inspector.clone();
     let Some(editor) = shared.editor.as_mut() else {
         return;
     };
     let now = Instant::now();
-    let outcome = editor_ui(ui, editor, layout, &keys, now);
+    let outcome = editor_ui(ui, editor, layout, (&keys, &groups), now);
     let saved = editor.doc.autosave(now);
     if let Ok(Some(wait)) = saved {
         ui.ctx().request_repaint_after(wait);
@@ -95,6 +102,10 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
         shared.open_settings_at(page);
     }
     save_layout(shared, ui, layout, outcome.layout);
+    if let Some(groups) = outcome.groups {
+        let saved = shared.store.update(|s| s.inspector = groups);
+        shared.report(saved);
+    }
     if close {
         shared.editor = None;
         shared.show_hud();

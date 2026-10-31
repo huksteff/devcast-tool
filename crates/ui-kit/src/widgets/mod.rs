@@ -1,6 +1,7 @@
 //! Widgets of the mockup. Each draws itself from the tokens and has an accessible name, so
 //! kittest and egui-mcp find it by its caption.
 
+mod anchors;
 mod button;
 mod color;
 mod dialog;
@@ -14,6 +15,7 @@ mod text_field;
 mod toast;
 mod toggle;
 
+pub use anchors::anchors;
 pub use button::{Button, Kind};
 pub use color::{GRADIENT_COLORS, color_button, gradient_editor};
 pub use dialog::{Answer, Confirm, ErrorAction, ErrorPanel, panel_frame};

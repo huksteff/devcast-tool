@@ -53,8 +53,9 @@ use dc_ui_kit::tokens::{BORDER, S2, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind, Slider};
 use eframe::egui::{self, Align, Frame, Layout, Margin, Rect, ScrollArea, Sense, Stroke, Ui, vec2};
 
+pub use paint::{hue, name};
 pub use scale::{TimeScale, timecode};
-pub use tracks::{Least, Row, Track, Tracks};
+pub use tracks::{Least, Region, Row, Track, Tracks};
 pub use viewport::Viewport;
 pub use wave::Source;
 

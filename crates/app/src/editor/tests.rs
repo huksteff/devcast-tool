@@ -5,7 +5,7 @@ pub(super) use super::test_project::project;
 use dc_ui_kit::strings::{editor as text, timeline as names};
 use egui_kittest::kittest::{NodeT as _, Queryable};
 
-use super::view::{Panel, PreviewScale, Quality};
+use super::view::{PreviewScale, Quality};
 use super::*;
 use timeline::{Row, Track};
 
@@ -33,6 +33,8 @@ pub(super) struct State {
     pub settings: Option<crate::settings_window::Page>,
     /// The shortcuts the settings give the editor.
     pub keys: crate::keymap::EditorKeys,
+    /// The inspector groups of the settings: a frame that toggles one stores it here.
+    pub groups: crate::settings::InspectorGroups,
     /// The moment of the frames, when a test drives the clock; otherwise now.
     pub now: Option<std::time::Instant>,
     /// The errors of the frames (toasts) when a test expects some; otherwise an error fails it.
@@ -56,6 +58,7 @@ pub(super) fn harness_with(
         layout,
         settings: None,
         keys: crate::keymap::EditorKeys::default(),
+        groups: crate::settings::InspectorGroups::default(),
         now: None,
         errors: None,
     };
@@ -64,7 +67,11 @@ pub(super) fn harness_with(
         .build_ui_state(
             |ui, state: &mut State| {
                 let now = state.now.unwrap_or_else(std::time::Instant::now);
-                let outcome = editor_ui(ui, &mut state.editor, state.layout, &state.keys, now);
+                let prefs = (&state.keys, &state.groups);
+                let outcome = editor_ui(ui, &mut state.editor, state.layout, prefs, now);
+                if let Some(groups) = outcome.groups.clone() {
+                    state.groups = groups;
+                }
                 match state.errors.as_mut() {
                     Some(errors) => errors.extend(outcome.errors.iter().cloned()),
                     None => assert!(outcome.errors.is_empty(), "{:?}", outcome.errors),
@@ -112,20 +119,14 @@ fn editor_window_at_its_least_size() {
 fn controls_hold_their_state() {
     let mut harness = harness(SIZE);
     harness.run();
-    harness
-        .get_by_role_and_label(egui::Role::Button, text::CAPTIONS)
-        .click();
     harness.get_by_label(text::QUALITY_FAST).click();
     harness.get_by_label(text::ACTUAL).click();
     harness.get_by_label(text::BLADE).click();
-    harness.get_by_label(text::FINE).click();
     harness.run();
     let view = &harness.state().editor.view;
-    assert_eq!(view.panel, Panel::Captions);
     assert_eq!(view.quality, Quality::Fast);
     assert_eq!(view.scale, PreviewScale::Actual);
     assert_eq!(view.tool, super::view::Tool::Blade);
-    assert!(view.fine_open);
     assert_eq!(harness.state().settings, None);
     harness.get_by_label(text::SETTINGS).click();
     harness.run();

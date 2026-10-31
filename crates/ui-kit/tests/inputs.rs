@@ -3,7 +3,8 @@
 use dc_ui_kit::Icon;
 use dc_ui_kit::tokens::{S3, SURFACE};
 use dc_ui_kit::widgets::{
-    Button, IconButton, Kind, Slider, Toggle, dropdown, search_field, segmented, text_field,
+    Button, IconButton, Kind, Slider, Toggle, anchors, dropdown, search_field, segmented,
+    text_field,
 };
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -118,6 +119,25 @@ fn segmented_choice() {
     harness.get_by_label("120").click();
     harness.run();
     assert_eq!(*harness.state(), 120);
+}
+
+#[test]
+fn anchor_grid() {
+    let places = [
+        "Вверху слева",
+        "Вверху",
+        "Вверху справа",
+        "Внизу слева",
+        "Внизу",
+        "Внизу справа",
+    ];
+    let mut harness = harness(4usize, move |ui, place: &mut usize| {
+        anchors(ui, place, 3, &places);
+    });
+    harness.snapshot("anchors");
+    harness.get_by_label("Вверху справа").click();
+    harness.run();
+    assert_eq!(*harness.state(), 2);
 }
 
 #[test]

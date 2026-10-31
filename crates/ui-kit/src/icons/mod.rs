@@ -73,10 +73,12 @@ pub enum Icon {
     /// Out into its own window.
     Detach,
     Mute,
+    /// Delete the object of a panel.
+    Trash,
 }
 
 impl Icon {
-    pub const ALL: [Self; 51] = [
+    pub const ALL: [Self; 52] = [
         Self::Monitor,
         Self::Window,
         Self::Area,
@@ -128,6 +130,7 @@ impl Icon {
         Self::Fit,
         Self::Detach,
         Self::Mute,
+        Self::Trash,
     ];
 
     /// Draws the icon into `rect` (usually 16 × 16) in `color`.

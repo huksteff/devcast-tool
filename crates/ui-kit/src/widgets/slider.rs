@@ -1,5 +1,6 @@
 //! Slider with a number field: a 4 px rail filled blue up to a white knob, and the exact value
-//! typed or dragged in a 56 px field next to it.
+//! typed or dragged in a 56 px field next to it. A typed number applies on Enter or when the field
+//! loses focus, not at every key.
 
 use std::ops::RangeInclusive;
 
@@ -23,6 +24,9 @@ pub struct Slider<'a> {
 }
 
 impl<'a> Slider<'a> {
+    /// Width of the number field next to the rail, points.
+    pub const FIELD: f32 = FIELD;
+
     /// `label` is the accessible name of the slider and of its field.
     pub fn new(value: &'a mut f64, range: RangeInclusive<f64>, label: &'a str) -> Self {
         Self {
@@ -73,7 +77,8 @@ impl<'a> Slider<'a> {
                 DragValue::new(&mut *self.value)
                     .range(self.range.clone())
                     .speed(self.step)
-                    .suffix(self.suffix),
+                    .suffix(self.suffix)
+                    .update_while_editing(false),
             );
             let value = *self.value;
             field.widget_info(|| {

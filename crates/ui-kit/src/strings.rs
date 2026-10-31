@@ -171,7 +171,6 @@ pub mod editor {
     pub const BASIC: &str = "Основное";
     pub const FINE: &str = "Тонкая настройка";
     pub const RESET: &str = "Сбросить";
-    pub const PANEL_EMPTY: &str = "Настройки эффекта появятся здесь";
 
     /// Undo with its step: «Отменить: зум 1,50×»; `step` — summary of the step.
     pub fn undo_step(step: &str) -> String {
@@ -201,6 +200,9 @@ pub mod editor {
 
 /// The timeline of the editor.
 pub mod timeline;
+
+/// The inspector of the editor.
+pub mod inspector;
 
 /// The settings window.
 pub mod settings {

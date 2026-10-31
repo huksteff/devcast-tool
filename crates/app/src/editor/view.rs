@@ -8,7 +8,7 @@ use dc_fx_annotations::AnnotId;
 use eframe::egui::Pos2;
 
 use super::clipboard::Copied;
-use super::selection::{Item, Selection};
+use super::selection::{Item, Selected, Selection};
 use super::timeline::{Least, Row, Tracks, Viewport};
 
 /// Tool of a click on the timeline.
@@ -42,13 +42,14 @@ pub enum Quality {
     Fast,
 }
 
-/// Panel of the inspector.
+/// Global settings panel of the inspector: a tab of its rail.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Panel {
-    #[default]
     Zoom,
     /// Cursor, clicks and the callout.
     Cursor,
+    /// The only tab with its panel until 7.14: the frame opens on it.
+    #[default]
     Keys,
     Captions,
     Sound,
@@ -70,11 +71,12 @@ pub struct View {
     pub volume: f64,
     /// Snapping on the timeline: the blade sticks with it (7.8), regions from 7.9.
     pub magnet: bool,
-    /// Shown inspector panel.
+    /// The tab of the inspector rail: its panel shows while no object is open.
     pub panel: Panel,
-    /// Open groups of the inspector panel («Основное», «Тонкая настройка»); remembered from 7.13.
-    pub basic_open: bool,
-    pub fine_open: bool,
+    /// The picked object whose panel the inspector shows instead of the tab (7.13).
+    pub object: Option<Selected>,
+    /// The single picked object the inspector last saw: a new one opens its panel.
+    pub followed: Option<Selected>,
     /// Playhead: playback, keys and the timeline move it.
     pub playhead: OutputTime,
     /// What the timeline shows: scale, scroll, row heights, the playhead drag (7.6, 7.7).
@@ -112,8 +114,8 @@ impl Default for View {
             volume: 80.0,
             magnet: true,
             panel: Panel::default(),
-            basic_open: true,
-            fine_open: false,
+            object: None,
+            followed: None,
             playhead: OutputTime::ZERO,
             timeline: Viewport::default(),
             selection: Selection::default(),

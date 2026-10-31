@@ -81,6 +81,14 @@ impl Selection {
         self.items.len()
     }
 
+    /// The picked object when exactly one is picked: the inspector opens its panel.
+    pub fn single(&self) -> Option<Selected> {
+        match self.items.as_slice() {
+            [only] => Some(*only),
+            _ => None,
+        }
+    }
+
     /// The selected clips in the order they were picked.
     pub fn clips(&self) -> impl Iterator<Item = ClipId> + '_ {
         self.items.iter().filter_map(|item| match item {

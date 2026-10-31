@@ -47,7 +47,7 @@ use dc_ui_kit::tokens::{BG, SURFACE};
 use eframe::egui::{self, Frame, Ui, vec2};
 
 use crate::keymap::EditorKeys;
-use crate::settings::EditorLayout;
+use crate::settings::{EditorLayout, InspectorGroups};
 use crate::settings_window::Page;
 pub use actions::{Action, Transport};
 pub use document::{Document, DocumentError, LOCK_OWNER, Way};
@@ -93,6 +93,10 @@ pub struct EditorWindow {
     pub keys: EditorKeys,
     /// The shortcut help while it is open.
     pub help: Option<help::Help>,
+    /// The settings new projects start with: «Сбросить» of the inspector brings them back.
+    pub defaults: dc_project::Defaults,
+    /// Open and closed groups of the inspector, taken from the settings each frame.
+    pub groups: InspectorGroups,
     /// Actions the controls asked for in this frame.
     actions: Vec<Action>,
 }
@@ -138,6 +142,8 @@ impl EditorWindow {
             waves: waves::Waves::default(),
             keys: EditorKeys::default(),
             help: None,
+            defaults: dc_project::Defaults::factory(),
+            groups: InspectorGroups::default(),
             actions: Vec::new(),
         };
         problems.extend(editor.refresh(Instant::now()));
@@ -236,20 +242,25 @@ pub struct Outcome {
     pub layout: EditorLayout,
     /// Why an action failed, for a toast.
     pub errors: Vec<String>,
+    /// The inspector groups after the user opened or closed one, for the settings.
+    pub groups: Option<InspectorGroups>,
 }
 
 /// The whole window: header, timeline at the bottom (`layout`: its height until dragged, its row
 /// factor until the wheel changes it), inspector on the right, preview in the middle, the help over them; then the actions of the
-/// frame, at `now`. `keys` are the shortcuts of the settings.
+/// frame, at `now`. `keys` are the shortcuts of the settings, `groups` its inspector groups.
 pub fn editor_ui(
     ui: &mut Ui,
     editor: &mut EditorWindow,
     layout: EditorLayout,
-    keys: &EditorKeys,
+    (keys, groups): (&EditorKeys, &InspectorGroups),
     now: Instant,
 ) -> Outcome {
     if editor.keys != *keys {
         editor.keys = keys.clone();
+    }
+    if editor.groups != *groups {
+        editor.groups = groups.clone();
     }
     editor.waves.receive();
     keys::run(ui, editor);
@@ -274,10 +285,11 @@ pub fn editor_ui(
         .size_range(TIMELINE_MIN..=most)
         .frame(Frame::new().fill(SURFACE))
         .show(ui, |ui| timeline::ui(ui, editor, layout.rows));
-    egui::Panel::right("editor-inspector")
+    let toggled = egui::Panel::right("editor-inspector")
         .exact_size(INSPECTOR)
         .frame(Frame::new().fill(SURFACE))
-        .show(ui, |ui| inspector::ui(ui, &mut editor.view));
+        .show(ui, |ui| inspector::ui(ui, editor))
+        .inner;
     egui::CentralPanel::no_frame()
         .frame(Frame::new().fill(BG))
         .show(ui, |ui| preview::ui(ui, editor));
@@ -304,5 +316,6 @@ pub fn editor_ui(
             rows: timeline.inner,
         },
         errors,
+        groups: toggled.then(|| editor.groups.clone()),
     }
 }
