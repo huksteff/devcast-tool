@@ -1,5 +1,6 @@
 //! The panel of the object picked on the timeline: a zoom, a cue, a callout event, an annotation
-//! (also through one of its keys), an extra sound or a clip. The frame gives each its header —
+//! (also through one of its keys), an extra sound, a clip or a click (its own panel, `click.rs`).
+//! The frame gives each its header —
 //! the colour of its row, its name, where it is — and «Удалить» (the same command as Delete);
 //! a zoom gets its parameters (`zoom_region.rs`), the others name the task that brings theirs.
 //! An annotation's panel puts its keyframe strip under the header (7.18, 7.25).
@@ -9,8 +10,8 @@ use dc_core::time::Output;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{editor as text, inspector as names, timeline as rows_text};
 
-use super::{Cx, Header, header, header_button, padded, rows, zoom_region};
-use crate::editor::selection::{Item, Selected};
+use super::{Cx, Header, click, header, header_button, padded, rows, zoom_region};
+use crate::editor::selection::{Item, Selected, same_moment};
 use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
 use crate::editor::{Action, montage, regions};
 use eframe::egui::Ui;
@@ -18,6 +19,13 @@ use eframe::egui::Ui;
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
     let picked = match picked {
         Selected::Key { id, .. } => Selected::Region(Item::Annotation(id)),
+        Selected::Click(at) => {
+            let dot = tracks.clicks.iter().find(|d| same_moment(d.at, at));
+            if let Some(dot) = dot {
+                click::ui(ui, cx, dot);
+            }
+            return;
+        }
         other => other,
     };
     // The selection keeps only what the rows show, so the object is there.
@@ -49,7 +57,7 @@ fn find(tracks: &Tracks, picked: Selected) -> Option<(Row, &Region)> {
         let region = track.regions.iter().find(|r| match picked {
             Selected::Clip(id) => r.clip == Some(id),
             Selected::Region(item) => r.item == Some(item),
-            Selected::Key { .. } => false,
+            Selected::Key { .. } | Selected::Click(_) => false,
         })?;
         Some((track.row, region))
     })
@@ -85,6 +93,7 @@ fn describe(picked: Selected, row: Row, region: &Region) -> About {
         Selected::Region(Item::Callout(_)) => timed(names::CALLOUT, "7.16"),
         Selected::Region(Item::Cue(_)) => timed(names::CUE, "7.17"),
         Selected::Region(Item::Annotation(_)) | Selected::Key { .. } => layered("7.18"),
+        Selected::Click(_) => timed(names::CLICK, "7.15"),
         Selected::Region(Item::Sound(_)) => layered("7.19"),
     }
 }
@@ -99,6 +108,6 @@ fn delete(picked: Selected) -> Option<Action> {
     match picked {
         Selected::Clip(id) => montage::remove([id]),
         Selected::Region(item) => Some(Action::Apply(vec![regions::remove(item)])),
-        Selected::Key { .. } => None,
+        Selected::Key { .. } | Selected::Click(_) => None,
     }
 }

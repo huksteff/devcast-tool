@@ -32,6 +32,8 @@ impl Shared {
                 self.report(sound);
                 let waves = editor.start_waves(self.ctx.clone());
                 self.report(waves);
+                let clicks = editor.start_clicks(self.ctx.clone());
+                self.report(clicks);
                 for problem in problems {
                     self.report(Err(problem));
                 }
@@ -69,8 +71,8 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     let news = lock(shared)
         .editor
         .as_ref()
-        // Both are asked: each clears its own news.
-        .is_some_and(|e| e.preview.take_news() | e.waves.take_news());
+        // All are asked: each clears its own news.
+        .is_some_and(|e| e.preview.take_news() | e.waves.take_news() | e.presses.take_news());
     if news {
         ctx.request_repaint_of(id);
     }

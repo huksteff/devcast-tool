@@ -1,5 +1,6 @@
-//! Colour choice: a swatch that opens egui's HSV picker with a hex field under it, and the
-//! gradient editor of 2–4 colours spread evenly (SCOPE: background and fill gradients).
+//! Colour choice: a swatch that opens egui's HSV picker with a hex field under it, a palette of
+//! swatches with an own colour after them, and the gradient editor of 2–4 colours spread evenly
+//! (SCOPE: background and fill gradients).
 
 use egui::epaint::{Mesh, Vertex, WHITE_UV};
 use egui::{Color32, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetInfo, pos2, vec2};
@@ -10,6 +11,11 @@ use crate::tokens::{BORDER, R1, S2, TEXT};
 use crate::widgets::{IconButton, text_field};
 
 const SWATCH: f32 = 24.0;
+/// Side, corner radius and gap of a palette swatch, points (mockup `.cs`: 22, 5, 6 — 2 and 1 less
+/// here, so that six swatches fit the 160 points an inspector row leaves after its caption).
+const CHIP: f32 = 20.0;
+const CHIP_RADIUS: u8 = 5;
+const CHIP_GAP: f32 = 5.0;
 /// Bounds of the gradient editor.
 pub const GRADIENT_COLORS: std::ops::RangeInclusive<usize> = 2..=4;
 
@@ -34,6 +40,101 @@ pub fn color_button(ui: &mut Ui, color: &mut Color32, label: &str) -> Response {
         response.mark_changed();
     }
     response
+}
+
+/// A swatch per colour of `swatches` (colour, accessible name), then the own colour (`own` is its
+/// name): a rainbow while `color` is one of the swatches, else that colour; a click opens the
+/// picker. The chosen swatch is framed in white. Returns the response of the swatch that changed
+/// `color` or of the whole row.
+pub fn palette(
+    ui: &mut Ui,
+    color: &mut Color32,
+    swatches: &[(Color32, &str)],
+    own: &str,
+) -> Response {
+    let count = swatches.len() as f32 + 1.0;
+    let size = vec2(count * (CHIP + CHIP_GAP) - CHIP_GAP, CHIP);
+    let (rect, mut row) = ui.allocate_exact_size(size, Sense::hover());
+    let chip = |i: usize| {
+        let left = rect.left() + i as f32 * (CHIP + CHIP_GAP);
+        Rect::from_min_size(pos2(left, rect.top()), vec2(CHIP, CHIP))
+    };
+    let mut in_palette = false;
+    for (i, (swatch, name)) in swatches.iter().enumerate() {
+        let mut response = ui.interact(chip(i), row.id.with(i), Sense::click());
+        let chosen = *color == *swatch;
+        in_palette |= chosen;
+        response.widget_info(|| {
+            WidgetInfo::selected(egui::Role::RadioButton, ui.is_enabled(), chosen, *name)
+        });
+        if response.clicked() && !chosen {
+            *color = *swatch;
+            response.mark_changed();
+            row = response.clone();
+        }
+        ui.painter().rect_filled(chip(i), CHIP_RADIUS, *swatch);
+        chip_edge(ui, chip(i), chosen, response.hovered());
+    }
+    let last = chip(swatches.len());
+    let mut response = ui.interact(last, row.id.with("own"), Sense::click());
+    response.widget_info(|| WidgetInfo::labeled(egui::Role::ColorWell, ui.is_enabled(), own));
+    if in_palette {
+        rainbow(ui, last);
+    } else {
+        ui.painter().rect_filled(last, CHIP_RADIUS, *color);
+    }
+    chip_edge(ui, last, !in_palette, response.hovered());
+    let picked = egui::Popup::from_toggle_button_response(&response)
+        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .show(|ui| picker(ui, color));
+    if picked.is_some_and(|picked| picked.inner) {
+        response.mark_changed();
+        row = response;
+    }
+    row
+}
+
+/// A white frame outside the chosen swatch, a faint edge inside the others.
+fn chip_edge(ui: &Ui, rect: Rect, chosen: bool, hovered: bool) {
+    let painter = ui.painter();
+    if chosen {
+        let stroke = Stroke::new(2.0, Color32::WHITE);
+        painter.rect_stroke(rect, CHIP_RADIUS, stroke, StrokeKind::Outside);
+    } else {
+        let edge = if hovered { TEXT } else { BORDER };
+        painter.rect_stroke(
+            rect,
+            CHIP_RADIUS,
+            Stroke::new(1.0, edge),
+            StrokeKind::Inside,
+        );
+    }
+}
+
+/// The swatch of an own colour: the hues around its centre.
+fn rainbow(ui: &Ui, rect: Rect) {
+    const SECTORS: u32 = 24;
+    let mut mesh = Mesh::default();
+    let centre = rect.center();
+    mesh.vertices.push(Vertex {
+        pos: centre,
+        uv: WHITE_UV,
+        color: Color32::WHITE,
+    });
+    let reach = rect.width() * 0.75;
+    for i in 0..=SECTORS {
+        let turn = i as f32 / SECTORS as f32;
+        let angle = turn * std::f32::consts::TAU;
+        mesh.vertices.push(Vertex {
+            pos: centre + reach * vec2(angle.cos(), angle.sin()),
+            uv: WHITE_UV,
+            color: egui::ecolor::Hsva::new(turn, 1.0, 1.0, 1.0).into(),
+        });
+        if i > 0 {
+            mesh.add_triangle(0, i, i + 1);
+        }
+    }
+    ui.painter().with_clip_rect(rect.shrink(1.0)).add(mesh);
 }
 
 /// HSV picker and hex field; true when the colour changed.

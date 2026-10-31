@@ -107,7 +107,7 @@ fn grab_zone(ui: &Ui, lane: Rect, centre: Pos2, (id, at): (AnnotId, OutputTime))
 }
 
 /// A click picks `key` (Ctrl adds or takes it out); a drag of a key not picked picks it alone.
-fn pick(editor: &mut EditorWindow, response: &Response, key: Selected, ctrl: bool) {
+pub(super) fn pick(editor: &mut EditorWindow, response: &Response, key: Selected, ctrl: bool) {
     let selection = &mut editor.view.selection;
     if response.clicked() {
         match ctrl {

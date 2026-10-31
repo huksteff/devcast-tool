@@ -15,7 +15,9 @@ mod inspector;
 mod keys;
 mod montage;
 mod playback;
+mod presses;
 mod preview;
+mod reader;
 mod regions;
 mod rows;
 mod selection;
@@ -87,6 +89,8 @@ pub struct EditorWindow {
     pub playback: playback::Playback,
     /// Peaks of the waves on the sound rows, as they come.
     pub waves: waves::Waves,
+    /// Presses of the recordings: the dots of the «Курсор» row, as they come.
+    pub presses: presses::Presses,
     /// Frames per second of a frame step: the highest of the clips' videos (v1), 30 without.
     pub fps: f64,
     /// Shortcuts of the settings, taken each frame.
@@ -140,6 +144,7 @@ impl EditorWindow {
             view: View::default(),
             preview,
             waves: waves::Waves::default(),
+            presses: presses::Presses::default(),
             keys: EditorKeys::default(),
             help: None,
             defaults: dc_project::Defaults::factory(),
@@ -173,6 +178,9 @@ impl EditorWindow {
     fn retrack(&mut self) {
         self.tracks = Tracks::of(self.doc.project(), &self.sound, self.view.least);
         self.waves.want(self.tracks.sources());
+        let project = self.doc.project();
+        self.presses.want(presses::recordings(project).iter());
+        self.tracks.clicks = timeline::click_dots(project, |media| self.presses.get(media));
         let end = self.end();
         self.view.keep(&self.tracks, end);
     }
@@ -215,6 +223,17 @@ impl EditorWindow {
             .start(dir, ctx)
             .map_err(|source| crate::AppError::Thread {
                 name: "devcast-peaks",
+                source,
+            })
+    }
+
+    /// Starts reading the clicks of the recordings; without it the «Курсор» row has no dots.
+    pub fn start_clicks(&mut self, ctx: egui::Context) -> Result<(), crate::AppError> {
+        let dir = self.doc.dir().clone();
+        self.presses
+            .start(dir, ctx)
+            .map_err(|source| crate::AppError::Thread {
+                name: "devcast-clicks",
                 source,
             })
     }
@@ -263,6 +282,9 @@ pub fn editor_ui(
         editor.groups = groups.clone();
     }
     editor.waves.receive();
+    if editor.presses.receive() {
+        editor.retrack();
+    }
     keys::run(ui, editor);
     let volume = (editor.view.volume / 100.0) as f32;
     let tick = editor.playback.tick(now, editor.end(), volume);

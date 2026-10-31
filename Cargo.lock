@@ -1261,6 +1261,7 @@ dependencies = [
  "dc-fx-callout",
  "dc-fx-captions",
  "dc-fx-crop",
+ "dc-fx-cursor",
  "dc-fx-keys",
  "dc-fx-zoom",
  "dc-ipc",

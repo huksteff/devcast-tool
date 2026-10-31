@@ -73,3 +73,59 @@ pub const ZOOM_SHARED: &str = "Движение, склейка и тонкая 
 pub const ZOOM_SUGGEST: &str = "Подобрать зумы по кликам";
 /// Unit after a percentage in a number field.
 pub const PERCENT: &str = " %";
+
+pub const CURSOR_PANEL: &str = "Курсор и клики";
+pub const CURSOR_GROUP: &str = "Курсор";
+pub const CURSOR_SHOW: &str = "Показать";
+pub const CURSOR_SET: &str = "Набор";
+pub const CURSOR_SYSTEM: &str = "Системный";
+pub const CURSOR_OWN: &str = "Своя картинка";
+pub const CURSOR_OWN_PICK: &str = "Выбрать файл…";
+/// Why «Своя картинка» is off: the owner froze own cursors (QUESTIONS.md, 2026-10-29).
+pub const CURSOR_OWN_FROZEN: &str =
+    "Свои курсоры пока заморожены: картинку своего курсора добавим отдельной задачей.";
+pub const CURSOR_SIZE: &str = "Размер";
+pub const CURSOR_MOTION: &str = "Движение";
+pub const CURSOR_EXACT: &str = "Точно";
+pub const CURSOR_BOUNCE: &str = "Отскок";
+pub const CURSOR_BOUNCE_TIME: &str = "Длина отскока";
+pub const CURSOR_SWAY: &str = "Покачивание";
+pub const CURSOR_BLUR: &str = "Motion blur";
+pub const CURSOR_LOOP: &str = "Зациклить";
+pub const CURSOR_LOOP_NOTE: &str = "последние 0,67 с";
+
+pub const CLICK_GROUP: &str = "Эффект клика";
+pub const CLICK_OFF: &str = "Выкл";
+pub const CLICK_RIPPLE: &str = "Ripple";
+pub const CLICK_SPOTLIGHT: &str = "Spotlight";
+pub const CLICK_ECHO: &str = "Echo";
+pub const CLICK_FLASH: &str = "Вспышка";
+pub const CLICK_COLOR: &str = "Цвет";
+pub const BLUE: &str = "Синий";
+pub const RED: &str = "Красный";
+pub const AMBER: &str = "Жёлтый";
+pub const GREEN: &str = "Зелёный";
+pub const PURPLE: &str = "Фиолетовый";
+pub const OWN_COLOR: &str = "Свой цвет";
+pub const CLICK_SIZE: &str = "Размер клика";
+pub const CLICK_OPACITY: &str = "Прозрачность клика";
+pub const CLICK_DURATION: &str = "Длительность клика";
+
+/// The panel of one click picked on the «Курсор» row.
+pub const CLICK: &str = "Клик";
+pub const CLICK_ONE: &str = "Эффект этого клика";
+pub const CLICK_ONE_NOTE: &str =
+    "Что у клика не меняли, берётся из общего эффекта кликов на вкладке «Курсор».";
+pub const LEFT_BUTTON: &str = "левая кнопка";
+pub const RIGHT_BUTTON: &str = "правая кнопка";
+pub const MIDDLE_BUTTON: &str = "средняя кнопка";
+pub const BACK_BUTTON: &str = "кнопка «назад»";
+pub const FORWARD_BUTTON: &str = "кнопка «вперёд»";
+
+/// «0:21.40 · левая кнопка», «0:21.40 · левая кнопка, двойной»: the subtitle of a click.
+pub fn click_about(at: &str, button: &str, double: bool) -> String {
+    match double {
+        true => format!("{at} · {button}, двойной"),
+        false => format!("{at} · {button}"),
+    }
+}

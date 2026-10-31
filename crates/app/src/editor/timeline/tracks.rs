@@ -90,6 +90,9 @@ pub struct Tracks {
     pub seams: Vec<OutputTime>,
     /// Keyframes of all annotations at output times, sorted: the jumps of [ and ] (7.5).
     pub keys: Vec<OutputTime>,
+    /// Presses of the recordings on the «Курсор» row (7.15), set apart from `of`: they come
+    /// from the recordings' files (`editor/presses.rs`).
+    pub clicks: Vec<super::dots::Dot>,
     /// Broken effect states: their rows stay empty, the text says what to do.
     pub problems: Vec<String>,
 }

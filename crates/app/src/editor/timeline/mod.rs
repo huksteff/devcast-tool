@@ -15,6 +15,7 @@
 //! waves of the sound rows `wave.rs` (peaks from `editor/waves.rs`).
 
 mod clips;
+mod dots;
 mod gesture;
 mod ghost;
 mod heads;
@@ -53,6 +54,7 @@ use dc_ui_kit::tokens::{BORDER, S2, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind, Slider};
 use eframe::egui::{self, Align, Frame, Layout, Margin, Rect, ScrollArea, Sense, Stroke, Ui, vec2};
 
+pub use dots::{Dot, placed as click_dots};
 pub use paint::{hue, name};
 pub use scale::{TimeScale, timecode};
 pub use tracks::{Least, Region, Row, Track, Tracks};
@@ -133,6 +135,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32) -> f32 {
             }
             regions::ui(ui, &shown, editor, &scale, &lanes);
             marks::ui(ui, &shown, editor, &scale);
+            dots::ui(ui, &shown, editor, &scale);
             heads::lift(ui, editor, &headers);
             heads::question(ui, editor, &headers);
             heads::add_row(ui, editor);

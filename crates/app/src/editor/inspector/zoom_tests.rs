@@ -18,7 +18,7 @@ use crate::editor::tests::{harness_of, harness_with};
 use crate::editor::{EditorWindow, SIZE};
 
 /// The editor 1280 × 1000 with the least timeline: the whole zoom panel is in sight.
-fn tall() -> H {
+pub(super) fn tall() -> H {
     let layout = crate::settings::EditorLayout {
         timeline_height: 140.0,
         ..Default::default()
@@ -35,12 +35,12 @@ fn zoom_tab(harness: &mut H) {
     harness.run();
 }
 
-fn click(harness: &mut H, role: egui::Role, label: &str) {
+pub(super) fn click(harness: &mut H, role: egui::Role, label: &str) {
     harness.get_by_role_and_label(role, label).click();
     harness.run();
 }
 
-fn type_in(harness: &mut H, label: &str, value: f64) {
+pub(super) fn type_in(harness: &mut H, label: &str, value: f64) {
     harness
         .get_by_role_and_label(egui::Role::SpinButton, label)
         .set_value_accesskit(value);

@@ -132,7 +132,7 @@ fn with_peaks() -> H {
     let size = eframe::egui::vec2(1280.0, 1000.0);
     let mut harness = crate::editor::tests::harness_with(size, layout);
     harness.run();
-    assert!(harness.state().editor.waves.peaks(&mic().source).is_none());
+    assert!(harness.state().editor.waves.get(&mic().source).is_none());
     let peaks = tone_peaks(110.0);
     let editor = &mut harness.state_mut().editor;
     let sources: Vec<Source> = editor.tracks.sources().cloned().collect();

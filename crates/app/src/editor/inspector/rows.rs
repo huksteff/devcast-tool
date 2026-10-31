@@ -7,8 +7,11 @@
 
 use dc_render::Rgba;
 use dc_ui_kit::tokens::{FS_S, S2, TEXT_3};
-use dc_ui_kit::widgets::{Slider, Toggle, anchors as anchor_grid, color_button, segmented};
-use eframe::egui::{self, Color32, Id, Response, RichText, Ui};
+use dc_ui_kit::widgets::{
+    Slider, Toggle, anchors as anchor_grid, color_button, palette as swatches, segmented,
+    tiles as tile_row,
+};
+use eframe::egui::{self, Color32, Id, Painter, Rect, Response, RichText, Ui};
 
 use crate::settings_rows;
 
@@ -18,7 +21,7 @@ const LABEL: f32 = 104.0;
 const ROW: f32 = 30.0;
 
 /// A caption and its control; the control's answer.
-fn row<T>(ui: &mut Ui, label: &str, control: impl FnOnce(&mut Ui) -> T) -> T {
+pub fn row<T>(ui: &mut Ui, label: &str, control: impl FnOnce(&mut Ui) -> T) -> T {
     settings_rows::labelled(ui, label, (LABEL, S2, ROW), control)
 }
 
@@ -138,4 +141,65 @@ fn color32(Rgba([r, g, b, a]): Rgba) -> Color32 {
 
 fn rgba(color: Color32) -> Rgba {
     Rgba(color.to_srgba_unmultiplied())
+}
+
+/// An on/off switch with a grey hint after it (mockup: «Зациклить» · «последние 0,67 с»).
+pub fn toggle_hint(ui: &mut Ui, label: &str, on: bool, hint: &str) -> Option<bool> {
+    row(ui, label, |ui| {
+        let mut value = on;
+        let changed = ui.add(Toggle::new(&mut value, label)).changed();
+        ui.label(RichText::new(hint).size(FS_S).color(TEXT_3));
+        changed.then_some(value)
+    })
+}
+
+/// A palette of `colors` (colour, accessible name) and an own colour named `own`: the colour
+/// chosen, or the own colour once its picker is let go.
+pub fn palette(
+    ui: &mut Ui,
+    label: &str,
+    now: Rgba,
+    colors: &[(Rgba, &str)],
+    own: &str,
+) -> Option<Rgba> {
+    row(ui, label, |ui| {
+        let colors: Vec<(Color32, &str)> = colors.iter().map(|(c, n)| (color32(*c), *n)).collect();
+        let id = ui.make_persistent_id(("draft", label));
+        drafted(ui, id, color32(now), |ui, c| swatches(ui, c, &colors, own)).map(rgba)
+    })
+}
+
+/// Tiles of `options` (value, caption) over the whole width, `picture` draws a value's picture;
+/// the option clicked.
+pub fn tiles<T: PartialEq + Copy>(
+    ui: &mut Ui,
+    value: T,
+    options: &[(T, &str)],
+    picture: impl Fn(&Painter, Rect, T),
+) -> Option<T> {
+    let mut chosen = value;
+    tile_row(ui, &mut chosen, options, picture)
+        .changed()
+        .then_some(chosen)
+}
+
+/// [`choice`] whose options are wider than the place after a caption («Точно · Focused ·
+/// Smooth»): the caption on its own line, the options under it.
+pub fn choice_under<T: PartialEq + Copy>(
+    ui: &mut Ui,
+    label: &str,
+    value: Option<T>,
+    options: &[(T, &str)],
+) -> Option<T> {
+    let width = ui.available_width() - S2;
+    settings_rows::labelled(ui, label, (width, S2, ROW), |_| ());
+    let mut chosen = value;
+    let options: Vec<(Option<T>, &str, bool)> = options
+        .iter()
+        .map(|(v, name)| (Some(*v), *name, true))
+        .collect();
+    segmented(ui, &mut chosen, &options)
+        .changed()
+        .then_some(chosen)
+        .flatten()
 }

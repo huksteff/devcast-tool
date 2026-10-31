@@ -25,6 +25,7 @@ dc-fx-audio-tracks = { path = "../../fx/audio-tracks" }
 dc-fx-callout = { path = "../../fx/callout" }
 dc-fx-captions = { path = "../../fx/captions" }
 dc-fx-crop = { path = "../../fx/crop" }
+dc-fx-cursor = { path = "../../fx/cursor" }
 dc-fx-keys = { path = "../../fx/keys" }
 dc-fx-zoom = { path = "../../fx/zoom" }
 dc-ipc = { path = "../ipc" }

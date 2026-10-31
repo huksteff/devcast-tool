@@ -63,7 +63,7 @@ fn rows_are_plain_until_the_peaks_come_and_the_window_wakes() {
     let (asked, asks) = channel::<Source>();
     let mut waves = Waves::default();
     waves.want([music()].iter());
-    assert!(waves.peaks(&music()).is_none());
+    assert!(waves.get(&music()).is_none());
     let answer = peaks.clone();
     let load = move |source: &Source| {
         asked.send(source.clone()).unwrap();
@@ -79,14 +79,14 @@ fn rows_are_plain_until_the_peaks_come_and_the_window_wakes() {
         music(),
         "asked when the thread started"
     );
-    assert!(!waves.receive() && waves.peaks(&music()).is_none());
+    assert!(!waves.receive() && waves.get(&music()).is_none());
     assert!(!waves.take_news());
     open.send(()).unwrap();
     wakes.recv().unwrap();
     assert!(waves.take_news(), "the main window wakes the editor");
     assert!(!waves.take_news(), "once");
     assert!(waves.receive());
-    assert_eq!(waves.peaks(&music()), Some(&peaks));
+    assert_eq!(waves.get(&music()), Some(&peaks));
     assert!(asks.try_recv().is_err(), "a source is read once");
 }
 
@@ -101,7 +101,7 @@ fn an_unreadable_source_stays_plain() {
     waves.want([music()].iter());
     wakes.recv().unwrap();
     assert!(waves.receive());
-    assert!(waves.peaks(&music()).is_none());
+    assert!(waves.get(&music()).is_none());
 }
 
 #[test]

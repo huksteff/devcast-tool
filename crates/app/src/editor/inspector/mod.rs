@@ -8,12 +8,17 @@
 //! helpers of `rows.rs`; every committed edit is a registry command — one undo step. A tab gets
 //! its panel in [`tab`], an object kind in `object.rs`.
 
+mod click;
+mod click_style;
+mod cursor;
 mod keys;
 mod object;
 mod rows;
 mod zoom;
 mod zoom_region;
 
+#[cfg(test)]
+mod cursor_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -64,7 +69,7 @@ fn tab(panel: Panel) -> Result<(&'static str, PanelUi), &'static str> {
     match panel {
         Panel::Keys => Ok((keys::ID, keys::ui)),
         Panel::Zoom => Ok((zoom::ID, zoom::ui)),
-        Panel::Cursor => Err("7.15"),
+        Panel::Cursor => Ok((cursor::ID, cursor::ui)),
         Panel::Captions => Err("7.17"),
         Panel::Sound => Err("7.19"),
     }

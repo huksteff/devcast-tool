@@ -132,7 +132,7 @@ pub fn lane(painter: &Painter, rect: Rect, track: &Track, scale: &TimeScale, wav
         let body = body(rect, scale, region.range);
         let ink = region_fill(painter, body, region, hue);
         let wave = region.wave.as_ref();
-        if let Some((wave, peaks)) = wave.and_then(|w| Some((w, waves.peaks(&w.source)?))) {
+        if let Some((wave, peaks)) = wave.and_then(|w| Some((w, waves.get(&w.source)?))) {
             let color = if region.faded {
                 hue.line.gamma_multiply(FADED)
             } else {

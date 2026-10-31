@@ -3,8 +3,8 @@
 use dc_ui_kit::Icon;
 use dc_ui_kit::tokens::{S3, SURFACE};
 use dc_ui_kit::widgets::{
-    Button, IconButton, Kind, Slider, Toggle, anchors, dropdown, search_field, segmented,
-    text_field,
+    Button, IconButton, Kind, Slider, Toggle, anchors, dropdown, palette, search_field, segmented,
+    text_field, tiles,
 };
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -205,4 +205,38 @@ fn text_field_with_hint() {
         .type_text("пауза");
     harness.run();
     assert_eq!(harness.state().0, "пауза");
+}
+
+#[test]
+fn tiles_pick_one() {
+    let options = [(0u8, "Выкл"), (1, "Ripple"), (2, "Spotlight"), (3, "Echo")];
+    let mut harness = harness(1u8, move |ui, value: &mut u8| {
+        tiles(ui, value, &options, |painter, rect, v| {
+            let stroke = egui::Stroke::new(2.0, egui::Color32::WHITE);
+            painter.circle_stroke(rect.center(), rect.width() / 2.0 - f32::from(v), stroke);
+        });
+    });
+    harness.snapshot("tiles");
+    harness.get_by_label("Echo").click();
+    harness.run();
+    assert_eq!(*harness.state(), 3);
+}
+
+#[test]
+fn palette_with_own_colour() {
+    let swatches = [
+        (egui::Color32::from_rgb(0x25, 0x63, 0xeb), "Синий"),
+        (egui::Color32::from_rgb(0xef, 0x44, 0x44), "Красный"),
+        (egui::Color32::from_rgb(0x22, 0xc5, 0x5e), "Зелёный"),
+    ];
+    let mut harness = harness(swatches[0].0, move |ui, color: &mut egui::Color32| {
+        palette(ui, color, &swatches, "Свой цвет");
+    });
+    harness.snapshot("palette");
+    harness.get_by_label("Красный").click();
+    harness.run();
+    assert_eq!(*harness.state(), swatches[1].0);
+    *harness.state_mut() = egui::Color32::from_rgb(0x14, 0xb8, 0xc4);
+    harness.run();
+    harness.snapshot("palette_own");
 }

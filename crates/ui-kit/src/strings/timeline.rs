@@ -173,3 +173,8 @@ fn plural<'a>(count: usize, one: &'a str, few: &'a str, many: &'a str) -> &'a st
 pub fn key_marker(at: &str) -> String {
     format!("Ключ {at}")
 }
+
+/// «Клик 0:21.40»: the name of a click dot on the «Курсор» row (7.15).
+pub fn click_dot(at: &str) -> String {
+    format!("Клик {at}")
+}

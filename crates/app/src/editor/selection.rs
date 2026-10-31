@@ -34,6 +34,8 @@ impl Item {
 pub enum Selected {
     Clip(ClipId),
     Region(Item),
+    /// A press of a recording on the «Курсор» row at its output time (7.15).
+    Click(OutputTime),
     /// A key of an annotation at its output time (7.12).
     Key {
         id: AnnotId,
@@ -93,7 +95,7 @@ impl Selection {
     pub fn clips(&self) -> impl Iterator<Item = ClipId> + '_ {
         self.items.iter().filter_map(|item| match item {
             Selected::Clip(id) => Some(*id),
-            Selected::Region(_) | Selected::Key { .. } => None,
+            Selected::Region(_) | Selected::Key { .. } | Selected::Click(_) => None,
         })
     }
 
@@ -101,7 +103,7 @@ impl Selection {
     pub fn regions(&self) -> impl Iterator<Item = Item> + '_ {
         self.items.iter().filter_map(|item| match item {
             Selected::Region(item) => Some(*item),
-            Selected::Clip(_) | Selected::Key { .. } => None,
+            Selected::Clip(_) | Selected::Key { .. } | Selected::Click(_) => None,
         })
     }
 
@@ -123,6 +125,7 @@ impl Selection {
             Selected::Key { id, at } => regions().any(|r| {
                 r.item == Some(Item::Annotation(*id)) && r.keys.iter().any(|k| same_moment(*k, *at))
             }),
+            Selected::Click(at) => tracks.clicks.iter().any(|d| same_moment(d.at, *at)),
         });
     }
 }
