@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 dc-core = { path = "../core" }
 dc-fx-annotations = { path = "../../fx/annotations" }
+dc-fx-audio-tracks = { path = "../../fx/audio-tracks" }
 dc-fx-blur = { path = "../../fx/blur" }
 dc-fx-callout = { path = "../../fx/callout" }
 dc-fx-captions = { path = "../../fx/captions" }

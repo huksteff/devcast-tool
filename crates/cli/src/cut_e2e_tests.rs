@@ -12,7 +12,6 @@ use dc_render::{AdapterChoice, Gpu};
 
 use crate::export_args::{Format, QualityArg, Res, Settings};
 use crate::export_job::{Spec, run};
-use crate::registry::registry;
 use crate::test_util::{decoded, ffmpeg, run_line};
 
 const FPS: u32 = 30;
@@ -90,7 +89,7 @@ fn flashes_and_beeps_stay_together_after_ten_cuts_a_join_and_speed() {
     let tmp = tempfile::tempdir().unwrap();
     let cwd = tmp.path();
     flashes(&cwd.join("flashes.mp4"));
-    let registry = registry().unwrap();
+    let registry = dc_ops::Registry::devcast().unwrap();
     for line in [
         "new flashes.mp4 -o cuts.dcproj",
         "clip add flashes.mp4",

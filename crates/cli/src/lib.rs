@@ -25,7 +25,6 @@ mod ls;
 mod record;
 mod record_args;
 mod record_control;
-pub mod registry;
 mod round;
 pub mod run;
 mod scene;
@@ -110,7 +109,7 @@ pub fn main_outcome(args: Vec<OsString>) -> Outcome {
                     "текущая папка недоступна ({e}): перейди в существующую папку"
                 ))
             })?;
-            Ok((args, cwd, registry::registry()?))
+            Ok((args, cwd, dc_ops::Registry::devcast()?))
         });
     match prepared {
         Ok((args, cwd, registry)) => run(args, &cwd, &registry),

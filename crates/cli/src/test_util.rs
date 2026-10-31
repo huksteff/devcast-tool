@@ -14,7 +14,7 @@ use dc_project::ProjectDir;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::{Local, Outcome, registry::registry, run, run_with};
+use crate::{Local, Outcome, run, run_with};
 
 /// A clip of the whole recording `path`, `secs` long.
 fn recording(id: ClipId, path: String, secs: f64) -> Clip {
@@ -224,7 +224,12 @@ impl Recordings {
 
     pub(crate) fn run(&self, line: &str) -> Outcome {
         let defaults = defaults_file(self._tmp.path());
-        run_line_with(line, self.dir.root(), &registry().unwrap(), &defaults)
+        run_line_with(
+            line,
+            self.dir.root(),
+            &Registry::devcast().unwrap(),
+            &defaults,
+        )
     }
 
     pub(crate) fn ok(&self, line: &str) -> String {

@@ -61,14 +61,12 @@ fn recording_through_the_hud_opens_the_project() {
     run_until(&mut harness, Duration::from_secs(60), |s| {
         s.editor.is_some()
     });
-    let editor = harness.state().editor.clone().unwrap();
-    assert_eq!(editor.project.clips.len(), 1);
+    let editor = harness.state().editor.as_ref().unwrap();
+    assert_eq!(editor.doc.project().clips.len(), 1);
     let length = editor.tracks.duration.micros();
     assert!(length >= 2_500_000, "{length}");
-    assert!(editor.root.starts_with(dir.path().join("Записи DevCast")));
-    let project = dc_project::ProjectDir::open(&editor.root)
-        .unwrap()
-        .load()
-        .unwrap();
+    let root = editor.doc.dir().root();
+    assert!(root.starts_with(dir.path().join("Записи DevCast")));
+    let project = dc_project::ProjectDir::open(root).unwrap().load().unwrap();
     assert_eq!(project.clips.len(), 1);
 }

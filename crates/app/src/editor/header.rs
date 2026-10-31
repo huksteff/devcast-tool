@@ -1,9 +1,9 @@
 //! The 44 px header: library and projects, undo and redo, the project name in the middle with
 //! the blue dot of unsaved changes, help, settings and export.
 //!
-//! Disabled until their task: «Записи» (7.27), «Проекты» (7.28), undo and redo (7.2), help (7.3),
-//! export (7.31). Renaming by a click on the name waits for 7.28: the name is the project
-//! folder's and no registry command renames it (docs/QUESTIONS.md).
+//! Undo and redo name their step in the tooltip. Disabled until their task: «Записи» (7.27),
+//! «Проекты» (7.28), help (7.3), export (7.31). Renaming by a click on the name waits for 7.28:
+//! the name is the project folder's and no registry command renames it (docs/QUESTIONS.md).
 
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
@@ -12,14 +12,14 @@ use dc_ui_kit::tokens::{ACCENT_HI, BORDER, FS_L, FS_S, S1, S2, TEXT, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind};
 use eframe::egui::{self, Align, Layout, Rect, Sense, Ui, UiBuilder, pos2, vec2};
 
-use super::EditorWindow;
+use super::{Action, EditorWindow, Way};
 
 /// Side of the unsaved dot and the gap after it, points (mockup).
 const DOT: f32 = 7.0;
 const DOT_GAP: f32 = 6.0;
 
 /// The header; true when the settings button is pressed.
-pub fn ui(ui: &mut Ui, editor: &EditorWindow) -> bool {
+pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
     let rect = ui.max_rect().shrink2(vec2(S2, 0.0));
     side(ui, rect, Layout::left_to_right(Align::Center), |ui| {
         ui.add_enabled(
@@ -38,8 +38,8 @@ pub fn ui(ui: &mut Ui, editor: &EditorWindow) -> bool {
                 .menu(),
         );
         separator(ui);
-        ui.add_enabled(false, IconButton::new(Icon::Undo, text::UNDO));
-        ui.add_enabled(false, IconButton::new(Icon::Redo, text::REDO));
+        travel(ui, editor, Way::Undo);
+        travel(ui, editor, Way::Redo);
     });
     let settings = side(ui, rect, Layout::right_to_left(Align::Center), |ui| {
         ui.add_enabled(
@@ -58,6 +58,21 @@ pub fn ui(ui: &mut Ui, editor: &EditorWindow) -> bool {
     });
     name(ui, rect, editor);
     settings
+}
+
+/// Undo or redo: enabled when there is a step, the tooltip names it.
+fn travel(ui: &mut Ui, editor: &mut EditorWindow, way: Way) {
+    let (icon, label, hint): (_, _, fn(&str) -> String) = match way {
+        Way::Undo => (Icon::Undo, text::UNDO, text::undo_hint),
+        Way::Redo => (Icon::Redo, text::REDO, text::redo_hint),
+    };
+    let step = editor.doc.next(way).map(|change| hint(&change.summary));
+    let button = ui.add_enabled(step.is_some(), IconButton::new(icon, label));
+    if let Some(step) = step
+        && button.on_hover_text(step).clicked()
+    {
+        editor.ask(Action::Travel(way));
+    }
 }
 
 /// A row of controls along one side of `rect`.
@@ -79,6 +94,7 @@ fn separator(ui: &mut Ui) {
 
 /// «● name .dcproj» centred in the header; the dot only with unsaved changes.
 fn name(ui: &mut Ui, rect: Rect, editor: &EditorWindow) {
+    let unsaved = editor.doc.unsaved();
     let painter = ui.painter();
     let title = painter.layout_no_wrap(
         editor.name.clone(),
@@ -90,11 +106,11 @@ fn name(ui: &mut Ui, rect: Rect, editor: &EditorWindow) {
         fonts::text(FS_S, Weight::Regular),
         TEXT_3,
     );
-    let dot = if editor.unsaved { DOT + DOT_GAP } else { 0.0 };
+    let dot = if unsaved { DOT + DOT_GAP } else { 0.0 };
     let width = dot + title.size().x + DOT_GAP + extension.size().x;
     let left = rect.center().x - width / 2.0;
     let y = rect.center().y;
-    if editor.unsaved {
+    if unsaved {
         let center = pos2(left + DOT / 2.0, y);
         painter.circle_filled(center, DOT / 2.0, ACCENT_HI);
         let spot = Rect::from_center_size(center, vec2(DOT + 4.0, DOT + 4.0));

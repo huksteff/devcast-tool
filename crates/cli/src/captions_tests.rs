@@ -1,13 +1,12 @@
 //! `devcast captions …` on the synthesized speech of `transcript_tests` (words already in the
 //! cache, so no model is needed).
 
-use crate::registry::registry;
 use crate::run::{Outcome, run};
 use crate::transcript_tests::Speech;
 
 fn run_args(speech: &Speech, args: &[&str]) -> Outcome {
     let args = args.iter().map(|a| (*a).to_owned()).collect();
-    run(args, &speech.root, &registry().unwrap())
+    run(args, &speech.root, &dc_ops::Registry::devcast().unwrap())
 }
 
 #[test]

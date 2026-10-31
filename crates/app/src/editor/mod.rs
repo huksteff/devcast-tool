@@ -1,8 +1,11 @@
 //! The editor window (docs/design/editor.html, «Главное окно редактора»): header, preview with
 //! its transport, inspector on the right, timeline under them. It opens with the project of a
 //! finished recording; the HUD hides meanwhile and comes back when the editor closes (v1).
-//! The project is read-only here until the editor is wired to the command registry (7.2).
+//! Controls change the project only by queueing an `Action` (a registry command, undo, redo);
+//! the frame runs them after its layout and rebuilds the view from the new project.
 
+mod actions;
+mod document;
 mod header;
 mod inspector;
 mod preview;
@@ -11,18 +14,23 @@ mod transport;
 mod view;
 
 #[cfg(test)]
+mod editing_tests;
+#[cfg(test)]
 mod tests;
 
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
-use dc_core::{PixelSize, Project};
+use dc_core::PixelSize;
 use dc_fx_crop::{Aspect, Crop};
+use dc_project::ProjectDir;
 use dc_ui_kit::strings::editor as text;
 use dc_ui_kit::tokens::{BG, SURFACE};
 use eframe::egui::{self, Frame, Ui, vec2};
 
 use crate::app::{Shared, lock, on_hud_monitor, other_window};
+pub use actions::Action;
+pub use document::{Document, DocumentError, LOCK_OWNER, Way};
 pub use timeline::Tracks;
 pub use view::View;
 
@@ -36,80 +44,108 @@ const INSPECTOR: f32 = 340.0;
 const TIMELINE_MIN: f32 = 140.0;
 const TIMELINE_MAX_SHARE: f32 = 0.75;
 
-/// The open project.
-#[derive(Debug, Clone, PartialEq)]
+/// The open project and what the window shows of it.
+#[derive(Debug)]
 pub struct EditorWindow {
-    pub root: PathBuf,
+    pub doc: Document,
+    /// Project name: the folder without `.dcproj`.
     pub name: String,
-    pub project: Project,
-    /// The project has changes not saved with Ctrl+S (its `session.json` exists).
-    pub unsaved: bool,
     /// Sound tracks the recordings have (`mic`, `system`): rows of the source sound.
     pub sound: Vec<String>,
-    /// The timeline rows of `project`.
+    /// The timeline rows of the project.
     pub tracks: Tracks,
     /// Output frame: its aspect setting and size (none without clips).
     pub aspect: Aspect,
     pub canvas: Option<PixelSize>,
     pub view: View,
+    /// Actions the controls asked for in this frame.
+    actions: Vec<Action>,
 }
 
 impl EditorWindow {
-    pub fn new(recorded: &dc_capture::win::RecordedProject) -> Self {
+    /// The editor of the project a recording has just saved.
+    pub fn new(
+        recorded: &dc_capture::win::RecordedProject,
+    ) -> Result<(Self, Vec<String>), DocumentError> {
         let sound = recorded
             .summary
             .audio
             .iter()
             .map(|a| a.track.to_owned())
             .collect();
-        Self::of(
-            recorded.dir.root().to_path_buf(),
-            // The folder is `name.dcproj`; the header shows the extension apart.
-            std::path::Path::new(recorded.dir.name())
-                .file_stem()
-                .map_or_else(
-                    || recorded.dir.name().to_owned(),
-                    |s| s.to_string_lossy().into_owned(),
-                ),
-            recorded.project.clone(),
-            recorded.dir.has_unsaved_changes(),
-            sound,
-        )
+        Self::open(recorded.dir.clone(), sound)
     }
 
-    /// The editor of `project` in folder `root`.
-    pub fn of(
-        root: PathBuf,
-        name: String,
-        project: Project,
-        unsaved: bool,
-        sound: Vec<String>,
-    ) -> Self {
-        let mut tracks = Tracks::of(&project, &sound);
+    /// Opens the project in `dir` for editing; also returns the problems to show (a broken
+    /// history, a broken effect state).
+    pub fn open(dir: ProjectDir, sound: Vec<String>) -> Result<(Self, Vec<String>), DocumentError> {
+        let (doc, mut problems) = Document::open(dir)?;
+        // The folder is `name.dcproj`; the header shows the extension apart.
+        let name = std::path::Path::new(doc.dir().name())
+            .file_stem()
+            .map_or_else(
+                || doc.dir().name().to_owned(),
+                |s| s.to_string_lossy().into_owned(),
+            );
+        let mut editor = Self {
+            doc,
+            name,
+            sound,
+            tracks: Tracks::default(),
+            aspect: Aspect::default(),
+            canvas: None,
+            view: View::default(),
+            actions: Vec::new(),
+        };
+        editor.refresh();
+        problems.extend(editor.tracks.problems.iter().cloned());
+        Ok((editor, problems))
+    }
+
+    /// Rebuilds the view of the project after it changed.
+    fn refresh(&mut self) {
+        let project = self.doc.project();
+        let mut tracks = Tracks::of(project, &self.sound);
         let crop = project.state::<Crop>().unwrap_or_else(|e| {
             tracks.problems.push(e.to_string());
             Default::default()
         });
-        Self {
-            canvas: dc_fx_crop::canvas(&project, &crop.settings),
-            aspect: crop.settings.aspect,
-            root,
-            name,
-            project,
-            unsaved,
-            sound,
-            tracks,
-            view: View::default(),
+        self.canvas = dc_fx_crop::canvas(project, &crop.settings);
+        self.aspect = crop.settings.aspect;
+        self.tracks = tracks;
+    }
+
+    /// Queues `action` to run after this frame's layout.
+    pub fn ask(&mut self, action: Action) {
+        self.actions.push(action);
+    }
+}
+
+impl Shared {
+    /// Opens the editor with the project a recording has just saved and hides the HUD; a
+    /// project that cannot be opened (another writer holds it) is a toast.
+    pub fn open_editor(&mut self, recorded: &dc_capture::win::RecordedProject) {
+        match EditorWindow::new(recorded) {
+            Ok((editor, problems)) => {
+                for problem in problems {
+                    self.report(Err(problem));
+                }
+                self.editor = Some(editor);
+                self.hide_hud();
+            }
+            Err(error) => self.report(Err(error)),
         }
     }
 }
 
 /// What a frame of the editor asks of the app.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Outcome {
     pub open_settings: bool,
     /// Height of the timeline after the frame, points.
     pub timeline_height: f32,
+    /// Why an action failed, for a toast.
+    pub errors: Vec<String>,
 }
 
 /// Shows the editor while one is open; closing it brings the HUD back.
@@ -140,13 +176,26 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     );
 }
 
-/// One frame of the editor window; closing it shows the HUD again.
+/// One frame of the editor window; closing it writes what is unsaved to the session and shows
+/// the HUD again.
 fn frame(ui: &mut Ui, shared: &mut Shared) {
     let height = shared.store.get().editor.timeline_height;
     let Some(editor) = shared.editor.as_mut() else {
         return;
     };
-    let outcome = editor_ui(ui, editor, height);
+    let now = Instant::now();
+    let outcome = editor_ui(ui, editor, height, now);
+    let saved = editor.doc.autosave(now);
+    if let Ok(Some(wait)) = saved {
+        ui.ctx().request_repaint_after(wait);
+    }
+    let close = ui.input(|i| i.viewport().close_requested());
+    let flushed = if close { editor.doc.flush() } else { Ok(()) };
+    for error in outcome.errors {
+        shared.report(Err(error));
+    }
+    shared.report(saved.map(drop));
+    shared.report(flushed);
     if outcome.open_settings {
         shared.open_settings();
     }
@@ -157,15 +206,23 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
             .update(|s| s.editor.timeline_height = outcome.timeline_height.round());
         shared.report(saved);
     }
-    if ui.input(|i| i.viewport().close_requested()) {
+    if close {
         shared.editor = None;
         shared.show_hud();
     }
 }
 
 /// The whole window: header, timeline at the bottom (`timeline_height` until dragged),
-/// inspector on the right, preview in the middle.
-pub fn editor_ui(ui: &mut Ui, editor: &mut EditorWindow, timeline_height: f32) -> Outcome {
+/// inspector on the right, preview in the middle; then the actions of the frame, at `now`.
+pub fn editor_ui(
+    ui: &mut Ui,
+    editor: &mut EditorWindow,
+    timeline_height: f32,
+    now: Instant,
+) -> Outcome {
+    if let Some(action) = actions::shortcut(ui) {
+        editor.ask(action);
+    }
     let mut open_settings = false;
     egui::Panel::top("editor-header")
         .exact_size(HEADER)
@@ -185,8 +242,10 @@ pub fn editor_ui(ui: &mut Ui, editor: &mut EditorWindow, timeline_height: f32) -
     egui::CentralPanel::no_frame()
         .frame(Frame::new().fill(BG))
         .show(ui, |ui| preview::ui(ui, editor));
+    let errors = actions::run(ui, editor, now);
     Outcome {
         open_settings,
         timeline_height: timeline.response.rect.height(),
+        errors,
     }
 }

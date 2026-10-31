@@ -8,7 +8,6 @@ use dc_audio::SourceTrack;
 use dc_project::ProjectDir;
 use dc_transcribe::{Model, Recognized, Word, words_cache_path, write_words};
 
-use crate::registry::registry;
 use crate::run::Outcome;
 use crate::test_util::{ffmpeg, run_line};
 
@@ -56,7 +55,7 @@ impl Speech {
         let out = run_line(
             "new речь.mp4 -o Речь.dcproj",
             tmp.path(),
-            &registry().unwrap(),
+            &dc_ops::Registry::devcast().unwrap(),
         );
         assert_eq!(out.code, 0, "{}", out.stderr);
         let root = tmp.path().join("Речь.dcproj");
@@ -70,7 +69,7 @@ impl Speech {
     }
 
     pub(crate) fn run(&self, line: &str) -> Outcome {
-        run_line(line, &self.root, &registry().unwrap())
+        run_line(line, &self.root, &dc_ops::Registry::devcast().unwrap())
     }
 
     pub(crate) fn ok(&self, line: &str) -> String {

@@ -3,7 +3,6 @@
 
 use std::path::Path;
 
-use crate::registry::registry;
 use crate::run::Outcome;
 use crate::test_util::run_line;
 
@@ -23,7 +22,7 @@ impl Speech {
     }
 
     fn run(&self, line: &str) -> Outcome {
-        run_line(line, &self.root, &registry().unwrap())
+        run_line(line, &self.root, &dc_ops::Registry::devcast().unwrap())
     }
 
     fn ok(&self, line: &str) -> String {

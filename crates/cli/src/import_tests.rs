@@ -1,7 +1,6 @@
 use dc_core::project::MediaKind;
 use dc_project::ProjectDir;
 
-use crate::registry::registry;
 use crate::run;
 use crate::test_util::{Recordings, test_video};
 
@@ -25,7 +24,7 @@ impl Videos {
         run(
             args,
             &self.tmp.path().join("Мои видео"),
-            &registry().unwrap(),
+            &dc_ops::Registry::devcast().unwrap(),
         )
     }
 }
@@ -106,7 +105,7 @@ fn clip_add_appends_and_undo_takes_it_back() {
         let mut args = vec!["clip".to_owned(), "add".to_owned()];
         args.push(video.to_str().unwrap().to_owned());
         args.extend(extra.iter().map(|a| (*a).to_owned()));
-        run(args, f.dir.root(), &registry().unwrap())
+        run(args, f.dir.root(), &dc_ops::Registry::devcast().unwrap())
     };
     let dry = add(&["--dry-run"]);
     assert!(dry.stdout.starts_with("dry-run"), "{}", dry.stdout);

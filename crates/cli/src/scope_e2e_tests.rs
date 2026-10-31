@@ -13,7 +13,6 @@ use dc_capture::Manifest;
 use dc_core::{ClipId, OutputTime, SourceTime, TimeMap};
 use dc_project::ProjectDir;
 
-use crate::registry::registry;
 use crate::run::{Local, Outcome, run_with};
 use crate::scope_e2e_frames::{Frame, Region};
 use crate::test_util::{decoded, defaults_file, ffmpeg, fixture_copy, info_duration, seconds};
@@ -75,7 +74,12 @@ impl Lesson {
             defaults: Some(&defaults),
             export_channel: Some(&self.channel),
         };
-        run_with(words(line), &self.root, &registry().unwrap(), local)
+        run_with(
+            words(line),
+            &self.root,
+            &dc_ops::Registry::devcast().unwrap(),
+            local,
+        )
     }
 }
 

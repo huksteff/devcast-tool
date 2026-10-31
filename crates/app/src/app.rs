@@ -304,7 +304,11 @@ impl eframe::App for App {
 
     /// A running recording is stopped and saved before the app goes.
     fn on_exit(&mut self) {
-        std::mem::take(&mut lock(&self.shared).session).finish();
+        let mut shared = lock(&self.shared);
+        std::mem::take(&mut shared.session).finish();
+        if let Some(Err(error)) = shared.editor.as_mut().map(|e| e.doc.flush()) {
+            tracing::error!("рабочее состояние проекта не записано при выходе: {error}");
+        }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

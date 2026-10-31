@@ -11,6 +11,7 @@ pub mod history_log;
 pub mod lock;
 pub mod migrate;
 pub mod settings;
+pub mod working;
 
 pub use autosave::Autosave;
 pub use cache::FileStamp;
@@ -20,3 +21,4 @@ pub use dir::ProjectDir;
 pub use error::{ProjectError, Result};
 pub use history_log::HistoryLog;
 pub use lock::{LockOwner, ProjectLock};
+pub use working::Working;

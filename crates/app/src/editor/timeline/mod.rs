@@ -1,11 +1,11 @@
 //! The timeline under the preview: toolbar, ruler, a row per track with its header (148 px) and
 //! its regions at output times, the playhead.
 //!
-//! Read-only in 7.1: the whole project is fitted into the width. The toolbar's commands are
-//! disabled until their tasks («+ Дорожка» and «+ Аудиодорожка» 7.10, zoom and fit 7.6,
-//! «Подобрать зумы» 7.14, «Создать субтитры» 7.17, own window 7.26); the magnet holds its state
-//! for 7.9. The track header buttons wait for 7.10 (visibility, removing), 7.19 (sound) and
-//! 7.20 (crop).
+//! The whole project is fitted into the width. The toolbar's commands are disabled until their
+//! tasks («+ Дорожка» and «+ Аудиодорожка» 7.10, zoom and fit 7.6, «Подобрать зумы» 7.14 — its
+//! suggestions are not a registry command yet, «Создать субтитры» 7.17, own window 7.26); the
+//! magnet holds its state for 7.9. The eye of the captions and keys rows toggles their `show`
+//! setting; the other track header buttons wait for 7.10 (removing), 7.19 (sound), 7.20 (crop).
 
 mod paint;
 mod scale;
@@ -22,7 +22,9 @@ use eframe::egui::{
 pub use scale::{TimeScale, timecode};
 pub use tracks::{Row, Track, Tracks};
 
-use super::EditorWindow;
+use serde_json::Value;
+
+use super::{Action, EditorWindow};
 
 /// Heights of the toolbar, the ruler and the «+ Аудиодорожка» row; width of a track header
 /// (mockup).
@@ -49,8 +51,12 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) {
     paint::ruler(ui.painter(), ruler, &scale);
     ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
+        let mut asked = None;
         for track in &editor.tracks.rows {
-            row(ui, track, &editor.tracks, &scale);
+            asked = asked.or(row(ui, track, &editor.tracks, &scale));
+        }
+        if let Some(action) = asked {
+            editor.ask(action);
         }
         add_row(ui);
     });
@@ -119,8 +125,8 @@ fn separator(ui: &mut Ui) {
         .vline(rect.center().x, rect.y_range(), Stroke::new(1.0, BORDER));
 }
 
-/// A track: header with its button, lane with the regions.
-fn row(ui: &mut Ui, track: &Track, tracks: &Tracks, scale: &TimeScale) {
+/// A track: header with its button, lane with the regions; the action of a pressed button.
+fn row(ui: &mut Ui, track: &Track, tracks: &Tracks, scale: &TimeScale) -> Option<Action> {
     let height = paint::height(track.row);
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
     let head = rect.with_max_x(rect.left() + HEAD);
@@ -133,16 +139,32 @@ fn row(ui: &mut Ui, track: &Track, tracks: &Tracks, scale: &TimeScale) {
     if track.row == Row::Clips {
         paint::speeds(&ui.painter().with_clip_rect(lane), lane, tracks, scale);
     }
-    if let Some((icon, label, dim)) = header_button(track) {
-        let side = paint::HEAD_BUTTON;
-        let at = Rect::from_center_size(
-            egui::pos2(head.right() - 4.0 - side / 2.0, head.center().y),
-            vec2(side, side),
-        );
-        let mut button = ui.new_child(UiBuilder::new().max_rect(at));
-        button.disable();
-        button.add(IconButton::new(icon, label).size(side, 13.0).dim(dim));
-    }
+    let (icon, label, dim) = header_button(track)?;
+    let side = paint::HEAD_BUTTON;
+    let at = Rect::from_center_size(
+        egui::pos2(head.right() - 4.0 - side / 2.0, head.center().y),
+        vec2(side, side),
+    );
+    let mut cell = ui.new_child(UiBuilder::new().max_rect(at));
+    let button = IconButton::new(icon, label).size(side, 13.0).dim(dim);
+    let Some(action) = toggle(track) else {
+        cell.add_enabled(false, button);
+        return None;
+    };
+    let hint = if track.off { text::SHOW } else { text::HIDE };
+    let clicked = cell.add(button).on_hover_text(hint).clicked();
+    clicked.then_some(action)
+}
+
+/// What the header button of `track` does now: shows or hides the captions or the pressed keys
+/// (the `show` setting of the effect). The other buttons wait for 7.10, 7.19 and 7.20.
+fn toggle(track: &Track) -> Option<Action> {
+    let op = match track.row {
+        Row::Captions => "captions style",
+        Row::Keys => "keys",
+        _ => return None,
+    };
+    Some(Action::op(op, [("show", Value::Bool(track.off))]))
 }
 
 /// The header button of `track`: icon, accessible name, faded.

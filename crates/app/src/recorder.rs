@@ -12,10 +12,8 @@ use dc_capture::{HostTime, RecordingConfig};
 use dc_project::Defaults;
 use eframe::egui;
 
+use crate::editor::LOCK_OWNER;
 use crate::error::AppError;
-
-/// Who holds the project lock while recording.
-const LOCK_OWNER: &str = "devcast-app";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Request {

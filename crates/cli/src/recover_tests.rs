@@ -11,7 +11,6 @@ use dc_capture::{HostTime, Manifest, SharedManifest, Track, VIDEO_TRACK};
 use dc_encode::{Codec, Nv12Frame, VideoEncoder, VideoSettings};
 use dc_project::{ProjectDir, ProjectLock};
 
-use crate::registry::registry;
 use crate::{Outcome, run};
 
 const FPS: u32 = 30;
@@ -69,7 +68,7 @@ fn telemetry(folder: &Path, clicks: &[f64]) {
 
 fn devcast(dir: &ProjectDir, line: &str) -> Outcome {
     let args = line.split(' ').map(str::to_owned).collect();
-    run(args, dir.root(), &registry().unwrap())
+    run(args, dir.root(), &dc_ops::Registry::devcast().unwrap())
 }
 
 #[test]

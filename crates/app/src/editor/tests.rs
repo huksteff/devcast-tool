@@ -1,6 +1,8 @@
 use dc_core::project::{Media, MediaKind, SpeedRange};
 use dc_core::time::Source;
-use dc_core::{Clip, ClipAudio, ClipId, Id, OutputTime, Range, Rect, SourceTime, TimeDelta};
+use dc_core::{
+    Clip, ClipAudio, ClipId, Id, OutputTime, Project, Range, Rect, SourceTime, TimeDelta,
+};
 use dc_fx_annotations::{Annotation, Annotations, AnnotationsState, Kind};
 use dc_fx_audio_tracks::{Audio, AudioClip, AudioState, SoundFile};
 use dc_fx_callout::{Action, Callout, CalloutEvent, CalloutState};
@@ -55,7 +57,7 @@ const SCREEN_2: &str = "media/screen-2.mp4";
 
 /// Three clips (a cut and a 4× range in the first, an imported video last) with zooms, captions,
 /// annotations on two tracks, callout events and music; system sound muted.
-fn project() -> Project {
+pub(super) fn project() -> Project {
     let mut first = clip(1, SCREEN, MediaKind::Recording, 60.0, (2560, 1440));
     first.cuts = vec![source(20.0, 25.0)];
     first.speeds = vec![SpeedRange {
@@ -76,6 +78,8 @@ fn project() -> Project {
         ],
         ..Project::default()
     };
+    let ids: Vec<ClipId> = project.clips.iter().map(|c| c.id).collect();
+    project.clip_ids.ensure_above(ids);
     let zoom = |n, media: &str, range, scale, mode| Zoom {
         id: Id::from_number(n),
         media: media.to_owned(),
@@ -190,29 +194,33 @@ fn audio() -> AudioState {
     state
 }
 
-fn editor() -> EditorWindow {
+/// The editor of [`project`] saved in a temporary `Демо-запись.dcproj` with unsaved changes (a
+/// `session.json`); the folder lives while the returned guard does.
+pub(super) fn editor() -> (tempfile::TempDir, EditorWindow) {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = ProjectDir::create(temp.path().join("Демо-запись.dcproj")).unwrap();
+    dir.save(&project()).unwrap();
+    dir.save_session(&project()).unwrap();
     let sound = vec!["system".to_owned(), "mic".to_owned()];
-    let mut editor = EditorWindow::of(
-        PathBuf::from(r"D:\Записи\Демо-запись.dcproj"),
-        "Демо-запись".to_owned(),
-        project(),
-        true,
-        sound,
-    );
+    let (mut editor, problems) = EditorWindow::open(dir, sound).unwrap();
+    assert!(problems.is_empty(), "{problems:?}");
     editor.view.playhead = OutputTime::from_secs_f64(33.4);
-    editor
+    (temp, editor)
 }
 
-struct State {
-    editor: EditorWindow,
+pub(super) struct State {
+    _temp: tempfile::TempDir,
+    pub editor: EditorWindow,
     outcome: Option<Outcome>,
     /// Some frame asked for the settings window.
     settings: bool,
 }
 
-fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State> {
+pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State> {
+    let (temp, editor) = editor();
     let state = State {
-        editor: editor(),
+        _temp: temp,
+        editor,
         outcome: None,
         settings: false,
     };
@@ -220,7 +228,8 @@ fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State> {
         .with_size(size)
         .build_ui_state(
             |ui, state: &mut State| {
-                let outcome = editor_ui(ui, &mut state.editor, 300.0);
+                let outcome = editor_ui(ui, &mut state.editor, 300.0, std::time::Instant::now());
+                assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
                 state.settings |= outcome.open_settings;
                 state.outcome = Some(outcome);
             },
@@ -242,7 +251,7 @@ fn editor_window() {
     let mut harness = harness(SIZE);
     harness.run();
     harness.snapshot("editor");
-    let outcome = harness.state().outcome.unwrap();
+    let outcome = harness.state().outcome.clone().unwrap();
     assert!((outcome.timeline_height - 300.0).abs() < 1.0, "{outcome:?}");
     harness.get_by_label("Демо-запись");
     harness.get_by_label(&names::annotations(2));
@@ -285,13 +294,7 @@ fn controls_hold_their_state() {
 fn commands_without_a_registry_command_are_disabled() {
     let mut harness = harness(SIZE);
     harness.run();
-    for label in [
-        text::UNDO,
-        text::REDO,
-        text::EXPORT,
-        text::PLAY,
-        names::SUGGEST_ZOOMS,
-    ] {
+    for label in [text::EXPORT, text::PLAY, names::SUGGEST_ZOOMS] {
         assert!(
             harness.get_by_label(label).accesskit_node().is_disabled(),
             "{label} must wait for its task"
@@ -310,7 +313,7 @@ fn ranges(track: &Track) -> Vec<(f64, f64)> {
 
 #[test]
 fn tracks_stand_at_output_times() {
-    let tracks = editor().tracks;
+    let tracks = editor().1.tracks;
     assert!(tracks.problems.is_empty(), "{:?}", tracks.problems);
     assert_eq!(tracks.duration, TimeDelta::from_secs_f64(105.0));
     let rows: Vec<Row> = tracks.rows.iter().map(|t| t.row).collect();

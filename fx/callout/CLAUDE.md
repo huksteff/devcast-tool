@@ -20,7 +20,7 @@
 
 ## Куда не лезть
 
-- Регистрация команд — `crates/cli/src/registry.rs`. Порядок эффектов в кадре — `dc_ops::Evaluator`. Курсор — `fx/cursor`.
+- Регистрация команд — `crates/ops/src/devcast.rs`. Порядок эффектов в кадре — `dc_ops::Evaluator`. Курсор — `fx/cursor`.
 
 ## Ссылки
 

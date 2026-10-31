@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 use dc_media::{Picture, decode_picture};
 use dc_render::SHEET_GAP;
 
-use crate::registry::registry;
 use crate::test_util::{defaults_file, fixture_copy, run_line_with};
 
 struct Clicks {
@@ -28,7 +27,12 @@ impl Clicks {
 
     fn ok(&self, line: &str) -> String {
         let defaults = defaults_file(self.tmp.path());
-        let out = run_line_with(line, &self.root, &registry().unwrap(), &defaults);
+        let out = run_line_with(
+            line,
+            &self.root,
+            &dc_ops::Registry::devcast().unwrap(),
+            &defaults,
+        );
         assert_eq!(out.code, 0, "{line}: {}", out.stderr);
         out.stdout.trim_end().to_owned()
     }
@@ -98,7 +102,7 @@ fn sheet_puts_frames_of_equal_parts_in_rows() {
 #[test]
 fn wrong_moments_and_files_are_refused() {
     let f = Clicks::new();
-    let registry = registry().unwrap();
+    let registry = dc_ops::Registry::devcast().unwrap();
     let defaults = defaults_file(f.tmp.path());
     for (line, code) in [
         ("frame --at 13 -o ../a.png", 1),

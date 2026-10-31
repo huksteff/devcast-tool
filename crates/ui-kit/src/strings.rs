@@ -169,6 +169,16 @@ pub mod editor {
     pub const RESET: &str = "Сбросить";
     pub const PANEL_EMPTY: &str = "Настройки эффекта появятся здесь";
 
+    /// Tooltip of undo: «Отменить: зум 1,50× · Ctrl+Z»; `step` — summary of the step.
+    pub fn undo_hint(step: &str) -> String {
+        format!("{UNDO}: {step} · Ctrl+Z")
+    }
+
+    /// Tooltip of redo: «Повторить: зум 1,50× · Ctrl+Y».
+    pub fn redo_hint(step: &str) -> String {
+        format!("{REDO}: {step} · Ctrl+Y")
+    }
+
     /// «recording-1 — DevCast».
     pub fn title(name: &str) -> String {
         format!("{name} — DevCast")
@@ -199,6 +209,8 @@ pub mod timeline {
     pub const SYSTEM: &str = "Системный звук";
     pub const SHOWN: &str = "Показывается";
     pub const HIDDEN: &str = "Скрыто";
+    pub const SHOW: &str = "Показать";
+    pub const HIDE: &str = "Скрыть";
     pub const CLIP_CROP: &str = "Кроп клипа";
     pub const REMOVE_TRACK: &str = "Убрать дорожку";
     pub const MUTED: &str = "Без звука";

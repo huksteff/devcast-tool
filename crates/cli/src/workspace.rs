@@ -6,9 +6,9 @@
 //! first time the project is opened without a writer holding it (a running recording holds it).
 
 use dc_capture::project::{Recovered, recover_recordings, unfinished_recordings};
-use dc_core::{History, Project, SourceTime, history};
+use dc_core::{History, Project, SourceTime};
 use dc_project::history_log::Event;
-use dc_project::{HistoryLog, ProjectDir, ProjectError, ProjectLock};
+use dc_project::{HistoryLog, ProjectDir, ProjectError, ProjectLock, Working};
 
 use crate::autozoom;
 use crate::error::CliError;
@@ -35,26 +35,17 @@ impl Workspace {
         };
         let recovered = recover(&dir, lock.is_some(), dry_run)?;
         let added = recovered.clips > 0;
-        let session = dir.load_session()?;
-        let unsaved = session.is_some();
-        let project = match session {
-            Some(project) => project,
-            None => dir.load()?,
-        };
+        let working = Working::load(&dir, write)?;
         let log = HistoryLog::new(&dir);
-        let loaded = log.load(&project, history::LIMIT)?;
-        if write && loaded.needs_rewrite {
-            log.rewrite(&loaded.history)?;
-        }
         let mut warnings = recovered.lines;
-        warnings.extend(loaded.warnings);
+        warnings.extend(working.warnings);
         let mut workspace = Self {
             dir,
             log,
             _lock: lock.or(recovered.lock),
-            unsaved,
-            project,
-            history: loaded.history,
+            unsaved: working.unsaved,
+            project: working.project,
+            history: working.history,
             warnings,
         };
         if added {

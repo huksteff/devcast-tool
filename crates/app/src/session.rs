@@ -247,12 +247,7 @@ impl Shared {
     /// the editor closes (v1).
     fn recorded(&mut self, project: dc_capture::win::RecordedProject) {
         tracing::info!("запись сохранена: {}", project.dir.root().display());
-        let editor = crate::editor::EditorWindow::new(&project);
-        for problem in &editor.tracks.problems {
-            self.report(Err(problem));
-        }
-        self.editor = Some(editor);
-        self.hide_hud();
+        self.open_editor(&project);
     }
 
     /// Pause or resume.
