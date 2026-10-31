@@ -83,7 +83,7 @@ fn icons_scale_with_their_rect() {
 #[test]
 fn editor_icons() {
     let mut harness = dc_ui_kit::testing::harness()
-        .with_size(vec2(420.0, 100.0))
+        .with_size(vec2(420.0, 130.0))
         .build_ui(|ui| {
             egui::Frame::new()
                 .fill(tokens::SURFACE)

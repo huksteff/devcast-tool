@@ -187,3 +187,16 @@ fn adding(project: &Project, item: Item, length: TimeDelta) -> Option<Step> {
 fn json(value: &impl Serialize) -> Option<Value> {
     serde_json::to_value(value).ok()
 }
+
+/// «Дублировать» of a panel: the command that adds `item` again where it is (`range` on the
+/// output), on top of its row.
+pub fn duplicate(
+    project: &Project,
+    item: Item,
+    range: dc_core::Range<dc_core::time::Output>,
+) -> Option<Step> {
+    let mut step = adding(project, item, range.duration())?;
+    let start = Value::String(arg(range.start()));
+    step.args.insert("at".to_owned(), start);
+    Some(step)
+}

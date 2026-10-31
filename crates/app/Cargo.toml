@@ -22,11 +22,16 @@ dc-audio = { path = "../audio" }
 dc-encode = { path = "../encode" }
 dc-fx-annotations = { path = "../../fx/annotations" }
 dc-fx-audio-tracks = { path = "../../fx/audio-tracks" }
+dc-fx-blur = { path = "../../fx/blur" }
 dc-fx-callout = { path = "../../fx/callout" }
 dc-fx-captions = { path = "../../fx/captions" }
 dc-fx-crop = { path = "../../fx/crop" }
 dc-fx-cursor = { path = "../../fx/cursor" }
+dc-fx-drawing = { path = "../../fx/drawing" }
+dc-fx-image = { path = "../../fx/image" }
 dc-fx-keys = { path = "../../fx/keys" }
+dc-fx-shape = { path = "../../fx/shape" }
+dc-fx-text = { path = "../../fx/text" }
 dc-fx-zoom = { path = "../../fx/zoom" }
 dc-ipc = { path = "../ipc" }
 dc-media = { path = "../media" }

@@ -1,21 +1,22 @@
 //! The panel of the object picked on the timeline: a zoom, a cue, a callout event, an annotation
 //! (also through one of its keys), an extra sound, a clip or a click (its own panel, `click.rs`).
-//! The frame gives each its header —
-//! the colour of its row, its name, where it is — and «Удалить» (the same command as Delete);
-//! a zoom gets its parameters (`zoom_region.rs`), a callout event its own (`callout.rs`), a cue
-//! its text and times (`cue.rs`), the
-//! others name the task that brings theirs.
-//! An annotation's panel puts its keyframe strip under the header (7.18, 7.25).
+//! The frame gives each its header — the colour of its row, its name, where it is — and
+//! «Удалить» (the same command as Delete); a zoom gets its parameters (`zoom_region.rs`), a
+//! callout event its own (`callout.rs`), a cue its text and times (`cue.rs`), an annotation its
+//! key strip and groups (`annotation.rs`) and «Дублировать» (`annot paste` of a copy where it is,
+//! on top of its row; the copy gets picked); the others name the task that brings theirs.
 
 use dc_core::Range;
 use dc_core::time::Output;
 use dc_ui_kit::icons::Icon;
-use dc_ui_kit::strings::{editor as text, inspector as names, timeline as rows_text};
+use dc_ui_kit::strings::{annotations, editor as text, inspector as names, timeline as rows_text};
 
-use super::{Cx, Header, callout, click, cue, header, header_button, padded, rows, zoom_region};
+use super::{
+    Cx, Header, annotation, callout, click, cue, header, header_button, padded, rows, zoom_region,
+};
 use crate::editor::selection::{Item, Selected, same_moment};
 use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
-use crate::editor::{Action, montage, regions};
+use crate::editor::{Action, clipboard, montage, regions};
 use eframe::egui::Ui;
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
@@ -46,17 +47,31 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
         title: &about.title,
         subtitle: &about.subtitle,
     };
+    let copy = match picked {
+        Selected::Region(item @ Item::Annotation(_)) => {
+            clipboard::duplicate(cx.project, item, region.range)
+        }
+        _ => None,
+    };
     header(ui, &head, |ui| {
         if header_button(ui, Icon::Trash, names::DELETE, true)
             && let Some(action) = delete(picked)
         {
             cx.actions.push(action);
         }
+        if let Some(step) = copy
+            && header_button(ui, Icon::Copy, annotations::DUPLICATE, false)
+        {
+            cx.actions.push(Action::Paste(vec![step]));
+        }
     });
     match picked {
         Selected::Region(Item::Zoom(id)) => zoom_region::ui(ui, cx, id),
         Selected::Region(Item::Callout(id)) => callout::ui(ui, cx, id),
         Selected::Region(Item::Cue(id)) => cue_panel(ui, cx, id, region.range),
+        Selected::Region(Item::Annotation(id)) => {
+            annotation::ui(ui, cx, id, region.range, &region.keys);
+        }
         _ => padded(ui, |ui| rows::note(ui, &names::later(about.task))),
     }
 }
@@ -102,7 +117,7 @@ fn describe(picked: Selected, row: Row, region: &Region) -> About {
         Selected::Region(Item::Zoom(_)) => timed(text::ZOOM, "7.14"),
         Selected::Region(Item::Callout(_)) => timed(names::CALLOUT, ""),
         Selected::Region(Item::Cue(_)) => timed(names::CUE, ""),
-        Selected::Region(Item::Annotation(_)) | Selected::Key { .. } => layered("7.18"),
+        Selected::Region(Item::Annotation(_)) | Selected::Key { .. } => layered(""),
         Selected::Click(_) => timed(names::CLICK, "7.15"),
         Selected::Region(Item::Sound(_)) => layered("7.19"),
     }

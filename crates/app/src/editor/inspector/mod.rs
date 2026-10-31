@@ -8,6 +8,13 @@
 //! helpers of `rows.rs`; every committed edit is a registry command — one undo step. A tab gets
 //! its panel in [`tab`], an object kind in `object.rs`.
 
+mod annot_blur;
+mod annot_drawing;
+mod annot_image;
+mod annot_shape;
+mod annot_text;
+mod annotation;
+mod annotation_rows;
 mod callout;
 mod captions;
 mod captions_style;
@@ -22,6 +29,10 @@ mod rows;
 mod zoom;
 mod zoom_region;
 
+#[cfg(test)]
+mod annot_kinds_tests;
+#[cfg(test)]
+mod annotation_tests;
 #[cfg(test)]
 mod callout_tests;
 #[cfg(test)]
@@ -121,6 +132,8 @@ impl Panel {
 /// What a panel works with this frame.
 pub struct Cx<'a> {
     pub project: &'a Project,
+    /// Where the playhead stands: an annotation edit goes to its key there (7.18).
+    pub playhead: dc_core::OutputTime,
     /// What the timeline shows of it: the shortcuts of the recordings for «Показ клавиш».
     pub tracks: &'a super::Tracks,
     /// The generation and the cue list of the captions panel (7.17).
@@ -215,6 +228,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
         .show(ui, |ui| rail(ui, &mut editor.view));
     let mut cx = Cx {
         project: editor.doc.project(),
+        playhead: editor.view.playhead,
         tracks: &editor.tracks,
         captioning: captions::Captioning {
             generation: &mut editor.captions,

@@ -75,10 +75,12 @@ pub enum Icon {
     Mute,
     /// Delete the object of a panel.
     Trash,
+    /// Duplicate the object of a panel.
+    Copy,
 }
 
 impl Icon {
-    pub const ALL: [Self; 52] = [
+    pub const ALL: [Self; 53] = [
         Self::Monitor,
         Self::Window,
         Self::Area,
@@ -131,6 +133,7 @@ impl Icon {
         Self::Detach,
         Self::Mute,
         Self::Trash,
+        Self::Copy,
     ];
 
     /// Draws the icon into `rect` (usually 16 × 16) in `color`.

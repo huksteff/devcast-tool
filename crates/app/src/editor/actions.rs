@@ -26,6 +26,8 @@ pub enum Action {
     Rows(Least),
     /// A sound file added to an extra sound row, as one undo step; it gets picked.
     Sound(adding::SoundFile),
+    /// A picture file shown by an image annotation, as one undo step (`devcast image set`).
+    Picture(adding::PictureFile),
     /// The zooms the clicks of the recordings suggest (`devcast zoom add --at clicks`), as one
     /// undo step; they get picked.
     SuggestZooms,
@@ -85,42 +87,25 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                 Err(error) => errors.push(error.to_string()),
             },
             Action::Paste(steps) => {
-                let before = items(editor);
-                match editor.doc.apply(&steps, now) {
-                    Ok(_) => {
-                        errors.extend(editor.refresh(now));
-                        pick_new(editor, &before);
-                        moved = true;
-                    }
-                    Err(error) => errors.push(error.to_string()),
-                }
+                let add = |e: &mut EditorWindow| e.doc.apply(&steps, now).map(|_| None);
+                moved |= adds(editor, now, &mut errors, |e| {
+                    add(e).map_err(|e| e.to_string())
+                });
             }
             Action::Rows(least) => {
                 editor.view.least = least;
                 rows = true;
             }
             Action::Sound(file) => {
-                let before = items(editor);
-                match adding::sound(editor, &file, now) {
-                    Ok(()) => {
-                        errors.extend(editor.refresh(now));
-                        pick_new(editor, &before);
-                        moved = true;
-                    }
-                    Err(error) => errors.push(error),
-                }
+                let add = |e: &mut EditorWindow| adding::sound(e, &file, now).map(|()| None);
+                moved |= adds(editor, now, &mut errors, add);
             }
+            Action::Picture(file) => match adding::picture(editor, &file, now) {
+                Ok(()) => changed = true,
+                Err(error) => errors.push(error),
+            },
             Action::SuggestZooms => {
-                let before = items(editor);
-                match adding::suggested(editor, now) {
-                    Ok(none) => {
-                        errors.extend(editor.refresh(now));
-                        errors.extend(none);
-                        pick_new(editor, &before);
-                        moved = true;
-                    }
-                    Err(error) => errors.push(error),
-                }
+                moved |= adds(editor, now, &mut errors, |e| adding::suggested(e, now));
             }
             Action::Generate => errors.extend(generation::start(ui.ctx(), editor).err()),
             Action::StopGenerating => editor.captions.cancel(),
@@ -192,6 +177,29 @@ fn transport_run(editor: &mut EditorWindow, transport: Transport, now: Instant) 
             (playing && view.playhead < end)
                 .then(|| playback.play(view.playhead, now))
                 .flatten()
+        }
+    }
+}
+
+/// Runs `add`, which adds regions (`Some` note on success, an error otherwise), and picks
+/// what it added; true when it did.
+fn adds(
+    editor: &mut EditorWindow,
+    now: Instant,
+    errors: &mut Vec<String>,
+    add: impl FnOnce(&mut EditorWindow) -> Result<Option<String>, String>,
+) -> bool {
+    let before = items(editor);
+    match add(editor) {
+        Ok(note) => {
+            errors.extend(editor.refresh(now));
+            errors.extend(note);
+            pick_new(editor, &before);
+            true
+        }
+        Err(error) => {
+            errors.push(error);
+            false
         }
     }
 }

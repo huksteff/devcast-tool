@@ -27,9 +27,9 @@ pub struct SoundPlace {
     pub duration: Option<TimeDelta>,
 }
 
-/// The copy of a refused sound stays in the project.
+/// The copy of a refused sound or picture stays in the project.
 #[derive(Debug, thiserror::Error)]
-#[error("копию звука «{}» удалить не удалось ({source}): удали её вручную", .file.display())]
+#[error("копию файла «{}» удалить не удалось ({source}): удали её вручную", .file.display())]
 pub struct DiscardError {
     pub file: PathBuf,
     pub source: std::io::Error,

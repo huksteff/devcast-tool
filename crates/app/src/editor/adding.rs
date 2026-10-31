@@ -1,5 +1,6 @@
 //! Adding regions (mockup 2e, «призрак»): a hovered empty spot of a row, Z and T at the playhead,
-//! a sound file on an extra sound row, the zooms of the clicks («Подобрать зумы»). A new region has the length v1 gives (`LENGTH`), fits the
+//! a sound file on an extra sound row, the zooms of the clicks («Подобрать зумы»); a picture
+//! file into an image annotation. A new region has the length v1 gives (`LENGTH`), fits the
 //! room it is in (zooms and extra sound do not overlap their neighbours, zooms, annotations and
 //! callout events lie in one clip) and is added by the effect's own command, then picked. Tab
 //! picks the next annotation under the playhead in the order they are painted.
@@ -34,6 +35,14 @@ pub struct SoundFile {
     pub at: OutputTime,
     pub track: u32,
     pub room: TimeDelta,
+}
+
+/// A picture file for image annotation `id`: in the key at `at` of the output, or everywhere.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PictureFile {
+    pub id: dc_fx_annotations::AnnotId,
+    pub at: Option<OutputTime>,
+    pub path: PathBuf,
 }
 
 /// Regions can be added to `row` by hovering it.
@@ -193,4 +202,19 @@ pub fn suggested(editor: &mut EditorWindow, now: Instant) -> Result<Option<Strin
     doc.apply_commands(ZoomAdd::NAME, &dc_ops::as_commands(&commands), now)
         .map_err(|e| e.to_string())?;
     Ok(dc_ops::no_click_zooms(&found))
+}
+
+/// Copies the picture `file` into the project and shows it in its annotation, as one undo step
+/// (`devcast image set`); a refused command deletes the copy. The message of what failed.
+pub fn picture(editor: &mut EditorWindow, file: &PictureFile, now: Instant) -> Result<(), String> {
+    let imported = dc_ops::import_picture(editor.doc.dir(), &file.path, (file.id, file.at), false)
+        .map_err(|e| e.to_string())?;
+    let name = dc_fx_image::ImageSet::NAME;
+    match editor.doc.apply_commands(name, &[&imported.command], now) {
+        Ok(_) => Ok(()),
+        Err(error) => Err(match imported.discard() {
+            Ok(()) => error.to_string(),
+            Err(e) => format!("{error}; {e}"),
+        }),
+    }
 }

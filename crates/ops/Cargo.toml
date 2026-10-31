@@ -25,6 +25,7 @@ dc-fx-keys = { path = "../../fx/keys" }
 dc-fx-shape = { path = "../../fx/shape" }
 dc-fx-text = { path = "../../fx/text" }
 dc-fx-zoom = { path = "../../fx/zoom" }
+dc-media = { path = "../media" }
 dc-models = { path = "../models" }
 dc-project = { path = "../project" }
 dc-render = { path = "../render" }
@@ -37,6 +38,5 @@ thiserror.workspace = true
 workspace = true
 
 [dev-dependencies]
-dc-media = { path = "../media" }
 dc-render = { path = "../render", features = ["golden"] }
 insta.workspace = true

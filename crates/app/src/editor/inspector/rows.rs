@@ -10,7 +10,7 @@ use dc_render::Rgba;
 use dc_ui_kit::tokens::{FS_S, S2, TEXT_3};
 use dc_ui_kit::widgets::{
     Slider, Toggle, anchors as anchor_grid, color_button, gradient_editor, palette as swatches,
-    segmented, text_field, tiles as tile_row,
+    segmented, text_area as text_area_widget, text_field, tiles as tile_row,
 };
 use eframe::egui::{self, Color32, Id, Painter, Rect, Response, RichText, Ui};
 
@@ -192,8 +192,7 @@ pub fn choice_under<T: PartialEq + Copy>(
     value: Option<T>,
     options: &[(T, &str)],
 ) -> Option<T> {
-    let width = ui.available_width() - S2;
-    settings_rows::labelled(ui, label, (width, S2, ROW), |_| ());
+    caption(ui, label);
     let mut chosen = value;
     let options: Vec<(Option<T>, &str, bool)> = options
         .iter()
@@ -229,13 +228,36 @@ pub fn text(
     now: &str,
     apply: impl Fn(String) -> Step,
 ) -> Option<Step> {
+    typed(ui, (hint, key), now, apply, text_field)
+}
+
+/// [`text`] of several lines (a text annotation): Enter starts a new line, a click away applies.
+pub fn text_area(
+    ui: &mut Ui,
+    hint: &str,
+    key: impl std::hash::Hash + std::fmt::Debug,
+    now: &str,
+    apply: impl Fn(String) -> Step,
+) -> Option<Step> {
+    typed(ui, (hint, key), now, apply, |ui, value, hint, width| {
+        text_area_widget(ui, value, hint, width, 2)
+    })
+}
+
+fn typed(
+    ui: &mut Ui,
+    (hint, key): (&str, impl std::hash::Hash + std::fmt::Debug),
+    now: &str,
+    apply: impl Fn(String) -> Step,
+    field: impl FnOnce(&mut Ui, &mut String, &str, f32) -> Response,
+) -> Option<Step> {
     let id = ui.make_persistent_id(("draft-text", &key));
     let mut value = ui
         .data(|d| d.get_temp::<String>(id))
         .unwrap_or_else(|| now.to_owned());
     let width = ui.available_width();
     let response = ui
-        .push_id(&key, |ui| text_field(ui, &mut value, hint, width))
+        .push_id(&key, |ui| field(ui, &mut value, hint, width))
         .inner;
     if response.has_focus() {
         let pass = ui.ctx().cumulative_pass_nr();
@@ -287,4 +309,10 @@ pub fn gradient(ui: &mut Ui, label: &str, colors: &[Rgba]) -> Option<Vec<Rgba>> 
     let width = ui.available_width();
     drafted(ui, id, now, |ui, c| gradient_editor(ui, c, width))
         .map(|new| new.into_iter().map(rgba).collect())
+}
+
+/// A caption on a line of its own, for controls too wide for the place after it.
+pub fn caption(ui: &mut Ui, label: &str) {
+    let width = ui.available_width() - S2;
+    settings_rows::labelled(ui, label, (width, S2, ROW), |_| ());
 }

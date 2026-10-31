@@ -16,10 +16,24 @@ pub fn dropdown<T: PartialEq + Clone>(
     items: &[(T, &str)],
     width: f32,
 ) -> Response {
+    let items: Vec<(T, &str, bool)> = items.iter().map(|(v, t)| (v.clone(), *t, true)).collect();
+    dropdown_some(ui, label, value, &items, width)
+}
+
+/// [`dropdown`] whose items (value, caption, can be picked) may be grey: they stay in the list
+/// with their reason in the caption, so the user sees what exists (mockup 3c «Печать · только
+/// текст»).
+pub fn dropdown_some<T: PartialEq + Clone>(
+    ui: &mut Ui,
+    label: &str,
+    value: &mut T,
+    items: &[(T, &str, bool)],
+    width: f32,
+) -> Response {
     let chosen = items
         .iter()
-        .find(|(item, _)| item == value)
-        .map_or("", |(_, text)| *text);
+        .find(|(item, _, _)| item == value)
+        .map_or("", |(_, text, _)| *text);
     let mut changed = false;
     let mut response = egui::ComboBox::from_id_salt(label)
         .selected_text(chosen.to_owned())
@@ -29,8 +43,11 @@ pub fn dropdown<T: PartialEq + Clone>(
             Icon::Down.paint(ui.painter(), icon, TEXT_2);
         })
         .show_ui(ui, |ui| {
-            for (item, text) in items {
-                changed |= ui.selectable_value(value, item.clone(), *text).changed();
+            for (item, text, can) in items {
+                let picked = ui
+                    .add_enabled_ui(*can, |ui| ui.selectable_value(value, item.clone(), *text))
+                    .inner;
+                changed |= picked.changed();
             }
         })
         .response;

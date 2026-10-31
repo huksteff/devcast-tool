@@ -1,11 +1,11 @@
 //! `devcast image set <id> --file <picture> [--at t]`: the picture is read and copied into the
-//! project's `assets/images/` (`dc_media::import_picture`), then `dc_fx_image::ImageSet` puts it
-//! into the annotation as one undo step. A failed change deletes the file it copied.
+//! project's `assets/images/` and `ImageSet` puts it into the annotation as one undo step
+//! (`dc_ops::import_picture`, shared with the editor). A failed change deletes the file it copied.
 
 use std::path::PathBuf;
 
 use dc_fx_annotations::AnnotId;
-use dc_fx_image::{IMAGES_DIR, ImageSet, PictureFile};
+use dc_fx_image::ImageSet;
 
 use crate::edit::{self, Ctx};
 use crate::error::CliError;
@@ -35,21 +35,14 @@ pub(crate) fn set(ctx: &Ctx<'_>, args: &SetArgs) -> Result<Answer, CliError> {
     let at = crate::ls::time(args.at.as_ref(), "--at")?;
     let source = ctx.cwd.join(&args.file);
     let mut workspace = ctx.open(true)?;
-    let imported =
-        dc_media::import_picture(workspace.dir(), IMAGES_DIR, &source, ctx.globals.dry_run)
-            .map_err(|e| CliError::Failed(e.to_string()))?;
-    let durations: Vec<_> = imported.picture.frames.iter().map(|f| f.duration).collect();
-    let picture = PictureFile::new(imported.path.clone(), imported.picture.size, &durations);
-    let command = ImageSet { id, picture, at };
-    let answer = edit::apply_commands(ctx, &mut workspace, ImageSet::NAME, &[&command]);
-    if let (Err(error), true) = (&answer, imported.copied) {
-        let file = workspace.dir().root().join(&imported.path);
-        std::fs::remove_file(&file).map_err(|e| {
-            CliError::Failed(format!(
-                "{error}; копию картинки «{}» удалить не удалось ({e}): удали её вручную",
-                file.display()
-            ))
-        })?;
+    let imported = dc_ops::import_picture(workspace.dir(), &source, (id, at), ctx.globals.dry_run)
+        .map_err(|e| CliError::Failed(e.to_string()))?;
+    let command = &imported.command;
+    let answer = edit::apply_commands(ctx, &mut workspace, ImageSet::NAME, &[command]);
+    if let Err(error) = &answer {
+        imported
+            .discard()
+            .map_err(|e| CliError::Failed(format!("{error}; {e}")))?;
     }
     answer
 }

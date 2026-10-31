@@ -3,8 +3,8 @@
 use dc_ui_kit::Icon;
 use dc_ui_kit::tokens::{S3, SURFACE};
 use dc_ui_kit::widgets::{
-    Button, IconButton, Kind, Slider, Toggle, anchors, dropdown, palette, search_field, segmented,
-    text_field, tiles,
+    Button, IconButton, Kind, Slider, Toggle, anchors, dropdown, dropdown_some, palette,
+    search_field, segmented, text_area, text_field, tiles,
 };
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -239,4 +239,46 @@ fn palette_with_own_colour() {
     *harness.state_mut() = egui::Color32::from_rgb(0x14, 0xb8, 0xc4);
     harness.run();
     harness.snapshot("palette_own");
+}
+
+#[test]
+fn text_area_takes_lines() {
+    let mut harness = harness(
+        "Шаг 2:\nоткройте настройки".to_owned(),
+        |ui, said: &mut String| {
+            text_area(ui, said, "Текст аннотации", 280.0, 2);
+        },
+    );
+    harness.snapshot("text_area");
+    harness.get_by_label("Текст аннотации").focus();
+    harness.run();
+    harness.key_press(egui::Key::Enter);
+    harness.get_by_label("Текст аннотации").type_text("!");
+    harness.run();
+    assert!(harness.state().contains("\n!"), "{}", harness.state());
+}
+
+#[test]
+fn grey_dropdown_items_are_not_picked() {
+    let items = [(0u8, "Нет", true), (1, "Печать · только текст", false)];
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(egui::vec2(300.0, 160.0))
+        .build_ui_state(
+            move |ui, value: &mut u8| {
+                egui::Frame::new()
+                    .fill(SURFACE)
+                    .inner_margin(S3)
+                    .show(ui, |ui| {
+                        ui.set_min_size(ui.available_size());
+                        dropdown_some(ui, "Вход", value, &items, 240.0);
+                    });
+            },
+            0u8,
+        );
+    harness.get_by_label("Вход").click();
+    harness.run();
+    harness.snapshot("dropdown_some");
+    harness.get_by_label("Печать · только текст").click();
+    harness.run();
+    assert_eq!(*harness.state(), 0);
 }

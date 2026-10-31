@@ -5,7 +5,7 @@
 use egui::{Align2, Margin, Response, TextEdit, Ui, WidgetInfo, vec2};
 
 use crate::icons::Icon;
-use crate::tokens::{CONTROL, ICON, TEXT_3};
+use crate::tokens::{CONTROL, ICON, S2, TEXT_3};
 
 /// Inner left and right padding, points (mockup: 10 px).
 const PAD: f32 = 10.0;
@@ -19,6 +19,24 @@ pub fn text_field(ui: &mut Ui, text: &mut String, hint: &str, width: f32) -> Res
 /// A text field with the search icon before the text.
 pub fn search_field(ui: &mut Ui, text: &mut String, hint: &str, width: f32) -> Response {
     field(ui, text, hint, width, Some(Icon::Search))
+}
+
+/// A text of several lines (mockup `.txtarea`), `rows` lines high at least: Enter starts a new
+/// line, the field grows with the text.
+pub fn text_area(ui: &mut Ui, text: &mut String, hint: &str, width: f32, rows: usize) -> Response {
+    let response = ui.add(
+        TextEdit::multiline(text)
+            .hint_text(hint.to_owned())
+            .desired_width(width)
+            .desired_rows(rows)
+            .margin(Margin::symmetric(PAD as i8, S2 as i8)),
+    );
+    response.widget_info(|| {
+        let mut info = WidgetInfo::text_edit(ui.is_enabled(), text.as_str(), text.as_str(), hint);
+        info.label = Some(hint.to_owned());
+        info
+    });
+    response
 }
 
 fn field(ui: &mut Ui, text: &mut String, hint: &str, width: f32, icon: Option<Icon>) -> Response {
