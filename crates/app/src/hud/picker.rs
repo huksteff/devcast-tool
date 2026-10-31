@@ -11,18 +11,25 @@ use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::kit;
 use dc_ui_kit::strings::picker as text;
 use dc_ui_kit::tokens::{
-    ACCENT_HI, ACCENT_SOFT, FS_S, R2, S1, S2, S3, SURFACE_2, SURFACE_3, TEXT, TEXT_2, TEXT_3,
+    ACCENT_HI, ACCENT_SOFT, FS_S, R2, S1, S2, S3, S4, SURFACE_2, SURFACE_3, TEXT, TEXT_2, TEXT_3,
 };
 use dc_ui_kit::widgets::IconButton;
 use eframe::egui::{
-    self, Color32, ColorImage, Rect, Response, Sense, Stroke, StrokeKind, TextureHandle, Ui,
-    WidgetInfo, pos2, vec2,
+    self, Color32, ColorImage, Margin, Rect, Response, Sense, Stroke, StrokeKind, TextureHandle,
+    Ui, WidgetInfo, pos2, vec2,
 };
 
 /// Width of the picker popover, points.
 pub const WIDTH: f32 = 720.0;
 /// Its height limit; more scrolls.
 pub const MAX_HEIGHT: f32 = super::popover::MAX_HEIGHT;
+/// Padding of the picker panel (mockup 2: 12 above, 16 at the sides and below the cards).
+pub const PADDING: Margin = Margin {
+    left: S4 as i8,
+    right: S4 as i8,
+    top: S3 as i8,
+    bottom: S4 as i8,
+};
 /// Longer side of a preview, pixels.
 const PREVIEW_SIDE: u32 = 320;
 const COLUMNS: usize = 4;
@@ -160,16 +167,17 @@ pub fn picker(
     egui::ScrollArea::vertical()
         .max_height(MAX_HEIGHT - 76.0)
         .show(ui, |ui| {
-            for (caption, cards) in [(text::SCREENS, &screens), (text::WINDOWS, &windows)] {
-                if cards.is_empty() {
-                    continue;
+            let groups = [(text::SCREENS, &screens), (text::WINDOWS, &windows)];
+            let shown = groups.into_iter().filter(|(_, cards)| !cards.is_empty());
+            for (index, (caption, cards)) in shown.enumerate() {
+                if index > 0 {
+                    ui.add_space(S3);
                 }
                 ui.label(egui::RichText::new(caption).size(FS_S).color(TEXT_3));
                 let area = (caption == text::SCREENS).then_some(last_area);
                 if let Some(pick) = grid(ui, cards, chosen, textures, area) {
                     picked = Some(pick);
                 }
-                ui.add_space(S3);
             }
         });
     picked

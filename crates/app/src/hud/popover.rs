@@ -10,7 +10,7 @@ use dc_ui_kit::tokens::{S2, S3};
 use dc_ui_kit::widgets::{
     Answer, Confirm, ErrorAction, ErrorPanel, Kind as ButtonKind, panel_frame,
 };
-use eframe::egui::{self, Rect, Ui, Vec2, pos2, vec2};
+use eframe::egui::{self, Margin, Rect, Ui, Vec2, pos2, vec2};
 
 use dc_capture::Source;
 
@@ -49,6 +49,14 @@ impl Kind {
             Self::Cancel => hud::CANCEL_TITLE,
             Self::Quit => tray::QUIT_TITLE,
             Self::Failed => hud::PREPARE_FAILED,
+        }
+    }
+
+    /// Room between the panel's border and its content.
+    pub fn padding(self) -> Margin {
+        match self {
+            Self::Source => super::picker::PADDING,
+            _ => Margin::same(S3 as i8),
         }
     }
 }
@@ -158,10 +166,12 @@ fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
     let room = Rect::from_min_size(corner, vec2(width, MAX_HEIGHT));
     let response = ui
         .scope_builder(egui::UiBuilder::new().max_rect(room), |ui| {
+            let padding = open.kind.padding();
             panel_frame()
+                .inner_margin(padding)
                 .shadow(WINDOW_SHADOW)
                 .show(ui, |ui| {
-                    ui.set_width(width - 2.0 * S3 - 2.0);
+                    ui.set_width(width - padding.sum().x - 2.0);
                     match open.kind {
                         Kind::Source => source(ui, shared),
                         Kind::Sound => sound(ui, shared),

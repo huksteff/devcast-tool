@@ -189,14 +189,16 @@ fn source_picker_with_a_real_desktop() {
         .with_size(egui::vec2(super::picker::WIDTH, super::popover::MAX_HEIGHT))
         .build_ui_state(
             |ui, chosen: &mut Source| {
-                dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
-                    ui.set_width(super::picker::WIDTH - 26.0);
-                    let textures = std::collections::HashMap::new();
-                    let picked = super::picker::picker(ui, &desktop(), chosen, &textures, None);
-                    if let Some(super::picker::Pick::Source(source)) = picked {
-                        *chosen = source;
-                    }
-                });
+                dc_ui_kit::widgets::panel_frame()
+                    .inner_margin(popover::Kind::Source.padding())
+                    .show(ui, |ui| {
+                        ui.set_width(super::picker::WIDTH - 34.0);
+                        let textures = std::collections::HashMap::new();
+                        let picked = super::picker::picker(ui, &desktop(), chosen, &textures, None);
+                        if let Some(super::picker::Pick::Source(source)) = picked {
+                            *chosen = source;
+                        }
+                    });
             },
             Source::Monitor(1),
         );
@@ -213,15 +215,17 @@ fn source_picker() {
         .with_size(egui::vec2(super::picker::WIDTH, 420.0))
         .build_ui_state(
             |ui, chosen: &mut Source| {
-                dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
-                    ui.set_width(super::picker::WIDTH - 26.0);
-                    let textures = std::collections::HashMap::new();
-                    let last = Some((1280, 720));
-                    let picked = super::picker::picker(ui, &sources(), chosen, &textures, last);
-                    if let Some(super::picker::Pick::Source(source)) = picked {
-                        *chosen = source;
-                    }
-                });
+                dc_ui_kit::widgets::panel_frame()
+                    .inner_margin(popover::Kind::Source.padding())
+                    .show(ui, |ui| {
+                        ui.set_width(super::picker::WIDTH - 34.0);
+                        let textures = std::collections::HashMap::new();
+                        let last = Some((1280, 720));
+                        let picked = super::picker::picker(ui, &sources(), chosen, &textures, last);
+                        if let Some(super::picker::Pick::Source(source)) = picked {
+                            *chosen = source;
+                        }
+                    });
             },
             Source::Monitor(1),
         );
