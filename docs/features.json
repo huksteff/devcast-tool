@@ -78,7 +78,7 @@
     { "id": "audio.tracks", "area": "Аудио", "title": "Дополнительные дорожки", "acceptance": "mp3, wav, aac, m4a, flac, ogg; клипы идут по времени выхода.", "verify": ["test", "cli"], "tasks": ["5.37"], "status": "pass" },
     { "id": "audio.levels", "area": "Аудио", "title": "Громкость и усиление", "acceptance": "Громкость 0–100% и отдельно усиление до 10× без цифрового клиппинга.", "verify": ["test"], "tasks": ["4.7"], "status": "pass" },
     { "id": "audio.normalize", "area": "Аудио", "title": "Нормализация EBU R128", "acceptance": "Измеренная громкость результата совпадает с целевой.", "verify": ["test"], "tasks": ["4.8"], "status": "pass" },
-    { "id": "audio.channels", "area": "Аудио", "title": "Каналы записи", "acceptance": "Уровни и mute системного звука и микрофона для каждого клипа.", "verify": ["test", "ui"], "tasks": ["4.7", "5.37", "7.19"], "status": "todo" },
+    { "id": "audio.channels", "area": "Аудио", "title": "Каналы записи", "acceptance": "Уровни и mute системного звука и микрофона для каждого клипа.", "verify": ["test", "ui"], "tasks": ["4.7", "5.37", "7.19"], "status": "pass" },
     { "id": "audio.denoise", "area": "Аудио", "title": "Шумоподавление микрофона", "acceptance": "Переключатель на дорожке; исходник не меняется; шум на фикстуре заметно ниже.", "verify": ["test", "manual"], "tasks": ["4.9"], "status": "todo" },
 
     { "id": "export.mp4", "area": "Экспорт", "title": "Экспорт MP4", "acceptance": "H.264; 720p/1080p/1440p/4K/исходное; FPS 30/60 (и 120 для записей 120); качество низкое/среднее/высокое; не медленнее v1.", "verify": ["test", "cli", "visual"], "tasks": ["5.12", "5.41"], "status": "todo" },

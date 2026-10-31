@@ -45,8 +45,8 @@ impl Command for AudioAdd {
         let mut state = project.state::<Audio>()?;
         let track = match self.track {
             Some(track) => check_track(track)?,
-            None => (0..TRACKS)
-                .find(|&t| free(&state, None, t, range))
+            None => state
+                .free_track(range)
                 .ok_or_else(|| {
                     CommandError::new(format!(
                         "все {TRACKS} дорожки звука заняты в {}–{}: сократи или удали клип звука (devcast ls audio)",
@@ -293,6 +293,13 @@ fn check_track(track: u32) -> Result<u32, CommandError> {
 }
 
 /// No clip but `except` is on `track` in `range`.
+impl AudioState {
+    /// The first extra track with no sound anywhere in `range`.
+    pub fn free_track(&self, range: Range<Output>) -> Option<u32> {
+        (0..TRACKS).find(|&t| free(self, None, t, range))
+    }
+}
+
 fn free(state: &AudioState, except: Option<AudioId>, track: u32, range: Range<Output>) -> bool {
     state
         .clips

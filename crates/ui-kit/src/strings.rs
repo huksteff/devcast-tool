@@ -210,6 +210,9 @@ pub mod captions;
 /// The annotation panels of the inspector.
 pub mod annotations;
 
+/// The sound panels of the inspector.
+pub mod sound;
+
 /// The settings window.
 pub mod settings {
     pub const TITLE: &str = "Настройки — DevCast";

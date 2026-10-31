@@ -3,9 +3,11 @@
 //! it out, a click on an empty lane drops the selection — or adds the ghost's region where one
 //! shows (`ghost.rs`); a drag from an empty lane draws a rubber band. A drag of a region carries all picked regions, a drag of an edge (`EDGE` inside
 //! each end) changes the length; the edges of the speed bands on the clips row drag the same
-//! way. What follows the pointer and what the release asks for is `gesture.rs`.
+//! way. What follows the pointer and what the release asks for is `gesture.rs`. A click on the
+//! stretch of a clip on «Микрофон» / «Системный звук» picks the clip (its sound, 7.19).
 
 use dc_ui_kit::fonts::{self, Weight};
+use dc_ui_kit::strings::inspector::on_row;
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::{BORDER, FS_S, R1, SURFACE, TEXT};
 use eframe::egui::{
@@ -16,7 +18,7 @@ use eframe::egui::{
 use super::gesture;
 use super::paint;
 use super::scale::TimeScale;
-use super::tracks::Row;
+use super::tracks::{Region, Row};
 use super::viewport::Lanes;
 use crate::editor::EditorWindow;
 use crate::editor::selection::{Item, Selected};
@@ -62,9 +64,13 @@ pub fn ui(
             editor.view.gesture = Some(Gesture::Band { from, base });
         }
     }
-    for (index, &(_, lane)) in rows.iter().enumerate() {
+    for (index, &(row, lane)) in rows.iter().enumerate() {
         let regions = editor.tracks.rows[index].regions.clone();
         for region in regions {
+            if let (None, Some(clip), false) = (region.item, region.clip, row == Row::Clips) {
+                clip_sound(ui, editor, (row, lane, scale), &region, (clip, ctrl));
+                continue;
+            }
             let Some(item) = region.item else { continue };
             let body = paint::body(lane, scale, region.range);
             if !body.intersect(lane).is_positive() {
@@ -124,6 +130,33 @@ fn pick(
     }
 }
 
+/// The stretch of a clip on «Микрофон» / «Системный звук»: a click picks the clip (its panel has
+/// the clip's sound, 7.19), Ctrl+click adds or takes it out. It does not move: the clips row
+/// orders the clips.
+fn clip_sound(
+    ui: &Ui,
+    editor: &mut EditorWindow,
+    (row, lane, scale): (Row, Rect, &TimeScale),
+    region: &Region,
+    (clip, ctrl): (dc_core::ClipId, bool),
+) {
+    let body = paint::body(lane, scale, region.range).intersect(lane);
+    if !body.is_positive() {
+        return;
+    }
+    let id = ui.scope_id().with(("clip-sound", clip, lane.top() as i32));
+    let response = ui.interact(body, id, Sense::click());
+    let name = on_row(&super::name(row), &text::clip(clip.number()));
+    response.widget_info(|| WidgetInfo::labeled(egui::Role::Button, true, &name));
+    if response.clicked() {
+        let picked = Selected::Clip(clip);
+        match ctrl {
+            true => editor.view.selection.toggle(picked),
+            false => editor.view.selection.only(picked),
+        }
+    }
+}
+
 /// The grab zone of the start or `end` edge of `body` on `lane`.
 fn edge_zone(ui: &Ui, body: Rect, lane: Rect, id: Id, end: bool) -> Response {
     ui.interact(side(body, end).intersect(lane), id, Sense::drag())
@@ -170,11 +203,16 @@ pub fn side(body: Rect, end: bool) -> Rect {
 /// White rings of the picked regions that do not follow the pointer.
 fn rings(ui: &Ui, rows: &[(Row, Rect)], editor: &EditorWindow, scale: &TimeScale) {
     let moving = gesture::follows(&editor.view.gesture);
-    for (index, &(_, lane)) in rows.iter().enumerate() {
+    for (index, &(row, lane)) in rows.iter().enumerate() {
         let painter = ui.painter_at(lane);
         for region in &editor.tracks.rows[index].regions {
-            let Some(item) = region.item else { continue };
-            if editor.view.selection.contains(Selected::Region(item)) && !moving {
+            let picked = match (region.item, region.clip) {
+                (Some(item), _) => Selected::Region(item),
+                // The clips row rings its clips itself.
+                (None, Some(clip)) if row != Row::Clips => Selected::Clip(clip),
+                _ => continue,
+            };
+            if editor.view.selection.contains(picked) && !moving {
                 paint::selected(&painter, paint::body(lane, scale, region.range));
             }
         }

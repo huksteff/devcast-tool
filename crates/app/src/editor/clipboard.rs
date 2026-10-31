@@ -189,7 +189,8 @@ fn json(value: &impl Serialize) -> Option<Value> {
 }
 
 /// «Дублировать» of a panel: the command that adds `item` again where it is (`range` on the
-/// output), on top of its row.
+/// output), on top of its row; a sound on the first row free there (sounds of a row do not
+/// overlap).
 pub fn duplicate(
     project: &Project,
     item: Item,
@@ -198,5 +199,9 @@ pub fn duplicate(
     let mut step = adding(project, item, range.duration())?;
     let start = Value::String(arg(range.start()));
     step.args.insert("at".to_owned(), start);
+    if let Item::Sound(_) = item {
+        let track = project.state::<Audio>().ok()?.free_track(range)?;
+        step.args.insert("track".to_owned(), track.into());
+    }
     Some(step)
 }

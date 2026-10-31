@@ -26,6 +26,9 @@ mod head;
 mod keys;
 mod object;
 mod rows;
+mod sound;
+mod sound_clip;
+mod sound_extra;
 mod zoom;
 mod zoom_region;
 
@@ -42,6 +45,8 @@ mod cursor_tests;
 #[cfg(test)]
 mod shortcuts_tests;
 #[cfg(test)]
+mod sound_tests;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod zoom_tests;
@@ -52,7 +57,7 @@ use dc_project::Defaults;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{editor as text, inspector as names};
-use dc_ui_kit::tokens::{self, BG, BORDER, FS_M, Hue, S2, S3, SURFACE, TEXT, TEXT_2, TEXT_3};
+use dc_ui_kit::tokens::{self, BG, BORDER, FS_M, S2, S3, SURFACE, TEXT, TEXT_2, TEXT_3};
 use dc_ui_kit::widgets::IconButton;
 use eframe::egui::{
     self, Frame, Margin, Rect, ScrollArea, Sense, Stroke, Ui, UiBuilder, pos2, vec2,
@@ -85,15 +90,14 @@ const PANELS: [Panel; 5] = [
 /// A panel: draws into the inspector and asks for actions through [`Cx`].
 type PanelUi = fn(&mut Ui, &mut Cx<'_>);
 
-/// The panel of a rail tab with its id (the first part of its groups' keys), or the task that
-/// brings it (its tab is off until then).
-fn tab(panel: Panel) -> Result<(&'static str, PanelUi), &'static str> {
+/// The panel of a rail tab with its id (the first part of its groups' keys).
+fn tab(panel: Panel) -> (&'static str, PanelUi) {
     match panel {
-        Panel::Keys => Ok((keys::ID, keys::ui)),
-        Panel::Zoom => Ok((zoom::ID, zoom::ui)),
-        Panel::Cursor => Ok((cursor::ID, cursor::ui)),
-        Panel::Captions => Ok((captions::ID, captions::ui)),
-        Panel::Sound => Err("7.19"),
+        Panel::Keys => (keys::ID, keys::ui),
+        Panel::Zoom => (zoom::ID, zoom::ui),
+        Panel::Cursor => (cursor::ID, cursor::ui),
+        Panel::Captions => (captions::ID, captions::ui),
+        Panel::Sound => (sound::ID, sound::ui),
     }
 }
 
@@ -117,16 +121,6 @@ impl Panel {
             Self::Sound => text::SOUND,
         }
     }
-
-    fn hue(self) -> Hue {
-        match self {
-            Self::Zoom => tokens::HUE_ZOOM,
-            Self::Cursor => tokens::HUE_CURSOR,
-            Self::Keys => tokens::HUE_KEYS,
-            Self::Captions => tokens::HUE_CAPTIONS,
-            Self::Sound => tokens::HUE_AUDIO,
-        }
-    }
 }
 
 /// What a panel works with this frame.
@@ -138,6 +132,8 @@ pub struct Cx<'a> {
     pub tracks: &'a super::Tracks,
     /// The generation and the cue list of the captions panel (7.17).
     pub captioning: captions::Captioning<'a>,
+    /// Sound tracks the recordings have (`mic`, `system`): the groups of the sound panels.
+    pub sound: &'a [String],
     /// The settings new projects start with: «Сбросить» brings a group back to them.
     defaults: &'a Defaults,
     /// Groups the user opened or closed; `toggled` when one changed this frame.
@@ -159,6 +155,18 @@ impl Cx<'_> {
 
     /// A group: its header (chevron, title, «Сбросить») and, when open, `body`.
     pub fn group(&mut self, ui: &mut Ui, group: Group<'_>, body: impl FnOnce(&mut Ui, &mut Self)) {
+        self.group_with(ui, group, |_, _, _| {}, body);
+    }
+
+    /// [`Cx::group`] whose header has more buttons: `buttons` gets the place left of
+    /// «Сбросить», one [`BUTTON`] wide (the mute of a sound track).
+    pub fn group_with(
+        &mut self,
+        ui: &mut Ui,
+        group: Group<'_>,
+        buttons: impl FnOnce(&mut Ui, &mut Self, Rect),
+        body: impl FnOnce(&mut Ui, &mut Self),
+    ) {
         let key = format!("{}.{}", self.panel, group.id);
         let open = self.groups.0.get(&key).copied().unwrap_or(group.open);
         let rect = ui
@@ -188,6 +196,11 @@ impl Cx<'_> {
                 self.actions.push(Action::Apply(reset));
             }
         }
+        let more = Rect::from_center_size(
+            pos2(rect.right() - 8.0 - BUTTON * 1.5, rect.center().y),
+            vec2(BUTTON, BUTTON),
+        );
+        buttons(ui, self, more);
         let mut bottom = rect;
         if open {
             Frame::new()
@@ -239,6 +252,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
                 _ => None,
             },
         },
+        sound: &editor.sound,
         defaults: &editor.defaults,
         groups: &mut editor.groups,
         toggled: false,
@@ -252,13 +266,11 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
         .show(ui, |ui| {
             ScrollArea::vertical().show(ui, |ui| match view.object {
                 Some(picked) => object::ui(ui, &mut cx, tracks, picked),
-                None => match tab(view.panel) {
-                    Ok((id, panel)) => {
-                        cx.panel = id;
-                        panel(ui, &mut cx);
-                    }
-                    Err(task) => later(ui, view.panel, task),
-                },
+                None => {
+                    let (id, panel) = tab(view.panel);
+                    cx.panel = id;
+                    panel(ui, &mut cx);
+                }
             });
         });
     if let Some(typed) = rows::flush(ui) {
@@ -282,32 +294,16 @@ fn follow(view: &mut View) {
 fn rail(ui: &mut Ui, view: &mut View) {
     ui.spacing_mut().item_spacing.y = 2.0;
     for panel in PANELS {
-        let ready = tab(panel);
         let on = view.object.is_none() && view.panel == panel;
         let button = IconButton::new(panel.icon(), panel.title())
             .size(TAB, tokens::ICON)
             .on(on);
-        let response = ui.add_enabled(ready.is_ok(), button);
-        let response = match ready {
-            Ok(_) => response.on_hover_text(panel.title()),
-            Err(task) => response.on_disabled_hover_text(names::tab_later(panel.title(), task)),
-        };
+        let response = ui.add(button).on_hover_text(panel.title());
         if response.clicked() {
             view.panel = panel;
             view.object = None;
         }
     }
-}
-
-/// The header of a tab whose panel comes with `task`.
-fn later(ui: &mut Ui, panel: Panel, task: &str) {
-    let head = Header {
-        hue: panel.hue(),
-        title: panel.title(),
-        subtitle: names::WHOLE_PROJECT,
-    };
-    header(ui, &head, |_| {});
-    padded(ui, |ui| rows::note(ui, &names::later(task)));
 }
 
 /// A group header: true when clicked (it opens or closes the group).

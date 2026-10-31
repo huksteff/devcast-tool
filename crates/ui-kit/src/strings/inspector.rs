@@ -27,16 +27,6 @@ pub const BOTTOM_LEFT: &str = "Внизу слева";
 pub const BOTTOM: &str = "Внизу";
 pub const BOTTOM_RIGHT: &str = "Внизу справа";
 
-/// «Параметры появятся в задаче 7.14»: the body of a panel whose task has not landed.
-pub fn later(task: &str) -> String {
-    format!("Параметры появятся в задаче {task}")
-}
-
-/// «Зум — панель появится в задаче 7.14»: the tooltip of a tab that is off until its task.
-pub fn tab_later(title: &str, task: &str) -> String {
-    format!("{title} — панель появится в задаче {task}")
-}
-
 /// «Аннотации 1 · 0:29.00 – 0:39.00»: an object on a row of several.
 pub fn on_row(row: &str, span: &str) -> String {
     format!("{row} · {span}")

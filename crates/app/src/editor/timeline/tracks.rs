@@ -354,6 +354,7 @@ fn source_sound(
             .map_or(1.0, |l| (l.volume * l.gain) as f32);
         regions.push(Region {
             faded,
+            clip: Some(clip.id),
             wave: Some(wave::recording(map, clip.id, &clip.media, name, level)),
             ..region(range, String::new())
         });

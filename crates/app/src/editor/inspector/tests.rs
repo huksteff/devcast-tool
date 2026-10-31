@@ -142,10 +142,10 @@ fn picking_one_object_opens_its_panel_and_a_tab_opens_its_own() {
 }
 
 #[test]
-fn tabs_without_their_panel_wait_for_their_task() {
+fn every_tab_has_its_panel() {
     let harness = started();
     let mut tabs = harness.query_all_by_role_and_label(egui::Role::Button, text::SOUND);
-    assert!(tabs.any(|t| t.accesskit_node().is_disabled()));
+    assert!(tabs.all(|t| !t.accesskit_node().is_disabled()));
 }
 
 #[test]

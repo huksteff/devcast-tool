@@ -4,7 +4,9 @@
 //! «Удалить» (the same command as Delete); a zoom gets its parameters (`zoom_region.rs`), a
 //! callout event its own (`callout.rs`), a cue its text and times (`cue.rs`), an annotation its
 //! key strip and groups (`annotation.rs`) and «Дублировать» (`annot paste` of a copy where it is,
-//! on top of its row; the copy gets picked); the others name the task that brings theirs.
+//! on top of its row; the copy gets picked), a clip its sound (`sound_clip.rs`), an extra sound
+//! its levels and place (`sound_extra.rs`) and «Дублировать» (`audio paste` on the first free
+//! row).
 
 use dc_core::Range;
 use dc_core::time::Output;
@@ -12,7 +14,8 @@ use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{annotations, editor as text, inspector as names, timeline as rows_text};
 
 use super::{
-    Cx, Header, annotation, callout, click, cue, header, header_button, padded, rows, zoom_region,
+    Cx, Header, annotation, callout, click, cue, header, header_button, padded, rows, sound_clip,
+    sound_extra, zoom_region,
 };
 use crate::editor::selection::{Item, Selected, same_moment};
 use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
@@ -48,7 +51,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
         subtitle: &about.subtitle,
     };
     let copy = match picked {
-        Selected::Region(item @ Item::Annotation(_)) => {
+        Selected::Region(item @ (Item::Annotation(_) | Item::Sound(_))) => {
             clipboard::duplicate(cx.project, item, region.range)
         }
         _ => None,
@@ -72,7 +75,10 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
         Selected::Region(Item::Annotation(id)) => {
             annotation::ui(ui, cx, id, region.range, &region.keys);
         }
-        _ => padded(ui, |ui| rows::note(ui, &names::later(about.task))),
+        Selected::Region(Item::Sound(id)) => sound_extra::ui(ui, cx, id),
+        Selected::Clip(id) => sound_clip::ui(ui, cx, id),
+        // A key opens its annotation and a click its own panel, above.
+        Selected::Key { .. } | Selected::Click(_) => {}
     }
 }
 
@@ -88,38 +94,34 @@ fn find(tracks: &Tracks, picked: Selected) -> Option<(Row, &Region)> {
     })
 }
 
-/// What the header says of an object and the task of its parameters.
+/// What the header says of an object.
 struct About {
     title: String,
     subtitle: String,
-    task: &'static str,
 }
 
 fn describe(picked: Selected, row: Row, region: &Region) -> About {
     let span = span(region.range);
     let length = rows_text::seconds(region.range.duration().as_secs_f64());
-    let timed = |title: &str, task| About {
+    let timed = |title: &str| About {
         title: title.to_owned(),
         subtitle: names::with_length(&span, &length),
-        task,
     };
-    let layered = |task| About {
+    let layered = || About {
         title: region.label.clone(),
         subtitle: names::on_row(&timeline::name(row), &span),
-        task,
     };
     match picked {
         Selected::Clip(_) => About {
             title: region.label.clone(),
             subtitle: region.detail.clone().unwrap_or(length),
-            task: "7.19",
         },
-        Selected::Region(Item::Zoom(_)) => timed(text::ZOOM, "7.14"),
-        Selected::Region(Item::Callout(_)) => timed(names::CALLOUT, ""),
-        Selected::Region(Item::Cue(_)) => timed(names::CUE, ""),
-        Selected::Region(Item::Annotation(_)) | Selected::Key { .. } => layered(""),
-        Selected::Click(_) => timed(names::CLICK, "7.15"),
-        Selected::Region(Item::Sound(_)) => layered("7.19"),
+        Selected::Region(Item::Zoom(_)) => timed(text::ZOOM),
+        Selected::Region(Item::Callout(_)) => timed(names::CALLOUT),
+        Selected::Region(Item::Cue(_)) => timed(names::CUE),
+        Selected::Region(Item::Annotation(_)) | Selected::Key { .. } => layered(),
+        Selected::Click(_) => timed(names::CLICK),
+        Selected::Region(Item::Sound(_)) => layered(),
     }
 }
 
