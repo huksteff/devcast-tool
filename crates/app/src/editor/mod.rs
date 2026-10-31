@@ -11,6 +11,7 @@ mod header;
 mod help;
 mod inspector;
 mod keys;
+mod playback;
 mod preview;
 mod timeline;
 mod transport;
@@ -20,6 +21,8 @@ mod view;
 mod editing_tests;
 #[cfg(test)]
 mod keys_tests;
+#[cfg(test)]
+mod playback_tests;
 #[cfg(test)]
 mod tests;
 
@@ -36,9 +39,10 @@ use eframe::egui::{self, Frame, Ui, vec2};
 use crate::app::{Shared, lock, on_hud_monitor, other_window};
 use crate::keymap::EditorKeys;
 use crate::settings_window::Page;
-pub use actions::Action;
+pub use actions::{Action, Transport};
 pub use document::{Document, DocumentError, LOCK_OWNER, Way};
 pub use keys::wired;
+use playback::seek::{FALLBACK_FPS, frame_rate};
 pub use timeline::Tracks;
 pub use view::View;
 
@@ -68,6 +72,10 @@ pub struct EditorWindow {
     pub view: View,
     /// The frame of the project at the playhead.
     pub preview: preview::Preview,
+    /// The clock and the sound while playing.
+    pub playback: playback::Playback,
+    /// Frames per second of a frame step: the highest of the clips' videos (v1), 30 without.
+    pub fps: f64,
     /// Shortcuts of the settings, taken each frame.
     pub keys: EditorKeys,
     /// The shortcut help while it is open.
@@ -102,7 +110,10 @@ impl EditorWindow {
                 |s| s.to_string_lossy().into_owned(),
             );
         let preview = preview::Preview::new(doc.project());
+        let (project, revision) = preview.project();
         let mut editor = Self {
+            playback: playback::Playback::new(project, revision),
+            fps: FALLBACK_FPS,
             doc,
             name,
             sound,
@@ -115,13 +126,14 @@ impl EditorWindow {
             help: None,
             actions: Vec::new(),
         };
-        editor.refresh();
+        problems.extend(editor.refresh(Instant::now()));
         problems.extend(editor.tracks.problems.iter().cloned());
         Ok((editor, problems))
     }
 
-    /// Rebuilds the view of the project after it changed.
-    fn refresh(&mut self) {
+    /// Rebuilds the view of the project after it changed at `now`; playback goes on with the
+    /// new project. Returns why its sound cannot go on.
+    fn refresh(&mut self, now: Instant) -> Option<String> {
         let project = self.doc.project();
         let mut tracks = Tracks::of(project, &self.sound);
         let crop = project.state::<Crop>().unwrap_or_else(|e| {
@@ -131,7 +143,15 @@ impl EditorWindow {
         self.canvas = dc_fx_crop::canvas(project, &crop.settings);
         self.aspect = crop.settings.aspect;
         self.tracks = tracks;
+        self.fps = frame_rate(self.doc.dir(), project);
         self.preview.changed(project);
+        let (project, revision) = self.preview.project();
+        self.playback.changed(project, revision, now)
+    }
+
+    /// The output end: where playback stops.
+    pub fn end(&self) -> dc_core::OutputTime {
+        dc_core::OutputTime::ZERO + self.tracks.duration
     }
 
     /// Starts rendering the preview on the shared device; the thread wakes the main window.
@@ -145,6 +165,17 @@ impl EditorWindow {
             .start(gpu, dir, ctx)
             .map_err(|source| crate::AppError::Thread {
                 name: "devcast-preview",
+                source,
+            })
+    }
+
+    /// Starts the sound thread of playback; without it playback goes by the wall clock.
+    pub fn start_sound(&mut self) -> Result<(), crate::AppError> {
+        let dir = self.doc.dir().clone();
+        self.playback
+            .start(dir)
+            .map_err(|source| crate::AppError::Thread {
+                name: "devcast-sound",
                 source,
             })
     }
@@ -173,6 +204,8 @@ impl Shared {
                     let started = editor.start_preview(gpu, self.ctx.clone());
                     self.report(started);
                 }
+                let sound = editor.start_sound();
+                self.report(sound);
                 for problem in problems {
                     self.report(Err(problem));
                 }
@@ -278,6 +311,11 @@ pub fn editor_ui(
         editor.keys = keys.clone();
     }
     keys::run(ui, editor);
+    let volume = (editor.view.volume / 100.0) as f32;
+    let tick = editor.playback.tick(now, editor.end(), volume);
+    if let Some(at) = tick.at {
+        editor.view.playhead = at;
+    }
     let mut open_settings = None;
     egui::Panel::top("editor-header")
         .exact_size(HEADER)
@@ -310,7 +348,13 @@ pub fn editor_ui(
             open_settings = Some(Page::Hotkeys);
         }
     }
-    let errors = actions::run(ui, editor, now);
+    let mut errors: Vec<String> = tick.error.into_iter().collect();
+    errors.extend(actions::run(ui, editor, now));
+    if editor.playback.is_playing() {
+        // Decision 002: while playing, a repaint per frame step; paused, nothing runs.
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_secs_f64(1.0 / editor.fps));
+    }
     Outcome {
         open_settings,
         timeline_height: timeline.response.rect.height(),

@@ -10,6 +10,7 @@ pub mod evaluate;
 pub mod plan;
 pub mod registry;
 pub mod settings;
+pub mod sound;
 
 pub use apply::{Applied, apply, apply_commands, as_commands, duration_change};
 pub use argv::parse_args;

@@ -216,6 +216,8 @@ pub(super) struct State {
     pub settings: Option<crate::settings_window::Page>,
     /// The shortcuts the settings give the editor.
     pub keys: crate::keymap::EditorKeys,
+    /// The moment of the frames, when a test drives the clock; otherwise now.
+    pub now: Option<std::time::Instant>,
 }
 
 pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State> {
@@ -226,12 +228,13 @@ pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State>
         outcome: None,
         settings: None,
         keys: crate::keymap::EditorKeys::default(),
+        now: None,
     };
     dc_ui_kit::testing::harness()
         .with_size(size)
         .build_ui_state(
             |ui, state: &mut State| {
-                let now = std::time::Instant::now();
+                let now = state.now.unwrap_or_else(std::time::Instant::now);
                 let outcome = editor_ui(ui, &mut state.editor, 300.0, &state.keys, now);
                 assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
                 state.settings = state.settings.or(outcome.open_settings);
@@ -301,7 +304,7 @@ fn controls_hold_their_state() {
 fn commands_without_a_registry_command_are_disabled() {
     let mut harness = harness(SIZE);
     harness.run();
-    for label in [text::EXPORT, text::PLAY, names::SUGGEST_ZOOMS] {
+    for label in [text::EXPORT, names::SUGGEST_ZOOMS] {
         assert!(
             harness.get_by_label(label).accesskit_node().is_disabled(),
             "{label} must wait for its task"

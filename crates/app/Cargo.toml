@@ -18,6 +18,7 @@ workspace = true
 crash-handler = "0.6"
 dc-capture = { path = "../capture" }
 dc-core = { path = "../core" }
+dc-audio = { path = "../audio" }
 dc-encode = { path = "../encode" }
 dc-fx-annotations = { path = "../../fx/annotations" }
 dc-fx-audio-tracks = { path = "../../fx/audio-tracks" }
@@ -27,6 +28,7 @@ dc-fx-crop = { path = "../../fx/crop" }
 dc-fx-keys = { path = "../../fx/keys" }
 dc-fx-zoom = { path = "../../fx/zoom" }
 dc-ipc = { path = "../ipc" }
+dc-media = { path = "../media" }
 dc-ops = { path = "../ops" }
 dc-project = { path = "../project" }
 dc-render = { path = "../render" }

@@ -63,6 +63,11 @@ impl Mixer {
         self.frames
     }
 
+    /// The project has no sound to mix: no sound track in any clip and no extra sound.
+    pub fn is_silent(&self) -> bool {
+        self.sum.parts.is_empty()
+    }
+
     /// Fills `out` (interleaved, [`CHANNELS`]) with the output from frame `start`; silence
     /// outside `0..frames()`.
     pub fn render(&mut self, start: i64, out: &mut [f32]) -> Result<(), AudioError> {

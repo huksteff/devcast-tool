@@ -48,7 +48,7 @@ pub(crate) fn run(
         source_fps = source_fps.max(cached_probe(&dir, &clip.media.path)?.fps);
     }
     let levels =
-        crate::sound::levels(&spec.root, project).map_err(|e| EncodeError::Sound(Box::new(e)))?;
+        dc_ops::sound::levels(&spec.root, project).map_err(|e| EncodeError::Sound(Box::new(e)))?;
     let mut loudness = LoudnessCache::default();
     let mut mixer = Mixer::new(&dir, project, &levels, &mut loudness)
         .map_err(|e| EncodeError::Sound(Box::new(e)))?;

@@ -1,5 +1,6 @@
-//! The sound settings of a project (`fx/audio-tracks`) as the input of the mix (`dc_audio`):
-//! the effect gives the levels in effect as plain data, this only changes their form.
+//! The sound settings of a project (`fx/audio-tracks`) as the input of the mix (`dc_audio`), one
+//! for the export and the editor's playback: the effect gives the levels in effect as plain
+//! data, this only changes their form.
 
 use std::path::Path;
 
@@ -8,7 +9,7 @@ use dc_core::Project;
 use dc_fx_audio_tracks::{Level, sound};
 
 /// Levels of the clips and the extra sound of `project`, whose folder is `root`.
-pub(crate) fn levels(root: &Path, project: &Project) -> Result<Levels, SoundError> {
+pub fn levels(root: &Path, project: &Project) -> Result<Levels, SoundError> {
     let sound = sound(project)?;
     let mut levels = Levels::default();
     for clip in sound.clips {
@@ -43,8 +44,9 @@ fn channel(level: Level) -> Result<ChannelLevel, AudioError> {
         .with_denoise(level.denoise))
 }
 
+/// Why the levels could not be read: a broken effect state or a level out of range.
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum SoundError {
+pub enum SoundError {
     #[error(transparent)]
     State(#[from] dc_core::StateError),
     #[error(transparent)]

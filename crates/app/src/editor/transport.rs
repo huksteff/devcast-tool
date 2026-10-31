@@ -1,8 +1,8 @@
 //! The 48 px transport under the preview: tools and keyframe switches on the left, time and
 //! playback in the middle, preview volume on the right.
 //!
-//! The tools, the switches and the volume hold their state (see `View`); playback and the jumps
-//! are disabled until 7.5, the playhead does not move until then. Tooltips name the shortcut
+//! The tools and the switches hold their state (see `View`); the volume scales the sound of
+//! playback; play and the jumps queue a `Transport` action. Tooltips name the shortcut
 //! from the user's table (`keys::hint`).
 
 use dc_ui_kit::fonts;
@@ -16,7 +16,7 @@ use eframe::egui::{
 
 use super::timeline::timecode;
 use super::view::Tool;
-use super::{EditorWindow, keys};
+use super::{Action, EditorWindow, Transport, keys};
 use crate::keymap::EditorKey;
 
 /// Diameter of the play button and width of the volume rail, points (mockup).
@@ -70,7 +70,7 @@ fn tools(ui: &mut Ui, editor: &mut EditorWindow) {
 }
 
 /// Time, jumps, play and the end time, centred in the row.
-fn playback(ui: &mut Ui, rect: Rect, editor: &EditorWindow) {
+fn playback(ui: &mut Ui, rect: Rect, editor: &mut EditorWindow) {
     let font = fonts::mono(FS_M);
     let now = timecode(editor.view.playhead);
     let end = timecode(dc_core::OutputTime::ZERO + editor.tracks.duration);
@@ -90,24 +90,51 @@ fn playback(ui: &mut Ui, rect: Rect, editor: &EditorWindow) {
             let (time, _) = ui.allocate_exact_size(now.size(), Sense::hover());
             ui.painter().galley(time.min, now, TEXT);
             ui.add_space(S2);
-            ui.add_enabled_ui(false, |ui| {
-                let hint = |label, key| keys::hint(label, key, &editor.keys);
-                for (icon, label, key) in [
-                    (Icon::SkipBack, text::PREV_KEY, EditorKey::PrevKey),
-                    (Icon::Left, text::PREV_FRAME, EditorKey::PrevFrame),
-                ] {
-                    ui.add(IconButton::new(icon, label))
-                        .on_disabled_hover_text(hint(label, key));
-                }
-                play_button(ui).on_disabled_hover_text(hint(text::PLAY, EditorKey::PlayPause));
-                for (icon, label, key) in [
-                    (Icon::Right, text::NEXT_FRAME, EditorKey::NextFrame),
-                    (Icon::SkipForward, text::NEXT_KEY, EditorKey::NextKey),
-                ] {
-                    ui.add(IconButton::new(icon, label))
-                        .on_disabled_hover_text(hint(label, key));
-                }
-            });
+            let mut asked = None;
+            for (icon, label, key, transport) in [
+                (
+                    Icon::SkipBack,
+                    text::PREV_KEY,
+                    EditorKey::PrevKey,
+                    Transport::Jump(false),
+                ),
+                (
+                    Icon::Left,
+                    text::PREV_FRAME,
+                    EditorKey::PrevFrame,
+                    Transport::Step(-1),
+                ),
+            ] {
+                asked = asked.or(jump_button(ui, editor, icon, label, key, transport));
+            }
+            let playing = editor.playback.is_playing();
+            let label = if playing { text::PAUSE } else { text::PLAY };
+            let hint = keys::hint(label, EditorKey::PlayPause, &editor.keys);
+            if play_button(ui, playing, label)
+                .on_hover_text(hint)
+                .clicked()
+            {
+                asked = Some(Transport::PlayPause);
+            }
+            for (icon, label, key, transport) in [
+                (
+                    Icon::Right,
+                    text::NEXT_FRAME,
+                    EditorKey::NextFrame,
+                    Transport::Step(1),
+                ),
+                (
+                    Icon::SkipForward,
+                    text::NEXT_KEY,
+                    EditorKey::NextKey,
+                    Transport::Jump(true),
+                ),
+            ] {
+                asked = asked.or(jump_button(ui, editor, icon, label, key, transport));
+            }
+            if let Some(transport) = asked {
+                editor.ask(Action::Transport(transport));
+            }
             ui.add_space(S2);
             let (time, _) = ui.allocate_exact_size(end.size(), Sense::hover());
             ui.painter().galley(time.min, end, TEXT_3);
@@ -115,12 +142,34 @@ fn playback(ui: &mut Ui, rect: Rect, editor: &EditorWindow) {
     );
 }
 
-/// The white round play button with a dark triangle.
-fn play_button(ui: &mut Ui) -> Response {
+/// A jump or frame step button; the transport it asks for when clicked.
+fn jump_button(
+    ui: &mut Ui,
+    editor: &EditorWindow,
+    icon: Icon,
+    label: &str,
+    key: EditorKey,
+    transport: Transport,
+) -> Option<Transport> {
+    let hint = keys::hint(label, key, &editor.keys);
+    let clicked = ui
+        .add(IconButton::new(icon, label))
+        .on_hover_text(hint)
+        .clicked();
+    clicked.then_some(transport)
+}
+
+/// The white round play button with a dark triangle, or two bars while `playing`.
+fn play_button(ui: &mut Ui, playing: bool, label: &str) -> Response {
     let (rect, response) = ui.allocate_exact_size(vec2(PLAY, PLAY), Sense::click());
-    response.widget_info(|| WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), text::PLAY));
+    response.widget_info(|| WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), label));
     let painter = ui.painter();
     painter.circle_filled(rect.center(), PLAY / 2.0, TEXT);
+    if playing {
+        let icon = Rect::from_center_size(rect.center(), vec2(ICON, ICON));
+        Icon::Pause.paint(painter, icon, BG);
+        return response;
+    }
     let icon = Rect::from_center_size(rect.center() + vec2(1.0, 0.0), vec2(ICON, ICON));
     let at = |x: f32, y: f32| icon.min + vec2(x, y) * (ICON / 24.0);
     painter.add(egui::Shape::convex_polygon(

@@ -14,6 +14,8 @@ mod live;
 mod worker;
 
 #[cfg(test)]
+mod speed_tests;
+#[cfg(test)]
 mod worker_tests;
 
 use std::sync::Arc;
@@ -73,6 +75,11 @@ impl Preview {
     pub fn changed(&mut self, project: &Project) {
         self.project = Arc::new(project.clone());
         self.revision += 1;
+    }
+
+    /// The project it renders and its revision.
+    pub fn project(&self) -> (Arc<Project>, u64) {
+        (Arc::clone(&self.project), self.revision)
     }
 
     /// A frame came since the last call: the editor window repaints.

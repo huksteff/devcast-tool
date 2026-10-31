@@ -79,7 +79,7 @@ fn levels_follow_defaults_and_a_split_clip_keeps_its_own_in_both_halves() {
     r.ok("audio mute c2");
     assert_eq!(r.ok("clip split --at 5"), "клипы ~1 c1; клипы +1 c3");
     let project = r.dir.load().unwrap();
-    let levels = crate::sound::levels(r.dir.root(), &project).unwrap();
+    let levels = dc_ops::sound::levels(r.dir.root(), &project).unwrap();
     let own = ChannelLevel::new(0.5, 3.0).unwrap().with_denoise(true);
     for clip in ["c1", "c3"] {
         let channel = levels.channel(clip.parse().unwrap(), "mic");
@@ -93,7 +93,7 @@ fn levels_follow_defaults_and_a_split_clip_keeps_its_own_in_both_halves() {
     );
     r.ok("audio add звук/музыка.mp3 --at 2");
     r.ok("audio set au1 --volume 25 --gain 2 --offset 1 --duration 2");
-    let levels = crate::sound::levels(r.dir.root(), &r.dir.load().unwrap()).unwrap();
+    let levels = dc_ops::sound::levels(r.dir.root(), &r.dir.load().unwrap()).unwrap();
     let extra = &levels.extra[0];
     assert_eq!(
         extra.path,

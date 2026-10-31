@@ -1252,6 +1252,7 @@ name = "dc-app"
 version = "0.1.0"
 dependencies = [
  "crash-handler",
+ "dc-audio",
  "dc-capture",
  "dc-core",
  "dc-encode",
@@ -1263,6 +1264,7 @@ dependencies = [
  "dc-fx-keys",
  "dc-fx-zoom",
  "dc-ipc",
+ "dc-media",
  "dc-ops",
  "dc-project",
  "dc-render",
@@ -1290,6 +1292,7 @@ dependencies = [
 name = "dc-audio"
 version = "0.1.0"
 dependencies = [
+ "cpal",
  "dc-capture",
  "dc-core",
  "dc-media",
@@ -1570,6 +1573,7 @@ dependencies = [
 name = "dc-ops"
 version = "0.1.0"
 dependencies = [
+ "dc-audio",
  "dc-capture",
  "dc-core",
  "dc-fx-annotations",

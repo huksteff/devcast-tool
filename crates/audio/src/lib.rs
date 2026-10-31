@@ -1,5 +1,5 @@
 //! Audio decoding and resampling, mixing by the time map, levels, EBU R128, denoise, waveform,
-//! silence.
+//! silence; playing the mix on the output device.
 //!
 //! Every track is brought to one format: [`RATE`] Hz, [`CHANNELS`] interleaved `f32` channels.
 //! A position in it is a frame index ([`frame_at`]).
@@ -10,7 +10,9 @@ pub mod file;
 pub mod levels;
 pub mod loudness;
 pub mod mix;
+pub mod output;
 pub mod peaks;
+pub mod play;
 pub mod reader;
 pub mod silence;
 pub mod track;
@@ -29,7 +31,9 @@ pub use levels::{ChannelLevel, ClipLevels, ExtraClip, GAIN_MAX, Levels};
 pub use limiter::CEILING;
 pub use loudness::{LoudnessCache, Measurement, Meter, TARGET};
 pub use mix::Mixer;
+pub use output::Output;
 pub use part::CROSSFADE;
+pub use play::{AHEAD, Line, Off, feed};
 pub use reader::TrackReader;
 pub use track::{SourceTrack, tracks};
 

@@ -62,6 +62,8 @@ pub struct Tracks {
     pub speeds: Vec<Region>,
     /// Where a clip jumps inside itself: a cut or a speed edge.
     pub seams: Vec<OutputTime>,
+    /// Keyframes of all annotations at output times, sorted: the jumps of [ and ] (7.5).
+    pub keys: Vec<OutputTime>,
     /// Broken effect states: their rows stay empty, the text says what to do.
     pub problems: Vec<String>,
 }
@@ -169,6 +171,17 @@ impl Tracks {
                 .collect();
             self.add(Row::Annotations(track), regions, false);
         }
+        for annotation in &state.annotations {
+            // A key past a trimmed edge is not shown: no jump to it.
+            let shown = annotation.keys.iter().filter_map(|key| {
+                let t = annotation.range.start() + key.at;
+                annotation.range.contains(t).then_some(())?;
+                map.locate(&annotation.media, t).map(|(_, at)| at)
+            });
+            self.keys.extend(shown);
+        }
+        self.keys.sort_unstable();
+        self.keys.dedup();
     }
 
     /// Extra sound rows up to the highest used track; none without extra sound.

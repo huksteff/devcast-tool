@@ -65,6 +65,16 @@ pub enum AudioError {
 
     #[error("не удалось пересчитать частоту звука {path}: {message}. Сообщи о баге")]
     Resample { path: PathBuf, message: String },
+
+    #[error(
+        "нет устройства вывода звука: подключи колонки или наушники и включи воспроизведение снова"
+    )]
+    NoOutputDevice,
+
+    #[error(
+        "не удалось играть звук на «{device}»: {message}. Проверь устройство в настройках звука Windows и включи воспроизведение снова"
+    )]
+    Output { device: String, message: String },
 }
 
 impl AudioError {

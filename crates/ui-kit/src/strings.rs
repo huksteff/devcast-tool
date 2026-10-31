@@ -159,6 +159,9 @@ pub mod editor {
     pub const PREV_FRAME: &str = "Кадр назад";
     pub const NEXT_FRAME: &str = "Кадр вперёд";
     pub const PLAY: &str = "Воспроизвести";
+    pub const PAUSE: &str = "Пауза";
+    pub const SOUND_STOPPED: &str =
+        "Звук превью остановился: картинка идёт без звука. Закрой редактор и открой проект снова";
     pub const VOLUME: &str = "Громкость превью";
     pub const ZOOM: &str = "Зум";
     pub const CURSOR: &str = "Курсор и облачко";
@@ -178,6 +181,11 @@ pub mod editor {
     /// Redo with its step: «Повторить: зум 1,50×».
     pub fn redo_step(step: &str) -> String {
         format!("{REDO}: {step}")
+    }
+
+    /// The sound of playback failed; `error` says why and what to do.
+    pub fn sound_failed(error: &str) -> String {
+        format!("Звук превью не играет, картинка идёт без него: {error}")
     }
 
     /// «recording-1 — DevCast».
