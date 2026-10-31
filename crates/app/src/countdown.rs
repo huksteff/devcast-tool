@@ -72,10 +72,15 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         egui::ViewportId::from_hash_of("countdown"),
         builder,
         move |ui, _| {
-            // Never in a recording, whatever moment the recorder starts at; a frame a second.
-            ui.ctx()
-                .send_viewport_cmd(egui::ViewportCommand::ContentProtected(true));
             other_window(ui, &shared, |ui, shared| {
+                // Never in a recording, whatever moment the recorder starts at.
+                if let Session::Countdown(countdown) = &mut shared.session
+                    && !countdown.excluded
+                {
+                    ui.ctx()
+                        .send_viewport_cmd(egui::ViewportCommand::ContentProtected(true));
+                    countdown.excluded = true;
+                }
                 if face(ui, left) {
                     shared.cancel_countdown();
                 }

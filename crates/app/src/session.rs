@@ -42,6 +42,9 @@ pub struct Countdown {
     pub left: u32,
     /// When `left` goes down by one.
     pub next: Instant,
+    /// Its window has been excluded from capture. Sent once: a command makes the window draw
+    /// again, and sending it every frame drew the countdown nonstop and starved the HUD.
+    pub excluded: bool,
 }
 
 impl Countdown {
@@ -49,6 +52,7 @@ impl Countdown {
         Self {
             left: seconds,
             next: now + SECOND,
+            excluded: false,
         }
     }
 
@@ -139,7 +143,7 @@ impl Shared {
         } else {
             Session::Countdown(Countdown::new(seconds, Instant::now()))
         };
-        self.ctx.request_repaint();
+        self.ctx.request_repaint_of(egui::ViewportId::ROOT);
     }
 
     pub fn cancel_countdown(&mut self) {
@@ -155,9 +159,12 @@ impl Shared {
                 let now = Instant::now();
                 if countdown.tick(now) {
                     self.session = Session::Launch;
-                    self.ctx.request_repaint();
+                    self.ctx.request_repaint_of(egui::ViewportId::ROOT);
                 } else {
-                    self.ctx.request_repaint_after(countdown.next - now);
+                    // The main window: `tick` runs outside a pass, where the current viewport
+                    // may be another window (the countdown's), and only the main one ticks.
+                    self.ctx
+                        .request_repaint_after_for(countdown.next - now, egui::ViewportId::ROOT);
                 }
             }
             Session::Launch => {
