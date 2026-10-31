@@ -98,6 +98,9 @@ pub fn range_speed(editor: &mut EditorWindow) {
 /// Esc: closes the range menu, else drops dragged regions or a clip where they were, else the
 /// range, else takes «Выбор» back from «Лезвие».
 pub fn escape(editor: &mut EditorWindow) {
+    if super::stage::cancel(editor) {
+        return;
+    }
     let view = &mut editor.view;
     let gesture = view.gesture.take().is_some();
     if gesture

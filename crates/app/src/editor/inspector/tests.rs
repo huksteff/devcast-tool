@@ -20,7 +20,7 @@ use crate::editor::view::Panel;
 use crate::editor::{Action, SIZE, Way};
 use crate::settings::InspectorGroups;
 
-pub(super) type H = Harness<'static, State>;
+pub(crate) type H = Harness<'static, State>;
 
 pub(super) fn started() -> H {
     let mut harness = harness(SIZE);
@@ -29,7 +29,7 @@ pub(super) fn started() -> H {
 }
 
 /// The step `devcast <line>` parses.
-pub(super) fn step(line: &str) -> Step {
+pub(crate) fn step(line: &str) -> Step {
     let registry = Registry::devcast().unwrap();
     let words: Vec<String> = line.split(' ').map(str::to_owned).collect();
     let (info, taken) = registry.resolve(&words).unwrap();
@@ -40,7 +40,7 @@ pub(super) fn step(line: &str) -> Step {
 }
 
 /// The test project after `devcast <line>` for each line, one plan.
-pub(super) fn cli(lines: &[&str]) -> Project {
+pub(crate) fn cli(lines: &[&str]) -> Project {
     let registry = Registry::devcast().unwrap();
     let steps: Vec<Step> = lines.iter().map(|line| step(line)).collect();
     let mut project = project();
@@ -55,11 +55,11 @@ pub(super) fn cli(lines: &[&str]) -> Project {
     project
 }
 
-pub(super) fn project_json(harness: &H) -> serde_json::Value {
+pub(crate) fn project_json(harness: &H) -> serde_json::Value {
     json(harness.state().editor.doc.project())
 }
 
-pub(super) fn undo(harness: &mut H) {
+pub(crate) fn undo(harness: &mut H) {
     let doc = &mut harness.state_mut().editor.doc;
     doc.travel(Way::Undo, Instant::now());
     harness.run();
@@ -87,7 +87,7 @@ pub(super) fn first_zoom(harness: &H) -> Item {
         .unwrap()
 }
 
-pub(super) fn pick(harness: &mut H, item: Option<Selected>) {
+pub(crate) fn pick(harness: &mut H, item: Option<Selected>) {
     let selection = &mut harness.state_mut().editor.view.selection;
     selection.clear();
     if let Some(item) = item {

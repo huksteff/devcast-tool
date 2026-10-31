@@ -33,8 +33,8 @@ use eframe::egui::{
     Stroke, StrokeKind, Ui, Vec2, pos2,
 };
 
-use super::EditorWindow;
 use super::view::{PreviewScale, Quality};
+use super::{EditorWindow, stage};
 use crate::gpu::PreviewGpu;
 use fit::frame_rect;
 use live::Live;
@@ -105,29 +105,30 @@ impl Preview {
             size,
             scrub: false,
             source: true,
+            camera: true,
         };
         live.frame(&self.project, want)
     }
 
-    /// The frame of `canvas` at `time`, shown `shown` points large; a keyframe while `scrub`.
+    /// The frame of `canvas` at `moment`, shown `shown` points large.
     fn frame(
         &mut self,
         canvas: PixelSize,
         shown: Vec2,
         pixels_per_point: f32,
         quality: Quality,
-        time: OutputTime,
-        scrub: bool,
+        moment: Moment,
     ) -> Shown {
         let Some(live) = &mut self.live else {
             return Shown::default();
         };
         let want = fetch::Want {
             revision: self.revision,
-            time,
+            time: moment.time,
             size: fit::render_size(canvas, shown, pixels_per_point, quality),
-            scrub,
+            scrub: moment.scrub,
             source: false,
+            camera: moment.camera,
         };
         live.frame(&self.project, want)
     }
@@ -201,22 +202,32 @@ fn aspect_name(aspect: Aspect) -> &'static str {
     }
 }
 
+/// Which frame of the project the preview asks for.
+#[derive(Debug, Clone, Copy)]
+struct Moment {
+    time: OutputTime,
+    /// The playhead is dragged: a keyframe will do.
+    scrub: bool,
+    /// The zoom camera moves the frame; off while a zoom's frame is edited (7.21).
+    camera: bool,
+}
+
 /// The output frame at the chosen size, centred; scrolled when larger than the preview area.
+/// Over it the picked zoom's frame or annotation's box, edited with the pointer (`stage`).
 fn frame(ui: &mut Ui, editor: &mut EditorWindow) {
     let area = ui.max_rect();
     let ppp = ui.pixels_per_point();
     let canvas = editor.canvas;
     let view = &editor.view;
     let size = frame_rect(area, canvas.map(|c| (c.width, c.height)), view.scale, ppp).size();
+    let moment = Moment {
+        time: view.playhead,
+        scrub: view.timeline.scrub.is_some(),
+        camera: stage::picked_zoom(editor).is_none(),
+    };
+    let quality = view.quality;
     let shown = match canvas {
-        Some(canvas) => editor.preview.frame(
-            canvas,
-            size,
-            ppp,
-            view.quality,
-            view.playhead,
-            view.timeline.scrub.is_some(),
-        ),
+        Some(canvas) => editor.preview.frame(canvas, size, ppp, quality, moment),
         None => Shown::default(),
     };
     ScrollArea::both()
@@ -224,8 +235,10 @@ fn frame(ui: &mut Ui, editor: &mut EditorWindow) {
         .auto_shrink(false)
         .show(ui, |ui| {
             let content = size.max(ui.available_size());
-            let (space, _) = ui.allocate_exact_size(content, Sense::hover());
-            paint(ui, Rect::from_center_size(space.center(), size), &shown);
+            let (space, response) = ui.allocate_exact_size(content, Sense::click_and_drag());
+            let rect = Rect::from_center_size(space.center(), size);
+            paint(ui, rect, &shown);
+            stage::ui(ui, editor, &response, rect, shown.camera);
         });
 }
 

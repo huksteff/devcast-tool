@@ -145,6 +145,8 @@ pub mod editor {
     pub const QUALITY_FULL: &str = "Полное";
     pub const QUALITY_FAST: &str = "Быстрое";
     pub const PREVIEW_STOPPED: &str = "Превью остановилось: закрой редактор и открой проект снова";
+    /// The output frame in the preview, edited with the pointer (7.21, 7.22).
+    pub const PREVIEW_FRAME: &str = "Кадр превью";
     pub const ASPECT_FREE: &str = "Свободный";
     pub const ASPECT_SOURCE: &str = "Как запись";
     pub const ASPECT_16_9: &str = "16:9";
@@ -190,6 +192,11 @@ pub mod editor {
     /// «recording-1 — DevCast».
     pub fn title(name: &str) -> String {
         format!("{name} — DevCast")
+    }
+
+    /// Scale on the zoom frame of the preview: «1,5×».
+    pub fn zoom_scale(scale: f64) -> String {
+        format!("{scale:.1}×").replace('.', ",")
     }
 
     /// «16:9 · 1920 × 1080».

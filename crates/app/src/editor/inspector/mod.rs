@@ -47,7 +47,7 @@ mod shortcuts_tests;
 #[cfg(test)]
 mod sound_tests;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 #[cfg(test)]
 mod zoom_tests;
 
@@ -68,6 +68,7 @@ use super::selection::{Item, Selected};
 use super::view::{Panel, View};
 use super::{Action, EditorWindow};
 use crate::settings::InspectorGroups;
+pub use annotation::Edit;
 pub use head::{Header, header, header_button};
 
 /// Width of the tab rail, side of a tab, height of the panel and group headers (mockup).

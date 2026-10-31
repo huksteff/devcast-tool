@@ -14,7 +14,7 @@ use dc_core::{CursorTracks, KeyTracks, PixelSize, Project, Rect};
 use dc_encode::{Seek, Sources};
 use dc_ops::Evaluator;
 use dc_project::ProjectDir;
-use dc_render::{Band, Compositor, Gpu, Layer, PxRect, Scene, TextMeasure, Video};
+use dc_render::{Band, Camera, Compositor, Gpu, Layer, PxRect, Scene, TextMeasure, Video};
 use dc_ui_kit::strings::crop as text;
 use eframe::wgpu;
 
@@ -33,6 +33,9 @@ pub struct Request {
 pub struct Rendered {
     pub texture: wgpu::Texture,
     pub serial: u64,
+    /// The camera the frame was drawn with (px of the output frame): the preview maps the boxes
+    /// it edits through it.
+    pub camera: Camera,
 }
 
 /// The generation of a request and its frame or why there is none.
@@ -185,6 +188,10 @@ impl<'d> Painter<'d> {
         if want.source {
             scene = source_scene(&scene, want.size)?;
         }
+        if !want.camera {
+            scene.camera = Camera::IDENTITY;
+            scene.camera_motion = None;
+        }
         let seek = if want.scrub {
             Seek::Keyframe
         } else {
@@ -197,7 +204,10 @@ impl<'d> Painter<'d> {
         self.compositor
             .draw(gpu, &scene, &target.texture)
             .map_err(|e| e.to_string())?;
-        Ok(target)
+        Ok(Rendered {
+            camera: scene.camera,
+            ..target
+        })
     }
 
     /// The texture of `size`: the last one while the size stays.
@@ -214,6 +224,7 @@ impl<'d> Painter<'d> {
                 let target = Rendered {
                     texture: gpu.target(size),
                     serial: self.serial,
+                    camera: Camera::IDENTITY,
                 };
                 self.target = Some(target.clone());
                 target

@@ -66,6 +66,7 @@ fn ask_for(
         size,
         scrub: false,
         source,
+        camera: true,
     };
     let project = Arc::clone(project);
     assert!(worker.send(Request {
@@ -187,4 +188,57 @@ fn the_source_picture_ignores_the_crop_and_what_lies_over_the_video() {
     assert!(whole == of_cropped, "the crop does not change the picture");
     assert!(whole != frame, "the frame shows the crop and the cursor");
     assert!(whole.as_chunks::<4>().0.iter().any(|p| p[..3] != [0, 0, 0]));
+}
+
+/// `project` with one fixed 2× zoom from 1 s to 4 s of the output instead of its zooms.
+fn zoomed(mut project: Project) -> Project {
+    let mut state = project.state::<dc_fx_zoom::ZoomEffect>().unwrap();
+    state.zooms.clear();
+    project.set_state::<dc_fx_zoom::ZoomEffect>(&state).unwrap();
+    let registry = dc_ops::Registry::devcast().unwrap();
+    let words: Vec<String> = "zoom add --at 1 --duration 3 --scale 2 --mode fixed"
+        .split(' ')
+        .map(str::to_owned)
+        .collect();
+    let (info, taken) = registry.resolve(&words).unwrap();
+    let args = dc_ops::parse_args(info, &words[taken..]).unwrap();
+    let steps = [dc_ops::Step::new(info.name, args)];
+    let mut history = dc_core::History::default();
+    dc_ops::apply(&registry, &mut project, &mut history, &steps, false).unwrap();
+    project
+}
+
+#[test]
+fn without_the_camera_the_frame_is_the_whole_picture() {
+    let gpu = Arc::new(Gpu::new(AdapterChoice::Software).unwrap());
+    let (_temp, dir, project) = fixture();
+    let project = Arc::new(zoomed(project));
+    let (worker, wakes) = start(&gpu, &dir);
+    let size = PixelSize {
+        width: 320,
+        height: 180,
+    };
+    let frame = |generation, camera| {
+        let want = Want {
+            revision: 1,
+            time: OutputTime::from_secs_f64(2.5),
+            size,
+            scrub: false,
+            source: false,
+            camera,
+        };
+        let project = Arc::clone(&project);
+        assert!(worker.send(Request {
+            generation,
+            project,
+            want
+        }));
+        let rendered = next(&worker, &wakes).1.unwrap();
+        (rendered.camera, gpu.read(&rendered.texture).unwrap().rgba)
+    };
+    let (camera, zoomed_in) = frame(1, true);
+    assert!(camera.scale > 1.9, "the zoom is in: {camera:?}");
+    let (still, whole) = frame(2, false);
+    assert_eq!(still, dc_render::Camera::IDENTITY);
+    assert!(zoomed_in != whole, "the camera is left out");
 }

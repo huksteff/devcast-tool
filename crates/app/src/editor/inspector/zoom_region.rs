@@ -2,7 +2,8 @@
 //! (`zoom set`), then the motion shared by every zoom (`zoom.rs`: `zoom motion`); «Тонкая
 //! настройка» and «Подобрать зумы по кликам» as on the rail tab. «Сбросить» of «Основное» brings
 //! the zoom to what `zoom add` gives (scale 1.5, follow, focus in the centre) and the shared
-//! fields to the defaults, one undo step. Dragging the frame on the preview is task 7.21.
+//! fields to the defaults, one undo step. The frame on the preview
+//! (`editor/stage/zoom.rs`) edits the same scale and focus.
 
 use dc_fx_zoom::{
     DEFAULT_SCALE, Mode, SCALE_MAX, SCALE_MIN, Zoom, ZoomEffect, ZoomId, ZoomSettings,

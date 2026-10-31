@@ -45,8 +45,8 @@ pub fn reset_group(group: &str) -> String {
 pub const ZOOM_MODE: &str = "Режим";
 pub const ZOOM_FOLLOW: &str = "За курсором";
 pub const ZOOM_FIXED: &str = "Точка";
-pub const ZOOM_FOLLOW_NOTE: &str = "Камера идёт за курсором, начиная с точки фокуса.";
-pub const ZOOM_FIXED_NOTE: &str = "Камера стоит на точке фокуса.";
+pub const ZOOM_FOLLOW_NOTE: &str = "Камера идёт за курсором, начиная с точки фокуса. Углы рамки на превью задают масштаб, перенос рамки ставит «Точку».";
+pub const ZOOM_FIXED_NOTE: &str = "Камера стоит на точке. Перетащите рамку на превью, чтобы сдвинуть, угол — чтобы изменить масштаб.";
 pub const ZOOM_SCALE: &str = "Масштаб";
 pub const ZOOM_X: &str = "Фокус по X";
 pub const ZOOM_Y: &str = "Фокус по Y";

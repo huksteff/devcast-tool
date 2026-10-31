@@ -88,6 +88,15 @@ impl Document {
         Ok(self.record(applied, now))
     }
 
+    /// The project as `steps` would make it, without changing it or its history: what the
+    /// preview shows while a drag on it goes on (7.22).
+    pub fn draft(&self, steps: &[Step]) -> Result<Project, OpsError> {
+        let mut project = self.project.clone();
+        let mut history = History::default();
+        dc_ops::apply(&self.registry, &mut project, &mut history, steps, false)?;
+        Ok(project)
+    }
+
     /// Ready commands (not of the registry: `audio add` after its file is copied) as one undo
     /// step named `name`, as `devcast` applies them.
     pub fn apply_commands(

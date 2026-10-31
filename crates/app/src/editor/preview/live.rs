@@ -31,6 +31,8 @@ pub struct Live {
 pub struct Shown {
     pub texture: Option<TextureId>,
     pub error: Option<String>,
+    /// The camera of the shown frame (px of the output frame); none without a frame.
+    pub camera: Option<dc_render::Camera>,
 }
 
 impl Live {
@@ -74,9 +76,11 @@ impl Live {
             return Shown {
                 texture: None,
                 error: self.fetch.error().map(str::to_owned),
+                camera: None,
             };
         };
         let serial = rendered.serial;
+        let camera = rendered.camera;
         let id = match self.texture {
             Some((id, shown)) if shown == serial => id,
             known => {
@@ -99,6 +103,7 @@ impl Live {
         Shown {
             texture: Some(id),
             error: None,
+            camera: Some(camera),
         }
     }
 }

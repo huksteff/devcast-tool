@@ -92,6 +92,7 @@ fn measure(gpu: &Arc<Gpu>, dir: &ProjectDir, project: Project, size: PixelSize) 
             size,
             scrub: false,
             source: false,
+            camera: true,
         };
         let project = Arc::clone(&project);
         assert!(worker.send(Request {

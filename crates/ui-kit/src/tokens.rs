@@ -98,6 +98,8 @@ const fn rgb(hex: u32) -> Color32 {
 pub const KEYFRAME: Color32 = rgb(0x7dd3fc);
 /// Snapping line.
 pub const SNAP: Color32 = rgb(0xfacc15);
+/// Guide of the preview: an edge or the centre of the frame a box sticks to (mockup `.guide`).
+pub const GUIDE: Color32 = rgb(0xe879f9);
 /// Behind the preview frame.
 pub const PREVIEW_BG: Color32 = rgb(0x0b0c0f);
 /// Line between timeline rows.

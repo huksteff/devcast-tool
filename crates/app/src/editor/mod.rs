@@ -23,6 +23,7 @@ mod reader;
 mod regions;
 mod rows;
 mod selection;
+mod stage;
 mod timeline;
 mod transport;
 mod view;
@@ -170,6 +171,8 @@ impl EditorWindow {
     /// Rebuilds the view of the project after it changed at `now`; playback goes on with the
     /// new project. Returns why its sound cannot go on.
     fn refresh(&mut self, now: Instant) -> Option<String> {
+        // A gesture on the preview was over the old project; the preview shows the new one.
+        self.view.stage = None;
         self.retrack();
         let project = self.doc.project();
         let crop = project.state::<Crop>().unwrap_or_else(|e| {

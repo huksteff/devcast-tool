@@ -101,6 +101,8 @@ pub struct View {
     pub remove: Option<Row>,
     /// The annotation track whose header is dragged to another place (layer order).
     pub lift: Option<u32>,
+    /// A gesture on the preview: the zoom frame or an annotation box (7.21, 7.22).
+    pub stage: Option<super::stage::Drag>,
 }
 
 impl Default for View {
@@ -128,6 +130,7 @@ impl Default for View {
             least: Least::default(),
             remove: None,
             lift: None,
+            stage: None,
         }
     }
 }

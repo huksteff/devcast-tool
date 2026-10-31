@@ -17,6 +17,9 @@ pub struct Want {
     /// Only the video of the clip at `time`: its whole source frame, uncropped, nothing over it
     /// (the crop dialog). `size` has the aspect of that source frame.
     pub source: bool,
+    /// The zoom camera moves the frame; off while a zoom is picked: its frame is drawn over the
+    /// whole picture (7.21).
+    pub camera: bool,
 }
 
 /// What was asked and what is shown; `F` is a rendered frame.
@@ -106,6 +109,7 @@ mod tests {
             },
             scrub: false,
             source: false,
+            camera: true,
         }
     }
 
