@@ -7,6 +7,7 @@
 mod gif;
 mod mp4;
 mod settings;
+mod stages;
 
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
@@ -21,6 +22,7 @@ use crate::error::EncodeError;
 pub use gif::{GIF_FPS, GifSettings, export_gif};
 pub use mp4::export_mp4;
 pub use settings::{MP4_FPS, Mp4Settings, Resolution};
+pub use stages::Stages;
 
 /// Fills interleaved samples of [`Timeline::sound`] from output sample `start`.
 pub type SoundFn<'a> =
@@ -60,6 +62,8 @@ pub struct Exported {
     /// Video codec of an MP4.
     pub codec: Option<Codec>,
     pub bytes: u64,
+    /// Where the time went.
+    pub stages: Stages,
 }
 
 /// Output frames of `duration` at `fps`: the last one may show less than a full frame time.

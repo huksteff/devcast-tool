@@ -182,7 +182,11 @@ fn synthetic_project_exports_h264_aac_with_tags_and_the_previewed_frames() {
     };
     assert_eq!(done.size, size);
     assert_eq!(done.frames, 150);
-    println!("{:?}, {} bytes", done.codec, done.bytes);
+    println!("{:?}, {} bytes, {:?}", done.codec, done.bytes, done.stages);
+    // Every stage of the loop ran and was timed.
+    for (name, time) in done.stages.named() {
+        assert!(time > std::time::Duration::ZERO, "{name} took no time");
+    }
     check_streams(&exported.file, 60, size, 2.5);
     // Before the cut, right after it (source 1.5 s) and the last frame.
     let check = Check {

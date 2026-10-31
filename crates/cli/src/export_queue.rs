@@ -3,6 +3,7 @@
 //! send their export there and wait for its answer; `export status` and `export cancel` ask it.
 //! The process that holds the channel lives until the queue is empty.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
@@ -14,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::CliError;
 use crate::export_job::{self, Spec};
+use crate::round::thousandths;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "request", rename_all = "snake_case")]
@@ -52,6 +54,8 @@ pub(crate) enum Finished {
         codec: Option<String>,
         /// How long the export took, s.
         seconds: f64,
+        /// Busy time of every export stage, s (`dc_encode::export::Stages`).
+        stages: BTreeMap<String, f64>,
     },
     Failed {
         id: u32,
@@ -123,6 +127,12 @@ pub(crate) fn finished(id: u32, state: JobState) -> Finished {
             bytes: exported.bytes,
             codec: exported.codec.map(|c| c.to_string()),
             seconds: elapsed.as_secs_f64(),
+            stages: exported
+                .stages
+                .named()
+                .into_iter()
+                .map(|(name, time)| (name.to_owned(), thousandths(time.as_secs_f64())))
+                .collect(),
         },
         JobState::Failed(message) => Finished::Failed { id, message },
         JobState::Queued | JobState::Running { .. } | JobState::Cancelled => {

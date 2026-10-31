@@ -23,7 +23,7 @@ pub enum JobState {
         elapsed: Duration,
     },
     Done {
-        exported: Exported,
+        exported: Box<Exported>,
         elapsed: Duration,
     },
     Failed(String),
@@ -257,7 +257,7 @@ fn run(shared: &Shared, id: u32, job: Job) {
     shared.set(id, |entry| {
         entry.status.state = match result {
             Ok(exported) => JobState::Done {
-                exported,
+                exported: Box::new(exported),
                 elapsed: started.elapsed(),
             },
             Err(EncodeError::Cancelled) => JobState::Cancelled,

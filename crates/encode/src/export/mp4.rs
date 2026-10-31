@@ -3,6 +3,7 @@
 
 use std::ops::ControlFlow;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 use dc_render::{Compositor, Gpu, Nv12Readback, Planes};
 
@@ -15,8 +16,10 @@ use crate::packet::Packet;
 use crate::select::open_for_export;
 use crate::still::Sources;
 
+use super::stages::timed;
 use super::{
-    Exported, Mp4Settings, PartFile, Progress, ProgressFn, Timeline, frame_count, frame_time,
+    Exported, Mp4Settings, PartFile, Progress, ProgressFn, Stages, Timeline, frame_count,
+    frame_time,
 };
 
 const VIDEO: usize = 0;
@@ -37,6 +40,7 @@ pub fn export_mp4(
     if timeline.duration <= dc_core::TimeDelta::ZERO {
         return Err(EncodeError::NothingLeft);
     }
+    let opening = Instant::now();
     let size = settings.resolution.size(timeline.canvas);
     let fps = settings.fps;
     let video = VideoSettings {
@@ -55,25 +59,44 @@ pub fn export_mp4(
     let samples = (timeline.duration.micros().max(0) as u64 * rate).div_ceil(1_000_000);
     let mut sound = Vec::new();
     let mut played = 0;
+    let mut stages = Stages {
+        open: opening.elapsed(),
+        ..Stages::default()
+    };
+    // The readback waits for the GPU, then hands the frame to the muxer: `handed` is the latter.
+    let (mut read, mut handed) = (Duration::ZERO, Duration::ZERO);
     for n in 0..total {
-        let scene = (timeline.scene)(frame_time(n, fps));
-        sources.feed(gpu, compositor, &scene)?;
-        compositor.draw(gpu, &scene, &target)?;
-        readback.push(gpu, &mut |planes| muxer.video(planes))?;
+        let scene = timed(&mut stages.scene, || (timeline.scene)(frame_time(n, fps)));
+        timed(&mut stages.decode, || sources.feed(gpu, compositor, &scene))?;
+        timed(&mut stages.draw, || compositor.draw(gpu, &scene, &target))?;
+        timed(&mut read, || {
+            readback.push(gpu, &mut |planes| {
+                timed(&mut handed, || muxer.video(planes))
+            })
+        })?;
         let until = ((n + 1) * rate / u64::from(fps)).min(samples);
         sound.resize(
             (until - played) as usize * usize::from(timeline.audio.channels),
             0.0,
         );
-        (timeline.sound)(played as i64, &mut sound).map_err(EncodeError::Sound)?;
+        timed(&mut stages.sound, || {
+            (timeline.sound)(played as i64, &mut sound)
+        })
+        .map_err(EncodeError::Sound)?;
         muxer.sound(&sound)?;
         played = until;
         if progress(Progress { done: n + 1, total }) == ControlFlow::Break(()) {
             return Err(EncodeError::Cancelled);
         }
     }
-    readback.finish(gpu, &mut |planes| muxer.video(planes))?;
-    muxer.finish()?;
+    timed(&mut read, || {
+        readback.finish(gpu, &mut |planes| {
+            timed(&mut handed, || muxer.video(planes))
+        })
+    })?;
+    let times = muxer.finish()?;
+    stages.gpu_wait = read.saturating_sub(handed);
+    (stages.copy, stages.encode, stages.mux) = (times.copy, times.encode, times.mux);
     Ok(Exported {
         path: out.to_path_buf(),
         size,
@@ -82,7 +105,16 @@ pub fn export_mp4(
         duration: timeline.duration,
         codec: Some(codec),
         bytes: part.commit()?,
+        stages,
     })
+}
+
+/// Busy time of the muxer.
+#[derive(Debug, Default)]
+struct MuxTimes {
+    copy: Duration,
+    encode: Duration,
+    mux: Duration,
 }
 
 /// Both encoders and the file.
@@ -94,6 +126,7 @@ struct Muxer {
     packets: Vec<Packet>,
     /// Frames encoded so far: the slot of the next one.
     encoded: i64,
+    times: MuxTimes,
 }
 
 impl Muxer {
@@ -116,38 +149,78 @@ impl Muxer {
             sound,
             packets: Vec::new(),
             encoded: 0,
+            times: MuxTimes::default(),
         })
     }
 
     fn video(&mut self, planes: Planes<'_>) -> Result<(), EncodeError> {
-        self.frame.copy_from(planes.y, planes.uv, planes.pitch);
-        self.video
-            .encode(&mut self.frame, self.encoded, &mut self.packets)?;
-        self.encoded += 1;
+        let Self {
+            frame,
+            video,
+            packets,
+            encoded,
+            times,
+            ..
+        } = self;
+        timed(&mut times.copy, || {
+            frame.copy_from(planes.y, planes.uv, planes.pitch);
+        });
+        timed(&mut times.encode, || video.encode(frame, *encoded, packets))?;
+        *encoded += 1;
         self.write(VIDEO)
     }
 
     fn sound(&mut self, samples: &[f32]) -> Result<(), EncodeError> {
-        self.sound.encode(samples, &mut self.packets)?;
+        let Self {
+            sound,
+            packets,
+            times,
+            ..
+        } = self;
+        timed(&mut times.mux, || sound.encode(samples, packets))?;
         self.write(SOUND)
     }
 
-    fn finish(mut self) -> Result<(), EncodeError> {
-        self.video.finish(&mut self.packets)?;
+    fn finish(mut self) -> Result<MuxTimes, EncodeError> {
+        let Self {
+            video,
+            packets,
+            times,
+            ..
+        } = &mut self;
+        timed(&mut times.encode, || video.finish(packets))?;
         self.write(VIDEO)?;
-        self.sound.finish(&mut self.packets)?;
+        let Self {
+            sound,
+            packets,
+            times,
+            ..
+        } = &mut self;
+        timed(&mut times.mux, || sound.finish(packets))?;
         self.write(SOUND)?;
-        self.writer.finish()
+        let Self {
+            writer, mut times, ..
+        } = self;
+        timed(&mut times.mux, || writer.finish())?;
+        Ok(times)
     }
 
     /// Writes the packets `stream`'s encoder gave; a video frame lasts one slot.
     fn write(&mut self, stream: usize) -> Result<(), EncodeError> {
-        for mut packet in self.packets.drain(..) {
-            if stream == VIDEO {
-                packet.set_duration(1);
+        let Self {
+            writer,
+            packets,
+            times,
+            ..
+        } = self;
+        timed(&mut times.mux, || {
+            for mut packet in packets.drain(..) {
+                if stream == VIDEO {
+                    packet.set_duration(1);
+                }
+                writer.write_to(stream, packet)?;
             }
-            self.writer.write_to(stream, packet)?;
-        }
-        Ok(())
+            Ok(())
+        })
     }
 }

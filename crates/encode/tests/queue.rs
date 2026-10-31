@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
 use dc_core::{PixelSize, TimeDelta};
-use dc_encode::export::{Exported, Progress};
+use dc_encode::export::{Exported, Progress, Stages};
 use dc_encode::{EncodeError, ExportQueue, Job, JobState};
 
 /// A job of `frames` frames: waits for `step`, reports progress, then tells `events` (so a
@@ -43,6 +43,7 @@ fn stepped(name: &'static str, frames: u64, events: Sender<String>) -> (Job, Sen
             duration: TimeDelta::from_micros(1),
             codec: None,
             bytes: 1,
+            stages: Stages::default(),
         })
     });
     (job, step)

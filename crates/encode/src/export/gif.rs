@@ -12,8 +12,9 @@ use crate::error::EncodeError;
 use crate::still::Sources;
 
 use super::settings::check_fps;
+use super::stages::timed;
 use super::{
-    Exported, PartFile, Progress, ProgressFn, Resolution, Timeline, frame_count, frame_time,
+    Exported, PartFile, Progress, ProgressFn, Resolution, Stages, Timeline, frame_count, frame_time,
 };
 
 /// Frame rates of a GIF (SCOPE): more is heavy and many players ignore it.
@@ -80,28 +81,32 @@ pub fn export_gif(
     })?;
     let target = gpu.target(size);
     let total = frame_count(timeline.duration, fps);
+    let mut stages = Stages::default();
     std::thread::scope(|scope| {
         let written = scope.spawn(move || {
             writer.write(BufWriter::new(file), &mut gifski::progress::NoProgress {})
         });
         let drawn = (|| {
             for n in 0..total {
-                let scene = (timeline.scene)(frame_time(n, fps));
-                sources.feed(gpu, compositor, &scene)?;
-                compositor.draw(gpu, &scene, &target)?;
-                let image = gpu.read(&target)?;
-                let pixels = image
-                    .rgba
-                    .as_chunks::<4>()
-                    .0
-                    .iter()
-                    .map(|&[r, g, b, a]| rgb::RGBA8 { r, g, b, a })
-                    .collect();
+                let scene = timed(&mut stages.scene, || (timeline.scene)(frame_time(n, fps)));
+                timed(&mut stages.decode, || sources.feed(gpu, compositor, &scene))?;
+                timed(&mut stages.draw, || compositor.draw(gpu, &scene, &target))?;
+                let image = timed(&mut stages.gpu_wait, || gpu.read(&target))?;
+                let pixels = timed(&mut stages.copy, || {
+                    image
+                        .rgba
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .map(|&[r, g, b, a]| rgb::RGBA8 { r, g, b, a })
+                        .collect()
+                });
                 let frame = imgref::ImgVec::new(pixels, size.width as usize, size.height as usize);
                 let seconds = n as f64 / f64::from(fps);
-                collector
-                    .add_frame_rgba(n as usize, frame, seconds)
-                    .map_err(gif_error)?;
+                timed(&mut stages.encode, || {
+                    collector.add_frame_rgba(n as usize, frame, seconds)
+                })
+                .map_err(gif_error)?;
                 if progress(Progress { done: n + 1, total }) == ControlFlow::Break(()) {
                     return Err(EncodeError::Cancelled);
                 }
@@ -124,6 +129,7 @@ pub fn export_gif(
         duration: timeline.duration,
         codec: None,
         bytes: part.commit()?,
+        stages,
     })
 }
 
