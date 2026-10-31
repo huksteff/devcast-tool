@@ -71,7 +71,7 @@ pub fn ruler(painter: &Painter, rect: Rect, scale: &TimeScale) {
     painter.rect_filled(rect, 0, SURFACE);
     let head = rect.with_max_x(rect.left() + super::HEAD);
     painter.vline(head.right(), head.y_range(), Stroke::new(1.0, BORDER));
-    painter.hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, ROW_LINE));
+    row_line(painter, rect);
     let step = scale.tick_step();
     let half = step.micros() / 2;
     let lanes = painter.with_clip_rect(rect.with_min_x(head.right()));
@@ -106,7 +106,7 @@ pub fn ruler(painter: &Painter, rect: Rect, scale: &TimeScale) {
 pub fn header(painter: &Painter, rect: Rect, track: &Track) {
     painter.rect_filled(rect, 0, SURFACE);
     painter.vline(rect.right(), rect.y_range(), Stroke::new(1.0, BORDER));
-    painter.hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, ROW_LINE));
+    row_line(painter, rect);
     let swatch = Rect::from_center_size(
         pos2(rect.left() + S2 + 1.5, rect.center().y),
         vec2(3.0, 14.0),
@@ -126,7 +126,7 @@ pub fn header(painter: &Painter, rect: Rect, track: &Track) {
 /// The lane background and the regions of `track`, with the waves of `waves` that came.
 pub fn lane(painter: &Painter, rect: Rect, track: &Track, scale: &TimeScale, waves: &Waves) {
     painter.rect_filled(rect, 0, BG);
-    painter.hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, ROW_LINE));
+    row_line(painter, rect);
     let hue = hue(track.row);
     for region in &track.regions {
         let body = body(rect, scale, region.range);
@@ -282,4 +282,14 @@ pub fn range(painter: &Painter, left: f32, right: f32, ys: std::ops::RangeInclus
     for x in [left, right] {
         painter.vline(x, ys.clone(), Stroke::new(1.5, ACCENT_HI));
     }
+}
+
+/// The 1 px line between rows (mockup: border-bottom of each row) on the row's last pixel row:
+/// on its bottom edge the next row's background covered it.
+fn row_line(painter: &Painter, rect: Rect) {
+    painter.hline(
+        rect.x_range(),
+        rect.bottom() - 0.5,
+        Stroke::new(1.0, ROW_LINE),
+    );
 }
