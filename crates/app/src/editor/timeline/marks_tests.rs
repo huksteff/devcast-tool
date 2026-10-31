@@ -88,10 +88,21 @@ fn a_click_picks_a_key_and_delete_removes_the_picked_keys() {
     let selection = &harness.state().editor.view.selection;
     assert!(selection.contains(key(26.0)) && selection.len() == 1);
     assert!(picked(&harness).is_empty(), "not the annotation");
+    let playhead = |h: &H| h.state().editor.view.playhead;
+    assert_eq!(
+        playhead(&harness),
+        OutputTime::from_secs_f64(26.0),
+        "the playhead goes to the key"
+    );
     harness.snapshot("editor_key_markers");
     let at = marker(&harness, 28.0);
     click(&mut harness, at, Modifiers::COMMAND);
     assert_eq!(harness.state().editor.view.selection.len(), 2);
+    assert_eq!(
+        playhead(&harness),
+        OutputTime::from_secs_f64(26.0),
+        "Ctrl+click leaves the playhead"
+    );
     press(&mut harness, Key::Delete, Modifiers::NONE);
     let rm = ["annot key rm a1 --at 26", "annot key rm a1 --at 28"];
     assert!(!selected(&harness), "removed keys drop out");

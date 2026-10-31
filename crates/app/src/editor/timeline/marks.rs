@@ -1,7 +1,8 @@
 //! Key markers on the annotation regions (7.12, mockup `.kf`): a ◆ at the output time of every
 //! key that shows, while «маркеры» (the eye of the transport) is on. In «Выбор» a click picks a
-//! key (Ctrl adds or takes it out), a drag moves it in time inside its annotation, sticking like
-//! a region edge (`snap::point`); the release is `annot key move`, Delete is `annot key rm`
+//! key and puts the playhead on it (Ctrl adds or takes it out, the playhead stays), a drag
+//! moves it in time inside its annotation, sticking like a region edge
+//! (`snap::point`); the release is `annot key move`, Delete is `annot key rm`
 //! (`editor/clipboard.rs`).
 
 use dc_core::time::Output;
@@ -17,9 +18,9 @@ use eframe::egui::{
 use super::paint;
 use super::scale::{TimeScale, timecode};
 use super::tracks::Row;
-use crate::editor::EditorWindow;
 use crate::editor::selection::{Item, Selected};
 use crate::editor::view::{Gesture, Tool};
+use crate::editor::{Action, EditorWindow, Transport};
 
 /// Half the diagonal of a marker (mockup: a 9 px square turned 45°) and of the ring of a
 /// picked one (2 more).
@@ -76,6 +77,10 @@ pub fn ui(ui: &Ui, rows: &[(Row, Rect)], editor: &mut EditorWindow, scale: &Time
                 if select {
                     let response = grab_zone(ui, lane, centre, (id, at));
                     pick(editor, &response, key, ctrl);
+                    // As in DaVinci: a click puts the playhead on the key, so the inspector edits it.
+                    if response.clicked() && !ctrl {
+                        editor.ask(Action::Transport(Transport::Scrub(at)));
+                    }
                     if response.drag_started() {
                         let grab = scale.time(press.map_or(centre.x, |p| p.x));
                         editor.view.gesture = Some(Gesture::Key {
