@@ -23,6 +23,6 @@ pub use meter::LevelBar;
 pub use section::Section;
 pub use segmented::segmented;
 pub use slider::Slider;
-pub use text_field::text_field;
+pub use text_field::{search_field, text_field};
 pub use toast::{ToastKind, Toasts};
 pub use toggle::Toggle;

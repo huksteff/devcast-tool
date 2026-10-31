@@ -25,6 +25,8 @@ pub const PAUSE_SOFT: Color32 = Color32::from_rgba_unmultiplied_const(0xfb, 0xbf
 pub const OK: Color32 = Color32::from_rgb(0x22, 0xc5, 0x5e);
 /// Dimming outside a selection.
 pub const SCRIM: Color32 = Color32::from_black_alpha(140);
+/// Captions over a picture (`.pill`): the surface at 85 %.
+pub const PILL: Color32 = Color32::from_rgba_unmultiplied_const(0x18, 0x1a, 0x1f, 217);
 pub const WHITE: Color32 = Color32::WHITE;
 
 pub const S1: f32 = 4.0;

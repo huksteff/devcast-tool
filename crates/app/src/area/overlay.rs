@@ -2,15 +2,22 @@
 //! rectangle, the blue frame with 8 handles, the size above it, the buttons under it and the
 //! hint at the top. Pixels of the monitor = points × `pixels_per_point` of this window.
 
+use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::area as text;
-use dc_ui_kit::tokens::{ACCENT_HI, BORDER, FS_S, R1, S2, SCRIM, SURFACE, TEXT, TEXT_2, WHITE};
+use dc_ui_kit::tokens::{
+    ACCENT_HI, BORDER, FS_S, PILL, R1, S1, S2, SCRIM, SURFACE, SURFACE_3, TEXT, TEXT_2, WHITE,
+};
 use dc_ui_kit::widgets::{Button, Kind, panel_frame, segmented};
 use eframe::egui::{
     self, Color32, Pos2, Rect as ScreenRect, Sense, Stroke, StrokeKind, Ui, pos2, vec2,
 };
 
 use super::model::{self, GRAB, Preset, Rect};
+
+/// Key caps of the hint: height and side padding, points (mockup `.kbd`).
+const KEY_H: f32 = 20.0;
+const KEY_PAD: f32 = 6.0;
 
 /// What the mouse is doing with the rectangle.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -226,35 +233,83 @@ fn paint_selection(ui: &Ui, screen: ScreenRect, frame: ScreenRect, rect: Rect) {
     );
     painter.galley(corner + vec2(8.0, 3.0), galley, TEXT);
     if !rect.too_small() {
-        painter.text(
-            frame.center(),
-            egui::Align2::CENTER_CENTER,
-            text::MOVE,
+        let galley = painter.layout_no_wrap(
+            text::MOVE.to_owned(),
             fonts::text(FS_S, Weight::Regular),
             TEXT_2,
         );
+        let pill = ScreenRect::from_center_size(frame.center(), galley.size() + vec2(24.0, 6.0));
+        painter.rect(
+            pill,
+            pill.height() / 2.0,
+            PILL,
+            Stroke::new(1.0, BORDER),
+            StrokeKind::Inside,
+        );
+        painter.galley(pill.min + vec2(12.0, 3.0), galley, TEXT_2);
     }
 }
 
+/// The hint at the top: text with «Enter» and «Esc» as key caps (mockup `.kbd`).
 fn hint(ui: &Ui, screen: ScreenRect) {
-    let label = format!("{} · {}", text::HINT, text::HINT_KEYS);
-    let galley = ui
-        .painter()
-        .layout_no_wrap(label, fonts::text(FS_S, Weight::Regular), TEXT_2);
-    let size = galley.size() + vec2(28.0, 8.0);
+    let painter = ui.painter();
+    let parts = [
+        (format!("{} · ", text::HINT), false),
+        (text::KEY_START.to_owned(), true),
+        (format!(" {} · ", text::KEY_START_HINT), false),
+        (text::KEY_CANCEL.to_owned(), true),
+        (format!(" {}", text::KEY_CANCEL_HINT), false),
+    ];
+    let galleys: Vec<_> = parts
+        .into_iter()
+        .map(|(part, key)| {
+            let font = if key {
+                fonts::mono(FS_S)
+            } else {
+                fonts::text(FS_S, Weight::Regular)
+            };
+            let color = if key { TEXT } else { TEXT_2 };
+            (painter.layout_no_wrap(part, font, color), key)
+        })
+        .collect();
+    let cap = |width: f32| width + 2.0 * KEY_PAD;
+    let width: f32 = galleys
+        .iter()
+        .map(|(g, key)| if *key { cap(g.size().x) } else { g.size().x })
+        .sum();
+    let size = vec2(width + 28.0, KEY_H + 2.0 * S1 + 2.0);
     let back = ScreenRect::from_center_size(
         pos2(screen.center().x, screen.top() + 14.0 + size.y / 2.0),
         size,
     );
-    ui.painter().rect(
+    painter.rect(
         back,
         size.y / 2.0,
         SURFACE,
         Stroke::new(1.0, BORDER),
         StrokeKind::Inside,
     );
-    ui.painter()
-        .galley(back.min + vec2(14.0, 4.0), galley, TEXT_2);
+    let mut x = back.left() + 14.0;
+    let y = back.center().y;
+    for (galley, key) in galleys {
+        let text_width = galley.size().x;
+        if key {
+            let chip =
+                ScreenRect::from_min_size(pos2(x, y - KEY_H / 2.0), vec2(cap(text_width), KEY_H));
+            painter.rect(
+                chip,
+                5,
+                SURFACE_3,
+                Stroke::new(1.0, BORDER),
+                StrokeKind::Inside,
+            );
+            painter.galley(pos2(x + KEY_PAD, y - galley.size().y / 2.0), galley, TEXT);
+            x = chip.right();
+        } else {
+            painter.galley(pos2(x, y - galley.size().y / 2.0), galley, TEXT_2);
+            x += text_width;
+        }
+    }
 }
 
 /// Presets, «Отмена» and «Начать запись» under the frame (above it near the bottom).
@@ -267,7 +322,8 @@ fn cluster(ui: &mut Ui, sel: &mut Selection, frame: ScreenRect) -> Option<Action
     };
     let mut action = None;
     egui::Area::new(ui.scope_id().with("area-buttons"))
-        .fixed_pos(pos2(frame.center().x - 170.0, y))
+        .pivot(egui::Align2::CENTER_TOP)
+        .fixed_pos(pos2(frame.center().x, y))
         .order(egui::Order::Foreground)
         .show(ui.ctx(), |ui| {
             panel_frame().inner_margin(S2).show(ui, |ui| {
@@ -289,10 +345,8 @@ fn cluster(ui: &mut Ui, sel: &mut Selection, frame: ScreenRect) -> Option<Action
                         action = Some(Action::Cancel);
                     }
                     let ready = sel.rect.is_some_and(|r| !r.too_small());
-                    if ui
-                        .add_enabled(ready, Button::new(text::START).kind(Kind::Danger).small())
-                        .clicked()
-                    {
+                    let start = Button::new(text::START).kind(Kind::Danger).small();
+                    if ui.add_enabled(ready, start.icon(Icon::Record)).clicked() {
                         action = Some(Action::Start);
                     }
                 });

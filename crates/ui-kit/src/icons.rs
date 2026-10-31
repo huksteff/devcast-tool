@@ -37,10 +37,12 @@ pub enum Icon {
     Plus,
     Minus,
     Right,
+    /// A filled dot: the record mark of red buttons.
+    Record,
 }
 
 impl Icon {
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 27] = [
         Self::Monitor,
         Self::Window,
         Self::Area,
@@ -67,6 +69,7 @@ impl Icon {
         Self::Plus,
         Self::Minus,
         Self::Right,
+        Self::Record,
     ];
 
     /// Draws the icon into `rect` (usually 16 × 16) in `color`.
@@ -190,6 +193,7 @@ impl Pen<'_> {
             }
             Icon::Minus => self.line(&[(5.0, 12.0), (19.0, 12.0)]),
             Icon::Right => self.line(&[(9.0, 6.0), (15.0, 12.0), (9.0, 18.0)]),
+            Icon::Record => self.dot(12.0, 12.0, 8.0),
         }
     }
 

@@ -15,6 +15,9 @@ pub struct Toggle<'a> {
 }
 
 impl<'a> Toggle<'a> {
+    /// The size the switch takes, points.
+    pub const SIZE: egui::Vec2 = SIZE;
+
     /// `label` is the accessible name: the visible caption is laid out by the caller.
     pub fn new(on: &'a mut bool, label: &'a str) -> Self {
         Self { on, label }

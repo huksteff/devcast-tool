@@ -55,6 +55,28 @@ impl<'a> Button<'a> {
         self.icon = Some(icon);
         self
     }
+
+    /// The size the button takes, points: to lay out what stands next to it first.
+    pub fn size(&self, ui: &Ui) -> egui::Vec2 {
+        self.layout(ui).0
+    }
+
+    /// Size, side padding, icon width and the laid out text.
+    fn layout(&self, ui: &Ui) -> (egui::Vec2, f32, f32, std::sync::Arc<egui::Galley>) {
+        let (height, padding, size) = if self.small {
+            (CONTROL_S, S2, FS_S)
+        } else {
+            (CONTROL, S3, FS_M)
+        };
+        let galley = ui.painter().layout_no_wrap(
+            self.text.to_owned(),
+            fonts::text(size, Weight::Medium),
+            TEXT,
+        );
+        let icon_width = self.icon.map_or(0.0, |_| ICON + 6.0);
+        let width = galley.size().x + icon_width + 2.0 * padding;
+        (vec2(width, height), padding, icon_width, galley)
+    }
 }
 
 /// Fill, border and text colour of `kind` when hovered or not.
@@ -73,19 +95,8 @@ fn colors(kind: Kind, hovered: bool) -> (Color32, Color32, Color32) {
 
 impl Widget for Button<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let (height, padding, size) = if self.small {
-            (CONTROL_S, S2, FS_S)
-        } else {
-            (CONTROL, S3, FS_M)
-        };
-        let galley = ui.painter().layout_no_wrap(
-            self.text.to_owned(),
-            fonts::text(size, Weight::Medium),
-            TEXT,
-        );
-        let icon_width = self.icon.map_or(0.0, |_| ICON + 6.0);
-        let width = galley.size().x + icon_width + 2.0 * padding;
-        let (rect, response) = ui.allocate_exact_size(vec2(width, height), Sense::click());
+        let (size, padding, icon_width, galley) = self.layout(ui);
+        let (rect, response) = ui.allocate_exact_size(size, Sense::click());
         response
             .widget_info(|| WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), self.text));
         if ui.is_rect_visible(rect) {

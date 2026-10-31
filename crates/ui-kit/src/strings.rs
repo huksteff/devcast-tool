@@ -93,12 +93,21 @@ pub mod picker {
     pub fn last_area(width: u32, height: u32) -> String {
         format!("последняя: {width} × {height}")
     }
+
+    /// Size and DPI scale of a screen: «2560 × 1440 · 150%».
+    pub fn screen_size(width: u32, height: u32, scale: u32) -> String {
+        format!("{width} × {height} · {scale}%")
+    }
 }
 
 /// Selecting an area over the screen.
 pub mod area {
     pub const HINT: &str = "Нажмите и тяните, чтобы выделить область";
-    pub const HINT_KEYS: &str = "Enter — начать, Esc — отмена";
+    /// Key caps of the hint, each followed by what it does.
+    pub const KEY_START: &str = "Enter";
+    pub const KEY_START_HINT: &str = "начать";
+    pub const KEY_CANCEL: &str = "Esc";
+    pub const KEY_CANCEL_HINT: &str = "отмена";
     pub const MOVE: &str = "Перетащите, чтобы сдвинуть";
     pub const FREE: &str = "Свободно";
     pub const WIDE: &str = "16:9";
@@ -149,12 +158,21 @@ pub mod settings {
     pub const MODEL_FAST_HINT: &str = "small · ≈ 480 МБ · по умолчанию";
     pub const MODEL_ACCURATE: &str = "Точная";
     pub const MODEL_ACCURATE_HINT: &str = "large-v3-turbo · ≈ 1,6 ГБ";
+    pub const MODEL_READY: &str = "Скачана";
+    pub const MODEL_MISSING: &str = "Не скачана";
+    pub const DOWNLOAD: &str = "Скачать";
+    pub const DOWNLOADING: &str = "Скачивается…";
     pub const AUTO_UPDATES: &str = "Проверять автоматически";
     pub const AUTO_UPDATES_HINT: &str = "раз в 6 часов";
     pub const BETA: &str = "Бета-версии";
     pub const CHECK_UPDATES: &str = "Проверить обновления";
     pub const MANUAL_UPDATES: &str = "Обновления пока ставятся вручную";
     pub const DEFAULTS_HINT: &str = "Настройки эффектов для новых проектов меняются в редакторе: «Сохранить текущие как по умолчанию».";
+
+    /// «Скачивается… 42 %».
+    pub fn downloading(percent: u32) -> String {
+        format!("{DOWNLOADING} {percent} %")
+    }
 
     /// «Версия 2.0.0».
     pub fn version(version: &str) -> String {
@@ -178,7 +196,7 @@ pub mod hotkeys {
     pub const CHANGE: &str = "Изменить";
     pub const REPLACE: &str = "Заменить";
     pub const CANCEL_CAPTURE: &str = "Отмена";
-    pub const HELP: &str = "Нажмите нужные клавиши. Esc — отмена, Delete — убрать сочетание. Нужен Ctrl, Alt или Win. В русской раскладке работает так же.";
+    pub const HELP: &str = "Нажмите нужные клавиши. Esc — отмена, Delete — убрать сочетание. Нужен Ctrl или Alt. В русской раскладке работает так же.";
 
     /// «Ctrl+Shift+R уже назначено на «Начать / остановить запись»».
     pub fn taken_by(keys: &str, command: &str) -> String {

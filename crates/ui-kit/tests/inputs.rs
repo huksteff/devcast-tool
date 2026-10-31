@@ -3,7 +3,7 @@
 use dc_ui_kit::Icon;
 use dc_ui_kit::tokens::{S3, SURFACE};
 use dc_ui_kit::widgets::{
-    Button, IconButton, Kind, Slider, Toggle, dropdown, segmented, text_field,
+    Button, IconButton, Kind, Slider, Toggle, dropdown, search_field, segmented, text_field,
 };
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -39,6 +39,14 @@ fn buttons() {
             ui.add(Button::new("Удалить запись").kind(Kind::Danger).small());
             ui.add(Button::new("Сбросить все").kind(Kind::Ghost).small());
             ui.add(Button::new("Папка").icon(Icon::Folder));
+        });
+        ui.horizontal(|ui| {
+            ui.add(
+                Button::new("Начать запись")
+                    .kind(Kind::Danger)
+                    .small()
+                    .icon(Icon::Record),
+            );
         });
     });
     harness.get_by_label("Выбрать…").click();
@@ -165,7 +173,7 @@ fn text_field_with_hint() {
     let mut harness = harness(
         (String::new(), r"D:\Видео\DevCast".to_owned()),
         |ui, (search, path): &mut (String, String)| {
-            text_field(ui, search, "Найти команду или сочетание", 280.0);
+            search_field(ui, search, "Найти команду или сочетание", 280.0);
             text_field(ui, path, "Папка записей", 280.0);
         },
     );
