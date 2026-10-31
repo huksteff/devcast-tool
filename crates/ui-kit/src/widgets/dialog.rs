@@ -7,7 +7,7 @@ use egui::{Frame, Key, Layout, Stroke, Ui};
 use crate::fonts::{self, Weight};
 use crate::strings::kit;
 use crate::theme::SHADOW;
-use crate::tokens::{BORDER, FS_M, FS_S, R3, S1, S2, S3, SURFACE, TEXT, TEXT_2};
+use crate::tokens::{BORDER, CONTROL_S, FS_M, FS_S, R3, S1, S2, S3, SURFACE, TEXT, TEXT_2};
 use crate::widgets::{Button, Kind};
 
 /// Frame of popovers and dialogs: surface, border, radius 12, shadow, 12 px inside.
@@ -42,7 +42,7 @@ impl Confirm<'_> {
     pub fn show(&self, ui: &mut Ui) -> Option<Answer> {
         heading(ui, self.title, self.text);
         let mut answer = None;
-        ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+        buttons(ui, |ui| {
             ui.spacing_mut().item_spacing.x = S2;
             if ui
                 .add(Button::new(self.confirm).kind(self.kind).small())
@@ -81,7 +81,7 @@ impl ErrorPanel<'_> {
     pub fn show(&self, ui: &mut Ui) -> Option<ErrorAction> {
         heading(ui, self.title, self.text);
         let mut action = None;
-        ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+        buttons(ui, |ui| {
             ui.spacing_mut().item_spacing.x = S2;
             if ui
                 .add(Button::new(kit::CLOSE).kind(Kind::Primary).small())
@@ -118,4 +118,11 @@ fn heading(ui: &mut Ui, title: &str, text: &str) {
             .color(TEXT_2),
     );
     ui.add_space(S3);
+}
+
+/// The row of small buttons on the right, one button high: a right-to-left layout centred
+/// vertically would take all the height left (a popover lays out in its full height).
+fn buttons(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
+    let size = egui::vec2(ui.available_width(), CONTROL_S);
+    ui.allocate_ui_with_layout(size, Layout::right_to_left(egui::Align::Center), add);
 }
