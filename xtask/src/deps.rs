@@ -15,12 +15,13 @@ enum Layer {
 }
 
 /// Crates of the base layer; they may also depend on each other.
-const BASE: [&str; 10] = [
+const BASE: [&str; 11] = [
     "dc-project",
     "dc-media",
     "dc-audio",
     "dc-render",
     "dc-encode",
+    "dc-models",
     "dc-transcribe",
     "dc-capture",
     "dc-ipc",
@@ -39,6 +40,20 @@ const ANNOTATION_KINDS: [&str; 5] = [
     "dc-fx-drawing",
     "dc-fx-blur",
 ];
+
+/// A crate that must not be built into another one, directly or through any chain of
+/// non-dev dependencies, and why.
+struct NeverLinks {
+    package: &'static str,
+    forbidden: &'static str,
+    why: &'static str,
+}
+
+const NEVER_LINKS: [NeverLinks; 1] = [NeverLinks {
+    package: "dc-app",
+    forbidden: "dc-transcribe",
+    why: "окно программы не тянет whisper и Vulkan (решение 018): распознаёт `devcast --captions-worker`, модели качает dc-models",
+}];
 
 /// Tooling outside the product; not checked.
 const UNCHECKED: [&str; 1] = ["xtask"];
@@ -73,6 +88,7 @@ pub fn check(workspace: &Workspace) -> Outcome {
             }
         }
     }
+    problems.extend(never_linked(workspace));
     if problems.is_empty() {
         Outcome::Pass(String::new())
     } else {
@@ -81,6 +97,41 @@ pub fn check(workspace: &Workspace) -> Outcome {
             problems.join("\n")
         ))
     }
+}
+
+/// The [`NEVER_LINKS`] rules broken: the chain through which the forbidden crate gets in.
+fn never_linked(workspace: &Workspace) -> Vec<String> {
+    let links = |name: &str| -> &[String] {
+        workspace
+            .packages
+            .iter()
+            .find(|p| p.name == name)
+            .map_or(&[], |p| p.links.as_slice())
+    };
+    let mut problems = Vec::new();
+    for rule in &NEVER_LINKS {
+        // Breadth-first walk keeping the chain to each crate reached.
+        let mut chains: Vec<Vec<&str>> = vec![vec![rule.package]];
+        let mut seen = vec![rule.package];
+        let mut next = 0;
+        while let Some(chain) = chains.get(next).cloned() {
+            next += 1;
+            let last = chain.last().copied().unwrap_or(rule.package);
+            if last == rule.forbidden {
+                problems.push(format!("{}: {}", chain.join(" → "), rule.why));
+                break;
+            }
+            for dep in links(last) {
+                if !seen.contains(&dep.as_str()) {
+                    seen.push(dep);
+                    let mut longer = chain.clone();
+                    longer.push(dep);
+                    chains.push(longer);
+                }
+            }
+        }
+    }
+    problems
 }
 
 fn allowed(name: &str, own: Layer, dep: &str) -> Result<(), String> {
@@ -115,6 +166,7 @@ mod tests {
             name: name.to_owned(),
             dir: String::new(),
             deps: deps.iter().map(|d| (*d).to_owned()).collect(),
+            links: deps.iter().map(|d| (*d).to_owned()).collect(),
         };
         check(&Workspace {
             root: "/ws".into(),
@@ -162,5 +214,37 @@ mod tests {
     #[test]
     fn unknown_crate_is_reported() {
         assert!(!passes("dc-new-thing", &[]));
+    }
+
+    #[test]
+    fn the_app_never_links_whisper() {
+        let package = |name: &str, links: &[&str], dev: &[&str]| Package {
+            name: name.to_owned(),
+            dir: String::new(),
+            deps: links.iter().chain(dev).map(|d| (*d).to_owned()).collect(),
+            links: links.iter().map(|d| (*d).to_owned()).collect(),
+        };
+        let workspace = |ops_links: &[&str], app_dev: &[&str]| Workspace {
+            root: "/ws".into(),
+            target: "/ws/target".into(),
+            packages: vec![
+                package("dc-core", &[], &[]),
+                package("dc-models", &[], &[]),
+                package("dc-transcribe", &["dc-models"], &[]),
+                package("dc-ops", ops_links, &[]),
+                package("dc-app", &["dc-ops", "dc-models"], app_dev),
+            ],
+        };
+        assert!(never_linked(&workspace(&["dc-core"], &[])).is_empty());
+        let through_ops = never_linked(&workspace(&["dc-core", "dc-transcribe"], &[]));
+        assert_eq!(through_ops.len(), 1);
+        assert!(
+            through_ops[0].starts_with("dc-app → dc-ops → dc-transcribe:"),
+            "{through_ops:?}"
+        );
+        assert!(
+            never_linked(&workspace(&["dc-core"], &["dc-transcribe"])).is_empty(),
+            "dev dependencies are not built into the exe"
+        );
     }
 }

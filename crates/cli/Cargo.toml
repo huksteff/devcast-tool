@@ -26,6 +26,7 @@ dc-fx-image = { path = "../../fx/image" }
 dc-fx-zoom = { path = "../../fx/zoom" }
 dc-ipc = { path = "../ipc" }
 dc-media = { path = "../media" }
+dc-models = { path = "../models" }
 dc-ops = { path = "../ops" }
 dc-project = { path = "../project" }
 dc-render = { path = "../render" }

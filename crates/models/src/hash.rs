@@ -5,17 +5,17 @@ use std::path::Path;
 
 use sha2::{Digest, Sha256};
 
-use crate::error::{Result, TranscribeError};
+use crate::error::{ModelsError, Result};
 
 /// Lowercase hex SHA-256 of the file, read in chunks: models are up to 1.6 GB.
 pub fn sha256_file(path: &Path) -> Result<String> {
-    let mut file = std::fs::File::open(path).map_err(TranscribeError::io("открыть", path))?;
+    let mut file = std::fs::File::open(path).map_err(ModelsError::io("открыть", path))?;
     let mut hasher = Sha256::new();
     let mut buf = vec![0; 1 << 20];
     loop {
         let read = file
             .read(&mut buf)
-            .map_err(TranscribeError::io("прочитать", path))?;
+            .map_err(ModelsError::io("прочитать", path))?;
         if read == 0 {
             break;
         }

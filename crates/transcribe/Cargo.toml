@@ -1,6 +1,6 @@
 [package]
 name = "dc-transcribe"
-description = "Whisper models, transcription with word timestamps, segmentation into caption cues."
+description = "Whisper transcription with word timestamps, words cache, segmentation into caption cues."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,14 +12,13 @@ workspace = true
 
 [dependencies]
 dc-audio = { path = "../audio" }
+dc-models = { path = "../models" }
 dc-project = { path = "../project" }
 serde.workspace = true
 serde_json.workspace = true
 whisper-rs = { version = "0.16", features = ["vulkan"] }
 num_cpus = "1.17"
-sha2.workspace = true
 thiserror.workspace = true
-ureq.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

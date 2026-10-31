@@ -1266,10 +1266,10 @@ dependencies = [
  "dc-fx-zoom",
  "dc-ipc",
  "dc-media",
+ "dc-models",
  "dc-ops",
  "dc-project",
  "dc-render",
- "dc-transcribe",
  "dc-ui-kit",
  "dirs 6.0.0",
  "eframe",
@@ -1342,6 +1342,7 @@ dependencies = [
  "dc-fx-zoom",
  "dc-ipc",
  "dc-media",
+ "dc-models",
  "dc-ops",
  "dc-project",
  "dc-render",
@@ -1571,6 +1572,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dc-models"
+version = "0.1.0"
+dependencies = [
+ "dc-project",
+ "serde",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.21",
+ "ureq",
+]
+
+[[package]]
 name = "dc-ops"
 version = "0.1.0"
 dependencies = [
@@ -1592,9 +1605,9 @@ dependencies = [
  "dc-fx-text",
  "dc-fx-zoom",
  "dc-media",
+ "dc-models",
  "dc-project",
  "dc-render",
- "dc-transcribe",
  "insta",
  "schemars",
  "serde",
@@ -1637,14 +1650,13 @@ name = "dc-transcribe"
 version = "0.1.0"
 dependencies = [
  "dc-audio",
+ "dc-models",
  "dc-project",
  "num_cpus",
  "serde",
  "serde_json",
- "sha2",
  "tempfile",
  "thiserror 2.0.21",
- "ureq",
  "whisper-rs",
 ]
 

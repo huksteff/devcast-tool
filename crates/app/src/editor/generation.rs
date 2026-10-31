@@ -13,8 +13,8 @@ use dc_ui_kit::strings::captions as text;
 use eframe::egui;
 
 use crate::models::{ModelState, Models};
-use crate::recognition::job::{Job, Spawn, app_worker};
-use crate::recognition::{Message, Request};
+use crate::recognition::job::{Job, Spawn, cli_worker};
+use crate::recognition::{Message, Request, Speech};
 use crate::settings::SpeechModel;
 
 /// The language Whisper listens for.
@@ -102,7 +102,7 @@ impl std::fmt::Debug for Generation {
 impl Default for Generation {
     /// No model folder (nothing is downloaded or ready) and the app's own worker.
     fn default() -> Self {
-        Self::new(Models::new(None), app_worker())
+        Self::new(Models::new(None), cli_worker())
     }
 }
 
@@ -137,9 +137,11 @@ impl Generation {
 
     /// Starts recognizing the project of `request` (the model and the choices are put in).
     pub fn start(&mut self, ctx: &egui::Context, mut request: Request) -> Result<(), String> {
-        request.model = self.model;
-        request.language = self.language.code();
-        request.tracks = self.listen.tracks();
+        request.speech = Speech {
+            model: self.model.model(),
+            language: self.language.code(),
+            tracks: self.listen.tracks(),
+        };
         if self.model_ready() {
             return self.recognize(ctx, &request);
         }
@@ -248,9 +250,11 @@ pub fn start(ctx: &egui::Context, editor: &mut super::EditorWindow) -> Result<()
     let request = Request {
         dir: editor.doc.dir().root().to_path_buf(),
         project: editor.doc.project().clone(),
-        model: editor.captions.model,
-        language: None,
-        tracks: Vec::new(),
+        speech: Speech {
+            model: editor.captions.model.model(),
+            language: None,
+            tracks: Vec::new(),
+        },
     };
     editor.captions.start(ctx, request)
 }

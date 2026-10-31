@@ -6,12 +6,13 @@ use std::rc::Rc;
 
 use dc_core::CommandError;
 use dc_fx_captions::{CaptionsGen, CaptionsImport, export_text, parse_text};
-use dc_ops::captions::{OnProgress, Speech};
+use dc_ops::recognition::Speech;
 use serde_json::json;
 
 use crate::edit::{self, Ctx, answer};
 use crate::error::CliError;
 use crate::run::Answer;
+use crate::speech::OnProgress;
 use crate::transcript::Quality;
 
 #[derive(Debug, Clone, clap::Args)]
@@ -43,7 +44,7 @@ pub(crate) fn generate(ctx: &Ctx<'_>, args: &GenArgs) -> Result<Answer, CliError
     let silent: OnProgress = Rc::new(|_| {});
     let command = {
         let workspace = ctx.open(false)?;
-        dc_ops::captions::generate(workspace.dir(), &workspace.project, &speech, &silent)?
+        crate::speech::generate(workspace.dir(), &workspace.project, &speech, &silent)?
     };
     let mut workspace = ctx.open(true)?;
     edit::apply_commands(ctx, &mut workspace, CaptionsGen::NAME, &[&command])

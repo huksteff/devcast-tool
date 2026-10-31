@@ -3,11 +3,14 @@
 
 use std::path::PathBuf;
 
+use serde::{Deserialize, Serialize};
+
 use crate::error::Result;
 
 const SOURCE: &str = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/";
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Model {
     /// «Быстрая»: 488 MB, usable on CPU.
     Small,

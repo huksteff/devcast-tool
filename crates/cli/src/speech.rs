@@ -1,8 +1,9 @@
 //! Recognized speech of the recordings and the cues `captions gen` puts in place of all cues:
 //! one path for `devcast captions gen`, `devcast transcript` and the editor's «Создать
-//! субтитры» (its recognition process). Not a registry command: Whisper and the sound files
-//! lie outside the project, so the caller recognizes and applies [`CaptionsGen`] with the cues.
-//! Each recording is recognized whole once and kept in `cache/` (`dc_transcribe` cache).
+//! субтитры» (it starts `devcast --captions-worker`, `worker.rs`). Not a registry command:
+//! Whisper and the sound files lie outside the project, so the caller recognizes and applies
+//! [`CaptionsGen`] with the cues. Each recording is recognized whole once and kept in `cache/`
+//! (`dc_transcribe` cache). Only the CLI links Whisper (docs/decisions/018-recognition-process.md).
 
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
@@ -12,10 +13,10 @@ use dc_audio::{SourceTrack, frame_at, tracks};
 use dc_core::time::Source;
 use dc_core::{CommandError, Project, Range, SourceTime};
 use dc_fx_captions::{CaptionsGen, NewCue, merge_tracks};
+use dc_ops::OpsError;
+use dc_ops::recognition::Speech;
 use dc_project::ProjectDir;
 use dc_transcribe::{Cue, Model, Recognized, Word, cues};
-
-use crate::error::OpsError;
 
 /// The microphone track of a recording: the default track to listen to.
 pub const MIC: &str = "mic";
@@ -27,15 +28,6 @@ pub struct MediaWords {
     pub language: String,
     pub words: Vec<Word>,
     pub first_id: u32,
-}
-
-/// What to recognize: the model, the language (`None` — detected) and the tracks, the first
-/// one wins where speech overlaps (none — `mic`, a recording without it — its first track).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Speech {
-    pub model: Model,
-    pub language: Option<String>,
-    pub tracks: Vec<String>,
 }
 
 /// Gets the share of the recognition done, 0..1.
@@ -164,9 +156,9 @@ fn recognize_track(
     language: Option<&str>,
     share: Share,
 ) -> Result<Recognized, OpsError> {
-    let models = dc_transcribe::models_dir().map_err(failed)?;
-    let path = dc_transcribe::ensure(model, &models, &mut |_| {}, &AtomicBool::new(false))
-        .map_err(failed)?;
+    let models = dc_models::models_dir().map_err(failed)?;
+    let path =
+        dc_models::ensure(model, &models, &mut |_| {}, &AtomicBool::new(false)).map_err(failed)?;
     let samples = dc_transcribe::speech_samples(std::slice::from_ref(track), 0, frame_at(duration))
         .map_err(failed)?;
     dc_transcribe::recognize(&path, model, &samples, language, move |p| {

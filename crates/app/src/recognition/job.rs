@@ -4,21 +4,22 @@
 //! editor takes the messages in its frame.
 
 use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-
 use std::sync::mpsc::{Receiver, Sender, channel};
 
+use dc_ops::recognition::WORKER_ARG;
 use dc_ui_kit::strings::captions as text;
 
-use super::{Message, Request, WORKER_ARG};
+use super::{Message, Request};
 
 /// Starts a worker process with its stdin and stdout piped.
 pub type Spawn = Box<dyn Fn() -> std::io::Result<Child> + Send>;
 
-/// This program with [`WORKER_ARG`]: the worker of the app.
-pub fn app_worker() -> Spawn {
+/// `devcast --captions-worker`: the CLI exe beside this one is the worker of the app.
+pub fn cli_worker() -> Spawn {
     Box::new(|| {
-        Command::new(std::env::current_exe()?)
+        Command::new(beside(&std::env::current_exe()?)?)
             .arg(WORKER_ARG)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -157,5 +158,19 @@ fn listen(output: impl BufRead, sender: &Sender<Message>, wake: &dyn Fn()) {
         .is_ok()
     {
         wake();
+    }
+}
+
+/// The CLI exe `devcast` in the folder of `exe`: the installer ships them side by side, and
+/// cargo builds them into the same `target/<profile>` (docs/decisions/018-recognition-process.md).
+pub fn beside(exe: &Path) -> std::io::Result<PathBuf> {
+    let path = exe.with_file_name(format!("devcast{}", std::env::consts::EXE_SUFFIX));
+    if path.is_file() {
+        Ok(path)
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            text::no_worker(&path),
+        ))
     }
 }

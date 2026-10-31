@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::error::{Result, TranscribeError};
+use crate::error::{ModelsError, Result};
 use crate::hash::sha256_file;
 use crate::model::Model;
 
@@ -28,11 +28,11 @@ pub fn ensure(
     let path = dir.join(model.file_name());
     if path
         .try_exists()
-        .map_err(TranscribeError::io("проверить", &path))?
+        .map_err(ModelsError::io("проверить", &path))?
     {
         return Ok(path);
     }
-    std::fs::create_dir_all(dir).map_err(TranscribeError::io("создать папку", dir))?;
+    std::fs::create_dir_all(dir).map_err(ModelsError::io("создать папку", dir))?;
     download(&model.url(), model.sha256(), &path, on_progress, cancel)?;
     Ok(path)
 }
@@ -50,14 +50,14 @@ pub fn download(
     fetch(url, &part, on_progress, cancel)?;
     let actual = sha256_file(&part)?;
     if actual != sha256 {
-        std::fs::remove_file(&part).map_err(TranscribeError::io("удалить", &part))?;
-        return Err(TranscribeError::HashMismatch {
+        std::fs::remove_file(&part).map_err(ModelsError::io("удалить", &part))?;
+        return Err(ModelsError::HashMismatch {
             path: dest.to_path_buf(),
             expected: sha256.to_owned(),
             actual,
         });
     }
-    std::fs::rename(&part, dest).map_err(TranscribeError::io("переименовать", &part))
+    std::fs::rename(&part, dest).map_err(ModelsError::io("переименовать", &part))
 }
 
 fn part_path(dest: &Path) -> PathBuf {
@@ -77,7 +77,7 @@ fn fetch(
     let offset = match std::fs::metadata(part) {
         Ok(meta) => meta.len(),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => 0,
-        Err(e) => return Err(TranscribeError::io("проверить", part)(e)),
+        Err(e) => return Err(ModelsError::io("проверить", part)(e)),
     };
     let agent = ureq::Agent::config_builder()
         .http_status_as_error(false)
@@ -100,7 +100,7 @@ fn fetch(
             match parse_content_range(content_range) {
                 Some((start, total)) if start == offset => (start, total),
                 _ => {
-                    return Err(TranscribeError::BadRange {
+                    return Err(ModelsError::BadRange {
                         url: url.to_owned(),
                         expected: offset,
                         content_range: content_range.to_owned(),
@@ -111,7 +111,7 @@ fn fetch(
         }
         416 => return Ok(()),
         status => {
-            return Err(TranscribeError::Status {
+            return Err(ModelsError::Status {
                 url: url.to_owned(),
                 status,
             });
@@ -122,12 +122,12 @@ fn fetch(
     } else {
         OpenOptions::new().append(true).open(part)
     }
-    .map_err(TranscribeError::io("открыть", part))?;
+    .map_err(ModelsError::io("открыть", part))?;
     let mut body = response.into_body().into_reader();
     copy(&mut body, &mut file, start, total, on_progress, cancel)
         .map_err(|e| e.with_paths(url, part))?;
     file.sync_all()
-        .map_err(TranscribeError::io("сбросить на диск", part))
+        .map_err(ModelsError::io("сбросить на диск", part))
 }
 
 enum CopyError {
@@ -137,11 +137,11 @@ enum CopyError {
 }
 
 impl CopyError {
-    fn with_paths(self, url: &str, part: &Path) -> TranscribeError {
+    fn with_paths(self, url: &str, part: &Path) -> ModelsError {
         match self {
             Self::Read(source) => network(url, source),
-            Self::Write(source) => TranscribeError::io("записать", part)(source),
-            Self::Cancelled => TranscribeError::Cancelled,
+            Self::Write(source) => ModelsError::io("записать", part)(source),
+            Self::Cancelled => ModelsError::Cancelled,
         }
     }
 }
@@ -178,8 +178,8 @@ fn parse_content_range(value: &str) -> Option<(u64, Option<u64>)> {
     Some((start, total.parse().ok()))
 }
 
-fn network(url: &str, source: std::io::Error) -> TranscribeError {
-    TranscribeError::Network {
+fn network(url: &str, source: std::io::Error) -> ModelsError {
+    ModelsError::Network {
         url: url.to_owned(),
         source,
     }

@@ -95,7 +95,7 @@ fn search(
             continue;
         };
         if !chosen.contains_key(&segment.media) {
-            let track = dc_ops::captions::pick(
+            let track = crate::speech::pick(
                 tracks(dir, &clip.media).map_err(failed)?,
                 query.track.as_ref(),
                 &segment.media,

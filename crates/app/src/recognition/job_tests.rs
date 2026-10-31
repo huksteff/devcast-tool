@@ -7,8 +7,8 @@ use dc_core::{Project, Range, SourceTime};
 use dc_fx_captions::{NewCue, Word};
 use dc_ui_kit::strings::captions as text;
 
-use super::job::{Job, Spawn};
-use super::{Message, Request};
+use super::job::{Job, Spawn, beside};
+use super::{Message, Request, Speech};
 use crate::settings::SpeechModel;
 
 /// A cue of one word said from `start` to `end` seconds of `media/screen.mp4`.
@@ -68,29 +68,16 @@ fn request() -> Request {
     Request {
         dir: "Демо-запись.dcproj".into(),
         project: Project::default(),
-        model: SpeechModel::Fast,
-        language: None,
-        tracks: Vec::new(),
+        speech: Speech {
+            model: SpeechModel::Fast.model(),
+            language: None,
+            tracks: Vec::new(),
+        },
     }
 }
 
 fn run(spawn: &Spawn) -> Job {
     Job::start(spawn().unwrap(), &request(), || {}).unwrap()
-}
-
-#[test]
-fn lines_of_the_messages_read_back() {
-    let messages = [
-        Message::Progress(0.25),
-        Message::Cues(vec![cue("Привет", 1.0, 2.0)]),
-        Message::Failed("нет звука".to_owned()),
-    ];
-    for message in messages {
-        assert_eq!(Message::parse(&message.line()), Some(message));
-    }
-    let broken = Message::Failed("первая\nвторая".to_owned()).line();
-    assert_eq!(broken.lines().count(), 1, "one line however long the text");
-    assert_eq!(Message::parse("что-то ещё"), None);
 }
 
 #[test]
@@ -128,30 +115,16 @@ fn cancel_kills_the_worker() {
     assert!(!status.success(), "killed, not finished: {status}");
 }
 
-/// The worker's own path on a copy of the speech fixture: real Whisper, so it needs the fast
-/// model in `%APPDATA%\DevCast\models` (the settings download it) —
-/// `cargo nextest run -p dc-app --run-ignored only worker_recognizes`.
 #[test]
-#[ignore = "real Whisper and the fast model on disk"]
-fn the_worker_recognizes_the_speech_fixture() {
-    let fixture = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../fixtures/recordings/speech.dcproj");
-    let source = dc_project::ProjectDir::open(fixture).unwrap();
-    let project = source.load().unwrap();
-    let temp = tempfile::tempdir().unwrap();
-    let dir = source
-        .save_as(&project, temp.path().join("речь для субтитров.dcproj"))
+fn the_worker_is_the_cli_beside_the_app() {
+    let temp = tempfile::Builder::new()
+        .prefix("Программа DevCast ")
+        .tempdir()
         .unwrap();
-    let request = Request {
-        dir: dir.root().to_path_buf(),
-        project: project.clone(),
-        ..request()
-    };
-    let cues = super::worker::recognize(&request).unwrap();
-    assert!(!cues.is_empty());
-    let mut project = project;
-    let command = dc_fx_captions::CaptionsGen { cues };
-    let mut history = dc_core::History::default();
-    let name = dc_fx_captions::CaptionsGen::NAME;
-    dc_ops::apply_commands(&mut project, &mut history, name, &[&command], false).unwrap();
+    let app = temp.path().join("devcast-app.exe");
+    let missing = beside(&app).unwrap_err();
+    assert_eq!(missing.kind(), std::io::ErrorKind::NotFound);
+    assert!(missing.to_string().contains("devcast.exe"), "{missing}");
+    std::fs::write(temp.path().join("devcast.exe"), b"").unwrap();
+    assert_eq!(beside(&app).unwrap(), temp.path().join("devcast.exe"));
 }

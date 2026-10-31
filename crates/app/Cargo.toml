@@ -30,10 +30,10 @@ dc-fx-keys = { path = "../../fx/keys" }
 dc-fx-zoom = { path = "../../fx/zoom" }
 dc-ipc = { path = "../ipc" }
 dc-media = { path = "../media" }
+dc-models = { path = "../models" }
 dc-ops = { path = "../ops" }
 dc-project = { path = "../project" }
 dc-render = { path = "../render" }
-dc-transcribe = { path = "../transcribe" }
 dc-ui-kit = { path = "../ui-kit" }
 dirs = "6"
 global-hotkey = "0.9"

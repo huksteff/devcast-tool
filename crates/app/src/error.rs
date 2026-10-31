@@ -32,7 +32,7 @@ pub enum AppError {
     #[error("не удалось создать значок в трее: {0}. Перезапусти программу")]
     Tray(String),
     #[error(transparent)]
-    Model(#[from] dc_transcribe::TranscribeError),
+    Model(#[from] dc_models::ModelsError),
     #[error("не удалось открыть окно: {0}. Обнови драйвер видеокарты")]
     Window(String),
     #[error("файл настроек {path} испорчен ({message}): удали его, DevCast создаст новый")]

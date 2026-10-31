@@ -26,7 +26,7 @@ impl Shared {
                 }
                 editor.captions = super::generation::Generation::new(
                     crate::models::Models::of_app(),
-                    crate::recognition::job::app_worker(),
+                    crate::recognition::job::cli_worker(),
                 );
                 if let Some(gpu) = self.gpu.clone() {
                     let started = editor.start_preview(gpu, self.ctx.clone());

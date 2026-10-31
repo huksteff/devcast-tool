@@ -60,7 +60,7 @@ fn resumes_after_dropped_connection() {
     let (_dir, dest) = dest();
     let cancel = AtomicBool::new(false);
     let err = go(&server, &sha(&data), &dest, &cancel).unwrap_err();
-    assert!(matches!(err, TranscribeError::Network { .. }), "{err}");
+    assert!(matches!(err, ModelsError::Network { .. }), "{err}");
     assert!(!dest.exists());
     let kept = std::fs::metadata(part_path(&dest)).unwrap().len();
     assert!(kept > 0 && kept <= 100_000, "{kept}");
@@ -79,7 +79,7 @@ fn wrong_hash_deletes_part_and_starts_over() {
     let (_dir, dest) = dest();
     let cancel = AtomicBool::new(false);
     let err = go(&server, &sha(b"other file"), &dest, &cancel).unwrap_err();
-    assert!(matches!(err, TranscribeError::HashMismatch { .. }), "{err}");
+    assert!(matches!(err, ModelsError::HashMismatch { .. }), "{err}");
     assert!(!dest.exists());
     assert!(!part_path(&dest).exists());
 
@@ -95,7 +95,7 @@ fn foreign_part_is_rejected_by_hash() {
     std::fs::write(part_path(&dest), vec![7; SIZE]).unwrap();
     let cancel = AtomicBool::new(false);
     let err = go(&server, &sha(&data), &dest, &cancel).unwrap_err();
-    assert!(matches!(err, TranscribeError::HashMismatch { .. }), "{err}");
+    assert!(matches!(err, ModelsError::HashMismatch { .. }), "{err}");
     assert!(!part_path(&dest).exists());
 
     go(&server, &sha(&data), &dest, &cancel).unwrap();
@@ -126,7 +126,7 @@ fn cancel_keeps_part_for_resume() {
         }
     };
     let err = download(&server.url, &sha(&data), &dest, &mut on_progress, &cancel).unwrap_err();
-    assert!(matches!(err, TranscribeError::Cancelled), "{err}");
+    assert!(matches!(err, ModelsError::Cancelled), "{err}");
     assert!(!dest.exists());
     let kept = std::fs::metadata(part_path(&dest)).unwrap().len();
     assert!(kept > 0 && kept < SIZE as u64, "{kept}");

@@ -1,5 +1,5 @@
 //! Whisper models of the settings (mockup 5c): which ones are on disk and the download with
-//! progress in the model's card. The download runs on a worker thread (`dc_transcribe::ensure`:
+//! progress in the model's card. The download runs on a worker thread (`dc_models::ensure`:
 //! resumable, SHA-256 checked) and wakes the main window; closing the window cancels it, and the
 //! `.part` file continues next time.
 
@@ -23,7 +23,7 @@ pub enum ModelState {
 
 enum Message {
     Progress(f32),
-    Done(Result<(), dc_transcribe::TranscribeError>),
+    Done(Result<(), dc_models::ModelsError>),
 }
 
 struct Download {
@@ -57,7 +57,7 @@ impl Models {
 
     /// The folder of the app, `%APPDATA%\DevCast\models`.
     pub fn of_app() -> Self {
-        match dc_transcribe::models_dir() {
+        match dc_models::models_dir() {
             Ok(dir) => Self::new(Some(dir)),
             Err(error) => {
                 tracing::warn!("папка моделей неизвестна, «Скачать» не показан: {error}");
@@ -160,7 +160,7 @@ fn fetch(
         }
     };
     let mut last = None;
-    let mut on_progress = |progress: dc_transcribe::Progress| {
+    let mut on_progress = |progress: dc_models::Progress| {
         let Some(total) = progress.total.filter(|t| *t > 0) else {
             return;
         };
@@ -170,8 +170,8 @@ fn fetch(
             tell(Message::Progress(percent as f32 / 100.0));
         }
     };
-    let outcome = dc_transcribe::ensure(model.model(), dir, &mut on_progress, cancel).map(|_| ());
-    if !matches!(outcome, Err(dc_transcribe::TranscribeError::Cancelled)) {
+    let outcome = dc_models::ensure(model.model(), dir, &mut on_progress, cancel).map(|_| ());
+    if !matches!(outcome, Err(dc_models::ModelsError::Cancelled)) {
         tell(Message::Done(outcome));
     }
 }

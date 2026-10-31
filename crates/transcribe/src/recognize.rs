@@ -9,8 +9,8 @@ use whisper_rs::{
 };
 
 use crate::error::{Result, TranscribeError};
-use crate::model::Model;
 use crate::words::{Segment, Token, Word, words};
+use dc_models::Model;
 
 /// Sample rate Whisper takes.
 pub const WHISPER_RATE: u32 = 16_000;

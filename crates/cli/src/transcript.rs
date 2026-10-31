@@ -1,6 +1,6 @@
 //! `devcast transcript [--words] [--from --to] [--model fast|accurate] [--language ru]`: what
 //! is said, on the output timeline. Each recording is recognized once (whole, in source time)
-//! and kept in `cache/` (`dc_ops::captions`, shared with `captions gen` and the editor); words
+//! and kept in `cache/` (`speech.rs`, shared with `captions gen` and the editor); words
 //! get ids `w1, w2, …` in the order of the recordings' first clips and of time inside a
 //! recording, so cutting does not renumber them. Words in cut-out parts are not shown, only
 //! counted.
@@ -9,7 +9,6 @@ use std::rc::Rc;
 
 use dc_audio::silence;
 use dc_core::{OutputTime, SourceTime, TimeMap};
-use dc_ops::captions::{MediaWords, OnProgress, media_cues, project_words};
 use dc_transcribe::{Model, Word};
 use serde_json::json;
 
@@ -18,6 +17,7 @@ use crate::error::CliError;
 use crate::ls::time;
 use crate::round::thousandths;
 use crate::run::Answer;
+use crate::speech::{MediaWords, OnProgress, media_cues, project_words};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum Quality {

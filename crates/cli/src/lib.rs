@@ -31,10 +31,12 @@ mod scene;
 mod silences;
 mod skill;
 mod sources;
+mod speech;
 mod still;
 mod style;
 mod telemetry;
 mod transcript;
+pub mod worker;
 pub mod workspace;
 
 #[cfg(test)]

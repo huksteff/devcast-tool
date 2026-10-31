@@ -92,6 +92,7 @@ mod tests {
             name: name.to_owned(),
             dir: dir.to_owned(),
             deps: deps.iter().map(|d| (*d).to_owned()).collect(),
+            links: deps.iter().map(|d| (*d).to_owned()).collect(),
         };
         Workspace {
             root: "/ws".into(),

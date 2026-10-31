@@ -94,6 +94,14 @@ pub fn failed_start(error: &dyn std::fmt::Display) -> String {
     format!("не удалось запустить распознавание: {error}. Перезапусти программу")
 }
 
+/// The CLI exe that recognizes is not beside the app (`devcast --captions-worker`).
+pub fn no_worker(path: &std::path::Path) -> String {
+    format!(
+        "нет «{}»: распознавание идёт в этой программе, переустанови DevCast",
+        path.display()
+    )
+}
+
 /// «0:09.00 Открываем страницу логина»: the accessible name of a line of the cue list (the
 /// region of the cue on the timeline is named by its text alone).
 pub fn cue_line(at: &str, said: &str) -> String {

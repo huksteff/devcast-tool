@@ -50,12 +50,6 @@ pub fn run() -> Result<(), AppError> {
     {
         return crash::serve(std::path::Path::new(socket), dir.into());
     }
-    if let [_, flag] = args.as_slice()
-        && flag == recognition::WORKER_ARG
-    {
-        recognition::worker::serve();
-        return Ok(());
-    }
     let settings = dc_project::settings::dir()?;
     let _log = logging::init(&settings.join(logging::FOLDER))?;
     let _crash = crash::install(&settings)

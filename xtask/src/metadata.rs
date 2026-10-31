@@ -12,6 +12,8 @@ pub struct Package {
     pub dir: String,
     /// Names of other workspace packages this one depends on (any dependency kind).
     pub deps: Vec<String>,
+    /// Those of [`Self::deps`] that are built into the package (normal and build, not dev).
+    pub links: Vec<String>,
 }
 
 pub struct Workspace {
@@ -38,6 +40,8 @@ struct RawPackage {
 #[derive(Deserialize)]
 struct RawDependency {
     name: String,
+    /// `null` for normal, `"dev"` or `"build"`.
+    kind: Option<String>,
 }
 
 impl Workspace {
@@ -61,15 +65,22 @@ impl Workspace {
         let packages = raw
             .packages
             .into_iter()
-            .map(|package| Package {
-                dir: relative_dir(&raw.workspace_root, &package.manifest_path),
-                deps: package
+            .map(|package| {
+                let ours: Vec<RawDependency> = package
                     .dependencies
                     .into_iter()
-                    .map(|dep| dep.name)
-                    .filter(|dep| names.contains(dep))
-                    .collect(),
-                name: package.name,
+                    .filter(|dep| names.contains(&dep.name))
+                    .collect();
+                Package {
+                    dir: relative_dir(&raw.workspace_root, &package.manifest_path),
+                    links: ours
+                        .iter()
+                        .filter(|dep| dep.kind.as_deref() != Some("dev"))
+                        .map(|dep| dep.name.clone())
+                        .collect(),
+                    deps: ours.into_iter().map(|dep| dep.name).collect(),
+                    name: package.name,
+                }
             })
             .collect();
         Self {
@@ -96,7 +107,9 @@ mod tests {
             r#"{"workspace_root": "/ws", "target_directory": "/ws/target", "packages": [
                 {"name": "dc-core", "manifest_path": "/ws/crates/core/Cargo.toml", "dependencies": []},
                 {"name": "dc-ops", "manifest_path": "/ws/crates/ops/Cargo.toml",
-                 "dependencies": [{"name": "dc-core"}, {"name": "serde"}]}
+                 "dependencies": [{"name": "dc-core", "kind": null}, {"name": "serde", "kind": null},
+                    {"name": "dc-media", "kind": "dev"}]},
+                {"name": "dc-media", "manifest_path": "/ws/crates/media/Cargo.toml", "dependencies": []}
             ]}"#,
         )
         .unwrap();
@@ -107,6 +120,11 @@ mod tests {
             .find(|p| p.name == "dc-ops")
             .unwrap();
         assert_eq!(ops.dir, "crates/ops");
-        assert_eq!(ops.deps, vec!["dc-core".to_owned()]);
+        assert_eq!(ops.deps, vec!["dc-core".to_owned(), "dc-media".to_owned()]);
+        assert_eq!(
+            ops.links,
+            vec!["dc-core".to_owned()],
+            "dev dependencies are not built in"
+        );
     }
 }

@@ -9,8 +9,8 @@ use dc_project::{FileStamp, ProjectDir, atomic};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Result, TranscribeError};
-use crate::model::Model;
 use crate::recognize::Recognized;
+use dc_models::Model;
 
 /// What the words were recognized from.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -70,10 +70,10 @@ impl SpeechModel {
     pub const ALL: [Self; 2] = [Self::Fast, Self::Accurate];
 
     /// The Whisper model file behind the choice.
-    pub const fn model(self) -> dc_transcribe::Model {
+    pub const fn model(self) -> dc_models::Model {
         match self {
-            Self::Fast => dc_transcribe::Model::Small,
-            Self::Accurate => dc_transcribe::Model::LargeV3Turbo,
+            Self::Fast => dc_models::Model::Small,
+            Self::Accurate => dc_models::Model::LargeV3Turbo,
         }
     }
 }

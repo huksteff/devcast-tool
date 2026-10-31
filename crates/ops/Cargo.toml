@@ -25,9 +25,9 @@ dc-fx-keys = { path = "../../fx/keys" }
 dc-fx-shape = { path = "../../fx/shape" }
 dc-fx-text = { path = "../../fx/text" }
 dc-fx-zoom = { path = "../../fx/zoom" }
+dc-models = { path = "../models" }
 dc-project = { path = "../project" }
 dc-render = { path = "../render" }
-dc-transcribe = { path = "../transcribe" }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
