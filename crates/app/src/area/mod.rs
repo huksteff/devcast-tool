@@ -97,6 +97,32 @@ fn local(monitor: &MonitorInfo, area: Area) -> Option<Rect> {
 }
 
 /// A window per monitor while the session is open.
+/// Steps of opening the area selection after the picker asked for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AreaAsk {
+    /// The picker is closed in this frame of the main window; its window goes at the frame end.
+    PickerClosing,
+    /// The picker's window is gone: the selection opens in this frame.
+    PickerGone,
+}
+
+/// Opens the asked area selection once the picker's window is gone; a main-window frame.
+pub fn open_asked(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
+    let mut shared = lock(shared);
+    match shared.area_asked {
+        Some(AreaAsk::PickerClosing) => {
+            shared.area_asked = Some(AreaAsk::PickerGone);
+            ctx.request_repaint_of(egui::ViewportId::ROOT);
+        }
+        Some(AreaAsk::PickerGone) => {
+            shared.area_asked = None;
+            let session = AreaSession::open(&mut shared);
+            shared.area = Some(session);
+        }
+        None => {}
+    }
+}
+
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
     let monitors: Vec<MonitorInfo> = match &lock(shared).area {

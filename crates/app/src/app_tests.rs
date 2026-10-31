@@ -38,6 +38,9 @@ fn bar() -> Option<egui::Rect> {
 fn input(viewport: egui::ViewportId) -> egui::RawInput {
     let mut input = egui::RawInput {
         viewport_id: viewport,
+        // As a real GPU gives (8192 and more); the default 2048 is smaller than a monitor's
+        // still frame of the area selection.
+        max_texture_side: Some(8192),
         ..Default::default()
     };
     input
@@ -132,4 +135,28 @@ fn clear_color_is_the_surface_token_as_bytes() {
         [0x18, 0x1a, 0x1f, 0xff],
         "the HUD background is surface #181a1f"
     );
+}
+
+/// The picker's window ends at the end of the frame that closes it. The area selection opened in
+/// that same frame lost the keyboard focus to that end (Esc and Enter did nothing until a click)
+/// and caught the picker in its still frame; it opens a frame later.
+#[test]
+fn area_selection_opens_after_the_picker_window_is_gone() {
+    let dir = tempfile::tempdir().unwrap();
+    let ctx = context();
+    let shared = shared(&ctx, &dir);
+    lock(&shared).area_asked = Some(crate::area::AreaAsk::PickerClosing);
+    pass(&ctx, &shared, egui::ViewportId::ROOT);
+    assert_eq!(
+        lock(&shared).area_asked,
+        Some(crate::area::AreaAsk::PickerGone)
+    );
+    assert!(
+        lock(&shared).area.is_none(),
+        "not in the picker's last frame"
+    );
+    pass(&ctx, &shared, egui::ViewportId::ROOT);
+    let shared = lock(&shared);
+    assert!(shared.area_asked.is_none());
+    assert!(shared.area.is_some());
 }

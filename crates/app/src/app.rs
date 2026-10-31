@@ -38,6 +38,10 @@ pub struct Shared {
     pub previews: Option<picker::Previews>,
     /// Open area selection.
     pub area: Option<crate::area::AreaSession>,
+    /// The picker asked for the area selection. It opens two main-window frames later, once the
+    /// picker's window is gone: otherwise its pixels get into the still frame and its end
+    /// takes the keyboard focus away from the new windows.
+    pub area_asked: Option<crate::area::AreaAsk>,
     /// Microphone names, read when the sound popover or the settings window opens.
     pub microphones: Vec<String>,
     pub meters: Meters,
@@ -89,6 +93,7 @@ impl Shared {
             popover: None,
             previews: None,
             area: None,
+            area_asked: None,
             microphones: Vec::new(),
             meters: Meters::default(),
             session: Session::Idle,
@@ -316,6 +321,7 @@ impl eframe::App for App {
 /// on Vulkan also crashed when it was destroyed. The main window passes the repaint on to the
 /// popover and the settings, which exist for sure while it shows them.
 pub fn show_windows(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, bar: Option<egui::Rect>) {
+    crate::area::open_asked(ctx, shared);
     let (open, area, settings) = {
         let shared = lock(shared);
         (

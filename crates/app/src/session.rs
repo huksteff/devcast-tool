@@ -137,6 +137,7 @@ impl Shared {
         self.previews = None;
         self.settings = None;
         self.area = None;
+        self.area_asked = None;
         let seconds = self.store.get().countdown.seconds();
         self.session = if seconds == 0 {
             Session::Launch
