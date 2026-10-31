@@ -64,7 +64,13 @@ impl EditorWindow {
             .collect();
         Self::of(
             recorded.dir.root().to_path_buf(),
-            recorded.dir.name().to_owned(),
+            // The folder is `name.dcproj`; the header shows the extension apart.
+            std::path::Path::new(recorded.dir.name())
+                .file_stem()
+                .map_or_else(
+                    || recorded.dir.name().to_owned(),
+                    |s| s.to_string_lossy().into_owned(),
+                ),
             recorded.project.clone(),
             recorded.dir.has_unsaved_changes(),
             sound,
