@@ -84,12 +84,7 @@ impl SettingsWindow {
         egui::Panel::left("settings-nav")
             .exact_size(NAV)
             .resizable(false)
-            .frame(
-                egui::Frame::new()
-                    .fill(BG)
-                    .inner_margin(S2)
-                    .stroke(Stroke::new(1.0, BORDER)),
-            )
+            .frame(egui::Frame::new().fill(BG).inner_margin(S2))
             .show(ui, |ui| self.nav(ui));
         let page = egui::CentralPanel::default()
             .frame(egui::Frame::new().inner_margin(egui::Margin::symmetric(S5 as i8, S4 as i8)))
