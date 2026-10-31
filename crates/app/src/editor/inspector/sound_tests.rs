@@ -43,6 +43,8 @@ fn switch_nth(harness: &mut H, label: &str, nth: usize) {
 #[test]
 fn sound_tab_edits_are_audio_channel() {
     let mut harness = sound_tab();
+    let denoise = harness.get_all_by_role_and_label(egui::Role::Switch, text::DENOISE);
+    assert_eq!(denoise.count(), 1, "only the microphone is denoised");
     type_nth(&mut harness, text::VOLUME, 0, 80.0);
     switch_nth(&mut harness, text::NORMALIZE, 0);
     switch_nth(&mut harness, text::DENOISE, 0);

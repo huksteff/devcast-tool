@@ -210,3 +210,37 @@ fn undo_redo_and_the_project_file_keep_the_levels() {
             .contains_key("mic")
     );
 }
+
+#[test]
+fn only_the_microphone_is_denoised() {
+    let mut p = project();
+    for (track, clip) in [
+        ("system", None),
+        ("system", Some("c1")),
+        ("audio-1", Some("c3")),
+    ] {
+        let args = json!({"channel": track, "clip": clip, "denoise": true});
+        let error = channel(args).apply(&mut p).unwrap_err().to_string();
+        assert!(error.contains("только у микрофона"), "{track}: {error}");
+    }
+    let off = json!({"channel": "system", "denoise": false});
+    assert!(channel(off).apply(&mut p).is_ok(), "turning it off is fine");
+}
+
+#[test]
+fn an_older_project_with_system_denoise_plays_without_it() {
+    let mut p = project();
+    let mut state = p.state::<Audio>().unwrap();
+    let on = dc_core::ChannelLevels {
+        denoise: Some(true),
+        ..Default::default()
+    };
+    state
+        .settings
+        .channels
+        .insert("system".to_owned(), on.clone());
+    state.settings.channels.insert("mic".to_owned(), on);
+    p.set_state::<Audio>(&state).unwrap();
+    assert!(!level(&p, 1, "system").unwrap().denoise);
+    assert!(level(&p, 1, "mic").unwrap().denoise);
+}

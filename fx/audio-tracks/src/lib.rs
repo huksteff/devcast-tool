@@ -10,7 +10,7 @@ mod clips;
 mod model;
 mod sound;
 
-pub use channel::{AudioChannel, AudioMute, AudioReset};
+pub use channel::{AudioChannel, AudioMute, AudioReset, DENOISED};
 pub use clips::{AudioAdd, AudioPaste, AudioRm, AudioSet};
 pub use model::{
     AUDIO_DIR, Audio, AudioClip, AudioId, AudioKind, AudioSettings, AudioState, MIN_LENGTH,

@@ -11,6 +11,9 @@ use serde::Deserialize;
 
 use crate::model::Audio;
 
+/// The only sound track whose noise is suppressed: the microphone of a recording.
+pub const DENOISED: &str = "mic";
+
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AudioChannel {
@@ -27,7 +30,8 @@ pub struct AudioChannel {
     pub mute: Option<bool>,
     /// Bring to −16 LUFS (EBU R128) before the volume and gain.
     pub normalize: Option<bool>,
-    /// Suppress noise (RNNoise) while mixing; the recording is not changed.
+    /// Suppress noise (RNNoise) while mixing; only the microphone (`mic`), the recording is
+    /// not changed.
     pub denoise: Option<bool>,
 }
 
@@ -38,6 +42,7 @@ impl Command for AudioChannel {
 
     fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
         check_name(&self.channel)?;
+        check_denoise(&self.channel, self.denoise)?;
         let change = ChannelLevels {
             volume: self.volume,
             gain: self.gain,
@@ -79,7 +84,7 @@ impl Command for AudioChannel {
 
 impl Op for AudioChannel {
     const NAME: &'static str = "audio channel";
-    const ABOUT: &'static str = "Уровень дорожки записи (system, mic): громкость, усиление, mute, нормализация, шумоподавление; по умолчанию или у клипа --clip";
+    const ABOUT: &'static str = "Уровень дорожки записи (system, mic): громкость, усиление, mute, нормализация, шумоподавление (только mic); по умолчанию или у клипа --clip";
     const EXAMPLE: &'static str = "audio channel mic --volume 80 --normalize --denoise";
     const POSITIONAL: &'static [&'static str] = &["channel"];
 }
@@ -169,6 +174,17 @@ fn check_name(name: &str) -> Result<(), CommandError> {
     }
     Err(CommandError::new(format!(
         "нет дорожки звука «{name}»: у записи — system и mic, у импортированного видео — audio-1, audio-2 …"
+    )))
+}
+
+/// Noise is suppressed only on the microphone (owner's decision 2026-10-31): turning it on
+/// elsewhere is refused, turning it off is allowed (older projects may have it on).
+fn check_denoise(name: &str, denoise: Option<bool>) -> Result<(), CommandError> {
+    if denoise != Some(true) || name == DENOISED {
+        return Ok(());
+    }
+    Err(CommandError::new(format!(
+        "шумоподавление есть только у микрофона: включи его у {DENOISED} (audio channel {DENOISED} --denoise), у {name} его нет"
     )))
 }
 

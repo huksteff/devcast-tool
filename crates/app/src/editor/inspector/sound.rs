@@ -1,12 +1,12 @@
 //! «Звук» (mockup 3d): the default levels of the recordings' sound tracks — a group per track the
-//! recordings have (microphone, system): volume, gain, normalization, noise suppression, and the
-//! mute in the group's head. Every edit is `audio channel <track> …` (`devcast audio channel`),
+//! recordings have (microphone, system): volume, gain, normalization, noise suppression (only the
+//! microphone, owner's decision 2026-10-31), and the mute in the group's head. Every edit is `audio channel <track> …` (`devcast audio channel`),
 //! «Сбросить» brings the track to the user's defaults with one such command. A clip with a
 //! level of its own keeps it (decision 000). Extra sound has no track levels: each clip has its
 //! own (`sound_extra.rs`; open question «Звук (5.37)» 2).
 
 use dc_core::ChannelLevels;
-use dc_fx_audio_tracks::Audio;
+use dc_fx_audio_tracks::{Audio, DENOISED};
 use dc_ops::Step;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{inspector as names, sound as text};
@@ -130,7 +130,8 @@ fn track(
     });
 }
 
-/// Volume, gain, normalization and noise suppression of the default of `name`.
+/// Volume, gain, normalization and, for the microphone, noise suppression of the default of
+/// `name`.
 fn level_rows(ui: &mut Ui, cx: &mut Cx<'_>, name: &str, now: &Levels) {
     if let Some(v) = volume(ui, text::VOLUME, now.volume) {
         cx.actions.push(set(name, None, "volume", json!(v)));
@@ -141,7 +142,10 @@ fn level_rows(ui: &mut Ui, cx: &mut Cx<'_>, name: &str, now: &Levels) {
     if let Some(on) = rows::toggle_hint(ui, text::NORMALIZE, now.normalize, text::LUFS) {
         cx.actions.push(set(name, None, "normalize", json!(on)));
     }
-    if let Some(on) = rows::toggle(ui, text::DENOISE, now.denoise) {
+    // Only the microphone is denoised (`audio channel` refuses it elsewhere).
+    if name == DENOISED
+        && let Some(on) = rows::toggle(ui, text::DENOISE, now.denoise)
+    {
         cx.actions.push(set(name, None, "denoise", json!(on)));
     }
 }
@@ -181,14 +185,18 @@ pub fn set(name: &str, clip: Option<dc_core::ClipId>, field: &str, value: Value)
     Action::Apply(vec![Step::new(OP, args)])
 }
 
-/// Every level of the default of `name` as arguments of `audio channel`.
+/// Every level of the default of `name` as arguments of `audio channel` (noise suppression
+/// only for the microphone).
 fn all_args(name: &str, l: &Levels) -> Map<String, Value> {
-    args([
+    let mut all = args([
         ("channel", json!(name)),
         ("volume", json!(l.volume)),
         ("gain", json!(l.gain)),
         ("mute", json!(l.muted)),
         ("normalize", json!(l.normalize)),
-        ("denoise", json!(l.denoise)),
-    ])
+    ]);
+    if name == DENOISED {
+        all.insert("denoise".to_owned(), json!(l.denoise));
+    }
+    all
 }

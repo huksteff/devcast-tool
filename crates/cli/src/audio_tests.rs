@@ -107,3 +107,17 @@ fn levels_follow_defaults_and_a_split_clip_keeps_its_own_in_both_halves() {
     assert_eq!(out.code, 1);
     assert!(out.stderr.contains("от 0 до 100"), "{}", out.stderr);
 }
+
+#[test]
+fn noise_is_suppressed_only_on_the_microphone() {
+    let r = project();
+    let out = r.run("audio channel system --denoise");
+    assert_eq!(out.code, 1, "{}", out.stdout);
+    assert!(
+        out.stderr.contains("только у микрофона") && out.stderr.contains("audio channel mic"),
+        "{}",
+        out.stderr
+    );
+    r.ok("audio channel system --denoise false");
+    r.ok("audio channel mic --clip c1 --denoise");
+}

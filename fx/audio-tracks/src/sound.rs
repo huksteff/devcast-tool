@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use dc_core::{ChannelLevels, ClipId, OutputTime, Project, StateError, TimeDelta};
 
+use crate::DENOISED;
 use crate::model::{Audio, AudioState};
 
 /// One sound track at the level in effect.
@@ -21,13 +22,15 @@ pub struct Level {
 }
 
 impl Level {
-    fn of(levels: &ChannelLevels) -> Self {
+    /// The level of track `name`: noise is suppressed only on the microphone, so an older
+    /// project with it on elsewhere plays without it ([`DENOISED`]).
+    fn of(name: &str, levels: &ChannelLevels) -> Self {
         Self {
             volume: levels.volume.unwrap_or(100.0) / 100.0,
             gain: levels.gain.unwrap_or(1.0),
             muted: levels.muted.unwrap_or(false),
             normalize: levels.normalize.unwrap_or(false),
-            denoise: levels.denoise.unwrap_or(false),
+            denoise: name == DENOISED && levels.denoise.unwrap_or(false),
         }
     }
 }
@@ -104,7 +107,7 @@ fn clip_levels(
         .map(|name| {
             let default = defaults.get(name).cloned().unwrap_or_default();
             let levels = own.get(name).map_or(default.clone(), |o| o.over(&default));
-            (name.clone(), Level::of(&levels))
+            (name.clone(), Level::of(name, &levels))
         })
         .collect()
 }
