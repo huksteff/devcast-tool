@@ -6,8 +6,9 @@
 //! pointer; «↔» fits again), the wheel and the navigation bar scroll, Shift+wheel scales the rows
 //! ×0.5–3 (kept in the settings). The ruler and the playhead move the playhead (`pointer.rs`).
 //! «+ Дорожка ▾» adds an empty annotation or extra sound row; «Подобрать зумы» adds the zooms of the
-//! clicks (`devcast zoom add --at clicks`); the other commands are disabled until their tasks
-//! («Создать субтитры» 7.17, own window 7.26); the magnet makes the blade and the
+//! clicks (`devcast zoom add --at clicks`), «Создать субтитры» recognizes the speech (7.17,
+//! greyed while it runs); the other commands are disabled until their tasks
+//! (own window 7.26); the magnet makes the blade and the
 //! regions stick. The clips row is `clips.rs` (pick, drag to another place, the blade), the
 //! picked range of the ruler `range.rs` (Shift+drag, its menu and speed popover), the effect
 //! regions `regions.rs` with the ghost of quick adding `ghost.rs`, the track headers `heads.rs`
@@ -219,14 +220,14 @@ fn toolbar(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes) {
         if ui.add(suggest).clicked() {
             editor.actions.push(Action::SuggestZooms);
         }
-        ui.add_enabled_ui(false, |ui| {
-            ui.add(
-                Button::new(text::MAKE_CAPTIONS)
-                    .kind(Kind::Ghost)
-                    .small()
-                    .icon(Icon::Captions),
-            );
-        });
+        let idle = editor.captions.phase() == crate::editor::generation::Phase::Idle;
+        let make = Button::new(text::MAKE_CAPTIONS)
+            .kind(Kind::Ghost)
+            .small()
+            .icon(Icon::Captions);
+        if ui.add_enabled(idle, make).clicked() {
+            editor.actions.push(Action::Generate);
+        }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_enabled(false, IconButton::new(Icon::Detach, text::DETACH));
             zoom(ui, editor, lanes);

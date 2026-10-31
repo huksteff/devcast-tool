@@ -204,6 +204,9 @@ pub mod timeline;
 /// The inspector of the editor.
 pub mod inspector;
 
+/// The captions panel of the editor.
+pub mod captions;
+
 /// The settings window.
 pub mod settings {
     pub const TITLE: &str = "Настройки — DevCast";

@@ -5,6 +5,7 @@ mod annotations;
 pub mod apply;
 pub mod argv;
 pub mod autozoom;
+pub mod captions;
 mod devcast;
 pub mod error;
 pub mod evaluate;

@@ -27,6 +27,7 @@ dc-fx-text = { path = "../../fx/text" }
 dc-fx-zoom = { path = "../../fx/zoom" }
 dc-project = { path = "../project" }
 dc-render = { path = "../render" }
+dc-transcribe = { path = "../transcribe" }
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true

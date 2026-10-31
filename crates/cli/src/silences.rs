@@ -16,9 +16,6 @@ use crate::ls::time;
 use crate::round::thousandths;
 use crate::run::Answer;
 
-/// Default track; a media without it (an imported video) uses its first track.
-const MIC: &str = "mic";
-
 #[derive(Debug, Clone, clap::Args)]
 pub(crate) struct Args {
     #[arg(long, default_value_t = 0.5, help = "Самая короткая пауза, секунды")]
@@ -98,7 +95,7 @@ fn search(
             continue;
         };
         if !chosen.contains_key(&segment.media) {
-            let track = pick(
+            let track = dc_ops::captions::pick(
                 tracks(dir, &clip.media).map_err(failed)?,
                 query.track.as_ref(),
                 &segment.media,
@@ -124,38 +121,6 @@ fn search(
         }
     }
     Ok(found)
-}
-
-pub(crate) fn pick(
-    mut available: Vec<SourceTrack>,
-    wanted: Option<&String>,
-    media: &str,
-) -> Result<SourceTrack, CliError> {
-    let names = || {
-        available
-            .iter()
-            .map(|t| t.name.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
-    };
-    let position = match wanted {
-        Some(name) => available.iter().position(|t| &t.name == name),
-        None => available
-            .iter()
-            .position(|t| t.name == MIC)
-            .or((!available.is_empty()).then_some(0)),
-    };
-    match position {
-        Some(index) => Ok(available.swap_remove(index)),
-        None if available.is_empty() => Err(CliError::Failed(format!(
-            "в {media} нет звука: искать тишину не в чем"
-        ))),
-        None => Err(CliError::Usage(format!(
-            "в {media} нет дорожки «{}»; есть: {}",
-            wanted.map_or(MIC, String::as_str),
-            names()
-        ))),
-    }
 }
 
 fn secs(t: OutputTime) -> f64 {

@@ -150,12 +150,11 @@ fn controls_hold_their_state() {
 fn commands_without_a_registry_command_are_disabled() {
     let mut harness = harness(SIZE);
     harness.run();
-    for label in [text::EXPORT, names::MAKE_CAPTIONS] {
-        assert!(
-            harness.get_by_label(label).accesskit_node().is_disabled(),
-            "{label} must wait for its task"
-        );
-    }
+    let export = harness.get_by_label(text::EXPORT);
+    assert!(
+        export.accesskit_node().is_disabled(),
+        "export waits for its task"
+    );
 }
 
 fn ranges(track: &Track) -> Vec<(f64, f64)> {

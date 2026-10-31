@@ -8,10 +8,13 @@ use dc_core::{Command, CommandError, Diff, Project, Range};
 use crate::model::{CaptionsEffect, Cue, Word};
 use crate::retime::range;
 
-/// A recognized cue before it gets an id.
-#[derive(Debug, Clone, PartialEq)]
+/// A recognized cue before it gets an id. JSON too: the editor's recognition process sends
+/// the cues it found this way.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NewCue {
+    /// The recording (`Media.path`).
     pub media: String,
+    /// Source time of the recording.
     pub range: Range<Source>,
     pub words: Vec<Word>,
 }

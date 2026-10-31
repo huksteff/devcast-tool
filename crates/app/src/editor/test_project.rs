@@ -121,14 +121,27 @@ pub(super) fn project() -> Project {
 }
 
 fn captions() -> CaptionsState {
-    let cue = |n, media: &str, start: f64, end: f64, said: &str| Cue {
-        id: Id::from_number(n),
-        media: media.to_owned(),
-        range: source(start, end),
-        words: vec![Word {
-            text: said.to_owned(),
+    // Words share the cue evenly, with a pause of a fifth of a word after each.
+    let cue = |n, media: &str, start: f64, end: f64, said: &str| {
+        let words: Vec<&str> = said.split(' ').collect();
+        let step = (end - start) / words.len() as f64;
+        let words = words
+            .iter()
+            .enumerate()
+            .map(|(i, text)| {
+                let from = start + step * i as f64;
+                Word {
+                    text: (*text).to_owned(),
+                    range: source(from, from + step * 0.8),
+                }
+            })
+            .collect();
+        Cue {
+            id: Id::from_number(n),
+            media: media.to_owned(),
             range: source(start, end),
-        }],
+            words,
+        }
     };
     CaptionsState {
         cues: vec![

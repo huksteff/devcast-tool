@@ -2,19 +2,17 @@
 //! rest (`captions set`, `split`, `merge`, `rm`, `clear`) are ops of the registry.
 
 use std::path::Path;
+use std::rc::Rc;
 
-use dc_core::time::Source;
-use dc_core::{CommandError, Range, SourceTime};
-use dc_fx_captions::{
-    CaptionsGen, CaptionsImport, NewCue, Word, export_text, merge_tracks, parse_text,
-};
-use dc_transcribe::Cue;
+use dc_core::CommandError;
+use dc_fx_captions::{CaptionsGen, CaptionsImport, export_text, parse_text};
+use dc_ops::captions::{OnProgress, Speech};
 use serde_json::json;
 
 use crate::edit::{self, Ctx, answer};
 use crate::error::CliError;
 use crate::run::Answer;
-use crate::transcript::{MediaWords, Quality, media_cues, project_words};
+use crate::transcript::Quality;
 
 #[derive(Debug, Clone, clap::Args)]
 pub(crate) struct GenArgs {
@@ -35,71 +33,20 @@ fn failed(error: CommandError) -> CliError {
 }
 
 /// `captions gen`: recognizes the chosen tracks of every recording (cached like `transcript`)
-/// and replaces all cues, one undo step.
+/// and replaces all cues, one undo step; the same path as the editor's «Создать субтитры».
 pub(crate) fn generate(ctx: &Ctx<'_>, args: &GenArgs) -> Result<Answer, CliError> {
-    let names: Vec<Option<&String>> = if args.tracks.is_empty() {
-        vec![None]
-    } else {
-        args.tracks.iter().map(Some).collect()
+    let speech = Speech {
+        model: args.model.model(),
+        language: args.language.clone(),
+        tracks: args.tracks.clone(),
     };
-    let mut tracks = Vec::with_capacity(names.len());
-    {
+    let silent: OnProgress = Rc::new(|_| {});
+    let command = {
         let workspace = ctx.open(false)?;
-        for name in names {
-            let all = project_words(
-                workspace.dir(),
-                &workspace.project,
-                args.model.model(),
-                args.language.as_deref(),
-                name,
-                true,
-            )?;
-            let mut cues = Vec::new();
-            for media in &all {
-                for cue in media_cues(media, &media.words)? {
-                    cues.push(new_cue(media, &cue).map_err(failed)?);
-                }
-            }
-            tracks.push(cues);
-        }
-    }
-    let cues = merge_tracks(tracks).map_err(failed)?;
-    if cues.is_empty() {
-        return Err(CliError::Failed(
-            "речи не найдено: субтитры не изменены; проверь дорожку (--tracks) и язык (--language)"
-                .to_owned(),
-        ));
-    }
-    let mut workspace = ctx.open(true)?;
-    edit::apply_commands(
-        ctx,
-        &mut workspace,
-        CaptionsGen::NAME,
-        &[&CaptionsGen { cues }],
-    )
-}
-
-fn new_cue(media: &MediaWords, cue: &Cue) -> Result<NewCue, CommandError> {
-    let range = |start: i64, end: i64| -> Result<Range<Source>, CommandError> {
-        Range::new(SourceTime::from_micros(start), SourceTime::from_micros(end))
-            .map_err(|e| CommandError::new(e.to_string()))
+        dc_ops::captions::generate(workspace.dir(), &workspace.project, &speech, &silent)?
     };
-    let words = cue
-        .words
-        .iter()
-        .filter_map(|&i| media.words.get(i))
-        .map(|w| {
-            Ok(Word {
-                text: w.text.clone(),
-                range: range(w.start, w.end)?,
-            })
-        })
-        .collect::<Result<Vec<Word>, CommandError>>()?;
-    Ok(NewCue {
-        media: media.media.clone(),
-        range: range(cue.start, cue.end)?,
-        words,
-    })
+    let mut workspace = ctx.open(true)?;
+    edit::apply_commands(ctx, &mut workspace, CaptionsGen::NAME, &[&command])
 }
 
 /// `captions export -o t.txt`: the text of all cues, one `<id> <text>` line each.

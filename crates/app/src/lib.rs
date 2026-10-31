@@ -24,6 +24,7 @@ mod logo;
 mod meters;
 mod models;
 mod monitor;
+mod recognition;
 mod recorder;
 mod session;
 mod settings;
@@ -48,6 +49,12 @@ pub fn run() -> Result<(), AppError> {
         && flag == crash::SERVER_ARG
     {
         return crash::serve(std::path::Path::new(socket), dir.into());
+    }
+    if let [_, flag] = args.as_slice()
+        && flag == recognition::WORKER_ARG
+    {
+        recognition::worker::serve();
+        return Ok(());
     }
     let settings = dc_project::settings::dir()?;
     let _log = logging::init(&settings.join(logging::FOLDER))?;

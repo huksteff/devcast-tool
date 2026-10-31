@@ -9,6 +9,7 @@ mod actions;
 mod adding;
 mod clipboard;
 mod document;
+mod generation;
 mod header;
 mod help;
 mod inspector;
@@ -29,6 +30,8 @@ mod window;
 
 #[cfg(test)]
 mod editing_tests;
+#[cfg(test)]
+mod generation_tests;
 #[cfg(test)]
 mod keys_tests;
 #[cfg(test)]
@@ -102,6 +105,8 @@ pub struct EditorWindow {
     pub defaults: dc_project::Defaults,
     /// Open and closed groups of the inspector, taken from the settings each frame.
     pub groups: InspectorGroups,
+    /// «Создать субтитры»: the model, the worker process and the choices of the panel (7.17).
+    pub captions: generation::Generation,
     /// Actions the controls asked for in this frame.
     actions: Vec<Action>,
 }
@@ -146,6 +151,7 @@ impl EditorWindow {
             preview,
             waves: waves::Waves::default(),
             presses: presses::Presses::default(),
+            captions: generation::Generation::default(),
             keys: EditorKeys::default(),
             help: None,
             defaults: dc_project::Defaults::factory(),

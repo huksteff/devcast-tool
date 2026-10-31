@@ -57,7 +57,11 @@ pub fn captions(ui: &mut Ui, next: &mut AppSettings, models: &mut Models) -> Res
         for (model, card) in SpeechModel::ALL.into_iter().zip(&cards) {
             match card.show(ui, vec2(width, height)) {
                 Some(CardClick::Choose) => next.speech_model = model,
-                Some(CardClick::Download) => result = models.download(ui.ctx(), model),
+                Some(CardClick::Download) => {
+                    let ctx = ui.ctx().clone();
+                    let wake = move || ctx.request_repaint_of(egui::ViewportId::ROOT);
+                    result = models.download(wake, model);
+                }
                 None => {}
             }
         }

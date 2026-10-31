@@ -24,6 +24,10 @@ impl Shared {
                     Ok(defaults) => editor.defaults = defaults,
                     Err(error) => self.report(Err(error)),
                 }
+                editor.captions = super::generation::Generation::new(
+                    crate::models::Models::of_app(),
+                    crate::recognition::job::app_worker(),
+                );
                 if let Some(gpu) = self.gpu.clone() {
                     let started = editor.start_preview(gpu, self.ctx.clone());
                     self.report(started);
@@ -72,7 +76,12 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         .editor
         .as_ref()
         // All are asked: each clears its own news.
-        .is_some_and(|e| e.preview.take_news() | e.waves.take_news() | e.presses.take_news());
+        .is_some_and(|e| {
+            e.preview.take_news()
+                | e.waves.take_news()
+                | e.presses.take_news()
+                | e.captions.take_news()
+        });
     if news {
         ctx.request_repaint_of(id);
     }
@@ -84,9 +93,11 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
     let layout = shared.store.get().editor;
     let keys = shared.store.get().editor_keys.clone();
     let groups = shared.store.get().inspector.clone();
+    let model = shared.store.get().speech_model;
     let Some(editor) = shared.editor.as_mut() else {
         return;
     };
+    editor.captions.model = model;
     let now = Instant::now();
     let outcome = editor_ui(ui, editor, layout, (&keys, &groups), now);
     let saved = editor.doc.autosave(now);

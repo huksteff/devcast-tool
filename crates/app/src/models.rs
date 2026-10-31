@@ -9,8 +9,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 
-use eframe::egui;
-
 use crate::error::AppError;
 use crate::settings::SpeechModel;
 
@@ -81,8 +79,13 @@ impl Models {
         self.dir.is_some()
     }
 
-    /// Starts downloading `model`; the worker wakes the main window on each whole percent.
-    pub fn download(&mut self, ctx: &egui::Context, model: SpeechModel) -> Result<(), AppError> {
+    /// Starts downloading `model`; the worker calls `wake` on each whole percent (it wakes the
+    /// main window, app CLAUDE.md).
+    pub fn download(
+        &mut self,
+        wake: impl Fn() + Send + 'static,
+        model: SpeechModel,
+    ) -> Result<(), AppError> {
         let Some(dir) = self.dir.clone() else {
             return Ok(());
         };
@@ -92,10 +95,9 @@ impl Models {
         let (sender, receiver) = mpsc::channel();
         let cancel = Arc::new(AtomicBool::new(false));
         let stop = Arc::clone(&cancel);
-        let ctx = ctx.clone();
         std::thread::Builder::new()
             .name("devcast-model-download".to_owned())
-            .spawn(move || fetch(model, &dir, &sender, &stop, &ctx))
+            .spawn(move || fetch(model, &dir, &sender, &stop, &wake))
             .map_err(|source| AppError::Thread {
                 name: "devcast-model-download",
                 source,
@@ -149,12 +151,12 @@ fn fetch(
     dir: &Path,
     sender: &Sender<Message>,
     cancel: &AtomicBool,
-    ctx: &egui::Context,
+    wake: &dyn Fn(),
 ) {
-    // The receiver goes with the settings window, which cancels the download first.
-    let wake = |message: Message| {
+    // The receiver goes with its window (settings, editor), which cancels the download first.
+    let tell = |message: Message| {
         if sender.send(message).is_ok() {
-            ctx.request_repaint_of(egui::ViewportId::ROOT);
+            wake();
         }
     };
     let mut last = None;
@@ -165,12 +167,12 @@ fn fetch(
         let percent = progress.done.saturating_mul(100) / total;
         if last != Some(percent) {
             last = Some(percent);
-            wake(Message::Progress(percent as f32 / 100.0));
+            tell(Message::Progress(percent as f32 / 100.0));
         }
     };
     let outcome = dc_transcribe::ensure(model.model(), dir, &mut on_progress, cancel).map(|_| ());
     if !matches!(outcome, Err(dc_transcribe::TranscribeError::Cancelled)) {
-        wake(Message::Done(outcome));
+        tell(Message::Done(outcome));
     }
 }
 

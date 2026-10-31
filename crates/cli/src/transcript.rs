@@ -1,17 +1,16 @@
 //! `devcast transcript [--words] [--from --to] [--model fast|accurate] [--language ru]`: what
 //! is said, on the output timeline. Each recording is recognized once (whole, in source time)
-//! and kept in `cache/`; words get ids `w1, w2, …` in the order of the recordings' first clips
-//! and of time inside a recording, so cutting does not renumber them. Words in cut-out parts
-//! are not shown, only counted.
+//! and kept in `cache/` (`dc_ops::captions`, shared with `captions gen` and the editor); words
+//! get ids `w1, w2, …` in the order of the recordings' first clips and of time inside a
+//! recording, so cutting does not renumber them. Words in cut-out parts are not shown, only
+//! counted.
 
-use std::sync::atomic::AtomicBool;
+use std::rc::Rc;
 
-use dc_audio::silence::{self, DEFAULT_DB, DEFAULT_MIN};
-use dc_audio::{SourceTrack, frame_at, tracks};
-use dc_core::time::Source;
-use dc_core::{OutputTime, Project, Range, SourceTime, TimeMap};
-use dc_project::ProjectDir;
-use dc_transcribe::{Cue, Model, Recognized, Word, cues};
+use dc_audio::silence;
+use dc_core::{OutputTime, SourceTime, TimeMap};
+use dc_ops::captions::{MediaWords, OnProgress, media_cues, project_words};
+use dc_transcribe::{Model, Word};
 use serde_json::json;
 
 use crate::edit::{Ctx, answer};
@@ -19,7 +18,6 @@ use crate::error::CliError;
 use crate::ls::time;
 use crate::round::thousandths;
 use crate::run::Answer;
-use crate::silences::pick;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum Quality {
@@ -57,80 +55,6 @@ pub(crate) struct Args {
     track: Option<String>,
 }
 
-/// Words of one recording, in its source time, and the id of its first word.
-pub(crate) struct MediaWords {
-    pub media: String,
-    pub track: SourceTrack,
-    pub language: String,
-    pub words: Vec<Word>,
-    pub first_id: u32,
-}
-
-/// The recognized words of every recording of `project`. Not recognized yet: recognized now
-/// when `recognize` is set, otherwise an error that says to run `devcast transcript`.
-pub(crate) fn project_words(
-    dir: &ProjectDir,
-    project: &Project,
-    model: Model,
-    language: Option<&str>,
-    track: Option<&String>,
-    recognize: bool,
-) -> Result<Vec<MediaWords>, CliError> {
-    let failed = |e: String| CliError::Failed(e);
-    let mut found: Vec<MediaWords> = Vec::new();
-    let mut next_id = 1;
-    for clip in &project.clips {
-        if found.iter().any(|m| m.media == clip.media.path) {
-            continue;
-        }
-        let available = tracks(dir, &clip.media).map_err(|e| failed(e.to_string()))?;
-        let chosen = pick(available, track, &clip.media.path)?;
-        let cache = dc_transcribe::words_cache_path(dir, &chosen, model, language);
-        let recognized =
-            match dc_transcribe::read_words(&cache, &chosen).map_err(|e| failed(e.to_string()))? {
-                Some(cached) => cached,
-                None if recognize => {
-                    let fresh =
-                        recognize_track(&chosen, clip.media.duration.micros(), model, language)?;
-                    dc_transcribe::write_words(&cache, &chosen, &fresh)
-                        .map_err(|e| failed(e.to_string()))?;
-                    fresh
-                }
-                None => {
-                    return Err(CliError::Failed(format!(
-                        "запись {} ещё не распознана: сначала devcast transcript",
-                        clip.media.path
-                    )));
-                }
-            };
-        let count = u32::try_from(recognized.words.len()).unwrap_or(u32::MAX);
-        found.push(MediaWords {
-            media: clip.media.path.clone(),
-            track: chosen,
-            language: recognized.language,
-            words: recognized.words,
-            first_id: next_id,
-        });
-        next_id = next_id.saturating_add(count);
-    }
-    Ok(found)
-}
-
-fn recognize_track(
-    track: &SourceTrack,
-    duration: i64,
-    model: Model,
-    language: Option<&str>,
-) -> Result<Recognized, CliError> {
-    let failed = |e: dc_transcribe::TranscribeError| CliError::Failed(e.to_string());
-    let models = dc_transcribe::models_dir().map_err(failed)?;
-    let path = dc_transcribe::ensure(model, &models, &mut |_| {}, &AtomicBool::new(false))
-        .map_err(failed)?;
-    let samples = dc_transcribe::speech_samples(std::slice::from_ref(track), 0, frame_at(duration))
-        .map_err(failed)?;
-    dc_transcribe::recognize(&path, model, &samples, language, |_| {}).map_err(failed)
-}
-
 /// Where a word of `media` sounds on the output; `None` if it is cut out.
 fn placed(map: &TimeMap, media: &str, word: &Word) -> Option<(OutputTime, OutputTime)> {
     let start = SourceTime::from_micros(word.start);
@@ -160,13 +84,13 @@ pub(crate) fn transcript(ctx: &Ctx<'_>, args: &Args) -> Result<Answer, CliError>
     );
     let mut workspace = ctx.open(false)?;
     let model = args.model.model();
+    let silent: OnProgress = Rc::new(|_| {});
     let all = project_words(
         workspace.dir(),
         &workspace.project,
-        model,
-        args.language.as_deref(),
+        (model, args.language.as_deref()),
         args.track.as_ref(),
-        true,
+        Some(&silent),
     )?;
     let map = TimeMap::build(&workspace.project);
     let inside =
@@ -222,22 +146,6 @@ pub(crate) fn transcript(ctx: &Ctx<'_>, args: &Args) -> Result<Answer, CliError>
     Ok(answer(&mut workspace, lines.join("\n"), json))
 }
 
-/// Cues of `words` (the shown words of one recording), split also at its silences.
-pub(crate) fn media_cues(media: &MediaWords, words: &[Word]) -> Result<Vec<Cue>, CliError> {
-    let Some(end) = media.words.last().map(|w| w.end) else {
-        return Ok(Vec::new());
-    };
-    let whole: Range<Source> = Range::new(SourceTime::ZERO, SourceTime::from_micros(end.max(1)))
-        .map_err(|e| CliError::Failed(e.to_string()))?;
-    let quiet = silence::find(&media.track, whole, DEFAULT_DB, DEFAULT_MIN)
-        .map_err(|e| CliError::Failed(e.to_string()))?;
-    let quiet: Vec<(i64, i64)> = quiet
-        .iter()
-        .map(|r| (r.start().micros(), r.end().micros()))
-        .collect();
-    Ok(cues(words, &quiet))
-}
-
 fn secs(t: OutputTime) -> f64 {
     thousandths(t.as_secs_f64())
 }
@@ -257,10 +165,9 @@ pub(crate) fn word_ranges(ctx: &Ctx<'_>, args: &[String]) -> Result<Vec<String>,
     let all = project_words(
         workspace.dir(),
         &workspace.project,
-        Quality::Fast.model(),
+        (Quality::Fast.model(), None),
         None,
         None,
-        false,
     )?;
     let map = TimeMap::build(&workspace.project);
     args.iter()

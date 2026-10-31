@@ -9,9 +9,13 @@
 //! its panel in [`tab`], an object kind in `object.rs`.
 
 mod callout;
+mod captions;
+mod captions_style;
 mod click;
 mod click_style;
+mod cue;
 mod cursor;
+mod head;
 mod keys;
 mod object;
 mod rows;
@@ -20,6 +24,8 @@ mod zoom_region;
 
 #[cfg(test)]
 mod callout_tests;
+#[cfg(test)]
+pub(super) mod captions_tests;
 #[cfg(test)]
 mod cursor_tests;
 #[cfg(test)]
@@ -35,18 +41,18 @@ use dc_project::Defaults;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{editor as text, inspector as names};
-use dc_ui_kit::tokens::{
-    self, BG, BORDER, FS_L, FS_M, FS_S, Hue, S2, S3, SURFACE, TEXT, TEXT_2, TEXT_3,
-};
+use dc_ui_kit::tokens::{self, BG, BORDER, FS_M, Hue, S2, S3, SURFACE, TEXT, TEXT_2, TEXT_3};
 use dc_ui_kit::widgets::IconButton;
 use eframe::egui::{
-    self, Align, Frame, Layout, Margin, Rect, ScrollArea, Sense, Stroke, Ui, UiBuilder, pos2, vec2,
+    self, Frame, Margin, Rect, ScrollArea, Sense, Stroke, Ui, UiBuilder, pos2, vec2,
 };
 use serde_json::{Map, Value};
 
+use super::selection::{Item, Selected};
 use super::view::{Panel, View};
 use super::{Action, EditorWindow};
 use crate::settings::InspectorGroups;
+pub use head::{Header, header, header_button};
 
 /// Width of the tab rail, side of a tab, height of the panel and group headers (mockup).
 const RAIL: f32 = 44.0;
@@ -75,7 +81,7 @@ fn tab(panel: Panel) -> Result<(&'static str, PanelUi), &'static str> {
         Panel::Keys => Ok((keys::ID, keys::ui)),
         Panel::Zoom => Ok((zoom::ID, zoom::ui)),
         Panel::Cursor => Ok((cursor::ID, cursor::ui)),
-        Panel::Captions => Err("7.17"),
+        Panel::Captions => Ok((captions::ID, captions::ui)),
         Panel::Sound => Err("7.19"),
     }
 }
@@ -117,6 +123,8 @@ pub struct Cx<'a> {
     pub project: &'a Project,
     /// What the timeline shows of it: the shortcuts of the recordings for «Показ клавиш».
     pub tracks: &'a super::Tracks,
+    /// The generation and the cue list of the captions panel (7.17).
+    pub captioning: captions::Captioning<'a>,
     /// The settings new projects start with: «Сбросить» brings a group back to them.
     defaults: &'a Defaults,
     /// Groups the user opened or closed; `toggled` when one changed this frame.
@@ -198,13 +206,6 @@ pub struct Group<'a> {
     pub reset: Option<Vec<Step>>,
 }
 
-/// The head of a panel: the colour of its effect, its name, what it applies to.
-pub struct Header<'a> {
-    pub hue: Hue,
-    pub title: &'a str,
-    pub subtitle: &'a str,
-}
-
 /// Rail and panel; true when the user opened or closed a group (the settings keep it).
 pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
     follow(&mut editor.view);
@@ -215,6 +216,15 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
     let mut cx = Cx {
         project: editor.doc.project(),
         tracks: &editor.tracks,
+        captioning: captions::Captioning {
+            generation: &mut editor.captions,
+            playhead: editor.view.playhead,
+            sound: &editor.sound,
+            picked: match editor.view.selection.single() {
+                Some(Selected::Region(Item::Cue(id))) => Some(id),
+                _ => None,
+            },
+        },
         defaults: &editor.defaults,
         groups: &mut editor.groups,
         toggled: false,
@@ -273,63 +283,6 @@ fn rail(ui: &mut Ui, view: &mut View) {
             view.object = None;
         }
     }
-}
-
-/// The colour chip, the title and the subtitle; `buttons` lays out its buttons from the right.
-pub fn header(ui: &mut Ui, head: &Header<'_>, buttons: impl FnOnce(&mut Ui)) {
-    let (rect, response) =
-        ui.allocate_exact_size(vec2(ui.available_width(), PANEL_HEADER), Sense::hover());
-    response.widget_info(|| {
-        let mut info = egui::WidgetInfo::labeled(egui::Role::Heading, true, head.title);
-        info.current_text_value = Some(head.subtitle.to_owned());
-        info
-    });
-    let painter = ui.painter();
-    let chip = Rect::from_center_size(
-        pos2(rect.left() + S3 + 2.0, rect.center().y),
-        vec2(4.0, 22.0),
-    );
-    painter.rect_filled(chip, 2, head.hue.line);
-    let title = painter.layout_no_wrap(
-        head.title.to_owned(),
-        fonts::text(FS_L, Weight::Semibold),
-        TEXT,
-    );
-    let mut height = title.size().y;
-    let subtitle = (!head.subtitle.is_empty()).then(|| {
-        let galley = painter.layout_no_wrap(
-            head.subtitle.to_owned(),
-            fonts::text(FS_S, Weight::Regular),
-            TEXT_3,
-        );
-        height += galley.size().y;
-        galley
-    });
-    let mut at = pos2(chip.right() + S2, rect.center().y - height / 2.0);
-    let line = title.size().y;
-    painter.galley(at, title, TEXT);
-    if let Some(subtitle) = subtitle {
-        at.y += line;
-        painter.galley(at, subtitle, TEXT_3);
-    }
-    let right = rect.shrink2(vec2(S2, 0.0));
-    let mut cell = ui.new_child(
-        UiBuilder::new()
-            .max_rect(right)
-            .layout(Layout::right_to_left(Align::Center)),
-    );
-    cell.spacing_mut().item_spacing.x = 2.0;
-    buttons(&mut cell);
-    bottom_line(ui, rect);
-}
-
-/// A header button of [`header`] (delete, duplicate); `danger` draws it red (mockup `.ib.danger`).
-pub fn header_button(ui: &mut Ui, icon: Icon, label: &str, danger: bool) -> bool {
-    let mut button = IconButton::new(icon, label).size(BUTTON, CHEVRON);
-    if danger {
-        button = button.color(tokens::REC);
-    }
-    ui.add(button).on_hover_text(label).clicked()
 }
 
 /// The header of a tab whose panel comes with `task`.

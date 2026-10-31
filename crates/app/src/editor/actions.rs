@@ -8,11 +8,11 @@ use dc_ops::Step;
 use eframe::egui::Ui;
 use serde_json::{Map, Value};
 
-use super::adding;
 use super::playback::seek;
 use super::selection::{Item, Selected};
 use super::timeline::Least;
 use super::{EditorWindow, Way};
+use super::{adding, generation};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
@@ -29,6 +29,14 @@ pub enum Action {
     /// The zooms the clicks of the recordings suggest (`devcast zoom add --at clicks`), as one
     /// undo step; they get picked.
     SuggestZooms,
+    /// «Создать субтитры»: recognize the speech (downloading the model first when needed); the
+    /// cues replace all cues as one undo step when they come (`generation.rs`).
+    Generate,
+    /// «Отменить» of the generation: the worker is killed.
+    StopGenerating,
+    /// An object picked from a list of a panel (the cues of «Субтитры»): picked alone, the
+    /// panel with the list stays open.
+    ListPick(Selected),
 }
 
 /// Playback and the playhead.
@@ -63,6 +71,12 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
     let mut changed = false;
     let mut moved = false;
     let mut rows = false;
+    if let Some(done) = generation::receive(ui.ctx(), editor, now) {
+        match done {
+            Ok(applied) => changed |= applied,
+            Err(error) => errors.push(error),
+        }
+    }
     for action in std::mem::take(&mut editor.actions) {
         match action {
             Action::Travel(way) => changed |= editor.doc.travel(way, now).is_some(),
@@ -107,6 +121,13 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                     }
                     Err(error) => errors.push(error),
                 }
+            }
+            Action::Generate => errors.extend(generation::start(ui.ctx(), editor).err()),
+            Action::StopGenerating => editor.captions.cancel(),
+            Action::ListPick(picked) => {
+                editor.view.selection.only(picked);
+                editor.view.followed = Some(picked);
+                moved = true;
             }
             Action::Transport(transport) => {
                 errors.extend(transport_run(editor, transport, now));
