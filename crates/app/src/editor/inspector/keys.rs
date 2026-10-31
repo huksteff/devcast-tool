@@ -1,15 +1,24 @@
 //! «Показ клавиш» (mockup 3b): the settings of the pressed-keys plate for the whole project.
-//! «Основное» — show, place, size; «Тонкая настройка» — colours and how long a shortcut stays.
+//! The subtitle counts the shortcuts of the recordings; «Основное» — show, place, size and a
+//! sample plate in the project's colours from its most repeated shortcut (`Tracks::shortcuts`);
+//! «Тонкая настройка» — colours and how long a shortcut stays.
 //! Every edit and «Сбросить» is the `keys` command (`devcast keys …`, the settings key `keys`).
 
 use dc_fx_keys::{Keys, KeysSettings, Position};
+use dc_render::Rgba;
+use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::{editor as text, inspector as names};
-use dc_ui_kit::tokens::HUE_KEYS;
-use eframe::egui::Ui;
+use dc_ui_kit::tokens::{BORDER, FS_L, HUE_KEYS};
+use eframe::egui::{self, Color32, Sense, Stroke, StrokeKind, Ui, WidgetInfo, vec2};
 use serde_json::{Map, Value, json};
 
 use super::{Cx, Group, Header, args, header, padded, reset, rows};
 use crate::editor::Action;
+use crate::editor::timeline::Sample;
+
+/// Padding of the sample plate around its letters and its corners, points (mockup: 12 × 6, 6).
+const PLATE_PAD: egui::Vec2 = vec2(12.0, 6.0);
+const PLATE_RADIUS: u8 = 6;
 
 /// Id of the panel in the remembered groups.
 pub const ID: &str = "keys";
@@ -27,10 +36,11 @@ const PLACES: [(Position, &str); 6] = [
 ];
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
+    let found = names::shortcuts_found(cx.tracks.shortcuts.names);
     let head = Header {
         hue: HUE_KEYS,
         title: text::KEYS,
-        subtitle: names::WHOLE_PROJECT,
+        subtitle: &found,
     };
     header(ui, &head, |_| {});
     let read = cx
@@ -88,6 +98,33 @@ fn basic_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &KeysSettings) {
     if let Some(v) = rows::slider(ui, names::KEYS_SIZE, now.size, size.0, size.1) {
         cx.actions.push(set("size", json!(v)));
     }
+    if let Some(sample) = &cx.tracks.shortcuts.sample {
+        plate(ui, sample, now);
+    }
+}
+
+/// «Ctrl + Shift + P ×2» on a plate of the project's colours, in the middle of the row.
+fn plate(ui: &mut Ui, sample: &Sample, now: &KeysSettings) {
+    let line = names::plate_sample(&sample.name, sample.count);
+    let letters = color32(now.color);
+    let galley =
+        ui.painter()
+            .layout_no_wrap(line.clone(), fonts::text(FS_L, Weight::Semibold), letters);
+    let size = galley.size() + 2.0 * PLATE_PAD;
+    ui.vertical_centered(|ui| {
+        let (rect, response) = ui.allocate_exact_size(size, Sense::hover());
+        response.widget_info(|| WidgetInfo::labeled(egui::Role::Label, true, &line));
+        // The edge keeps a see-through plate in sight on the panel (mockup: a framed plate).
+        let edge = Stroke::new(1.0, BORDER);
+        let fill = color32(now.background);
+        ui.painter()
+            .rect(rect, PLATE_RADIUS, fill, edge, StrokeKind::Inside);
+        ui.painter().galley(rect.min + PLATE_PAD, galley, letters);
+    });
+}
+
+fn color32(Rgba([r, g, b, a]): Rgba) -> Color32 {
+    Color32::from_rgba_unmultiplied(r, g, b, a)
 }
 
 fn fine_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &KeysSettings) {

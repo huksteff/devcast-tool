@@ -8,7 +8,7 @@ mod state;
 
 pub use commands::KeysSet;
 pub use evaluate::evaluate;
-pub use prepared::Prepared;
+pub use prepared::{Prepared, Shown};
 pub use state::{
     DURATION_MAX, DURATION_MIN, KeysSettings, KeysState, Position, SIZE_MAX, SIZE_MIN,
 };

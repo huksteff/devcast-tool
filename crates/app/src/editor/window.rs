@@ -32,8 +32,8 @@ impl Shared {
                 self.report(sound);
                 let waves = editor.start_waves(self.ctx.clone());
                 self.report(waves);
-                let clicks = editor.start_clicks(self.ctx.clone());
-                self.report(clicks);
+                let presses = editor.start_presses(self.ctx.clone());
+                self.report(presses);
                 for problem in problems {
                     self.report(Err(problem));
                 }

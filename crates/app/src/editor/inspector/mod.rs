@@ -8,6 +8,7 @@
 //! helpers of `rows.rs`; every committed edit is a registry command — one undo step. A tab gets
 //! its panel in [`tab`], an object kind in `object.rs`.
 
+mod callout;
 mod click;
 mod click_style;
 mod cursor;
@@ -18,7 +19,11 @@ mod zoom;
 mod zoom_region;
 
 #[cfg(test)]
+mod callout_tests;
+#[cfg(test)]
 mod cursor_tests;
+#[cfg(test)]
+mod shortcuts_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -110,6 +115,8 @@ impl Panel {
 /// What a panel works with this frame.
 pub struct Cx<'a> {
     pub project: &'a Project,
+    /// What the timeline shows of it: the shortcuts of the recordings for «Показ клавиш».
+    pub tracks: &'a super::Tracks,
     /// The settings new projects start with: «Сбросить» brings a group back to them.
     defaults: &'a Defaults,
     /// Groups the user opened or closed; `toggled` when one changed this frame.
@@ -207,6 +214,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
         .show(ui, |ui| rail(ui, &mut editor.view));
     let mut cx = Cx {
         project: editor.doc.project(),
+        tracks: &editor.tracks,
         defaults: &editor.defaults,
         groups: &mut editor.groups,
         toggled: false,
@@ -229,6 +237,9 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
                 },
             });
         });
+    if let Some(typed) = rows::flush(ui) {
+        cx.actions.push(Action::Apply(vec![typed]));
+    }
     let toggled = cx.toggled;
     let actions = cx.actions;
     editor.actions.extend(actions);

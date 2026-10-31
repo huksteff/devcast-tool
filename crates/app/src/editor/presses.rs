@@ -1,30 +1,47 @@
-//! The clicks of the recordings (7.15): the button presses of each recording's telemetry
-//! (`dc_capture::input::Telemetry::clicks`, the same as `devcast events clicks`), read on the
-//! thread `devcast-clicks` (`reader.rs`). The «Курсор» row shows their dots once they come.
+//! The presses of the recordings (7.15, 7.16): the button clicks and the shortcuts of each
+//! recording's telemetry (`dc_capture::input::Telemetry::clicks` and `key_presses`, the same as
+//! `devcast events clicks` and the keys effect read), read on the thread `devcast-presses`
+//! (`reader.rs`). The «Курсор» row shows the dots of the clicks, the «Клавиши» row the shortcuts
+//! once they come.
 
 use dc_capture::input::{Click, Telemetry};
 use dc_capture::project::recording_dir;
-use dc_core::Project;
 use dc_core::project::{Media, MediaKind};
+use dc_core::{KeyPress, KeyTracks, Project};
 use dc_project::ProjectDir;
 use eframe::egui;
 
 use super::reader::{Reader, Wanted};
 
-/// The presses of each recording, in time order.
-pub type Presses = Reader<Media, Vec<Click>>;
+/// What a recording's telemetry holds for the timeline, each list in time order.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Pressed {
+    pub clicks: Vec<Click>,
+    pub keys: Vec<KeyPress>,
+}
+
+/// The presses of each recording.
+pub type Presses = Reader<Media, Pressed>;
 
 impl Wanted for Media {
-    const THREAD: &'static str = "devcast-clicks";
-    const FAILED: &'static str = "клики записи не прочитаны";
+    const THREAD: &'static str = "devcast-presses";
+    const FAILED: &'static str = "клики и клавиши записи не прочитаны";
 }
 
 impl Presses {
-    /// Starts the thread that reads the clicks of the project in `dir`; it wakes the main window
-    /// of `ctx` after every answer.
+    /// Starts the thread that reads the presses of the project in `dir`; it wakes the main
+    /// window of `ctx` after every answer.
     pub fn start(&mut self, dir: ProjectDir, ctx: egui::Context) -> std::io::Result<()> {
         let wake = move || ctx.request_repaint_of(egui::ViewportId::ROOT);
         self.start_with(move |media| load(&dir, media), wake)
+    }
+
+    /// The shortcuts of the recordings of `project` read so far, as the keys effect takes them.
+    pub fn key_tracks(&self, project: &Project) -> KeyTracks {
+        recordings(project)
+            .into_iter()
+            .filter_map(|media| Some((media.path.clone(), self.get(&media)?.keys.clone())))
+            .collect()
     }
 }
 
@@ -40,8 +57,11 @@ pub fn recordings(project: &Project) -> Vec<Media> {
     all
 }
 
-fn load(dir: &ProjectDir, media: &Media) -> Result<Vec<Click>, String> {
+fn load(dir: &ProjectDir, media: &Media) -> Result<Pressed, String> {
     let telemetry =
         Telemetry::read(&recording_dir(dir.root(), media)).map_err(|e| e.to_string())?;
-    Ok(telemetry.clicks())
+    Ok(Pressed {
+        clicks: telemetry.clicks(),
+        keys: telemetry.key_presses(),
+    })
 }

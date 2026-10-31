@@ -7,7 +7,7 @@ use crate::state::{KeysSettings, KeysState};
 
 /// One shortcut on screen: pressed once or several times in a row.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct Shown {
+pub struct Shown {
     pub name: String,
     /// Output moments of its presses: the count grows with each (`×2` from the second).
     pub presses: Vec<OutputTime>,
@@ -63,5 +63,10 @@ impl Prepared {
             });
         }
         Self { settings, shown }
+    }
+
+    /// The shortcuts on screen in output order: the plates of the «Клавиши» row of the editor.
+    pub fn shown(&self) -> &[Shown] {
+        &self.shown
     }
 }

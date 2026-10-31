@@ -2,7 +2,8 @@
 //! (also through one of its keys), an extra sound, a clip or a click (its own panel, `click.rs`).
 //! The frame gives each its header —
 //! the colour of its row, its name, where it is — and «Удалить» (the same command as Delete);
-//! a zoom gets its parameters (`zoom_region.rs`), the others name the task that brings theirs.
+//! a zoom gets its parameters (`zoom_region.rs`), a callout event its own (`callout.rs`), the
+//! others name the task that brings theirs.
 //! An annotation's panel puts its keyframe strip under the header (7.18, 7.25).
 
 use dc_core::Range;
@@ -10,7 +11,7 @@ use dc_core::time::Output;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{editor as text, inspector as names, timeline as rows_text};
 
-use super::{Cx, Header, click, header, header_button, padded, rows, zoom_region};
+use super::{Cx, Header, callout, click, header, header_button, padded, rows, zoom_region};
 use crate::editor::selection::{Item, Selected, same_moment};
 use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
 use crate::editor::{Action, montage, regions};
@@ -32,7 +33,13 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
     let Some((row, region)) = find(tracks, picked) else {
         return;
     };
-    let about = describe(picked, row, region);
+    let mut about = describe(picked, row, region);
+    if let Selected::Region(Item::Callout(id)) = picked
+        && let Some((title, subtitle)) = callout::about(cx, id, &timecode(region.range.start()))
+    {
+        about.title = title.to_owned();
+        about.subtitle = subtitle;
+    }
     let head = Header {
         hue: timeline::hue(row),
         title: &about.title,
@@ -47,6 +54,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
     });
     match picked {
         Selected::Region(Item::Zoom(id)) => zoom_region::ui(ui, cx, id),
+        Selected::Region(Item::Callout(id)) => callout::ui(ui, cx, id),
         _ => padded(ui, |ui| rows::note(ui, &names::later(about.task))),
     }
 }
@@ -90,7 +98,7 @@ fn describe(picked: Selected, row: Row, region: &Region) -> About {
             task: "7.19",
         },
         Selected::Region(Item::Zoom(_)) => timed(text::ZOOM, "7.14"),
-        Selected::Region(Item::Callout(_)) => timed(names::CALLOUT, "7.16"),
+        Selected::Region(Item::Callout(_)) => timed(names::CALLOUT, ""),
         Selected::Region(Item::Cue(_)) => timed(names::CUE, "7.17"),
         Selected::Region(Item::Annotation(_)) | Selected::Key { .. } => layered("7.18"),
         Selected::Click(_) => timed(names::CLICK, "7.15"),

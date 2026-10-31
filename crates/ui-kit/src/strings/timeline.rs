@@ -160,7 +160,7 @@ fn removed(count: usize, what: &str, it: &str, undo: &str) -> String {
 }
 
 /// The Russian form of `count`: «1 файл», «2 файла», «5 файлов».
-fn plural<'a>(count: usize, one: &'a str, few: &'a str, many: &'a str) -> &'a str {
+pub(crate) fn plural<'a>(count: usize, one: &'a str, few: &'a str, many: &'a str) -> &'a str {
     let (tens, ones) = (count % 100, count % 10);
     match ones {
         1 if tens != 11 => one,
@@ -177,4 +177,12 @@ pub fn key_marker(at: &str) -> String {
 /// «Клик 0:21.40»: the name of a click dot on the «Курсор» row (7.15).
 pub fn click_dot(at: &str) -> String {
     format!("Клик {at}")
+}
+
+/// «Ctrl+S», «Ctrl+Shift+P ×2»: a shortcut chip on the «Клавиши» row, `count` presses in a row.
+pub fn shortcut(name: &str, count: usize) -> String {
+    match count {
+        0 | 1 => name.to_owned(),
+        n => format!("{name} ×{n}"),
+    }
 }

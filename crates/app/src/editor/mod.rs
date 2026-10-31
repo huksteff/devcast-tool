@@ -89,7 +89,8 @@ pub struct EditorWindow {
     pub playback: playback::Playback,
     /// Peaks of the waves on the sound rows, as they come.
     pub waves: waves::Waves,
-    /// Presses of the recordings: the dots of the «Курсор» row, as they come.
+    /// Presses of the recordings: the dots of the «Курсор» row and the shortcuts of the
+    /// «Клавиши» row, as they come.
     pub presses: presses::Presses,
     /// Frames per second of a frame step: the highest of the clips' videos (v1), 30 without.
     pub fps: f64,
@@ -180,7 +181,10 @@ impl EditorWindow {
         self.waves.want(self.tracks.sources());
         let project = self.doc.project();
         self.presses.want(presses::recordings(project).iter());
-        self.tracks.clicks = timeline::click_dots(project, |media| self.presses.get(media));
+        self.tracks.clicks =
+            timeline::click_dots(project, |media| self.presses.get(media).map(|p| &p.clicks));
+        self.tracks
+            .place_keys(project, &self.presses.key_tracks(project));
         let end = self.end();
         self.view.keep(&self.tracks, end);
     }
@@ -227,13 +231,14 @@ impl EditorWindow {
             })
     }
 
-    /// Starts reading the clicks of the recordings; without it the «Курсор» row has no dots.
-    pub fn start_clicks(&mut self, ctx: egui::Context) -> Result<(), crate::AppError> {
+    /// Starts reading the presses of the recordings; without it the «Курсор» row has no dots
+    /// and the «Клавиши» row no shortcuts.
+    pub fn start_presses(&mut self, ctx: egui::Context) -> Result<(), crate::AppError> {
         let dir = self.doc.dir().clone();
         self.presses
             .start(dir, ctx)
             .map_err(|source| crate::AppError::Thread {
-                name: "devcast-clicks",
+                name: "devcast-presses",
                 source,
             })
     }

@@ -129,3 +129,72 @@ pub fn click_about(at: &str, button: &str, double: bool) -> String {
         false => format!("{at} · {button}"),
     }
 }
+
+/// «3 сочетания в записях»: the subtitle of «Показ клавиш».
+pub fn shortcuts_found(count: usize) -> String {
+    match count {
+        0 => "в записях нет сочетаний".to_owned(),
+        n => {
+            let what = super::timeline::plural(n, "сочетание", "сочетания", "сочетаний");
+            format!("{n} {what} в записях")
+        }
+    }
+}
+
+/// «Ctrl + Shift + P ×2»: the sample plate of «Показ клавиш» from a shortcut of the project
+/// (`Ctrl+Shift+P`) pressed `count` times in a row; the key «+» itself stays as it is.
+pub fn plate_sample(name: &str, count: usize) -> String {
+    let mut spaced = String::new();
+    let mut previous = None;
+    let mut chars = name.chars().peekable();
+    while let Some(c) = chars.next() {
+        let joint = c == '+' && previous.is_some_and(|p| p != '+') && chars.peek().is_some();
+        match joint {
+            true => spaced.push_str(" + "),
+            false => spaced.push(c),
+        }
+        previous = Some(c);
+    }
+    super::timeline::shortcut(&spaced, count)
+}
+
+/// The panel of a callout event (mockup 3a «Облачко: текст»).
+pub const CALLOUT_ON: &str = "Облачко: вкл";
+pub const CALLOUT_TEXT: &str = "Облачко: текст";
+pub const CALLOUT_OFF: &str = "Облачко: выкл";
+pub const CALLOUT_EVENT: &str = "Событие";
+pub const CALLOUT_ACTION: &str = "Действие";
+pub const CALLOUT_SHOW: &str = "Вкл";
+pub const CALLOUT_TYPE: &str = "Текст";
+pub const CALLOUT_HIDE: &str = "Выкл";
+pub const CALLOUT_TEXT_HINT: &str = "Текст облачка";
+/// The text a «Текст» event gets when it was «Вкл» or «Выкл» and the project has no text of
+/// «Вкл» yet.
+pub const CALLOUT_NEW_TEXT: &str = "Текст";
+pub const CALLOUT_TIME: &str = "Время печати";
+pub const CALLOUT_ERASE_TIME: &str = "Время стирания";
+pub const CALLOUT_ON_NOTE: &str = "«Вкл» сразу показывает облачко с этим текстом; текст общий для всех «Вкл» проекта. Пусто — облачко ждёт события «Текст».";
+pub const CALLOUT_OFF_NOTE: &str = "«Выкл» стирает текст с конца и прячет облачко.";
+pub const CALLOUT_STYLE: &str = "Стиль облачка";
+pub const CALLOUT_COLORS: &str = "Фон · текст";
+pub const CALLOUT_BACKGROUND: &str = "Цвет фона";
+pub const CALLOUT_TEXT_COLOR: &str = "Цвет текста";
+pub const CALLOUT_SIZE: &str = "Размер";
+pub const CALLOUT_GRADIENT: &str = "Градиент";
+pub const CALLOUT_GLOW: &str = "Свечение";
+pub const CALLOUT_SHARED: &str = "Стиль общий для всех облачков проекта.";
+
+/// «событие 0:50.00 · печать 2,0 с»: the subtitle of a callout event.
+pub fn callout_about(at: &str, what: &str, length: &str) -> String {
+    format!("событие {at} · {what} {length}")
+}
+
+/// «19 / 80 · длина события = время печати»: the length of the text and what the length of the
+/// event means.
+pub fn callout_count(chars: usize, most: usize) -> String {
+    format!("{chars} / {most} · длина события = время печати")
+}
+
+pub const CALLOUT_TYPING: &str = "печать";
+pub const CALLOUT_ERASING: &str = "стирание";
+pub const CALLOUT_LENGTH: &str = "длина";

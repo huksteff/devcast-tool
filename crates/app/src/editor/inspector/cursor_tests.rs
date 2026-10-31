@@ -79,7 +79,11 @@ fn with_clicks() -> H {
     let editor = &mut harness.state_mut().editor;
     let media = recordings(editor.doc.project());
     for (media, clicks) in media.into_iter().zip(presses()) {
-        editor.presses.arrive(media, Ok(clicks));
+        let pressed = crate::editor::presses::Pressed {
+            clicks,
+            keys: Vec::new(),
+        };
+        editor.presses.arrive(media, Ok(pressed));
     }
     editor.retrack();
     harness.run();

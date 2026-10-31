@@ -93,6 +93,9 @@ pub struct Tracks {
     /// Presses of the recordings on the «Курсор» row (7.15), set apart from `of`: they come
     /// from the recordings' files (`editor/presses.rs`).
     pub clicks: Vec<super::dots::Dot>,
+    /// What the shortcuts of the recordings give the panel «Показ клавиш» (7.16), set with the
+    /// chips of the «Клавиши» row by `place_keys`.
+    pub shortcuts: super::shortcuts::Shortcuts,
     /// Broken effect states: their rows stay empty, the text says what to do.
     pub problems: Vec<String>,
 }
@@ -247,7 +250,7 @@ impl Tracks {
     }
 }
 
-fn region(range: Range<Output>, label: String) -> Region {
+pub(super) fn region(range: Range<Output>, label: String) -> Region {
     Region {
         range,
         label,

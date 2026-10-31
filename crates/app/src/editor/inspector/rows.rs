@@ -5,11 +5,12 @@
 //! with the pointer when it is let go. Meanwhile the control shows the dragged value (a draft in
 //! egui's temporary memory) and the project stays as it was.
 
+use dc_ops::Step;
 use dc_render::Rgba;
 use dc_ui_kit::tokens::{FS_S, S2, TEXT_3};
 use dc_ui_kit::widgets::{
-    Slider, Toggle, anchors as anchor_grid, color_button, palette as swatches, segmented,
-    tiles as tile_row,
+    Slider, Toggle, anchors as anchor_grid, color_button, gradient_editor, palette as swatches,
+    segmented, text_field, tiles as tile_row,
 };
 use eframe::egui::{self, Color32, Id, Painter, Rect, Response, RichText, Ui};
 
@@ -202,4 +203,87 @@ pub fn choice_under<T: PartialEq + Copy>(
         .changed()
         .then_some(chosen)
         .flatten()
+}
+
+/// A typed text not applied yet: the command that applies it and the pass its field was drawn.
+#[derive(Debug, Clone)]
+struct Pending {
+    /// The draft of the field.
+    field: Id,
+    step: Step,
+    pass: u64,
+}
+
+fn pending_id() -> Id {
+    Id::unique("inspector-typed-text")
+}
+
+/// A text field over the whole width named by `hint`, showing `now` of the object `key`: the
+/// command `apply` makes of the typed text once the field lets the keys go (Enter, a click
+/// away) and the text differs. While typing the text is a draft; picking another object
+/// applies it too ([`flush`]).
+pub fn text(
+    ui: &mut Ui,
+    hint: &str,
+    key: impl std::hash::Hash + std::fmt::Debug,
+    now: &str,
+    apply: impl Fn(String) -> Step,
+) -> Option<Step> {
+    let id = ui.make_persistent_id(("draft-text", &key));
+    let mut value = ui
+        .data(|d| d.get_temp::<String>(id))
+        .unwrap_or_else(|| now.to_owned());
+    let width = ui.available_width();
+    let response = ui
+        .push_id(&key, |ui| text_field(ui, &mut value, hint, width))
+        .inner;
+    if response.has_focus() {
+        let pass = ui.ctx().cumulative_pass_nr();
+        let pending = (value != now).then(|| Pending {
+            field: id,
+            step: apply(value.clone()),
+            pass,
+        });
+        ui.data_mut(|d| {
+            d.insert_temp(id, value);
+            if let Some(pending) = pending {
+                d.insert_temp(pending_id(), pending);
+            } else {
+                d.remove::<Pending>(pending_id());
+            }
+        });
+        return None;
+    }
+    ui.data_mut(|d| {
+        d.remove::<String>(id);
+        if d.get_temp::<Pending>(pending_id())
+            .is_some_and(|p| p.field == id)
+        {
+            d.remove::<Pending>(pending_id());
+        }
+    });
+    (response.lost_focus() && value != now).then(|| apply(value))
+}
+
+/// The text typed into a field that is gone this pass (another object was picked): its
+/// command, once.
+pub fn flush(ui: &Ui) -> Option<Step> {
+    let pass = ui.ctx().cumulative_pass_nr();
+    let pending = ui.data(|d| d.get_temp::<Pending>(pending_id()))?;
+    if pending.pass == pass {
+        return None;
+    }
+    ui.data_mut(|d| {
+        d.remove::<Pending>(pending_id());
+        d.remove::<String>(pending.field);
+    });
+    Some(pending.step)
+}
+/// The gradient editor of `colors` over the whole width: the new colours once the edit ends.
+pub fn gradient(ui: &mut Ui, label: &str, colors: &[Rgba]) -> Option<Vec<Rgba>> {
+    let id = ui.make_persistent_id(("draft", label));
+    let now: Vec<Color32> = colors.iter().map(|c| color32(*c)).collect();
+    let width = ui.available_width();
+    drafted(ui, id, now, |ui, c| gradient_editor(ui, c, width))
+        .map(|new| new.into_iter().map(rgba).collect())
 }
