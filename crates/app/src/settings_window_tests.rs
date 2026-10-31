@@ -11,7 +11,11 @@ struct State {
 
 fn harness() -> egui_kittest::Harness<'static, State> {
     let dir = tempfile::tempdir().unwrap();
-    let store = Store::load(&dir.path().join("settings.json")).unwrap();
+    let mut store = Store::load(&dir.path().join("settings.json")).unwrap();
+    // The default folder holds the user's name: the snapshot would differ from PC to PC.
+    store
+        .update(|s| s.recordings_dir = std::path::PathBuf::from(r"D:\Записи\DevCast"))
+        .unwrap();
     let mics = vec![
         "Микрофон (Rode NT-USB)".to_owned(),
         "Гарнитура (HyperX Cloud II)".to_owned(),

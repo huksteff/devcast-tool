@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use dc_capture::{Area, MonitorInfo, Source};
 use eframe::egui::{self, ColorImage, TextureHandle};
 
-use crate::app::{Shared, lock};
+use crate::app::{Shared, lock, other_window};
 use model::Rect;
 use overlay::{Action, Selection};
 
@@ -99,21 +99,21 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     };
     for monitor in monitors {
         let b = monitor.bounds;
-        let center = egui::pos2(
-            (b.x() + b.width() as i32 / 2) as f32 / ppp,
-            (b.y() + b.height() as i32 / 2) as f32 / ppp,
-        );
+        // A borderless window the size of the monitor, not winit's fullscreen: DXGI refuses a
+        // swapchain for a window created fullscreen (DXGI_ERROR_INVALID_CALL, the app fell).
         let builder = egui::ViewportBuilder::default()
             .with_title(dc_ui_kit::strings::area::HINT)
             .with_decorations(false)
             .with_always_on_top()
             .with_taskbar(false)
-            .with_position(center)
-            .with_fullscreen(true);
+            .with_position(egui::pos2(b.x() as f32 / ppp, b.y() as f32 / ppp))
+            .with_inner_size(egui::vec2(b.width() as f32 / ppp, b.height() as f32 / ppp));
         let shared = Arc::clone(shared);
         let id = egui::ViewportId::from_hash_of(("area", monitor.index));
         ctx.show_viewport_deferred(id, builder, move |ui, _| {
-            screen_ui(ui, &mut lock(&shared), monitor.index);
+            other_window(ui, &shared, |ui, shared| {
+                screen_ui(ui, shared, monitor.index)
+            });
         });
     }
 }

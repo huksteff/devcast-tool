@@ -51,7 +51,27 @@ pub struct Shared {
     pub toasts: Toasts,
 }
 
+/// Which windows are open and the step of the recording: what the HUD's frame acts on.
+#[derive(PartialEq)]
+struct Windows {
+    popover: Option<popover::Open>,
+    area: bool,
+    settings: bool,
+    editor: bool,
+    session: std::mem::Discriminant<Session>,
+}
+
 impl Shared {
+    fn windows(&self) -> Windows {
+        Windows {
+            popover: self.popover,
+            area: self.area.is_some(),
+            settings: self.settings.is_some(),
+            editor: self.editor.is_some(),
+            session: std::mem::discriminant(&self.session),
+        }
+    }
+
     pub fn new(ctx: egui::Context, store: Store) -> Self {
         let mut shared = Self {
             ctx,
@@ -213,6 +233,31 @@ pub fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
+/// A frame of a window besides the HUD. The HUD is drawn only on its own events, yet its frame
+/// opens and closes the other windows and shows the settings: after a click or a key here, or
+/// when this frame opened or closed a window or moved the recording on, it draws a frame too.
+pub fn other_window<R>(
+    ui: &mut egui::Ui,
+    shared: &Mutex<Shared>,
+    frame: impl FnOnce(&mut egui::Ui, &mut Shared) -> R,
+) -> R {
+    let mut shared = lock(shared);
+    let before = shared.windows();
+    let result = frame(ui, &mut shared);
+    let pressed = ui.input(|i| {
+        i.events.iter().any(|e| {
+            matches!(
+                e,
+                egui::Event::PointerButton { .. } | egui::Event::Key { .. }
+            )
+        })
+    });
+    if pressed || shared.windows() != before {
+        ui.ctx().request_repaint_of(egui::ViewportId::ROOT);
+    }
+    result
+}
+
 impl eframe::App for App {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
         clear_color()
@@ -281,33 +326,35 @@ fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
     ctx.show_viewport_deferred(
         egui::ViewportId::from_hash_of(SETTINGS_ID),
         builder,
-        move |ui, _| {
-            let mut shared = lock(&shared);
-            let Shared {
-                ctx,
-                store,
-                settings,
-                meters,
-                toasts,
-                taken_hotkeys,
-                ..
-            } = &mut *shared;
-            let Some(window) = settings else {
-                return;
-            };
-            let level = match &store.get().recording.microphone {
-                Some(mic) => meters.level(ctx, &AudioSource::Microphone(mic.clone())),
-                None => 0.0,
-            };
-            if let Err(error) = window.ui(ui, store, level, taken_hotkeys) {
-                toasts.push(ui.ctx(), ToastKind::Error, error.to_string());
-            }
-            toasts.show(ui.ctx());
-            if ui.input(|i| i.viewport().close_requested()) {
-                *settings = None;
-            }
-        },
+        move |ui, _| other_window(ui, &shared, settings_frame),
     );
+}
+
+/// One frame of the settings window.
+fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
+    let Shared {
+        ctx,
+        store,
+        settings,
+        meters,
+        toasts,
+        taken_hotkeys,
+        ..
+    } = shared;
+    let Some(window) = settings else {
+        return;
+    };
+    let level = match &store.get().recording.microphone {
+        Some(mic) => meters.level(ctx, &AudioSource::Microphone(mic.clone())),
+        None => 0.0,
+    };
+    if let Err(error) = window.ui(ui, store, level, taken_hotkeys) {
+        toasts.push(ui.ctx(), ToastKind::Error, error.to_string());
+    }
+    toasts.show(ui.ctx());
+    if ui.input(|i| i.viewport().close_requested()) {
+        *settings = None;
+    }
 }
 
 #[cfg(test)]

@@ -11,7 +11,7 @@ use dc_ui_kit::strings::countdown as text;
 use dc_ui_kit::tokens::{BORDER, FS_S, S2, SURFACE, TEXT_3, WHITE};
 use eframe::egui::{self, Rect, Sense, Stroke, StrokeKind, Ui, vec2};
 
-use crate::app::{Shared, lock};
+use crate::app::{Shared, lock, other_window};
 use crate::session::Session;
 
 /// Side of the window, points.
@@ -71,9 +71,14 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         egui::ViewportId::from_hash_of("countdown"),
         builder,
         move |ui, _| {
-            if face(ui, left) {
-                lock(&shared).cancel_countdown();
-            }
+            // Never in a recording, whatever moment the recorder starts at; a frame a second.
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::ContentProtected(true));
+            other_window(ui, &shared, |ui, shared| {
+                if face(ui, left) {
+                    shared.cancel_countdown();
+                }
+            });
         },
     );
 }

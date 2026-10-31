@@ -17,7 +17,7 @@ use dc_capture::Source;
 
 use super::picker::Pick;
 
-use crate::app::{Shared, lock};
+use crate::app::{Shared, lock, other_window};
 use crate::session::Session;
 
 /// Which popover is open.
@@ -61,6 +61,8 @@ pub struct Open {
     /// does not activate a window opened while another app is in front (a button pressed
     /// through UI Automation), and the popover closed on its first frame.
     focused: bool,
+    /// Exclusion from capture as last set on the window.
+    excluded: Option<bool>,
 }
 
 impl Open {
@@ -69,7 +71,17 @@ impl Open {
             kind,
             anchor,
             focused: false,
+            excluded: None,
         }
+    }
+
+    /// True when the window must be excluded from capture anew: it follows «Скрывать HUD из
+    /// записи» like the bar, so it is in no recording, no still frame of the area selection and
+    /// no preview of the picker.
+    pub fn exclude(&mut self, hidden: bool) -> bool {
+        let changed = self.excluded != Some(hidden);
+        self.excluded = Some(hidden);
+        changed
     }
 
     /// Takes the window's focus state; true when the focus went elsewhere after it had it.
@@ -121,49 +133,60 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         .with_position(pos2(bar.left() + open.anchor - S2, bar.top() - GAP - 40.0));
     let shared = Arc::clone(shared);
     ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
-        let mut shared = lock(&shared);
-        // Laid out in the full popover height, not the window's current one: the window then
-        // takes the size of the content (it starts 40 px high).
-        let room = Rect::from_min_size(ui.max_rect().min, vec2(width, MAX_HEIGHT));
-        let response = ui
-            .scope_builder(egui::UiBuilder::new().max_rect(room), |ui| {
-                panel_frame()
-                    .shadow(egui::Shadow::NONE)
-                    .show(ui, |ui| {
-                        ui.set_width(width - 2.0 * dc_ui_kit::tokens::S3 - 2.0);
-                        match open.kind {
-                            Kind::Source => source(ui, &mut shared),
-                            Kind::Sound => sound(ui, &mut shared),
-                            Kind::Timing => timing(ui, &mut shared),
-                            Kind::More => more(ui, &mut shared),
-                            Kind::Cancel => cancel(ui, &mut shared),
-                            Kind::Quit => quit(ui, &mut shared),
-                            Kind::Failed => failed(ui, &mut shared),
-                        }
-                    })
-                    .response
-            })
-            .inner;
-        let size = response.rect.size();
-        let current = ui.input(|i| i.viewport().inner_rect.map(|r| r.size()));
-        if current.is_some_and(|c| (c - size).length() > 0.5) {
-            ui.ctx()
-                .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-            let corner = pos2(bar.left() + open.anchor - S2, bar.top() - GAP - size.y);
-            ui.ctx()
-                .send_viewport_cmd(egui::ViewportCommand::OuterPosition(corner));
-        }
-        let focused = ui.input(|i| i.viewport().focused);
-        let lost_focus = shared
-            .popover
-            .as_mut()
-            .is_some_and(|open| open.focus_lost(focused));
-        if lost_focus
-            || ui.input(|i| i.key_pressed(egui::Key::Escape) || i.viewport().close_requested())
-        {
-            close(&mut shared);
-        }
+        other_window(ui, &shared, |ui, shared| {
+            frame(ui, shared, open, width, bar)
+        });
     });
+}
+
+/// One frame of the popover window: its content, its size to fit, closing on Esc or lost focus.
+fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
+    let hidden = shared.store.get().hide_hud;
+    if shared.popover.as_mut().is_some_and(|o| o.exclude(hidden)) {
+        ui.ctx()
+            .send_viewport_cmd(egui::ViewportCommand::ContentProtected(hidden));
+    }
+    // Laid out in the full popover height, not the window's current one: the window then
+    // takes the size of the content (it starts 40 px high).
+    let room = Rect::from_min_size(ui.max_rect().min, vec2(width, MAX_HEIGHT));
+    let response = ui
+        .scope_builder(egui::UiBuilder::new().max_rect(room), |ui| {
+            panel_frame()
+                .shadow(egui::Shadow::NONE)
+                .show(ui, |ui| {
+                    ui.set_width(width - 2.0 * dc_ui_kit::tokens::S3 - 2.0);
+                    match open.kind {
+                        Kind::Source => source(ui, shared),
+                        Kind::Sound => sound(ui, shared),
+                        Kind::Timing => timing(ui, shared),
+                        Kind::More => more(ui, shared),
+                        Kind::Cancel => cancel(ui, shared),
+                        Kind::Quit => quit(ui, shared),
+                        Kind::Failed => failed(ui, shared),
+                    }
+                })
+                .response
+        })
+        .inner;
+    let size = response.rect.size();
+    let current = ui.input(|i| i.viewport().inner_rect.map(|r| r.size()));
+    if current.is_some_and(|c| (c - size).length() > 0.5) {
+        ui.ctx()
+            .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
+        let corner = pos2(bar.left() + open.anchor - S2, bar.top() - GAP - size.y);
+        ui.ctx()
+            .send_viewport_cmd(egui::ViewportCommand::OuterPosition(corner));
+    }
+    let focused = ui.input(|i| i.viewport().focused);
+    let lost_focus = shared
+        .popover
+        .as_mut()
+        .is_some_and(|open| open.focus_lost(focused));
+    if lost_focus
+        || ui.input(|i| i.key_pressed(egui::Key::Escape) || i.viewport().close_requested())
+    {
+        close(shared);
+    }
 }
 
 /// Closes the open popover; closing the cancel question means «Продолжить запись».

@@ -11,7 +11,7 @@ use dc_ui_kit::tokens::{FS_L, S2, S3, S5, SURFACE, TEXT, TEXT_2};
 use dc_ui_kit::widgets::Button;
 use eframe::egui::{self, RichText, Ui, vec2};
 
-use crate::app::{Shared, lock};
+use crate::app::{Shared, lock, other_window};
 
 /// Size of the window at the start, points (v1: the whole work area, at least 800 × 600).
 const SIZE: egui::Vec2 = vec2(1280.0, 800.0);
@@ -67,24 +67,26 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     ctx.show_viewport_deferred(
         egui::ViewportId::from_hash_of("editor"),
         builder,
-        move |ui, _| {
-            let mut shared = lock(&shared);
-            let Some(editor) = shared.editor.clone() else {
-                return;
-            };
-            egui::CentralPanel::default()
-                .frame(egui::Frame::new().fill(SURFACE).inner_margin(S5))
-                .show(ui, |ui| {
-                    if body(ui, &editor) {
-                        shared.report(crate::open_folder(&editor.root));
-                    }
-                });
-            if ui.input(|i| i.viewport().close_requested()) {
-                shared.editor = None;
-                shared.show_hud();
-            }
-        },
+        move |ui, _| other_window(ui, &shared, frame),
     );
+}
+
+/// One frame of the editor window; closing it shows the HUD again.
+fn frame(ui: &mut egui::Ui, shared: &mut Shared) {
+    let Some(editor) = shared.editor.clone() else {
+        return;
+    };
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(SURFACE).inner_margin(S5))
+        .show(ui, |ui| {
+            if body(ui, &editor) {
+                shared.report(crate::open_folder(&editor.root));
+            }
+        });
+    if ui.input(|i| i.viewport().close_requested()) {
+        shared.editor = None;
+        shared.show_hud();
+    }
 }
 
 /// Corner of the window centred on the HUD's monitor `bounds` (physical desktop pixels), in
