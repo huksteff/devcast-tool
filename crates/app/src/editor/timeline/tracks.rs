@@ -43,6 +43,15 @@ pub struct Region {
     pub detail: Option<String>,
     /// Silent sound or a hidden effect: drawn pale.
     pub faded: bool,
+    /// The clip of a region of the clips row.
+    pub clip: Option<ClipId>,
+}
+
+/// A speed range on the clips row.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpeedBand {
+    pub region: Region,
+    pub factor: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,7 +68,7 @@ pub struct Tracks {
     pub duration: TimeDelta,
     pub rows: Vec<Track>,
     /// Speed ranges, drawn over the bottom of the clips row.
-    pub speeds: Vec<Region>,
+    pub speeds: Vec<SpeedBand>,
     /// Where a clip jumps inside itself: a cut or a speed edge.
     pub seams: Vec<OutputTime>,
     /// Keyframes of all annotations at output times, sorted: the jumps of [ and ] (7.5).
@@ -133,7 +142,10 @@ impl Tracks {
             }
             for segment in segments.iter().filter(|s| s.speed != 1.0) {
                 if let Ok(range) = Range::new(segment.output_start, segment.output_end()) {
-                    self.speeds.push(region(range, text::times(segment.speed)));
+                    self.speeds.push(SpeedBand {
+                        region: region(range, text::times(segment.speed)),
+                        factor: segment.speed,
+                    });
                 }
             }
             let label = match clip.media.kind {
@@ -144,6 +156,7 @@ impl Tracks {
             let played = length(range.duration());
             regions.push(Region {
                 detail: Some(text::clip_facts(&played, size.width, size.height)),
+                clip: Some(clip.id),
                 ..region(range, label)
             });
         }
@@ -208,6 +221,7 @@ fn region(range: Range<Output>, label: String) -> Region {
         label,
         detail: None,
         faded: false,
+        clip: None,
     }
 }
 

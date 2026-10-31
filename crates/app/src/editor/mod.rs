@@ -11,8 +11,10 @@ mod header;
 mod help;
 mod inspector;
 mod keys;
+mod montage;
 mod playback;
 mod preview;
+mod selection;
 mod timeline;
 mod transport;
 mod view;
@@ -144,6 +146,8 @@ impl EditorWindow {
         self.canvas = dc_fx_crop::canvas(project, &crop.settings);
         self.aspect = crop.settings.aspect;
         self.tracks = tracks;
+        self.view
+            .keep(project, dc_core::OutputTime::ZERO + self.tracks.duration);
         self.fps = frame_rate(self.doc.dir(), project);
         self.preview.changed(project);
         let (project, revision) = self.preview.project();

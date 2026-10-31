@@ -15,6 +15,7 @@ pub const CUT_AT_PLAYHEAD: &str = "Разрезать у указателя";
 pub const SELECT: &str = "Выбор";
 pub const BLADE: &str = "Лезвие";
 pub const CUT_RANGE: &str = "Вырезать участок";
+pub const RANGE_SPEED: &str = "Скорость участка";
 pub const SNAP: &str = "Привязка вкл/выкл";
 pub const ADD_ZOOM: &str = "Добавить зум";
 pub const ADD_ANNOTATION: &str = "Добавить аннотацию";

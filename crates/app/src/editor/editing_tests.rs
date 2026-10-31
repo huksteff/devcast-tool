@@ -16,7 +16,7 @@ use super::tests::{State, editor, harness, project};
 use super::*;
 
 /// The project `devcast <line>` makes of the test project: the CLI's parsing and apply.
-fn by_cli(line: &str) -> Project {
+pub(crate) fn by_cli(line: &str) -> Project {
     let registry = Registry::devcast().unwrap();
     let words: Vec<String> = line.split(' ').map(str::to_owned).collect();
     let (info, taken) = registry.resolve(&words).unwrap();
@@ -34,7 +34,7 @@ fn by_cli(line: &str) -> Project {
     project
 }
 
-fn json(project: &Project) -> serde_json::Value {
+pub(crate) fn json(project: &Project) -> serde_json::Value {
     serde_json::to_value(project).unwrap()
 }
 

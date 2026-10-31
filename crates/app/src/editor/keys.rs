@@ -6,22 +6,24 @@
 use dc_ui_kit::strings::keys as text;
 use eframe::egui::{self, Ui};
 
+use super::montage;
 use super::view::Tool;
 use super::{Action, EditorWindow, Transport, Way};
 use crate::keymap::{EditorKey, EditorKeys};
 use crate::shortcut::Shortcut;
 
 /// What a working shortcut does.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 enum Act {
     Travel(Way),
     Tool(Tool),
     Snap,
     Help,
     Transport(Transport),
+    Montage(fn(&mut EditorWindow)),
 }
 
-/// The action of `key`, `None` until its task: cutting 7.8, regions, clipboard and selection
+/// The action of `key`, `None` until its task: regions, clipboard and selection
 /// 7.9, adding zooms and annotations 7.10, keyframes 7.25, projects 7.28.
 fn act(key: EditorKey) -> Option<Act> {
     Some(match key {
@@ -36,9 +38,11 @@ fn act(key: EditorKey) -> Option<Act> {
         EditorKey::NextFrame => Act::Transport(Transport::Step(1)),
         EditorKey::PrevKey => Act::Transport(Transport::Jump(false)),
         EditorKey::NextKey => Act::Transport(Transport::Jump(true)),
-        EditorKey::CutAtPlayhead
-        | EditorKey::CutRange
-        | EditorKey::AddZoom
+        EditorKey::CutAtPlayhead => Act::Montage(montage::cut_at_playhead),
+        EditorKey::CutRange => Act::Montage(montage::cut_range),
+        EditorKey::RangeSpeed => Act::Montage(montage::range_speed),
+        EditorKey::Delete => Act::Montage(montage::delete),
+        EditorKey::AddZoom
         | EditorKey::AddAnnotation
         | EditorKey::Keyframe
         | EditorKey::NextAnnotation
@@ -46,7 +50,6 @@ fn act(key: EditorKey) -> Option<Act> {
         | EditorKey::Cut
         | EditorKey::Paste
         | EditorKey::SelectAll
-        | EditorKey::Delete
         | EditorKey::NewProject
         | EditorKey::OpenProject
         | EditorKey::Save
@@ -64,6 +67,10 @@ pub fn wired(key: EditorKey) -> bool {
 pub fn run(ui: &Ui, editor: &mut EditorWindow) {
     if ui.ctx().egui_wants_keyboard_input() {
         return;
+    }
+    // Esc is not in the table: it always steps back (mockup 2b, 2c).
+    if editor.help.is_none() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        montage::escape(editor);
     }
     let pressed: Vec<(Shortcut, bool)> = ui.input(|i| {
         i.events
@@ -91,6 +98,7 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow) {
             Some(Act::Snap) => editor.view.magnet = !editor.view.magnet,
             Some(Act::Help) => editor.toggle_help(),
             Some(Act::Transport(t)) => editor.ask(Action::Transport(t)),
+            Some(Act::Montage(run)) => run(editor),
             None => {}
         }
     }

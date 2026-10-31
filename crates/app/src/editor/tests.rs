@@ -374,7 +374,11 @@ fn tracks_stand_at_output_times() {
     );
     assert!(row(Row::System).off && row(Row::System).regions.iter().all(|r| r.faded));
     assert!(row(Row::Keys).off, "keys are not shown by default");
-    let speeds: Vec<_> = tracks.speeds.iter().map(|s| s.label.as_str()).collect();
+    let speeds: Vec<_> = tracks
+        .speeds
+        .iter()
+        .map(|s| s.region.label.as_str())
+        .collect();
     assert_eq!(speeds, ["4×"]);
     let seams: Vec<f64> = tracks.seams.iter().map(|t| t.as_secs_f64()).collect();
     assert_eq!(seams, [20.0, 25.0, 27.0]);

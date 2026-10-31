@@ -47,6 +47,7 @@ pub enum EditorKey {
     Select,
     Blade,
     CutRange,
+    RangeSpeed,
     Snap,
     AddZoom,
     AddAnnotation,
@@ -71,7 +72,7 @@ pub enum EditorKey {
 struct Spec(&'static str, Group, &'static str, &'static str);
 
 impl EditorKey {
-    pub const ALL: [Self; 27] = [
+    pub const ALL: [Self; 28] = [
         Self::PlayPause,
         Self::PrevFrame,
         Self::NextFrame,
@@ -81,6 +82,7 @@ impl EditorKey {
         Self::Select,
         Self::Blade,
         Self::CutRange,
+        Self::RangeSpeed,
         Self::Snap,
         Self::AddZoom,
         Self::AddAnnotation,
@@ -113,6 +115,7 @@ impl EditorKey {
             Self::Select => Spec("select_tool", Montage, text::SELECT, "A"),
             Self::Blade => Spec("blade_tool", Montage, text::BLADE, "B"),
             Self::CutRange => Spec("cut_range", Montage, text::CUT_RANGE, "Shift+Delete"),
+            Self::RangeSpeed => Spec("range_speed", Montage, text::RANGE_SPEED, "R"),
             Self::Snap => Spec("snap", Montage, text::SNAP, "N"),
             Self::AddZoom => Spec("add_zoom", Effects, text::ADD_ZOOM, "Z"),
             Self::AddAnnotation => Spec("add_annotation", Effects, text::ADD_ANNOTATION, "T"),

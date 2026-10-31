@@ -1,11 +1,13 @@
 //! Drawing of the timeline: ruler, track headers, regions, speed ranges and the playhead, by the
 //! mockup's sizes and track colours.
 
-use dc_core::OutputTime;
+use dc_core::time::Output;
+use dc_core::{OutputTime, Range};
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::{
-    self, BG, BORDER, FS_S, Hue, REC, REC_STRONG, ROW_LINE, S2, SURFACE, TEXT_2, TEXT_3, WHITE,
+    self, ACCENT_HI, BG, BORDER, FS_S, Hue, REC, REC_STRONG, ROW_LINE, S2, SURFACE, TEXT_2, TEXT_3,
+    WHITE,
 };
 use eframe::egui::{Align2, Color32, Painter, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
 
@@ -25,6 +27,8 @@ const SMALL: f32 = 10.0;
 const DETAIL_TOP: f32 = 22.0;
 /// Faded regions keep this share of their colour.
 const FADED: f32 = 0.4;
+/// Opacity of the fill of the picked range (mockup: .18).
+const RANGE_FILL: f32 = 0.18;
 
 /// Row heights (mockup: clips 50, sound 36, the rest 28).
 pub fn height(row: Row) -> f32 {
@@ -35,7 +39,7 @@ pub fn height(row: Row) -> f32 {
     }
 }
 
-fn hue(row: Row) -> Hue {
+pub fn hue(row: Row) -> Hue {
     match row {
         Row::Captions => tokens::HUE_CAPTIONS,
         Row::Clips => tokens::HUE_CLIP,
@@ -124,16 +128,27 @@ pub fn lane(painter: &Painter, rect: Rect, track: &Track, scale: &TimeScale) {
     painter.hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, ROW_LINE));
     let hue = hue(track.row);
     for region in &track.regions {
-        let (left, right) = scale.span(region.range);
-        let body = Rect::from_x_y_ranges(
-            left..=right.max(left + 2.0),
-            (rect.top() + INSET)..=(rect.bottom() - INSET),
-        );
-        paint_region(painter, body, region, hue);
+        region_body(painter, body(rect, scale, region.range), region, hue);
     }
 }
 
-fn paint_region(painter: &Painter, body: Rect, region: &Region, hue: Hue) {
+/// Where a region of `range` lies on the lane `rect`.
+pub fn body(rect: Rect, scale: &TimeScale, range: Range<Output>) -> Rect {
+    let (left, right) = scale.span(range);
+    Rect::from_x_y_ranges(
+        left..=right.max(left + 2.0),
+        (rect.top() + INSET)..=(rect.bottom() - INSET),
+    )
+}
+
+/// Where the band of a speed `range` lies at the bottom of the clips lane `rect`.
+pub fn speed_band(rect: Rect, scale: &TimeScale, range: Range<Output>) -> Rect {
+    let bottom = rect.bottom() - INSET - 1.0;
+    let (left, right) = scale.span(range);
+    Rect::from_x_y_ranges(left..=right.max(left + 2.0), (bottom - SPEED)..=bottom)
+}
+
+pub fn region_body(painter: &Painter, body: Rect, region: &Region, hue: Hue) {
     let (fill, line, ink) = if region.faded {
         (
             hue.fill.gamma_multiply(FADED),
@@ -190,11 +205,9 @@ fn paint_region(painter: &Painter, body: Rect, region: &Region, hue: Hue) {
 
 /// Speed bands over the bottom of the clips and the dashed seams inside clips.
 pub fn speeds(painter: &Painter, rect: Rect, tracks: &Tracks, scale: &TimeScale) {
-    let bottom = rect.bottom() - INSET - 1.0;
     for speed in &tracks.speeds {
-        let (left, right) = scale.span(speed.range);
-        let band = Rect::from_x_y_ranges(left..=right.max(left + 2.0), (bottom - SPEED)..=bottom);
-        paint_region(painter, band, speed, tokens::HUE_SPEED);
+        let band = speed_band(rect, scale, speed.region.range);
+        region_body(painter, band, &speed.region, tokens::HUE_SPEED);
     }
     for &seam in &tracks.seams {
         let x = scale.x(seam);
@@ -221,4 +234,25 @@ pub fn playhead(painter: &Painter, ruler: Rect, bottom: f32, x: f32, t: OutputTi
     let tag = Rect::from_min_size(pos2(left, ruler.top() + 2.0), size);
     painter.rect_filled(tag, 3, REC_STRONG);
     painter.galley(tag.min + vec2(5.0, 2.0), galley, WHITE);
+}
+
+/// A picked region (mockup `.rg.sel`): a white ring 2 around it and white bars 3 wide inside
+/// both ends.
+pub fn selected(painter: &Painter, body: Rect) {
+    painter.rect_stroke(body, RADIUS, Stroke::new(2.0, WHITE), StrokeKind::Outside);
+    let bars = (body.top() + INSET)..=(body.bottom() - INSET);
+    for x in [body.left() + 2.0, body.right() - 5.0] {
+        let bar = Rect::from_x_y_ranges(x..=x + 3.0, bars.clone());
+        painter.rect_filled(bar, 2, WHITE);
+    }
+}
+
+/// The picked range from x `left` to `right` over `ys` (mockup `.rangesel`): a pale blue
+/// fill between blue edges 1.5 wide.
+pub fn range(painter: &Painter, left: f32, right: f32, ys: std::ops::RangeInclusive<f32>) {
+    let rect = Rect::from_x_y_ranges(left..=right, ys.clone());
+    painter.rect_filled(rect, 0, ACCENT_HI.gamma_multiply(RANGE_FILL));
+    for x in [left, right] {
+        painter.vline(x, ys.clone(), Stroke::new(1.5, ACCENT_HI));
+    }
 }

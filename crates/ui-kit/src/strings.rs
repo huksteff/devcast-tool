@@ -236,6 +236,34 @@ pub mod timeline {
     pub const BLUR: &str = "Размытие";
     /// Fixed zooms look at their point instead of following the cursor.
     pub const FIXED: &str = "точка";
+    pub const SPEED_MENU: &str = "Скорость участка…";
+    pub const SPEED_TITLE: &str = "Скорость участка";
+    pub const OWN_SPEED: &str = "Своя";
+    pub const APPLY: &str = "Применить";
+    /// After a speed in its field.
+    pub const TIMES: &str = "×";
+    /// Sped up or slowed down sound keeps its pitch (dc-audio tempo).
+    pub const PITCH_KEPT: &str = "Высота голоса сохраняется.";
+
+    /// «Участок 0:13.200 – 0:22.800 · 9,6 с».
+    pub fn range(start: &str, end: &str, secs: f64) -> String {
+        format!("Участок {start} – {end} · {}", seconds(secs))
+    }
+
+    /// «16,0 с → 4,0 с»: the range now and at the new speed.
+    pub fn speed_change(before: f64, after: f64) -> String {
+        format!("{} → {}", seconds(before), seconds(after))
+    }
+
+    /// «9,6 с».
+    pub fn seconds(secs: f64) -> String {
+        format!("{secs:.1} с").replace('.', ",")
+    }
+
+    /// «Скорость 4×»: the band of a speed range.
+    pub fn speed_band(factor: f64) -> String {
+        format!("Скорость {}", times(factor))
+    }
 
     /// «Аннотации 2».
     pub fn annotations(number: u32) -> String {

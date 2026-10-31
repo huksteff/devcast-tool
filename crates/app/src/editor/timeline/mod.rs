@@ -7,16 +7,22 @@
 //! ×0.5–3 (kept in the settings). The ruler and the playhead move the playhead (`pointer.rs`).
 //! The toolbar's other commands are disabled until their tasks («+ Дорожка» and
 //! «+ Аудиодорожка» 7.10, «Подобрать зумы» 7.14 — its suggestions are not a registry command
-//! yet, «Создать субтитры» 7.17, own window 7.26); the magnet holds its state for 7.9. The eye of
-//! the captions and keys rows toggles their `show` setting; the other track header buttons wait
-//! for 7.10 (removing), 7.19 (sound), 7.20 (crop).
+//! yet, «Создать субтитры» 7.17, own window 7.26); the magnet makes the blade stick (regions
+//! 7.9). The clips row is `clips.rs` (pick, drag to another place, the blade), the picked range
+//! of the ruler `range.rs` (Shift+drag, its menu and speed popover). The eye of the captions and
+//! keys rows toggles their `show` setting; the other track header buttons wait for 7.10
+//! (removing), 7.19 (sound), 7.20 (crop).
 
+mod clips;
 mod paint;
 mod pointer;
+mod range;
 mod scale;
 mod tracks;
 mod viewport;
 
+#[cfg(test)]
+mod clips_tests;
 #[cfg(test)]
 mod ui_tests;
 #[cfg(test)]
@@ -37,6 +43,7 @@ pub use viewport::Viewport;
 use serde_json::Value;
 use viewport::Lanes;
 
+use super::view::Tool;
 use super::{Action, EditorWindow};
 
 /// Heights of the toolbar, the ruler, the «+ Аудиодорожка» row and the navigation bar; width of
@@ -88,11 +95,19 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32) -> f32 {
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
             let mut asked = None;
+            let mut clips_lane = None;
             for track in &editor.tracks.rows {
-                asked = asked.or(row(ui, track, &editor.tracks, &scale, rows));
+                let (action, lane) = row(ui, track, &editor.tracks, &scale, rows);
+                asked = asked.or(action);
+                if track.row == Row::Clips {
+                    clips_lane = Some(lane);
+                }
             }
             if let Some(action) = asked {
                 editor.ask(action);
+            }
+            if let Some(lane) = clips_lane {
+                clips::ui(ui, lane, editor, &scale, &lanes);
             }
             add_row(ui);
         });
@@ -121,18 +136,27 @@ fn playhead(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes, ruler: Rect, 
         (x - GRIP).max(lanes.left)..=(x + GRIP).min(lanes.right()).max(lanes.left),
         ruler.bottom()..=bottom,
     );
-    let on_line = ui
-        .interact(grip, ui.scope_id().with("timeline-playhead"), Sense::drag())
-        .on_hover_cursor(egui::CursorIcon::ResizeHorizontal);
-    on_line.widget_info(|| {
-        egui::WidgetInfo::labeled(egui::Role::Slider, ui.is_enabled(), text::PLAYHEAD)
+    // The blade cuts at the playhead: its line must not take that click.
+    let on_line = (editor.view.tool == Tool::Select).then(|| {
+        let line = ui
+            .interact(grip, ui.scope_id().with("timeline-playhead"), Sense::drag())
+            .on_hover_cursor(egui::CursorIcon::ResizeHorizontal);
+        line.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::Role::Slider, ui.is_enabled(), text::PLAYHEAD)
+        });
+        line
     });
-    let handles: Vec<&egui::Response> = if shown {
-        vec![&on_ruler, &on_line]
-    } else {
-        vec![&on_ruler]
-    };
+    let ranging = range::ruler(ui, &on_ruler, lanes, editor);
+    let mut handles: Vec<&egui::Response> = Vec::new();
+    if !ranging {
+        handles.push(&on_ruler);
+    }
+    if let (true, Some(line)) = (shown, &on_line) {
+        handles.push(line);
+    }
     pointer::scrub(ui, &handles, lanes, editor);
+    range::paint(ui, editor, lanes, ruler, bottom);
+    range::menu(ui, editor, lanes, ruler);
     let clip = Rect::from_x_y_ranges(lanes.left..=ruler.right(), ruler.top()..=bottom);
     let scale = editor.view.timeline.scale(lanes);
     let at = editor.view.playhead;
@@ -227,7 +251,7 @@ fn row(
     tracks: &Tracks,
     scale: &TimeScale,
     rows: f32,
-) -> Option<Action> {
+) -> (Option<Action>, Rect) {
     let height = paint::height(track.row) * rows;
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
     let head = rect.with_max_x(rect.left() + HEAD);
@@ -240,6 +264,11 @@ fn row(
     if track.row == Row::Clips {
         paint::speeds(&ui.painter().with_clip_rect(lane), lane, tracks, scale);
     }
+    (head_button(ui, head, track, height), lane)
+}
+
+/// The button at the right of the header `head`; the action when it was pressed.
+fn head_button(ui: &mut Ui, head: Rect, track: &Track, height: f32) -> Option<Action> {
     let (icon, label, dim) = header_button(track)?;
     let side = paint::HEAD_BUTTON.min(height - 4.0);
     let at = Rect::from_center_size(

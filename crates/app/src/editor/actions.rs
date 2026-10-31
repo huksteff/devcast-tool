@@ -14,8 +14,8 @@ use super::{EditorWindow, Way};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     Travel(Way),
-    /// A registry command as one undo step.
-    Apply(Step),
+    /// Registry commands as one undo step.
+    Apply(Vec<Step>),
     Transport(Transport),
 }
 
@@ -41,7 +41,7 @@ impl Action {
             .into_iter()
             .map(|(name, value)| (name.to_owned(), value))
             .collect();
-        Self::Apply(Step::new(op, args))
+        Self::Apply(vec![Step::new(op, args)])
     }
 }
 
@@ -53,7 +53,7 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
     for action in std::mem::take(&mut editor.actions) {
         match action {
             Action::Travel(way) => changed |= editor.doc.travel(way, now).is_some(),
-            Action::Apply(step) => match editor.doc.apply(&[step], now) {
+            Action::Apply(steps) => match editor.doc.apply(&steps, now) {
                 Ok(applied) => changed |= applied.changed,
                 Err(error) => errors.push(error.to_string()),
             },
