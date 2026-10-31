@@ -14,6 +14,7 @@ use dc_fx_zoom::{Mode, ZoomEffect, ZoomState};
 use dc_ui_kit::strings::timeline as text;
 
 use super::scale::length;
+use crate::editor::selection::Item;
 
 /// A row of the timeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +46,8 @@ pub struct Region {
     pub faded: bool,
     /// The clip of a region of the clips row.
     pub clip: Option<ClipId>,
+    /// The effect object of a region that can be picked and edited.
+    pub item: Option<Item>,
 }
 
 /// A speed range on the clips row.
@@ -179,7 +182,10 @@ impl Tracks {
                 .filter(|a| a.track == track)
                 .filter_map(|a| {
                     let range = map.output_span(&a.media, a.range)?;
-                    Some(region(range, kind_name(a.kind).to_owned()))
+                    Some(Region {
+                        item: Some(Item::Annotation(a.id)),
+                        ..region(range, kind_name(a.kind).to_owned())
+                    })
                 })
                 .collect();
             self.add(Row::Annotations(track), regions, false);
@@ -207,6 +213,7 @@ impl Tracks {
                 .filter(|c| c.track == track)
                 .map(|c| Region {
                     faded: c.muted,
+                    item: Some(Item::Sound(c.id)),
                     ..region(c.range, file_name(&c.file.path))
                 })
                 .collect();
@@ -222,6 +229,7 @@ fn region(range: Range<Output>, label: String) -> Region {
         detail: None,
         faded: false,
         clip: None,
+        item: None,
     }
 }
 
@@ -234,6 +242,7 @@ fn captions_of(map: &TimeMap, state: &dc_fx_captions::CaptionsState) -> Vec<Regi
             let range = map.output_span(&cue.media, cue.range)?;
             Some(Region {
                 faded,
+                item: Some(Item::Cue(cue.id)),
                 ..region(range, cue.text())
             })
         })
@@ -258,7 +267,10 @@ fn zooms_of(map: &TimeMap, state: &ZoomState) -> Vec<Region> {
                 Mode::Follow => text::times(zoom.scale),
                 Mode::Fixed => text::fixed_zoom(zoom.scale),
             };
-            Some(region(range, label))
+            Some(Region {
+                item: Some(Item::Zoom(zoom.id)),
+                ..region(range, label)
+            })
         })
         .collect()
 }
@@ -278,10 +290,10 @@ fn callouts_of(map: &TimeMap, state: &CalloutState, problems: &mut Vec<String>) 
             Action::Off => text::CALLOUT_OFF.to_owned(),
             Action::Text { text } => text.clone(),
         };
-        regions.extend(
-            map.output_span(&event.media, span)
-                .map(|r| region(r, label)),
-        );
+        regions.extend(map.output_span(&event.media, span).map(|r| Region {
+            item: Some(Item::Callout(event.id)),
+            ..region(r, label)
+        }));
     }
     regions
 }

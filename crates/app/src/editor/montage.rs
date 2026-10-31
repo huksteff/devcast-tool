@@ -69,7 +69,7 @@ pub fn cut_at_playhead(editor: &mut EditorWindow) {
     editor.ask(split(editor.view.playhead));
 }
 
-/// Delete: removes the picked clips.
+/// Removes the picked clips.
 pub fn delete(editor: &mut EditorWindow) {
     if let Some(action) = remove(editor.view.selection.clips().collect::<Vec<_>>()) {
         editor.ask(action);
@@ -95,11 +95,16 @@ pub fn range_speed(editor: &mut EditorWindow) {
     }
 }
 
-/// Esc: closes the range menu, else drops a dragged clip where it was, else the range, else
-/// takes «Выбор» back from «Лезвие».
+/// Esc: closes the range menu, else drops dragged regions or a clip where they were, else the
+/// range, else takes «Выбор» back from «Лезвие».
 pub fn escape(editor: &mut EditorWindow) {
     let view = &mut editor.view;
-    if view.menu.take().is_some() || view.drag.take().is_some() || view.range.take().is_some() {
+    let gesture = view.gesture.take().is_some();
+    if gesture
+        || view.menu.take().is_some()
+        || view.drag.take().is_some()
+        || view.range.take().is_some()
+    {
         view.ranging = None;
         return;
     }

@@ -18,15 +18,15 @@ use crate::editor::tests::{State, harness, project};
 use crate::editor::view::{RangeMenu, Tool};
 use crate::editor::{SIZE, Way};
 
-type H = Harness<'static, State>;
+pub(super) type H = Harness<'static, State>;
 
-fn started() -> H {
+pub(super) fn started() -> H {
     let mut harness = harness(SIZE);
     harness.run();
     harness
 }
 
-fn lanes(harness: &H) -> Lanes {
+pub(super) fn lanes(harness: &H) -> Lanes {
     let ruler = harness.get_by_label(text::RULER).rect();
     Lanes {
         left: ruler.left(),
@@ -36,7 +36,7 @@ fn lanes(harness: &H) -> Lanes {
     }
 }
 
-fn x_of(harness: &H, secs: f64) -> f32 {
+pub(super) fn x_of(harness: &H, secs: f64) -> f32 {
     let lanes = lanes(harness);
     let view = &harness.state().editor.view.timeline;
     view.scale(&lanes).x(OutputTime::from_secs_f64(secs))
@@ -53,7 +53,7 @@ fn on_ruler(harness: &H, secs: f64) -> Pos2 {
     pos2(x_of(harness, secs), y)
 }
 
-fn button(harness: &H, pos: Pos2, pressed: bool, modifiers: Modifiers) {
+pub(super) fn button(harness: &H, pos: Pos2, pressed: bool, modifiers: Modifiers) {
     harness.event(Event::PointerMoved(pos));
     harness.event(Event::PointerButton {
         pos,
@@ -63,13 +63,13 @@ fn button(harness: &H, pos: Pos2, pressed: bool, modifiers: Modifiers) {
     });
 }
 
-fn move_to(harness: &mut H, pos: Pos2) {
+pub(super) fn move_to(harness: &mut H, pos: Pos2) {
     harness.event(Event::PointerMoved(pos));
     harness.run();
 }
 
 /// A key by its physical key, as egui-winit sends it.
-fn press(harness: &mut H, key: Key, modifiers: Modifiers) {
+pub(super) fn press(harness: &mut H, key: Key, modifiers: Modifiers) {
     harness.event(Event::ModifiersChanged(modifiers));
     harness.event(Event::Key {
         key,
@@ -82,12 +82,12 @@ fn press(harness: &mut H, key: Key, modifiers: Modifiers) {
     harness.run();
 }
 
-fn project_json(harness: &H) -> serde_json::Value {
+pub(super) fn project_json(harness: &H) -> serde_json::Value {
     json(harness.state().editor.doc.project())
 }
 
 /// Undo takes the gesture back in one step.
-fn undo_is_one_step(harness: &mut H) {
+pub(super) fn undo_is_one_step(harness: &mut H) {
     harness
         .state_mut()
         .editor

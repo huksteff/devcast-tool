@@ -3,8 +3,9 @@ use dc_core::time::Source;
 use dc_core::{Clip, Command, History, Project, Range, SourceTime, TimeDelta};
 
 use crate::{
-    CaptionsClear, CaptionsEffect, CaptionsGen, CaptionsImport, CaptionsMerge, CaptionsRm,
-    CaptionsSet, CaptionsSplit, Cue, NewCue, Word, export_text, merge_tracks, parse_text,
+    CaptionsClear, CaptionsEffect, CaptionsGen, CaptionsImport, CaptionsMerge, CaptionsPaste,
+    CaptionsRm, CaptionsSet, CaptionsSplit, Cue, NewCue, Word, export_text, merge_tracks,
+    parse_text,
 };
 
 pub(crate) fn secs(s: f64) -> SourceTime {
@@ -302,4 +303,34 @@ fn undo_redo_and_json_round_trip() {
     history.redo(&mut p);
     history.redo(&mut p);
     assert_eq!(p, end);
+}
+
+#[test]
+fn paste_copies_a_cue_into_another_recording_with_its_words() {
+    let mut p = project();
+    let item = serde_json::to_value(&cues(&p)[0]).unwrap();
+    let paste = |at: f64, duration: f64| -> CaptionsPaste {
+        op(serde_json::json!({"item": item, "at": at, "duration": duration}))
+    };
+    assert_eq!(run(&mut p, &paste(12.0, 1.1)), "реплики +1 s4");
+    let copy = cues(&p)
+        .into_iter()
+        .find(|c| c.id.to_string() == "s4")
+        .unwrap();
+    assert_eq!(
+        (copy.media.as_str(), copy.range, copy.text()),
+        (
+            p.clips[1].media.path.as_str(),
+            span(2.0, 3.1),
+            "Привет, это видео.".to_owned()
+        )
+    );
+    assert_eq!(
+        copy.words[0].range,
+        span(2.05, 2.3),
+        "words keep their share of the cue"
+    );
+    assert!(fail(&mut p, &paste(9.5, 1.0)).contains("не запись реплики"));
+    assert!(fail(&mut p, &paste(30.0, 1.0)).contains("нет видео"));
+    assert!(fail(&mut p, &paste(1.0, 0.0)).contains("больше нуля"));
 }

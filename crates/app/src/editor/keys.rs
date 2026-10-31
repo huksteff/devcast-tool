@@ -6,9 +6,9 @@
 use dc_ui_kit::strings::keys as text;
 use eframe::egui::{self, Ui};
 
-use super::montage;
 use super::view::Tool;
 use super::{Action, EditorWindow, Transport, Way};
+use super::{clipboard, montage};
 use crate::keymap::{EditorKey, EditorKeys};
 use crate::shortcut::Shortcut;
 
@@ -23,8 +23,8 @@ enum Act {
     Montage(fn(&mut EditorWindow)),
 }
 
-/// The action of `key`, `None` until its task: regions, clipboard and selection
-/// 7.9, adding zooms and annotations 7.10, keyframes 7.25, projects 7.28.
+/// The action of `key`, `None` until its task: adding zooms and annotations 7.10, the next
+/// annotation 7.10, keyframes 7.25, projects 7.28.
 fn act(key: EditorKey) -> Option<Act> {
     Some(match key {
         EditorKey::Undo => Act::Travel(Way::Undo),
@@ -41,15 +41,15 @@ fn act(key: EditorKey) -> Option<Act> {
         EditorKey::CutAtPlayhead => Act::Montage(montage::cut_at_playhead),
         EditorKey::CutRange => Act::Montage(montage::cut_range),
         EditorKey::RangeSpeed => Act::Montage(montage::range_speed),
-        EditorKey::Delete => Act::Montage(montage::delete),
+        EditorKey::Delete => Act::Montage(clipboard::delete),
+        EditorKey::Copy => Act::Montage(clipboard::copy),
+        EditorKey::Cut => Act::Montage(clipboard::cut),
+        EditorKey::Paste => Act::Montage(clipboard::paste),
+        EditorKey::SelectAll => Act::Montage(clipboard::select_all),
         EditorKey::AddZoom
         | EditorKey::AddAnnotation
         | EditorKey::Keyframe
         | EditorKey::NextAnnotation
-        | EditorKey::Copy
-        | EditorKey::Cut
-        | EditorKey::Paste
-        | EditorKey::SelectAll
         | EditorKey::NewProject
         | EditorKey::OpenProject
         | EditorKey::Save

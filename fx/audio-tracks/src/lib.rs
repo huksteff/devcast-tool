@@ -11,7 +11,7 @@ mod model;
 mod sound;
 
 pub use channel::{AudioChannel, AudioMute, AudioReset};
-pub use clips::{AudioAdd, AudioRm, AudioSet};
+pub use clips::{AudioAdd, AudioPaste, AudioRm, AudioSet};
 pub use model::{
     AUDIO_DIR, Audio, AudioClip, AudioId, AudioKind, AudioSettings, AudioState, MIN_LENGTH,
     SoundFile, TRACKS,
@@ -27,6 +27,7 @@ pub fn ops() -> Vec<OpInfo> {
         OpInfo::of::<AudioReset>(),
         OpInfo::of::<AudioMute>(),
         OpInfo::of::<AudioSet>(),
+        OpInfo::of::<AudioPaste>(),
         OpInfo::of::<AudioRm>(),
     ]
 }

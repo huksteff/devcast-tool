@@ -47,13 +47,7 @@ impl Command for AnnotAdd {
 
     fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
         let timeline = timeline(project)?;
-        let length = TimeDelta::from_secs_f64(self.duration);
-        if !self.duration.is_finite() || length <= TimeDelta::ZERO {
-            return Err(CommandError::new(format!(
-                "длительность аннотации должна быть больше нуля (секунды), а не {}",
-                self.duration
-            )));
-        }
+        let length = check_length(self.duration)?;
         let start = timeline.start(self.at.0)?;
         let end = timeline.end(self.at.0 + length)?;
         let (media, range) = span(&timeline, start, end)?;
@@ -266,7 +260,18 @@ pub(crate) fn check_track(track: u32) -> Result<u32, CommandError> {
     )))
 }
 
-fn check_rect(rect: Rect) -> Result<Rect, CommandError> {
+/// A length of `seconds` on the output video, more than zero.
+pub(crate) fn check_length(seconds: f64) -> Result<TimeDelta, CommandError> {
+    let length = TimeDelta::from_secs_f64(seconds);
+    if !seconds.is_finite() || length <= TimeDelta::ZERO {
+        return Err(CommandError::new(format!(
+            "длительность аннотации должна быть больше нуля (секунды), а не {seconds}"
+        )));
+    }
+    Ok(length)
+}
+
+pub(crate) fn check_rect(rect: Rect) -> Result<Rect, CommandError> {
     let sides_ok = [rect.w(), rect.h()]
         .iter()
         .all(|side| (SIZE_MIN..=SIZE_MAX).contains(side));
@@ -290,7 +295,7 @@ fn check_rect(rect: Rect) -> Result<Rect, CommandError> {
     Ok(rect)
 }
 
-fn check_rotation(degrees: f64) -> Result<f64, CommandError> {
+pub(crate) fn check_rotation(degrees: f64) -> Result<f64, CommandError> {
     if degrees.abs() <= ROTATION_LIMIT {
         return Ok(degrees);
     }

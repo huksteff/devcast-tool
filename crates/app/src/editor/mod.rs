@@ -6,6 +6,7 @@
 //! (`keys.rs`) come from the settings' table, F1 or «?» opens their help (`help.rs`).
 
 mod actions;
+mod clipboard;
 mod document;
 mod header;
 mod help;
@@ -14,6 +15,7 @@ mod keys;
 mod montage;
 mod playback;
 mod preview;
+mod regions;
 mod selection;
 mod timeline;
 mod transport;
@@ -25,6 +27,8 @@ mod editing_tests;
 mod keys_tests;
 #[cfg(test)]
 mod playback_tests;
+#[cfg(test)]
+mod test_project;
 #[cfg(test)]
 mod tests;
 
@@ -146,8 +150,8 @@ impl EditorWindow {
         self.canvas = dc_fx_crop::canvas(project, &crop.settings);
         self.aspect = crop.settings.aspect;
         self.tracks = tracks;
-        self.view
-            .keep(project, dc_core::OutputTime::ZERO + self.tracks.duration);
+        let end = self.end();
+        self.view.keep(&self.tracks, end);
         self.fps = frame_rate(self.doc.dir(), project);
         self.preview.changed(project);
         let (project, revision) = self.preview.project();

@@ -2,7 +2,7 @@ use dc_core::Project;
 use serde_json::{Value, json};
 
 use crate::tests::{add, command, cut_and_fast, fail, project, range, run, secs, state};
-use crate::{AnnotLayer, AnnotMove};
+use crate::{AnnotLayer, AnnotMove, AnnotPaste};
 
 fn layer(p: &mut Project, id: &str, step: &str) -> String {
     run(p, &command::<AnnotLayer>(json!({"id": id, "step": step})))
@@ -132,4 +132,50 @@ fn move_explains_what_is_wrong() {
     p.clips[0].cuts.insert(0, range(0.0, 0.9));
     let error = fail(&mut p, &move_to(json!({"id": "a1", "at": 2})));
     assert!(error.contains("не видна в готовом видео"), "{error}");
+}
+
+#[test]
+fn paste_copies_an_annotation_with_its_keys_and_animations() {
+    let mut p = cut_and_fast();
+    let args = json!({"kind": "text", "at": 0, "duration": 0.5, "rect": "0.2,0.3,0.4,0.1"});
+    run(&mut p, &add(args));
+    let mut original = state(&p).annotations[0].clone();
+    original.body.insert("text".to_owned(), json!("Привет"));
+    original.rotation = 12.0;
+    let item: Value = serde_json::to_value(&original).unwrap();
+    let paste = |args: Value| command::<AnnotPaste>(args);
+    let added = run(
+        &mut p,
+        &paste(json!({"item": item, "at": 6, "duration": 2, "track": 3})),
+    );
+    assert_eq!(added, "аннотации +1 a2");
+    let copy = &state(&p).annotations[1];
+    assert_eq!(
+        (copy.media.as_str(), copy.range, copy.track),
+        (p.clips[1].media.path.as_str(), range(0.0, 2.0), 3)
+    );
+    assert_eq!(
+        (copy.kind, copy.rect, copy.rotation, &copy.body),
+        (original.kind, original.rect, 12.0, &original.body)
+    );
+    run(
+        &mut p,
+        &paste(json!({"item": item, "at": 2, "duration": 2})),
+    );
+    let fast = &state(&p).annotations[2];
+    assert_eq!((fast.range, fast.track), (range(4.0, 8.0), 0), "2 s at 2×");
+    for (args, message) in [
+        (
+            json!({"item": item, "at": 5.8, "duration": 1}),
+            "стык клипов",
+        ),
+        (json!({"item": item, "at": 1, "duration": 0}), "больше нуля"),
+        (
+            json!({"item": item, "at": 1, "duration": 1, "track": 40}),
+            "от 0 до 31",
+        ),
+    ] {
+        let error = fail(&mut p, &paste(args.clone()));
+        assert!(error.contains(message), "{args}: {error}");
+    }
 }

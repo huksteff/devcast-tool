@@ -13,7 +13,7 @@ mod place;
 mod span;
 
 pub use animate::AnnotAnim;
-pub use arrange::{AnnotLayer, AnnotMove, Step};
+pub use arrange::{AnnotLayer, AnnotMove, AnnotPaste, Step};
 pub use commands::{AnnotAdd, AnnotRm, AnnotSet};
 pub use keyed::{AnnotKeyAdd, AnnotKeyCopy, AnnotKeyRm, edit_body, edit_kind, key_offset};
 pub use keys::{Blend, KEY_TOLERANCE, Key, keyed, step};
@@ -36,6 +36,7 @@ pub fn ops() -> Vec<OpInfo> {
         OpInfo::of::<AnnotKeyRm>(),
         OpInfo::of::<AnnotKeyCopy>(),
         OpInfo::of::<AnnotMove>(),
+        OpInfo::of::<AnnotPaste>(),
         OpInfo::of::<AnnotLayer>(),
         OpInfo::of::<AnnotRm>(),
     ]

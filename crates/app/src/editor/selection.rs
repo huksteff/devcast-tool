@@ -1,13 +1,38 @@
-//! What is selected on the timeline. The selection is not part of the project: undo does not
-//! bring it back (mockup 2a), and what the project no longer has drops out of it. Clips are the
-//! only objects for now; the regions of the effects and multi-select join in 7.9.
+//! What is selected on the timeline: clips and the regions of the effects, together (mockup 2a:
+//! one selection over all rows). The selection is not part of the project: undo does not bring
+//! it back, and what the project no longer has drops out of it.
 
-use dc_core::{ClipId, Project};
+use dc_core::ClipId;
+use dc_fx_annotations::AnnotId;
+use dc_fx_audio_tracks::AudioId;
+use dc_fx_callout::EventId;
+use dc_fx_captions::CueId;
+use dc_fx_zoom::ZoomId;
+
+use super::timeline::Tracks;
+
+/// The effect object behind a region of the timeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Item {
+    Zoom(ZoomId),
+    Cue(CueId),
+    Callout(EventId),
+    Annotation(AnnotId),
+    Sound(AudioId),
+}
+
+impl Item {
+    /// Items of one kind lie on the same rows: Ctrl+A picks them all.
+    pub fn same_kind(self, other: Self) -> bool {
+        std::mem::discriminant(&self) == std::mem::discriminant(&other)
+    }
+}
 
 /// An object picked on the timeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Selected {
     Clip(ClipId),
+    Region(Item),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -21,6 +46,23 @@ impl Selection {
         self.items = vec![item];
     }
 
+    /// `item` too, unless it is picked already.
+    pub fn add(&mut self, item: Selected) {
+        if !self.contains(item) {
+            self.items.push(item);
+        }
+    }
+
+    /// Ctrl+click: adds `item` or takes it out.
+    pub fn toggle(&mut self, item: Selected) {
+        match self.items.iter().position(|i| *i == item) {
+            Some(at) => {
+                self.items.remove(at);
+            }
+            None => self.items.push(item),
+        }
+    }
+
     pub fn clear(&mut self) {
         self.items.clear();
     }
@@ -29,17 +71,33 @@ impl Selection {
         self.items.contains(&item)
     }
 
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
     /// The selected clips in the order they were picked.
     pub fn clips(&self) -> impl Iterator<Item = ClipId> + '_ {
-        self.items.iter().map(|item| match item {
-            Selected::Clip(id) => *id,
+        self.items.iter().filter_map(|item| match item {
+            Selected::Clip(id) => Some(*id),
+            Selected::Region(_) => None,
         })
     }
 
-    /// Drops what `project` does not have (a removed clip, an undone split).
-    pub fn keep(&mut self, project: &Project) {
+    /// The selected regions in the order they were picked.
+    pub fn regions(&self) -> impl Iterator<Item = Item> + '_ {
+        self.items.iter().filter_map(|item| match item {
+            Selected::Region(item) => Some(*item),
+            Selected::Clip(_) => None,
+        })
+    }
+
+    /// Drops what the rows of the project no longer show (a removed clip or zoom, an undone
+    /// split).
+    pub fn keep(&mut self, tracks: &Tracks) {
+        let regions = || tracks.rows.iter().flat_map(|t| &t.regions);
         self.items.retain(|item| match item {
-            Selected::Clip(id) => project.clips.iter().any(|c| c.id == *id),
+            Selected::Clip(id) => regions().any(|r| r.clip == Some(*id)),
+            Selected::Region(item) => regions().any(|r| r.item == Some(*item)),
         });
     }
 }

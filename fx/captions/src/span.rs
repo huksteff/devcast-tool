@@ -24,6 +24,18 @@ impl Timeline {
         ))
     }
 
+    /// The recording shown at `t`.
+    pub(crate) fn media_at(&self, t: OutputTime) -> Result<String, CommandError> {
+        self.map
+            .segment_at(t)
+            .map(|s| s.media.clone())
+            .ok_or_else(|| {
+                CommandError::new(format!(
+                    "в {t} нет видео: реплика начинается внутри клипов (devcast ls clips)"
+                ))
+            })
+    }
+
     /// The source moment of `cue`'s recording shown at `t`.
     pub(crate) fn start(&self, cue: &Cue, t: OutputTime) -> Result<SourceTime, CommandError> {
         self.map

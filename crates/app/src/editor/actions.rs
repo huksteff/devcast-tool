@@ -9,6 +9,7 @@ use eframe::egui::Ui;
 use serde_json::{Map, Value};
 
 use super::playback::seek;
+use super::selection::{Item, Selected};
 use super::{EditorWindow, Way};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,6 +17,8 @@ pub enum Action {
     Travel(Way),
     /// Registry commands as one undo step.
     Apply(Vec<Step>),
+    /// Registry commands that add regions, as one undo step; the added regions get picked.
+    Paste(Vec<Step>),
     Transport(Transport),
 }
 
@@ -57,6 +60,17 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                 Ok(applied) => changed |= applied.changed,
                 Err(error) => errors.push(error.to_string()),
             },
+            Action::Paste(steps) => {
+                let before = items(editor);
+                match editor.doc.apply(&steps, now) {
+                    Ok(_) => {
+                        errors.extend(editor.refresh(now));
+                        pick_new(editor, &before);
+                        moved = true;
+                    }
+                    Err(error) => errors.push(error.to_string()),
+                }
+            }
             Action::Transport(transport) => {
                 errors.extend(transport_run(editor, transport, now));
                 moved = true;
@@ -118,5 +132,28 @@ fn transport_run(editor: &mut EditorWindow, transport: Transport, now: Instant) 
                 .then(|| playback.play(view.playhead, now))
                 .flatten()
         }
+    }
+}
+
+/// The regions the timeline shows now.
+fn items(editor: &EditorWindow) -> Vec<Item> {
+    editor
+        .tracks
+        .rows
+        .iter()
+        .flat_map(|t| &t.regions)
+        .filter_map(|r| r.item)
+        .collect()
+}
+
+/// Picks the regions that are not among `before`.
+fn pick_new(editor: &mut EditorWindow, before: &[Item]) {
+    let added: Vec<Item> = items(editor)
+        .into_iter()
+        .filter(|i| !before.contains(i))
+        .collect();
+    editor.view.selection.clear();
+    for item in added {
+        editor.view.selection.add(Selected::Region(item));
     }
 }

@@ -157,12 +157,12 @@ devcast events <clicks|keys|activity> [--from --to]
 devcast cut <10.2-12.5,...|w120-w135> [--dry-run]
 devcast speed <from-to> <x>
 devcast zoom suggest | zoom add --at <сек|clicks> [--duration 1] [--scale 1.8] [--mode follow|fixed] | zoom set z3 --scale 2 | zoom motion --preset smooth | zoom rm z3
-devcast annot add <text|shape|image|drawing|blur> --at --duration --rect x,y,w,h [--track 1] [--rotation 15] | annot set a3 --from --to --x --w --rotation | annot move a3 --at --track | annot layer a3 up|down|top|bottom | annot rm a3
+devcast annot add <text|shape|image|drawing|blur> --at --duration --rect x,y,w,h [--track 1] [--rotation 15] | annot set a3 --from --to --x --w --rotation | annot move a3 --at --track | annot paste --item <json> --at --duration [--track] | annot layer a3 up|down|top|bottom | annot rm a3
 devcast key add a3 --at 12.0 [параметры] | key rm
 devcast callout add ... | keys --show --position bottom_right
-devcast captions gen [--model fast|accurate] [--tracks mic] | export -o t.txt | import t.txt | clear
+devcast captions gen [--model fast|accurate] [--tracks mic] | export -o t.txt | import t.txt | paste --item <json> --at --duration | clear
 devcast audio channel mic [--clip c2] --volume 80 --gain 2 --mute --normalize --denoise | audio mute c2 [--off] | audio reset c2 [--channel mic]
-devcast audio add music.mp3 --at 5 [--track 1] [--duration 30] | audio set au1 --at --duration --offset --volume --normalize | audio rm au1
+devcast audio add music.mp3 --at 5 [--track 1] [--duration 30] | audio set au1 --at --duration --offset --volume --normalize | audio paste --item <json> --at [--track] | audio rm au1
 devcast crop c1 x,y,w,h | aspect <free|source|16:9|16:10|4:3>
 devcast set <настройка>.<аргумент>=<значение> ... # стиль проекта: cursor.size=1.5 clicks.style=ripple (через команду настроек эффекта)
 devcast defaults show | defaults set zoom.preset=smooth | defaults from-project | defaults reset

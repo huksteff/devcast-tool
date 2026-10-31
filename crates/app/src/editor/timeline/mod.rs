@@ -14,15 +14,23 @@
 //! (removing), 7.19 (sound), 7.20 (crop).
 
 mod clips;
+mod gesture;
 mod paint;
+mod places;
 mod pointer;
 mod range;
+mod regions;
 mod scale;
+mod snap;
 mod tracks;
 mod viewport;
 
 #[cfg(test)]
 mod clips_tests;
+#[cfg(test)]
+mod regions_tests;
+#[cfg(test)]
+mod snap_tests;
 #[cfg(test)]
 mod ui_tests;
 #[cfg(test)]
@@ -95,22 +103,23 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32) -> f32 {
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
             let mut asked = None;
-            let mut clips_lane = None;
+            let mut shown = Vec::new();
             for track in &editor.tracks.rows {
                 let (action, lane) = row(ui, track, &editor.tracks, &scale, rows);
                 asked = asked.or(action);
-                if track.row == Row::Clips {
-                    clips_lane = Some(lane);
-                }
+                shown.push((track.row, lane));
             }
             if let Some(action) = asked {
                 editor.ask(action);
             }
-            if let Some(lane) = clips_lane {
+            if let Some(&(_, lane)) = shown.iter().find(|(row, _)| *row == Row::Clips) {
                 clips::ui(ui, lane, editor, &scale, &lanes);
             }
+            regions::ui(ui, &shown, editor, &scale, &lanes);
             add_row(ui);
         });
+    let below_ruler = area.with_min_y(area.top() + RULER).with_min_x(lanes.left);
+    regions::picked_tip(ui, editor, below_ruler);
     let (nav, _) = ui.allocate_exact_size(vec2(area.width(), NAV), Sense::hover());
     pointer::nav(ui, nav, &lanes, &mut editor.view.timeline);
     playhead(ui, editor, &lanes, ruler, nav.top());

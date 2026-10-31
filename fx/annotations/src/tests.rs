@@ -277,6 +277,7 @@ fn ops_follow_the_rules() {
             "annot key rm",
             "annot key copy",
             "annot move",
+            "annot paste",
             "annot layer",
             "annot rm"
         ]

@@ -5,7 +5,7 @@ use dc_core::{Command, Diff, OutputTime, Place, Project, Range, SourceTime, Time
 use serde_json::json;
 
 use crate::tests::{clip, project};
-use crate::{Audio, AudioAdd, AudioRm, AudioSet, SoundFile, sound};
+use crate::{Audio, AudioAdd, AudioPaste, AudioRm, AudioSet, SoundFile, sound};
 
 fn o(secs: f64) -> OutputTime {
     OutputTime::from_secs_f64(secs)
@@ -172,4 +172,35 @@ fn cuts_do_not_move_extra_sound_and_ls_shows_its_output_time() {
     );
     assert_eq!(items[0].fields["file"]["path"], "assets/audio/музыка 1.mp3");
     assert_eq!(items[0].fields["volume"], json!(100.0));
+}
+
+#[test]
+fn paste_copies_a_clip_with_its_levels_to_another_place() {
+    let mut p = project();
+    apply(&mut p, &add(2.0, 10.0, None, Some(4.0)));
+    apply(
+        &mut p,
+        &set(json!({"id": "au1", "offset": 3, "volume": 40})),
+    );
+    let item = serde_json::to_value(&p.state::<Audio>().unwrap().clips[0]).unwrap();
+    let paste = |args: serde_json::Value| -> AudioPaste { serde_json::from_value(args).unwrap() };
+    let diff = apply(&mut p, &paste(json!({"item": item, "at": 10})));
+    assert_eq!(diff.to_string(), "звуки +1 au2");
+    let state = p.state::<Audio>().unwrap();
+    assert_eq!(
+        places(&p)[1],
+        (0, 10.0, 14.0, 3.0),
+        "length and file offset kept"
+    );
+    assert_eq!(state.clips[1].volume, 40.0);
+    for (args, expected) in [
+        (json!({"item": item, "at": 3}), "уже есть звук"),
+        (json!({"item": item, "at": 22}), "позже видео"),
+        (json!({"item": item, "at": 5, "track": 32}), "вне 0–31"),
+    ] {
+        let error = paste(args.clone()).apply(&mut p).unwrap_err().to_string();
+        assert!(error.contains(expected), "{args}: {error}");
+    }
+    apply(&mut p, &paste(json!({"item": item, "at": 3, "track": 2})));
+    assert_eq!(places(&p)[2], (2, 3.0, 7.0, 3.0));
 }

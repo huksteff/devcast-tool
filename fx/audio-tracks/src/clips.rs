@@ -150,6 +150,53 @@ impl Op for AudioSet {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct AudioPaste {
+    /// The sound clip to copy as `project.json` keeps it: its file (already in the project),
+    /// length, start in the file and levels come along; its id and place are replaced.
+    pub item: AudioClip,
+    /// Start on the output video.
+    pub at: TimeArg<Output>,
+    /// Extra track, 0..31; by default the track of `item`.
+    pub track: Option<u32>,
+}
+
+impl Command for AudioPaste {
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
+
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+        let end = video_end(project)?;
+        let TimeArg(at) = self.at;
+        check_start(at, end)?;
+        let length = self.item.range.duration();
+        check_file(&self.item.file, self.item.offset, length)?;
+        let mut state = project.state::<Audio>()?;
+        let clip = AudioClip {
+            id: state.ids.allocate(),
+            track: check_track(self.track.unwrap_or(self.item.track))?,
+            range: range(at, length, end)?,
+            volume: within("громкость (%)", self.item.volume, 0.0, 100.0)?,
+            gain: within("усиление (×)", self.item.gain, 1.0, 10.0)?,
+            ..self.item.clone()
+        };
+        check_overlap(&state, &clip)?;
+        let id = clip.id;
+        state.clips.push(clip);
+        project.set_state::<Audio>(&state)?;
+        Ok(Diff::added(id))
+    }
+}
+
+impl Op for AudioPaste {
+    const NAME: &'static str = "audio paste";
+    const ABOUT: &'static str =
+        "Вставить копию клипа звука (его JSON из project.json) в другое место по готовому видео";
+    const EXAMPLE: &'static str = r#"audio paste --item '{"id":"au1","file":{"path":"assets/audio/music.mp3","duration":30000000},"track":0,"range":{"start":0,"end":5000000},"offset":0,"volume":100,"gain":1,"muted":false,"normalize":false}' --at 12"#;
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct AudioRm {
     /// Sound clip to remove.
     pub id: AudioId,

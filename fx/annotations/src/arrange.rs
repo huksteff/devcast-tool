@@ -1,12 +1,12 @@
-//! `annot move` and `annot layer`: where an annotation lies on the timeline and above which
-//! annotations it is painted.
+//! `annot move`, `annot paste` and `annot layer`: where an annotation lies on the timeline and
+//! above which annotations it is painted.
 
 use dc_core::time::Output;
 use dc_core::{Command, CommandError, Diff, Op, Project, TimeArg};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::commands::{check_track, position};
+use crate::commands::{check_length, check_rect, check_rotation, check_track, position};
 use crate::model::{AnnotId, Annotation, Annotations};
 use crate::span::{shown, span, timeline};
 
@@ -70,6 +70,54 @@ impl Op for AnnotMove {
         "Передвинуть аннотацию по времени (длина сохраняется) и/или на другую дорожку";
     const EXAMPLE: &'static str = "annot move a3 --at 12 --track 1";
     const POSITIONAL: &'static [&'static str] = &["id"];
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AnnotPaste {
+    /// The annotation to copy as `project.json` keeps it: kind, box, rotation, animations, kind
+    /// fields and keys come along; its id, recording and time are replaced.
+    pub item: Annotation,
+    /// Start on the output video.
+    pub at: TimeArg<Output>,
+    /// Length, seconds of the output video, at least 0.1.
+    pub duration: f64,
+    /// Track, 0..31; by default the track of `item`. The copy lies above the track's others.
+    pub track: Option<u32>,
+}
+
+impl Command for AnnotPaste {
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
+
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+        let length = check_length(self.duration)?;
+        let timeline = timeline(project)?;
+        let start = timeline.start(self.at.0)?;
+        let end = timeline.end(self.at.0 + length)?;
+        let (media, range) = span(&timeline, start, end)?;
+        let mut state = project.state::<Annotations>()?;
+        let annotation = Annotation {
+            id: state.ids.allocate(),
+            media,
+            range,
+            track: check_track(self.track.unwrap_or(self.item.track))?,
+            rect: check_rect(self.item.rect)?,
+            rotation: check_rotation(self.item.rotation)?,
+            ..self.item.clone()
+        };
+        let id = annotation.id;
+        state.annotations.push(annotation);
+        project.set_state::<Annotations>(&state)?;
+        Ok(Diff::added(id))
+    }
+}
+
+impl Op for AnnotPaste {
+    const NAME: &'static str = "annot paste";
+    const ABOUT: &'static str = "Вставить копию аннотации (её JSON из project.json) в другое время: вид, ключи и анимации едут с ней";
+    const EXAMPLE: &'static str = r#"annot paste --item '{"id":"a1","kind":"shape","media":"media/c1.mp4","range":{"start":0,"end":2000000},"track":0,"rect":"0.1,0.1,0.3,0.2","rotation":0}' --at 12 --duration 2"#;
 }
 
 /// Where to put an annotation among the others of its track.

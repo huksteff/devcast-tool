@@ -3,9 +3,12 @@
 //! makes it act.
 
 use dc_core::time::Output;
-use dc_core::{ClipId, OutputTime, Project, Range};
+use dc_core::{ClipId, OutputTime, Range};
+use eframe::egui::Pos2;
 
-use super::selection::Selection;
+use super::clipboard::Copied;
+use super::selection::{Item, Selection};
+use super::timeline::Tracks;
 use super::timeline::Viewport;
 
 /// Tool of a click on the timeline.
@@ -86,6 +89,10 @@ pub struct View {
     pub menu: Option<RangeMenu>,
     /// A clip being dragged to another place of the track.
     pub drag: Option<ClipDrag>,
+    /// Regions being dragged, an edge being dragged or a rubber band being drawn (7.9).
+    pub gesture: Option<Gesture>,
+    /// Copied regions for Ctrl+V (7.9).
+    pub clipboard: Vec<Copied>,
 }
 
 impl Default for View {
@@ -108,22 +115,29 @@ impl Default for View {
             ranging: None,
             menu: None,
             drag: None,
+            gesture: None,
+            clipboard: Vec::new(),
         }
     }
 }
 
 impl View {
-    /// Keeps what still fits `project` after it changed: picked clips it has, a range inside
-    /// its length `end`; a gesture over the old project ends.
-    pub fn keep(&mut self, project: &Project, end: OutputTime) {
-        self.selection.keep(project);
+    /// Keeps what still fits the project after it changed: picked clips and regions its rows
+    /// `tracks` show, a range inside its length `end`; a gesture over the old project ends.
+    pub fn keep(&mut self, tracks: &Tracks, end: OutputTime) {
+        self.selection.keep(tracks);
+        self.gesture = None;
         self.range = self.range.filter(|r| r.end() <= end);
         if self.range.is_none() {
             self.menu = None;
         }
-        self.drag = self
-            .drag
-            .filter(|d| project.clips.iter().any(|c| c.id == d.clip));
+        self.drag = self.drag.filter(|d| {
+            tracks
+                .rows
+                .iter()
+                .flat_map(|t| &t.regions)
+                .any(|r| r.clip == Some(d.clip))
+        });
     }
 }
 
@@ -144,4 +158,31 @@ pub struct ClipDrag {
     pub grab: f32,
     /// Place of the clip on the track when grabbed, from 0.
     pub from: usize,
+}
+
+/// A gesture on the regions of the timeline (mockup 2a, 2b).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Gesture {
+    /// The picked regions follow the pointer: the time under it at the press, the row (index
+    /// in `Tracks::rows`) and the region it was pressed on.
+    Move {
+        grab: OutputTime,
+        row: usize,
+        item: Item,
+    },
+    /// An edge (`end` or the start) of one region follows the pointer.
+    Edge { target: Target, end: bool },
+    /// A rubber band from `from` picks the regions it touches; `base` stays picked (Ctrl).
+    Band { from: Pos2, base: Selection },
+}
+
+/// What has its edge dragged.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Target {
+    Region(Item),
+    /// A speed band of the clips row: where it is, its factor.
+    Speed {
+        range: Range<Output>,
+        factor: f64,
+    },
 }
