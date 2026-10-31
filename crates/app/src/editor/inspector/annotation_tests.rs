@@ -210,20 +210,38 @@ fn typewriter_is_grey_for_a_blur() {
     );
 }
 
+/// Where copy `id` of the project shows on the output, ms, and its row.
+fn copy_at(harness: &H, id: AnnotId) -> ((i64, i64), u32) {
+    let project = harness.state().editor.doc.project();
+    let state = project.state::<dc_fx_annotations::Annotations>().unwrap();
+    let copy = state.annotations.iter().find(|a| a.id == id).unwrap();
+    let shown = dc_core::TimeMap::build(project)
+        .output_span(&copy.media, copy.range)
+        .unwrap();
+    let ms = |t: OutputTime| (t.as_secs_f64() * 1000.0).round() as i64;
+    ((ms(shown.start()), ms(shown.end())), copy.track)
+}
+
 #[test]
-fn duplicate_adds_a_copy_on_top_and_picks_it() {
+fn duplicate_adds_a_copy_right_after_and_picks_it() {
     let mut harness = picked(1, 26.0);
     click(&mut harness, egui::Role::Button, text::DUPLICATE);
-    let state = harness.state().editor.doc.project();
-    let annotations = state.state::<dc_fx_annotations::Annotations>().unwrap();
-    let copy = annotations.annotations.last().unwrap();
-    assert_eq!(copy.id, AnnotId::from_number(4));
-    assert_eq!(
-        (copy.track, copy.range),
-        (0, annotations.annotations[0].range)
-    );
-    let picked = Selected::Region(Item::Annotation(copy.id));
+    let copy = AnnotId::from_number(4);
+    assert_eq!(copy_at(&harness, copy), ((29_000, 35_000), 0), "after a1");
+    let picked = Selected::Region(Item::Annotation(copy));
     assert_eq!(harness.state().editor.view.selection.single(), Some(picked));
     undo(&mut harness);
     assert_eq!(project_json(&harness), json(&cli(&[])), "one step");
+}
+
+#[test]
+fn duplicate_takes_the_first_free_row_when_its_own_is_busy() {
+    let mut harness = picked(1, 26.0);
+    given(
+        &mut harness,
+        &["annot add --kind shape --at 31 --duration 2 --track 0"],
+    );
+    click(&mut harness, egui::Role::Button, text::DUPLICATE);
+    let copy = AnnotId::from_number(5);
+    assert_eq!(copy_at(&harness, copy), ((29_000, 35_000), 1));
 }

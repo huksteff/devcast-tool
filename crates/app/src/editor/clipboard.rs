@@ -4,8 +4,8 @@
 //! go through `paste` with their JSON — and its offset from the first copied region. Ctrl+V adds
 //! them at the playhead, keeping the offsets and the rows, in one undo step, and picks them.
 
-use dc_core::{Project, TimeDelta};
-use dc_fx_annotations::Annotations;
+use dc_core::{Project, TimeDelta, TimeMap};
+use dc_fx_annotations::{AnnotId, Annotations, TRACKS};
 use dc_fx_audio_tracks::Audio;
 use dc_fx_callout::{Action as CalloutAction, Callout};
 use dc_fx_captions::CaptionsEffect;
@@ -188,8 +188,10 @@ fn json(value: &impl Serialize) -> Option<Value> {
     serde_json::to_value(value).ok()
 }
 
-/// «Дублировать» of a panel: the command that adds `item` again where it is (`range` on the
-/// output), on top of its row; a sound on the first row free there (sounds of a row do not
+/// «Дублировать» of a panel: the command that adds `item` again. An annotation goes right after
+/// itself (`range` on the output; past a joint of recordings or the end the command refuses), on
+/// its row when that row is free there, else on the first free row, else on its row on top (as
+/// Ctrl+V); a sound stays where it is, on the first row free there (sounds of a row do not
 /// overlap).
 pub fn duplicate(
     project: &Project,
@@ -197,11 +199,43 @@ pub fn duplicate(
     range: dc_core::Range<dc_core::time::Output>,
 ) -> Option<Step> {
     let mut step = adding(project, item, range.duration())?;
-    let start = Value::String(arg(range.start()));
-    step.args.insert("at".to_owned(), start);
-    if let Item::Sound(_) = item {
-        let track = project.state::<Audio>().ok()?.free_track(range)?;
+    let (place, track) = match item {
+        Item::Annotation(id) => {
+            let after = dc_core::Range::new(range.end(), range.end() + range.duration()).ok()?;
+            (after, Some(annotation_row(project, id, after)?))
+        }
+        Item::Sound(_) => (
+            range,
+            Some(project.state::<Audio>().ok()?.free_track(range)?),
+        ),
+        _ => (range, None),
+    };
+    step.args
+        .insert("at".to_owned(), Value::String(arg(place.start())));
+    if let Some(track) = track {
         step.args.insert("track".to_owned(), track.into());
     }
     Some(step)
+}
+
+/// The row for a copy of annotation `id` at `place`: its own when free there, else the first
+/// free one, else its own.
+fn annotation_row(
+    project: &Project,
+    id: AnnotId,
+    place: dc_core::Range<dc_core::time::Output>,
+) -> Option<u32> {
+    let state = project.state::<Annotations>().ok()?;
+    let own = state.annotations.iter().find(|a| a.id == id)?.track;
+    let map = TimeMap::build(project);
+    let free = |track: u32| {
+        state.annotations.iter().all(|a| {
+            a.track != track
+                || map
+                    .output_span(&a.media, a.range)
+                    .is_none_or(|shown| shown.intersect(&place).is_none())
+        })
+    };
+    let first = (0..TRACKS).find(|&t| free(t));
+    Some(if free(own) { own } else { first.unwrap_or(own) })
 }
