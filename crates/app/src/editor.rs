@@ -11,7 +11,7 @@ use dc_ui_kit::tokens::{FS_L, S2, S3, S5, SURFACE, TEXT, TEXT_2};
 use dc_ui_kit::widgets::Button;
 use eframe::egui::{self, RichText, Ui, vec2};
 
-use crate::app::{Shared, lock, other_window};
+use crate::app::{Shared, lock, on_hud_monitor, other_window};
 
 /// Size of the window at the start, points (v1: the whole work area, at least 800 × 600).
 const SIZE: egui::Vec2 = vec2(1280.0, 800.0);
@@ -46,22 +46,22 @@ impl EditorWindow {
 
 /// Shows the editor while one is open; closing it brings the HUD back.
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
-    let (title, monitor) = {
+    let (title, corner) = {
         let shared = lock(shared);
         let Some(editor) = shared.editor.as_ref() else {
             return;
         };
-        let hud = &shared.store.get().hud;
-        let monitor = hud.monitor(&shared.sources.monitors).map(|m| m.bounds);
-        (text::title(&editor.name), monitor)
+        (
+            text::title(&editor.name),
+            on_hud_monitor(ctx, &shared, SIZE),
+        )
     };
     let mut builder = egui::ViewportBuilder::default()
         .with_title(title)
         .with_inner_size(SIZE)
         .with_min_inner_size(MIN_SIZE);
-    if let Some(bounds) = monitor {
-        let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
-        builder = builder.with_position(corner(bounds, ppp));
+    if let Some(corner) = corner {
+        builder = builder.with_position(corner);
     }
     let shared = Arc::clone(shared);
     ctx.show_viewport_deferred(
@@ -87,16 +87,6 @@ fn frame(ui: &mut egui::Ui, shared: &mut Shared) {
         shared.editor = None;
         shared.show_hud();
     }
-}
-
-/// Corner of the window centred on the HUD's monitor `bounds` (physical desktop pixels), in
-/// points of the main window as the other windows are placed.
-fn corner(bounds: dc_capture::Area, ppp: f32) -> egui::Pos2 {
-    let center = egui::pos2(
-        (bounds.x() + bounds.width() as i32 / 2) as f32 / ppp,
-        (bounds.y() + bounds.height() as i32 / 2) as f32 / ppp,
-    );
-    center - SIZE / 2.0
 }
 
 /// The project's name and facts; true when «Открыть папку проекта» is pressed.
@@ -128,7 +118,10 @@ mod tests {
     #[test]
     fn opens_in_the_middle_of_the_hud_monitor() {
         let left = dc_capture::Area::new(-1920, 11, 1920, 1080).unwrap();
-        assert_eq!(corner(left, 1.0), egui::pos2(-1600.0, 151.0));
+        assert_eq!(
+            crate::app::centred(left, 1.0, SIZE),
+            egui::pos2(-1600.0, 151.0)
+        );
     }
 
     #[test]

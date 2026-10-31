@@ -233,6 +233,32 @@ pub fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
+/// Corner of a window of `size` centred on the HUD's monitor, in points of the main window as
+/// the other windows are placed; `None` while the monitors are unknown.
+pub fn on_hud_monitor(
+    ctx: &egui::Context,
+    shared: &Shared,
+    size: egui::Vec2,
+) -> Option<egui::Pos2> {
+    let bounds = shared
+        .store
+        .get()
+        .hud
+        .monitor(&shared.sources.monitors)?
+        .bounds;
+    let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
+    Some(centred(bounds, ppp, size))
+}
+
+/// Corner of a window of `size` points centred on `bounds` (physical desktop pixels).
+pub fn centred(bounds: dc_capture::Area, ppp: f32, size: egui::Vec2) -> egui::Pos2 {
+    let center = egui::pos2(
+        (bounds.x() + bounds.width() as i32 / 2) as f32 / ppp,
+        (bounds.y() + bounds.height() as i32 / 2) as f32 / ppp,
+    );
+    center - size / 2.0
+}
+
 /// A frame of a window besides the HUD. The HUD is drawn only on its own events, yet its frame
 /// opens and closes the other windows and shows the settings: after a click or a key here, or
 /// when this frame opened or closed a window or moved the recording on, it draws a frame too.
@@ -319,10 +345,13 @@ pub fn show_windows(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, bar: Optio
 }
 
 fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
-    let builder = egui::ViewportBuilder::default()
+    let mut builder = egui::ViewportBuilder::default()
         .with_title(settings_text::TITLE)
         .with_inner_size(settings_window::SIZE)
         .with_min_inner_size(settings_window::MIN_SIZE);
+    if let Some(corner) = on_hud_monitor(ctx, &lock(&shared), settings_window::SIZE) {
+        builder = builder.with_position(corner);
+    }
     ctx.show_viewport_deferred(
         egui::ViewportId::from_hash_of(SETTINGS_ID),
         builder,
