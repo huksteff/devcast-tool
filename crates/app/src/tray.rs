@@ -11,6 +11,7 @@ use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
 use tray_icon::{Icon, MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 use crate::error::AppError;
+use crate::logo;
 
 /// What the tray asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,9 +42,6 @@ pub struct Tray {
     actions: Receiver<TrayAction>,
     shown: Option<TrayView>,
 }
-
-/// Side of the icon, pixels.
-const SIDE: u32 = 32;
 
 impl Tray {
     pub fn new(ctx: &egui::Context) -> Result<Self, AppError> {
@@ -142,44 +140,7 @@ impl Tray {
     }
 }
 
-/// The icon: a blue disc with a white ▶ at rest (mockup), a red dot while recording.
+/// The logo at rest, a red dot while recording.
 fn picture(recording: bool) -> Result<Icon, tray_icon::BadIcon> {
-    let mut rgba = Vec::with_capacity((SIDE * SIDE * 4) as usize);
-    let c = SIDE as f32 / 2.0;
-    for y in 0..SIDE {
-        for x in 0..SIDE {
-            let (dx, dy) = (x as f32 + 0.5 - c, y as f32 + 0.5 - c);
-            let inside = (dx * dx + dy * dy).sqrt() <= c - 1.0;
-            let pixel = if !inside {
-                [0, 0, 0, 0]
-            } else if recording {
-                [0xf4, 0x3f, 0x5e, 0xff]
-            } else if play(dx, dy, c) {
-                [0xff, 0xff, 0xff, 0xff]
-            } else {
-                [0x25, 0x63, 0xeb, 0xff]
-            };
-            rgba.extend_from_slice(&pixel);
-        }
-    }
-    Icon::from_rgba(rgba, SIDE, SIDE)
-}
-
-/// The ▶ inside the disc of radius `r`, offsets from its centre.
-fn play(dx: f32, dy: f32, r: f32) -> bool {
-    let (left, right, half) = (-0.3 * r, 0.45 * r, 0.4 * r);
-    dx >= left && dx <= right && dy.abs() <= half * (right - dx) / (right - left)
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn play_sign_sits_inside_the_disc() {
-        let r = super::SIDE as f32 / 2.0;
-        assert!(super::play(0.0, 0.0, r));
-        assert!(!super::play(-0.5 * r, 0.0, r));
-        assert!(!super::play(0.0, 0.45 * r, r));
-        assert!(super::picture(true).is_ok());
-        assert!(super::picture(false).is_ok());
-    }
+    Icon::from_rgba(logo::pixels(recording), logo::SIDE, logo::SIDE)
 }

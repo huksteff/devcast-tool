@@ -346,6 +346,7 @@ pub fn show_windows(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, bar: Optio
 
 fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
     let mut builder = egui::ViewportBuilder::default()
+        .with_icon(crate::logo::window_icon())
         .with_title(settings_text::TITLE)
         .with_inner_size(settings_window::SIZE)
         .with_min_inner_size(settings_window::MIN_SIZE);

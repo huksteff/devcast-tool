@@ -124,6 +124,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::Failed => 360.0,
     };
     let builder = egui::ViewportBuilder::default()
+        .with_icon(crate::logo::window_icon())
         .with_title(open.kind.title())
         .with_decorations(false)
         .with_resizable(false)

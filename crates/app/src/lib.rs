@@ -18,6 +18,7 @@ mod hotkeys;
 mod hud;
 mod instance;
 mod logging;
+mod logo;
 mod meters;
 mod recorder;
 mod session;
@@ -57,6 +58,7 @@ pub fn run() -> Result<(), AppError> {
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: gpu::options(),
         viewport: eframe::egui::ViewportBuilder::default()
+            .with_icon(logo::window_icon())
             .with_title(APP_NAME)
             .with_inner_size(hud::START_SIZE)
             .with_decorations(false)

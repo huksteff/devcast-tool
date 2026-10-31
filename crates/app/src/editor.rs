@@ -57,6 +57,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         )
     };
     let mut builder = egui::ViewportBuilder::default()
+        .with_icon(crate::logo::window_icon())
         .with_title(title)
         .with_inner_size(SIZE)
         .with_min_inner_size(MIN_SIZE);

@@ -102,6 +102,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         // A borderless window the size of the monitor, not winit's fullscreen: DXGI refuses a
         // swapchain for a window created fullscreen (DXGI_ERROR_INVALID_CALL, the app fell).
         let builder = egui::ViewportBuilder::default()
+            .with_icon(crate::logo::window_icon())
             .with_title(dc_ui_kit::strings::area::HINT)
             .with_decorations(false)
             .with_always_on_top()

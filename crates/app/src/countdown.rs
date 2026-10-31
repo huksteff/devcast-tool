@@ -53,6 +53,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     };
     let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
     let mut builder = egui::ViewportBuilder::default()
+        .with_icon(crate::logo::window_icon())
         .with_title(text::CANCEL_HINT)
         .with_decorations(false)
         .with_resizable(false)
