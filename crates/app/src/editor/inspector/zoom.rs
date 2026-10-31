@@ -51,6 +51,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
         if let Some(on) = rows::toggle(ui, names::ZOOM_AUTO, now.auto) {
             cx.actions.push(set("auto", json!(on)));
         }
+        rows::note(ui, names::ZOOM_AUTO_NOTE);
     });
     fine(ui, cx, &now, &default);
     footer(ui, cx);

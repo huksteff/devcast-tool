@@ -65,6 +65,8 @@ pub const ZOOM_FOCUSED: &str = "Focused";
 pub const ZOOM_SMOOTH: &str = "Smooth";
 pub const ZOOM_CONNECT: &str = "Склеить с соседним";
 pub const ZOOM_AUTO: &str = "Автозумы после записи";
+/// Under «Автозумы после записи»: the setting is for `devcast record` only (owner, 2026-10-31).
+pub const ZOOM_AUTO_NOTE: &str = "Только для записи из командной строки (devcast record). В программе зумы добавляет «Подобрать зумы»";
 pub const ZOOM_SMOOTHNESS: &str = "Плавность камеры";
 pub const ZOOM_IN: &str = "Вход";
 pub const ZOOM_OUT: &str = "Выход";
