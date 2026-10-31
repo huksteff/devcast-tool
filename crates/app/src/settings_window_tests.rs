@@ -2,6 +2,7 @@ use dc_ui_kit::strings::{hud, settings as text};
 use egui_kittest::kittest::Queryable;
 
 use super::*;
+use crate::downloads::Downloads;
 use crate::models::ModelState;
 use crate::settings::SpeechModel;
 use crate::settings_captions::Card;
@@ -28,7 +29,7 @@ fn harness() -> egui_kittest::Harness<'static, State> {
         "Гарнитура (HyperX Cloud II)".to_owned(),
     ];
     let state = State {
-        window: SettingsWindow::new(mics, Models::new(Some(models))),
+        window: SettingsWindow::new(mics, Models::new(Some(models), Downloads::default())),
         store,
         _dir: dir,
     };

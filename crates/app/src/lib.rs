@@ -9,6 +9,7 @@ mod countdown;
     reason = "crash-handler's crash callback is an unsafe contract; the only unsafe of dc-app"
 )]
 mod crash;
+mod downloads;
 #[cfg(test)]
 mod e2e_tests;
 mod editor;

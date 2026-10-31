@@ -52,6 +52,8 @@ pub struct Shared {
     pub toasts: Toasts,
     /// The device and egui renderer the editor preview draws with; none in tests without a GPU.
     pub gpu: Option<crate::gpu::PreviewGpu>,
+    /// Model downloads, shared by the settings window and the editors (`downloads.rs`).
+    pub downloads: crate::downloads::Downloads,
 }
 
 /// Which windows are open and the step of the recording: what the HUD's frame acts on.
@@ -95,6 +97,7 @@ impl Shared {
             failure: None,
             toasts: Toasts::default(),
             gpu: None,
+            downloads: crate::downloads::Downloads::default(),
         };
         shared.refresh_sources();
         shared
@@ -131,8 +134,10 @@ impl Shared {
     /// Opens the settings window on `page`.
     pub fn open_settings_at(&mut self, page: crate::settings_window::Page) {
         self.refresh_microphones();
-        let mut window =
-            SettingsWindow::new(self.microphones.clone(), crate::models::Models::of_app());
+        let mut window = SettingsWindow::new(
+            self.microphones.clone(),
+            crate::models::Models::of_app(self.downloads.clone()),
+        );
         window.page = page;
         self.settings = Some(window);
     }

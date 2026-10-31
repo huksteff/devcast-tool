@@ -11,6 +11,7 @@ use egui_kittest::kittest::{NodeT as _, Queryable};
 use super::generation::{Generation, Phase};
 use super::inspector::captions_tests::captions_tab;
 use super::tests::project;
+use crate::downloads::Downloads;
 use crate::editor::editing_tests::json;
 use crate::models::Models;
 use crate::recognition::Message;
@@ -27,7 +28,10 @@ fn with_worker(spawn: Spawn) -> (tempfile::TempDir, H) {
     let file = SpeechModel::Fast.model().file_name();
     std::fs::write(models.path().join(file), b"model").unwrap();
     let mut harness = captions_tab();
-    let generation = Generation::new(Models::new(Some(models.path().to_path_buf())), spawn);
+    let generation = Generation::new(
+        Models::new(Some(models.path().to_path_buf()), Downloads::default()),
+        spawn,
+    );
     harness.state_mut().editor.captions = generation;
     harness.state_mut().errors = Some(Vec::new());
     harness.run();

@@ -12,6 +12,7 @@ use dc_fx_captions::{CaptionsGen, NewCue};
 use dc_ui_kit::strings::captions as text;
 use eframe::egui;
 
+use crate::downloads::Downloads;
 use crate::models::{ModelState, Models};
 use crate::recognition::job::{Job, Spawn, cli_worker};
 use crate::recognition::{Message, Request, Speech};
@@ -102,7 +103,7 @@ impl std::fmt::Debug for Generation {
 impl Default for Generation {
     /// No model folder (nothing is downloaded or ready) and the app's own worker.
     fn default() -> Self {
-        Self::new(Models::new(None), cli_worker())
+        Self::new(Models::new(None, Downloads::default()), cli_worker())
     }
 }
 

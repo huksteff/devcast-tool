@@ -1,14 +1,15 @@
-//! Whisper models of the settings (mockup 5c): which ones are on disk and the download with
-//! progress in the model's card. The download runs on a worker thread (`dc_models::ensure`:
-//! resumable, SHA-256 checked) and wakes the main window; closing the window cancels it, and the
-//! `.part` file continues next time.
+//! Whisper models of a window (settings mockup 5c, the editor's «Создать субтитры»): which ones
+//! are on disk and the downloads it waits for, with progress in the model's card. The downloads
+//! themselves are the app's shared ones (`downloads.rs`): two windows asking for one model wait
+//! for one download. Closing the window leaves its downloads; the last window to leave cancels,
+//! and the `.part` file continues next time.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::{self, Receiver};
 
+use crate::downloads::{Downloads, Joined, Listener, News};
 use crate::error::AppError;
 use crate::settings::SpeechModel;
 
@@ -21,27 +22,26 @@ pub enum ModelState {
     Downloading(Option<f32>),
 }
 
-enum Message {
-    Progress(f32),
-    Done(Result<(), dc_models::ModelsError>),
-}
-
-struct Download {
-    receiver: Receiver<Message>,
-    cancel: Arc<AtomicBool>,
+struct Waiting {
+    news: Receiver<News>,
     done: Option<f32>,
 }
 
-/// The models folder and the downloads started from the settings window.
+/// The models folder and the downloads one window waits for.
 pub struct Models {
     dir: Option<PathBuf>,
     ready: Vec<SpeechModel>,
-    downloads: HashMap<SpeechModel, Download>,
+    downloads: Downloads,
+    /// Tells this window's waits apart in the shared downloads.
+    owner: u64,
+    waiting: HashMap<SpeechModel, Waiting>,
 }
 
 impl Models {
-    /// Models in `dir`; `None`: the folder is unknown, nothing is ready or offered.
-    pub fn new(dir: Option<PathBuf>) -> Self {
+    /// Models in `dir`, downloaded through `downloads`; `None`: the folder is unknown, nothing
+    /// is ready or offered.
+    pub fn new(dir: Option<PathBuf>, downloads: Downloads) -> Self {
+        static NEXT_OWNER: AtomicU64 = AtomicU64::new(0);
         let ready = dir.as_ref().map_or_else(Vec::new, |dir| {
             SpeechModel::ALL
                 .into_iter()
@@ -51,24 +51,26 @@ impl Models {
         Self {
             dir,
             ready,
-            downloads: HashMap::new(),
+            downloads,
+            owner: NEXT_OWNER.fetch_add(1, Ordering::Relaxed),
+            waiting: HashMap::new(),
         }
     }
 
     /// The folder of the app, `%APPDATA%\DevCast\models`.
-    pub fn of_app() -> Self {
+    pub fn of_app(downloads: Downloads) -> Self {
         match dc_models::models_dir() {
-            Ok(dir) => Self::new(Some(dir)),
+            Ok(dir) => Self::new(Some(dir), downloads),
             Err(error) => {
                 tracing::warn!("папка моделей неизвестна, «Скачать» не показан: {error}");
-                Self::new(None)
+                Self::new(None, downloads)
             }
         }
     }
 
     pub fn state(&self, model: SpeechModel) -> ModelState {
-        match self.downloads.get(&model) {
-            Some(download) => ModelState::Downloading(download.done),
+        match self.waiting.get(&model) {
+            Some(waiting) => ModelState::Downloading(waiting.done),
             None if self.ready.contains(&model) => ModelState::Ready,
             None => ModelState::Missing,
         }
@@ -79,8 +81,8 @@ impl Models {
         self.dir.is_some()
     }
 
-    /// Starts downloading `model`; the worker calls `wake` on each whole percent (it wakes the
-    /// main window, app CLAUDE.md).
+    /// Waits for `model`: joins its download or starts one; `wake` is called on each whole
+    /// percent (it wakes the main window, app CLAUDE.md).
     pub fn download(
         &mut self,
         wake: impl Fn() + Send + 'static,
@@ -89,41 +91,36 @@ impl Models {
         let Some(dir) = self.dir.clone() else {
             return Ok(());
         };
-        if self.downloads.contains_key(&model) {
+        if self.waiting.contains_key(&model) {
             return Ok(());
         }
-        let (sender, receiver) = mpsc::channel();
-        let cancel = Arc::new(AtomicBool::new(false));
-        let stop = Arc::clone(&cancel);
-        std::thread::Builder::new()
-            .name("devcast-model-download".to_owned())
-            .spawn(move || fetch(model, &dir, &sender, &stop, &wake))
-            .map_err(|source| AppError::Thread {
-                name: "devcast-model-download",
-                source,
-            })?;
-        let download = Download {
-            receiver,
-            cancel,
-            done: None,
+        let (sender, news) = mpsc::channel();
+        let listener = Listener {
+            owner: self.owner,
+            news: sender,
+            wake: Box::new(wake),
         };
-        self.downloads.insert(model, download);
+        let done = match self.downloads.request(model, &dir, listener)? {
+            Joined::Started => None,
+            Joined::Running(done) => done,
+        };
+        self.waiting.insert(model, Waiting { news, done });
         Ok(())
     }
 
-    /// Takes the worker's news; a failed download is returned once.
+    /// Takes the news of the downloads; a failed download is returned once.
     pub fn poll(&mut self) -> Result<(), AppError> {
         let mut result = Ok(());
         let mut finished = Vec::new();
-        for (model, download) in &mut self.downloads {
-            for message in download.receiver.try_iter() {
-                match message {
-                    Message::Progress(done) => download.done = Some(done),
-                    Message::Done(Ok(())) => {
+        for (model, waiting) in &mut self.waiting {
+            for news in waiting.news.try_iter() {
+                match news {
+                    News::Progress(done) => waiting.done = Some(done),
+                    News::Done(Ok(())) => {
                         finished.push(*model);
                         self.ready.push(*model);
                     }
-                    Message::Done(Err(error)) => {
+                    News::Done(Err(error)) => {
                         finished.push(*model);
                         result = Err(AppError::Model(error));
                     }
@@ -131,7 +128,7 @@ impl Models {
             }
         }
         for model in finished {
-            self.downloads.remove(&model);
+            self.waiting.remove(&model);
         }
         result
     }
@@ -139,40 +136,9 @@ impl Models {
 
 impl Drop for Models {
     fn drop(&mut self) {
-        for download in self.downloads.values() {
-            download.cancel.store(true, Ordering::Relaxed);
+        for model in self.waiting.keys() {
+            self.downloads.leave(*model, self.owner);
         }
-    }
-}
-
-/// The worker: downloads `model` into `dir`, sending whole percents and the outcome.
-fn fetch(
-    model: SpeechModel,
-    dir: &Path,
-    sender: &Sender<Message>,
-    cancel: &AtomicBool,
-    wake: &dyn Fn(),
-) {
-    // The receiver goes with its window (settings, editor), which cancels the download first.
-    let tell = |message: Message| {
-        if sender.send(message).is_ok() {
-            wake();
-        }
-    };
-    let mut last = None;
-    let mut on_progress = |progress: dc_models::Progress| {
-        let Some(total) = progress.total.filter(|t| *t > 0) else {
-            return;
-        };
-        let percent = progress.done.saturating_mul(100) / total;
-        if last != Some(percent) {
-            last = Some(percent);
-            tell(Message::Progress(percent as f32 / 100.0));
-        }
-    };
-    let outcome = dc_models::ensure(model.model(), dir, &mut on_progress, cancel).map(|_| ());
-    if !matches!(outcome, Err(dc_models::ModelsError::Cancelled)) {
-        tell(Message::Done(outcome));
     }
 }
 
@@ -185,33 +151,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let file = SpeechModel::Fast.model().file_name();
         std::fs::write(dir.path().join(file), b"model").unwrap();
-        let models = Models::new(Some(dir.path().to_path_buf()));
+        let models = Models::new(Some(dir.path().to_path_buf()), Downloads::default());
         assert_eq!(models.state(SpeechModel::Fast), ModelState::Ready);
         assert_eq!(models.state(SpeechModel::Accurate), ModelState::Missing);
         assert!(models.can_download());
-        let nowhere = Models::new(None);
+        let nowhere = Models::new(None, Downloads::default());
         assert_eq!(nowhere.state(SpeechModel::Fast), ModelState::Missing);
         assert!(!nowhere.can_download());
-    }
-
-    #[test]
-    fn progress_and_the_end_of_a_download() {
-        let mut models = Models::new(Some(PathBuf::from("unused")));
-        let (sender, receiver) = mpsc::channel();
-        let download = Download {
-            receiver,
-            cancel: Arc::new(AtomicBool::new(false)),
-            done: None,
-        };
-        models.downloads.insert(SpeechModel::Accurate, download);
-        let state = models.state(SpeechModel::Accurate);
-        assert_eq!(state, ModelState::Downloading(None));
-        sender.send(Message::Progress(0.42)).unwrap();
-        models.poll().unwrap();
-        let state = models.state(SpeechModel::Accurate);
-        assert_eq!(state, ModelState::Downloading(Some(0.42)));
-        sender.send(Message::Done(Ok(()))).unwrap();
-        models.poll().unwrap();
-        assert_eq!(models.state(SpeechModel::Accurate), ModelState::Ready);
     }
 }

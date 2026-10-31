@@ -25,7 +25,7 @@ impl Shared {
                     Err(error) => self.report(Err(error)),
                 }
                 editor.captions = super::generation::Generation::new(
-                    crate::models::Models::of_app(),
+                    crate::models::Models::of_app(self.downloads.clone()),
                     crate::recognition::job::cli_worker(),
                 );
                 if let Some(gpu) = self.gpu.clone() {
