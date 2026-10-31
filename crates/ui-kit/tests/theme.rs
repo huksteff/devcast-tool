@@ -79,3 +79,25 @@ fn icons_scale_with_their_rect() {
     harness.run();
     harness.snapshot("icons_scale");
 }
+
+#[test]
+fn editor_icons() {
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(vec2(420.0, 100.0))
+        .build_ui(|ui| {
+            egui::Frame::new()
+                .fill(tokens::SURFACE)
+                .inner_margin(tokens::S3)
+                .show(ui, |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        for icon in &Icon::ALL[27..] {
+                            let (rect, _) =
+                                ui.allocate_exact_size(vec2(24.0, 24.0), Sense::hover());
+                            icon.paint(ui.painter(), rect, tokens::TEXT);
+                        }
+                    });
+                });
+        });
+    harness.run();
+    harness.snapshot("editor_icons");
+}

@@ -2,6 +2,8 @@
 //! Coordinates are the mockup's SVG 24 × 24 view box; arcs are polylines, rounded joins of the
 //! SVG are plain corners.
 
+mod editor;
+
 use std::f32::consts::PI;
 
 use egui::{Color32, Painter, Pos2, Rect, Shape, Stroke};
@@ -39,10 +41,42 @@ pub enum Icon {
     Right,
     /// A filled dot: the record mark of red buttons.
     Record,
+    /// The recordings library (four tiles).
+    Library,
+    Undo,
+    Redo,
+    Help,
+    Export,
+    Crop,
+    /// The «Выбор» tool: an arrow pointer.
+    Pointer,
+    /// Scissors: the «Лезвие» tool.
+    Blade,
+    /// A keyframe.
+    Diamond,
+    Eye,
+    SkipBack,
+    SkipForward,
+    Left,
+    Magnet,
+    ZoomIn,
+    Wand,
+    /// Captions («CC»).
+    Captions,
+    Keyboard,
+    Text,
+    /// The zoom frame with its corner ticks.
+    Frame,
+    /// The mouse cursor of the cursor panel.
+    Cursor,
+    Fit,
+    /// Out into its own window.
+    Detach,
+    Mute,
 }
 
 impl Icon {
-    pub const ALL: [Self; 27] = [
+    pub const ALL: [Self; 51] = [
         Self::Monitor,
         Self::Window,
         Self::Area,
@@ -70,6 +104,30 @@ impl Icon {
         Self::Minus,
         Self::Right,
         Self::Record,
+        Self::Library,
+        Self::Undo,
+        Self::Redo,
+        Self::Help,
+        Self::Export,
+        Self::Crop,
+        Self::Pointer,
+        Self::Blade,
+        Self::Diamond,
+        Self::Eye,
+        Self::SkipBack,
+        Self::SkipForward,
+        Self::Left,
+        Self::Magnet,
+        Self::ZoomIn,
+        Self::Wand,
+        Self::Captions,
+        Self::Keyboard,
+        Self::Text,
+        Self::Frame,
+        Self::Cursor,
+        Self::Fit,
+        Self::Detach,
+        Self::Mute,
     ];
 
     /// Draws the icon into `rect` (usually 16 × 16) in `color`.
@@ -194,6 +252,7 @@ impl Pen<'_> {
             Icon::Minus => self.line(&[(5.0, 12.0), (19.0, 12.0)]),
             Icon::Right => self.line(&[(9.0, 6.0), (15.0, 12.0), (9.0, 18.0)]),
             Icon::Record => self.dot(12.0, 12.0, 8.0),
+            editor => self.editor(editor),
         }
     }
 
@@ -211,17 +270,20 @@ impl Pen<'_> {
     }
 
     fn speaker(&self) {
-        let body = [
+        self.speaker_body();
+        self.arc((13.0, 12.0), 5.0, -45.0, 45.0);
+        self.arc((13.0, 12.0), 8.5, -45.0, 45.0);
+    }
+
+    fn speaker_body(&self) {
+        self.closed(&[
             (4.0, 9.0),
             (8.0, 9.0),
             (13.0, 5.0),
             (13.0, 19.0),
             (8.0, 15.0),
             (4.0, 15.0),
-        ];
-        self.closed(&body);
-        self.arc((13.0, 12.0), 5.0, -45.0, 45.0);
-        self.arc((13.0, 12.0), 8.5, -45.0, 45.0);
+        ]);
     }
 
     fn timer(&self) {

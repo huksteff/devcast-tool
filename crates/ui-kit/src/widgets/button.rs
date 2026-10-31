@@ -10,6 +10,9 @@ use crate::tokens::{
     SURFACE_2, SURFACE_3, TEXT, TEXT_2, WHITE,
 };
 
+/// Side of the menu chevron, points (12 px in the mockup).
+const CHEVRON: f32 = 12.0;
+
 /// What the button means: its colours.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
@@ -29,6 +32,7 @@ pub struct Button<'a> {
     kind: Kind,
     small: bool,
     icon: Option<Icon>,
+    menu: bool,
 }
 
 impl<'a> Button<'a> {
@@ -38,6 +42,7 @@ impl<'a> Button<'a> {
             kind: Kind::Secondary,
             small: false,
             icon: None,
+            menu: false,
         }
     }
 
@@ -53,6 +58,12 @@ impl<'a> Button<'a> {
 
     pub fn icon(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
+        self
+    }
+
+    /// A chevron after the text: the button opens a menu.
+    pub fn menu(mut self) -> Self {
+        self.menu = true;
         self
     }
 
@@ -74,7 +85,8 @@ impl<'a> Button<'a> {
             TEXT,
         );
         let icon_width = self.icon.map_or(0.0, |_| ICON + 6.0);
-        let width = galley.size().x + icon_width + 2.0 * padding;
+        let chevron = if self.menu { CHEVRON + 4.0 } else { 0.0 };
+        let width = galley.size().x + icon_width + chevron + 2.0 * padding;
         (vec2(width, height), padding, icon_width, galley)
     }
 }
@@ -113,7 +125,15 @@ impl Widget for Button<'_> {
                 x += icon_width;
             }
             let top = rect.center().y - galley.size().y / 2.0;
+            let text_right = x + galley.size().x;
             painter.galley(egui::pos2(x, top), galley, text);
+            if self.menu {
+                let chevron = egui::Rect::from_min_size(
+                    egui::pos2(text_right + 4.0, rect.center().y - CHEVRON / 2.0),
+                    vec2(CHEVRON, CHEVRON),
+                );
+                Icon::Down.paint(painter, chevron, text);
+            }
         }
         response
     }

@@ -126,18 +126,123 @@ pub mod countdown {
     pub const CANCEL_HINT: &str = "Клик или Esc — отмена";
 }
 
-/// The editor window (stage 7 fills it; until then the project's facts).
+/// The editor window: header, preview, transport, inspector.
 pub mod editor {
-    pub const OPEN_FOLDER: &str = "Открыть папку проекта";
+    pub const LIBRARY: &str = "Записи";
+    pub const PROJECTS: &str = "Проекты";
+    pub const UNDO: &str = "Отменить";
+    pub const REDO: &str = "Повторить";
+    pub const UNSAVED: &str = "Есть несохранённые изменения";
+    pub const EXTENSION: &str = ".dcproj";
+    pub const HELP: &str = "Справка";
+    pub const SETTINGS: &str = "Настройки";
+    pub const EXPORT: &str = "Экспорт";
+    pub const CROP: &str = "Кроп и формат";
+    pub const PREVIEW: &str = "Превью";
+    pub const FIT: &str = "Вписать";
+    pub const HALF: &str = "50%";
+    pub const ACTUAL: &str = "100%";
+    pub const QUALITY_FULL: &str = "Полное";
+    pub const QUALITY_FAST: &str = "Быстрое";
+    pub const ASPECT_FREE: &str = "Свободный";
+    pub const ASPECT_SOURCE: &str = "Как запись";
+    pub const ASPECT_16_9: &str = "16:9";
+    pub const ASPECT_16_10: &str = "16:10";
+    pub const ASPECT_4_3: &str = "4:3";
+    pub const SELECT: &str = "Выбор";
+    pub const BLADE: &str = "Лезвие";
+    pub const AUTO_KEYS: &str = "Авто-ключи";
+    pub const MARKERS: &str = "Маркеры ключей";
+    pub const PREV_KEY: &str = "К предыдущему ключу";
+    pub const NEXT_KEY: &str = "К следующему ключу";
+    pub const PREV_FRAME: &str = "Кадр назад";
+    pub const NEXT_FRAME: &str = "Кадр вперёд";
+    pub const PLAY: &str = "Воспроизвести";
+    pub const VOLUME: &str = "Громкость превью";
+    pub const ZOOM: &str = "Зум";
+    pub const CURSOR: &str = "Курсор и облачко";
+    pub const KEYS: &str = "Показ клавиш";
+    pub const CAPTIONS: &str = "Субтитры";
+    pub const SOUND: &str = "Звук";
+    pub const BASIC: &str = "Основное";
+    pub const FINE: &str = "Тонкая настройка";
+    pub const RESET: &str = "Сбросить";
+    pub const PANEL_EMPTY: &str = "Настройки эффекта появятся здесь";
 
     /// «recording-1 — DevCast».
     pub fn title(name: &str) -> String {
         format!("{name} — DevCast")
     }
 
-    /// «Клипов: 1 · 00:12 · 1920×1080».
-    pub fn facts(clips: usize, length: &str, width: u32, height: u32) -> String {
-        format!("Клипов: {clips} · {length} · {width}×{height}")
+    /// «16:9 · 1920 × 1080».
+    pub fn format(aspect: &str, width: u32, height: u32) -> String {
+        format!("{aspect} · {width} × {height}")
+    }
+}
+
+/// The timeline of the editor.
+pub mod timeline {
+    pub const ADD_TRACK: &str = "Дорожка";
+    pub const MAGNET: &str = "Привязка";
+    pub const SUGGEST_ZOOMS: &str = "Подобрать зумы";
+    pub const MAKE_CAPTIONS: &str = "Создать субтитры";
+    pub const SCALE: &str = "Масштаб времени";
+    pub const FIT: &str = "Весь проект";
+    pub const DETACH: &str = "Таймлайн в отдельном окне";
+    pub const ADD_AUDIO: &str = "Аудиодорожка";
+    pub const CAPTIONS: &str = "Субтитры";
+    pub const CLIPS: &str = "Клипы";
+    pub const ZOOMS: &str = "Зумы";
+    pub const CURSOR: &str = "Курсор";
+    pub const KEYS: &str = "Клавиши";
+    pub const MIC: &str = "Микрофон";
+    pub const SYSTEM: &str = "Системный звук";
+    pub const SHOWN: &str = "Показывается";
+    pub const HIDDEN: &str = "Скрыто";
+    pub const CLIP_CROP: &str = "Кроп клипа";
+    pub const REMOVE_TRACK: &str = "Убрать дорожку";
+    pub const MUTED: &str = "Без звука";
+    pub const SOUND: &str = "Звук";
+    pub const CALLOUT_ON: &str = "вкл";
+    pub const CALLOUT_OFF: &str = "выкл";
+    pub const TEXT: &str = "Текст";
+    pub const SHAPE: &str = "Фигура";
+    pub const IMAGE: &str = "Картинка";
+    pub const DRAWING: &str = "Рисунок";
+    pub const BLUR: &str = "Размытие";
+    /// Fixed zooms look at their point instead of following the cursor.
+    pub const FIXED: &str = "точка";
+
+    /// «Аннотации 2».
+    pub fn annotations(number: u32) -> String {
+        format!("Аннотации {number}")
+    }
+
+    /// «Аудио 1».
+    pub fn audio(number: u32) -> String {
+        format!("Аудио {number}")
+    }
+
+    /// «Клип 3».
+    pub fn clip(number: u32) -> String {
+        format!("Клип {number}")
+    }
+
+    /// «1,5×»: a scale or speed with a decimal comma.
+    pub fn times(factor: f64) -> String {
+        let text = format!("{factor:.2}");
+        let text = text.trim_end_matches('0').trim_end_matches('.');
+        format!("{}×", text.replace('.', ","))
+    }
+
+    /// «1,8× · точка».
+    pub fn fixed_zoom(scale: f64) -> String {
+        format!("{} · {FIXED}", times(scale))
+    }
+
+    /// «0:52.0 · 2560 × 1440».
+    pub fn clip_facts(length: &str, width: u32, height: u32) -> String {
+        format!("{length} · {width} × {height}")
     }
 }
 

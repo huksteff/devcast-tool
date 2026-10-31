@@ -19,6 +19,7 @@ pub struct Slider<'a> {
     width: f32,
     step: f64,
     suffix: &'a str,
+    field: bool,
 }
 
 impl<'a> Slider<'a> {
@@ -31,6 +32,7 @@ impl<'a> Slider<'a> {
             width: 160.0,
             step: 1.0,
             suffix: "",
+            field: true,
         }
     }
 
@@ -52,8 +54,17 @@ impl<'a> Slider<'a> {
         self
     }
 
+    /// Only the rail, without the number field (the preview volume, the timeline scale).
+    pub fn bare(mut self) -> Self {
+        self.field = false;
+        self
+    }
+
     /// The rail and the field in a row; the response is changed when either changed the value.
     pub fn show(mut self, ui: &mut Ui) -> Response {
+        if !self.field {
+            return self.rail(ui);
+        }
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = S2;
             let mut rail = self.rail(ui);

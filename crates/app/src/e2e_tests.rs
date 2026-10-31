@@ -62,8 +62,9 @@ fn recording_through_the_hud_opens_the_project() {
         s.editor.is_some()
     });
     let editor = harness.state().editor.clone().unwrap();
-    assert_eq!(editor.clips, 1);
-    assert!(editor.length >= 2_500_000, "{}", editor.length);
+    assert_eq!(editor.project.clips.len(), 1);
+    let length = editor.tracks.duration.micros();
+    assert!(length >= 2_500_000, "{length}");
     assert!(editor.root.starts_with(dir.path().join("Записи DevCast")));
     let project = dc_project::ProjectDir::open(&editor.root)
         .unwrap()

@@ -58,3 +58,43 @@ pub const CONTROL_S: f32 = 26.0;
 /// Height of the HUD bar.
 pub const HUD_H: f32 = 48.0;
 pub const ICON: f32 = 16.0;
+
+/// Colour of one kind of effect on the timeline (docs/design/editor.html «Цвета дорожек»): the
+/// same on its track, on the inspector chip and on the preview.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Hue {
+    /// Dark fill of a region; white text on it.
+    pub fill: Color32,
+    /// Light border of a region, the swatch of the track header and the inspector chip.
+    pub line: Color32,
+}
+
+pub const HUE_CLIP: Hue = hue(0x2f4a75, 0x5b86cc);
+pub const HUE_SPEED: Hue = hue(0x8a4210, 0xfb923c);
+pub const HUE_ZOOM: Hue = hue(0x4c3696, 0x8b6cf0);
+/// Cursor, clicks and the callout.
+pub const HUE_CURSOR: Hue = hue(0x0f625b, 0x2dd4bf);
+pub const HUE_KEYS: Hue = hue(0x38414f, 0x8a99b0);
+pub const HUE_CAPTIONS: Hue = hue(0x6e5210, 0xe0b23a);
+pub const HUE_ANNOTATIONS: Hue = hue(0x7e2450, 0xf0609e);
+pub const HUE_AUDIO: Hue = hue(0x125a3b, 0x34d399);
+
+const fn hue(fill: u32, line: u32) -> Hue {
+    Hue {
+        fill: rgb(fill),
+        line: rgb(line),
+    }
+}
+
+const fn rgb(hex: u32) -> Color32 {
+    Color32::from_rgb((hex >> 16) as u8, (hex >> 8) as u8, hex as u8)
+}
+
+/// Keyframe diamonds and changed parameters.
+pub const KEYFRAME: Color32 = rgb(0x7dd3fc);
+/// Snapping line.
+pub const SNAP: Color32 = rgb(0xfacc15);
+/// Behind the preview frame.
+pub const PREVIEW_BG: Color32 = rgb(0x0b0c0f);
+/// Line between timeline rows.
+pub const ROW_LINE: Color32 = rgb(0x1d2026);

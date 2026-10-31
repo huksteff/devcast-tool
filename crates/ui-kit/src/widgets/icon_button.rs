@@ -25,6 +25,8 @@ pub struct IconButton<'a> {
     held: bool,
     badge: Option<&'a str>,
     color: Option<Color32>,
+    side: f32,
+    icon: f32,
 }
 
 impl<'a> IconButton<'a> {
@@ -38,6 +40,8 @@ impl<'a> IconButton<'a> {
             held: false,
             badge: None,
             color: None,
+            side: CONTROL,
+            icon: ICON,
         }
     }
 
@@ -78,6 +82,14 @@ impl<'a> IconButton<'a> {
         self
     }
 
+    /// Side of the square and of its icon, points: 36/16 on the inspector rail, 22/13 in a
+    /// track header.
+    pub fn size(mut self, side: f32, icon: f32) -> Self {
+        self.side = side;
+        self.icon = icon;
+        self
+    }
+
     fn colors(&self, hovered: bool) -> (Color32, Color32) {
         let (fill, fg) = if self.on {
             (ACCENT_SOFT, ACCENT_HI)
@@ -94,7 +106,7 @@ impl<'a> IconButton<'a> {
 
 impl Widget for IconButton<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let (rect, response) = ui.allocate_exact_size(vec2(CONTROL, CONTROL), Sense::click());
+        let (rect, response) = ui.allocate_exact_size(vec2(self.side, self.side), Sense::click());
         response
             .widget_info(|| WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), self.label));
         if !ui.is_rect_visible(rect) {
@@ -107,7 +119,7 @@ impl Widget for IconButton<'_> {
             Face::Icon(icon) => {
                 icon.paint(
                     painter,
-                    Rect::from_center_size(rect.center(), vec2(ICON, ICON)),
+                    Rect::from_center_size(rect.center(), vec2(self.icon, self.icon)),
                     fg,
                 );
             }

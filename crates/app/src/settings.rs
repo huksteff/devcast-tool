@@ -113,6 +113,22 @@ impl Default for Updates {
     }
 }
 
+/// Sizes of the editor panels, points.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct EditorLayout {
+    /// Height of the timeline under the preview (mockup: about 300).
+    pub timeline_height: f32,
+}
+
+impl Default for EditorLayout {
+    fn default() -> Self {
+        Self {
+            timeline_height: 300.0,
+        }
+    }
+}
+
 /// Everything the app remembers. A field missing in the file takes its default.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -131,6 +147,8 @@ pub struct AppSettings {
     pub hud: HudPlacement,
     /// The last selected area (always `area:…`), offered when the selection opens again.
     pub last_area: Option<Source>,
+    /// Sizes of the editor panels the user dragged.
+    pub editor: EditorLayout,
 }
 
 impl Default for AppSettings {
@@ -147,6 +165,7 @@ impl Default for AppSettings {
             updates: Updates::default(),
             hud: HudPlacement::default(),
             last_area: None,
+            editor: EditorLayout::default(),
         }
     }
 }
