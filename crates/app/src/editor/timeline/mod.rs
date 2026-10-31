@@ -18,6 +18,7 @@ mod clips;
 mod gesture;
 mod ghost;
 mod heads;
+mod marks;
 mod paint;
 mod places;
 mod pointer;
@@ -31,6 +32,8 @@ mod wave;
 
 #[cfg(test)]
 mod clips_tests;
+#[cfg(test)]
+mod marks_tests;
 #[cfg(test)]
 mod regions_tests;
 #[cfg(test)]
@@ -128,6 +131,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32) -> f32 {
                 clips::ui(ui, lane, editor, &scale, &lanes);
             }
             regions::ui(ui, &shown, editor, &scale, &lanes);
+            marks::ui(ui, &shown, editor, &scale);
             heads::lift(ui, editor, &headers);
             heads::question(ui, editor, &headers);
             heads::add_row(ui, editor);

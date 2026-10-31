@@ -2,8 +2,9 @@
 //! one selection over all rows). The selection is not part of the project: undo does not bring
 //! it back, and what the project no longer has drops out of it.
 
-use dc_core::ClipId;
+use dc_core::{ClipId, OutputTime};
 use dc_fx_annotations::AnnotId;
+use dc_fx_annotations::KEY_TOLERANCE;
 use dc_fx_audio_tracks::AudioId;
 use dc_fx_callout::EventId;
 use dc_fx_captions::CueId;
@@ -33,6 +34,11 @@ impl Item {
 pub enum Selected {
     Clip(ClipId),
     Region(Item),
+    /// A key of an annotation at its output time (7.12).
+    Key {
+        id: AnnotId,
+        at: OutputTime,
+    },
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -79,7 +85,7 @@ impl Selection {
     pub fn clips(&self) -> impl Iterator<Item = ClipId> + '_ {
         self.items.iter().filter_map(|item| match item {
             Selected::Clip(id) => Some(*id),
-            Selected::Region(_) => None,
+            Selected::Region(_) | Selected::Key { .. } => None,
         })
     }
 
@@ -87,7 +93,15 @@ impl Selection {
     pub fn regions(&self) -> impl Iterator<Item = Item> + '_ {
         self.items.iter().filter_map(|item| match item {
             Selected::Region(item) => Some(*item),
-            Selected::Clip(_) => None,
+            Selected::Clip(_) | Selected::Key { .. } => None,
+        })
+    }
+
+    /// The selected keys: annotation and output time.
+    pub fn keys(&self) -> impl Iterator<Item = (AnnotId, OutputTime)> + '_ {
+        self.items.iter().filter_map(|item| match item {
+            Selected::Key { id, at } => Some((*id, *at)),
+            _ => None,
         })
     }
 
@@ -98,6 +112,14 @@ impl Selection {
         self.items.retain(|item| match item {
             Selected::Clip(id) => regions().any(|r| r.clip == Some(*id)),
             Selected::Region(item) => regions().any(|r| r.item == Some(*item)),
+            Selected::Key { id, at } => regions().any(|r| {
+                r.item == Some(Item::Annotation(*id)) && r.keys.iter().any(|k| same_moment(*k, *at))
+            }),
         });
     }
+}
+
+/// Two output times of one key: closer than `KEY_TOLERANCE`.
+pub fn same_moment(a: OutputTime, b: OutputTime) -> bool {
+    a.since(b).micros().abs() < KEY_TOLERANCE.micros()
 }

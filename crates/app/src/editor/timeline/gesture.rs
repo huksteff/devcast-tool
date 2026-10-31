@@ -8,18 +8,21 @@ use std::time::Duration;
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeDelta};
+use dc_fx_annotations::AnnotId;
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::{self, ACCENT_HI, BG, SNAP};
 use eframe::egui::{Align2, Pos2, Rect, Stroke, StrokeKind, Ui, pos2, vec2};
 
+use super::marks;
 use super::paint;
 use super::places;
 use super::regions::tip;
 use super::scale::{TimeScale, timecode};
+use super::snap;
 use super::tracks::{Region, Row};
 use super::viewport::Lanes;
 use crate::editor::regions as commands;
-use crate::editor::selection::{Item, Selected, Selection};
+use crate::editor::selection::{Item, Selected, Selection, same_moment};
 use crate::editor::view::{Gesture, Target};
 use crate::editor::{Action, EditorWindow};
 
@@ -73,6 +76,12 @@ pub fn run(
             moving(ui, &frame, editor, (grab, row, item), at, down)
         }
         Gesture::Edge { target, end } => edge(ui, &frame, editor, target, end, at.x, down),
+        Gesture::Key {
+            id,
+            from,
+            grab,
+            row,
+        } => key(ui, &frame, editor, (id, from, grab, row), at.x, down),
     }
     if down && scrolls && editor.view.timeline.edge_scroll(lanes, at.x, dt) {
         ui.ctx().request_repaint_after(EDGE_TICK);
@@ -160,6 +169,45 @@ fn edge(
     };
     span_tip(ui, body, stretch.now);
     snap_line(ui, frame, stretch.edge.stuck);
+}
+
+/// A key marker of annotation `id` follows the pointer at x inside its annotation from `from`
+/// (pressed at time `grab` on row `row`); the release moves the key there and keeps it picked.
+fn key(
+    ui: &Ui,
+    frame: &Frame,
+    editor: &mut EditorWindow,
+    (id, from, grab, row): (AnnotId, OutputTime, OutputTime, usize),
+    x: f32,
+    down: bool,
+) {
+    let item = Some(Item::Annotation(id));
+    let region = editor.tracks.rows.get(row).map(|t| &t.regions);
+    let range = region
+        .and_then(|r| r.iter().find(|r| r.item == item))
+        .map(|r| r.range);
+    let (Some(range), Some(&(_, lane))) = (range, frame.rows.get(row)) else {
+        editor.view.gesture = None;
+        return;
+    };
+    let raw = from + frame.scale.time(x).since(grab);
+    let targets = places::targets(editor, &[], None);
+    let px = frame.scale.px_per_sec;
+    let point = snap::point(raw, &targets, px, (range.start(), range.end()));
+    if !down {
+        if !same_moment(point.at, from) {
+            editor.ask(Action::Apply(vec![commands::key_move(id, from, point.at)]));
+            let at = point.at;
+            editor.view.selection.only(Selected::Key { id, at });
+        }
+        return;
+    }
+    let y = paint::body(lane, frame.scale, range).center().y;
+    let centre = pos2(frame.scale.x(point.at), y);
+    marks::diamond(&ui.painter_at(lane), centre, true);
+    let above = pos2(centre.x, lane.top() - 2.0);
+    tip(ui, above, Align2::CENTER_BOTTOM, timecode(point.at), true);
+    snap_line(ui, frame, point.stuck);
 }
 
 /// `region` drawn at `range` on `lane` of `row`, lifted, with the white ring; its body.

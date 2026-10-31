@@ -168,3 +168,8 @@ fn plural<'a>(count: usize, one: &'a str, few: &'a str, many: &'a str) -> &'a st
         _ => many,
     }
 }
+
+/// «Ключ 0:30.00»: the name of a key marker on an annotation (7.12).
+pub fn key_marker(at: &str) -> String {
+    format!("Ключ {at}")
+}

@@ -5,6 +5,7 @@
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Project, Range, TimeDelta};
+use dc_fx_annotations::AnnotId;
 use dc_fx_audio_tracks::Audio;
 use dc_ops::Step;
 use serde_json::{Map, Value};
@@ -145,4 +146,19 @@ pub fn speed_edge(from: Range<Output>, end: bool, to: OutputTime, factor: f64) -
     );
     args.insert("factor".to_owned(), factor.into());
     Some(Step::new("speed", args))
+}
+
+/// `annot key rm <id> --at <at>`: the key of annotation `id` at output `at`.
+pub fn key_remove(id: AnnotId, at: OutputTime) -> Step {
+    let (op, mut args) = command(Item::Annotation(id), "key rm");
+    args.insert("at".to_owned(), time(at));
+    Step::new(op, args)
+}
+
+/// `annot key move <id> --at <from> --to <to>`.
+pub fn key_move(id: AnnotId, from: OutputTime, to: OutputTime) -> Step {
+    let (op, mut args) = command(Item::Annotation(id), "key move");
+    args.insert("at".to_owned(), time(from));
+    args.insert("to".to_owned(), time(to));
+    Step::new(op, args)
 }

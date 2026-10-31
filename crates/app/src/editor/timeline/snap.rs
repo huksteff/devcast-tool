@@ -97,12 +97,7 @@ pub fn edge(
     px_per_sec: f32,
     video: OutputTime,
 ) -> Edge {
-    let nearest = targets
-        .iter()
-        .map(|&t| (distance(raw, t, px_per_sec), t))
-        .filter(|(px, _)| *px <= SNAP)
-        .min_by(|a, b| a.0.total_cmp(&b.0))
-        .map(|(_, t)| t);
+    let nearest = nearest(raw, targets, px_per_sec);
     let wanted = nearest.unwrap_or(raw);
     let (low, high) = edge_limits(range, end, still, video);
     let at = wanted.max(low).min(high);
@@ -137,6 +132,33 @@ pub fn edge_limits(
     };
     let here = if end { stop } else { start };
     (low.min(here), high.max(here))
+}
+
+/// A key dragged to `raw`: stuck to the nearest of `targets` within `SNAP`, kept in
+/// `low..=high` (the annotation on the output).
+pub fn point(
+    raw: OutputTime,
+    targets: &[OutputTime],
+    px_per_sec: f32,
+    (low, high): (OutputTime, OutputTime),
+) -> Edge {
+    let nearest = nearest(raw, targets, px_per_sec);
+    let wanted = nearest.unwrap_or(raw);
+    let at = wanted.max(low).min(high);
+    Edge {
+        at,
+        stuck: nearest.filter(|_| at == wanted),
+    }
+}
+
+/// The target nearest to `raw` within `SNAP`.
+fn nearest(raw: OutputTime, targets: &[OutputTime], px_per_sec: f32) -> Option<OutputTime> {
+    targets
+        .iter()
+        .map(|&t| (distance(raw, t, px_per_sec), t))
+        .filter(|(px, _)| *px <= SNAP)
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, t)| t)
 }
 
 fn distance(a: OutputTime, b: OutputTime, px_per_sec: f32) -> f32 {

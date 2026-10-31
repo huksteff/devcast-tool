@@ -1,5 +1,5 @@
-//! `annot key add|rm|copy` and the key side of the edit commands: times come from the output
-//! video and become key times of the annotation (`keys.rs`).
+//! `annot key add|rm|copy|move` and the key side of the edit commands: times come from the
+//! output video and become key times of the annotation (`keys.rs`).
 
 use dc_core::time::Output;
 use dc_core::{Command, CommandError, Diff, Op, OutputTime, Project, TimeArg, TimeDelta};
@@ -279,5 +279,59 @@ impl Op for AnnotKeyCopy {
     const ABOUT: &'static str =
         "Скопировать ключ аннотации в другой момент или в другую аннотацию того же вида";
     const EXAMPLE: &'static str = "annot key copy a3 --at 4.5 --to 7 --into a5";
+    const POSITIONAL: &'static [&'static str] = &["id"];
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AnnotKeyMove {
+    /// Annotation whose key to move.
+    pub id: AnnotId,
+    /// Moment of the key on the output video (give or take 1 ms).
+    pub at: TimeArg<Output>,
+    /// Its new moment on the output video, inside the annotation; a key there is replaced.
+    pub to: TimeArg<Output>,
+}
+
+impl Command for AnnotKeyMove {
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
+
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+        let mut state = project.state::<Annotations>()?;
+        let index = position(&state, self.id)?;
+        let annotation = &mut state.annotations[index];
+        let offset = key_offset(project, annotation, self.at.0)?;
+        let key = annotation.key_index(offset).ok_or_else(|| {
+            CommandError::new(format!(
+                "у {} нет ключа в {}: {}",
+                self.id,
+                self.at.0,
+                key_times(project, annotation)
+            ))
+        })?;
+        let to = key_offset(project, annotation, self.to.0)?;
+        // Within `KEY_TOLERANCE` it is the same moment.
+        if annotation.key_index(to) == Some(key) {
+            return Ok(Diff::default());
+        }
+        let before = annotation.keys.clone();
+        let mut moved = annotation.keys.remove(key);
+        moved.at = to;
+        annotation.put_key(moved);
+        if annotation.keys == before {
+            return Ok(Diff::default());
+        }
+        project.set_state::<Annotations>(&state)?;
+        Ok(Diff::changed(self.id))
+    }
+}
+
+impl Op for AnnotKeyMove {
+    const NAME: &'static str = "annot key move";
+    const ABOUT: &'static str =
+        "Перенести ключ аннотации в другой момент; ключ в новом моменте заменяется";
+    const EXAMPLE: &'static str = "annot key move a3 --at 4.5 --to 5.2";
     const POSITIONAL: &'static [&'static str] = &["id"];
 }

@@ -4,6 +4,7 @@
 
 use dc_core::time::Output;
 use dc_core::{ClipId, OutputTime, Range};
+use dc_fx_annotations::AnnotId;
 use eframe::egui::Pos2;
 
 use super::clipboard::Copied;
@@ -63,7 +64,7 @@ pub struct View {
     pub quality: Quality,
     /// Automatic keyframes; acts from 7.25.
     pub auto_keys: bool,
-    /// Keyframe markers on the timeline; acts from 7.12.
+    /// Keyframe markers on the annotation regions (7.12).
     pub markers: bool,
     /// Preview volume, percent; plays from 7.5.
     pub volume: f64,
@@ -184,6 +185,14 @@ pub enum Gesture {
     },
     /// An edge (`end` or the start) of one region follows the pointer.
     Edge { target: Target, end: bool },
+    /// A key marker of annotation `id` at output `from` follows the pointer, pressed at time
+    /// `grab` on row `row` (7.12).
+    Key {
+        id: AnnotId,
+        from: OutputTime,
+        grab: OutputTime,
+        row: usize,
+    },
     /// A rubber band from `from` picks the regions it touches; `base` stays picked (Ctrl).
     Band { from: Pos2, base: Selection },
 }

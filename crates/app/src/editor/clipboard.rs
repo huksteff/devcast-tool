@@ -15,7 +15,7 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 
 use super::montage::arg;
-use super::regions::{remove, seconds};
+use super::regions::{key_remove, remove, seconds};
 use super::selection::{Item, Selected};
 use super::{Action, EditorWindow};
 
@@ -27,10 +27,14 @@ pub struct Copied {
     pub step: Step,
 }
 
-/// Delete: removes the picked regions and clips in one undo step.
+/// Delete: removes the picked keys, regions and clips in one undo step; the keys of a removed
+/// annotation go with it.
 pub fn delete(editor: &mut EditorWindow) {
     let selection = &editor.view.selection;
-    let mut steps: Vec<Step> = selection.regions().map(remove).collect();
+    let gone = |id| selection.contains(Selected::Region(Item::Annotation(id)));
+    let keys = selection.keys().filter(|(id, _)| !gone(*id));
+    let mut steps: Vec<Step> = keys.map(|(id, at)| key_remove(id, at)).collect();
+    steps.extend(selection.regions().map(remove));
     if let Some(Action::Apply(clips)) = super::montage::remove(selection.clips()) {
         steps.extend(clips);
     }

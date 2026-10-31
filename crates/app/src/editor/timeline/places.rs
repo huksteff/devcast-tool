@@ -169,7 +169,11 @@ fn still(editor: &EditorWindow, index: usize, moving: &[Item]) -> Vec<Range<Outp
 
 /// What a dragged edge sticks to: the edges of the regions of all rows and of the speed bands
 /// but the dragged ones, and the playhead; nothing with «Привязка» off.
-fn targets(editor: &EditorWindow, moving: &[Item], band: Option<Range<Output>>) -> Vec<OutputTime> {
+pub fn targets(
+    editor: &EditorWindow,
+    moving: &[Item],
+    band: Option<Range<Output>>,
+) -> Vec<OutputTime> {
     if !editor.view.magnet {
         return Vec::new();
     }

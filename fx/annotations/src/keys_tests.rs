@@ -4,7 +4,8 @@ use serde_json::{Value, json};
 
 use crate::tests::{add, command, cut_and_fast, fail, project, range, run, state};
 use crate::{
-    AnnotKeyAdd, AnnotKeyCopy, AnnotKeyRm, AnnotMove, AnnotSet, Annotation, Blend, Placement, keyed,
+    AnnotKeyAdd, AnnotKeyCopy, AnnotKeyMove, AnnotKeyRm, AnnotMove, AnnotSet, Annotation, Blend,
+    Placement, keyed,
 };
 
 fn ms(ms: i64) -> TimeDelta {
@@ -280,5 +281,46 @@ fn undo_redo_and_the_file_keep_keys() {
         stored["at"],
         json!(1_000_000),
         "µs of source time since the start"
+    );
+}
+
+#[test]
+fn move_takes_a_key_to_another_moment_with_its_look() {
+    let mut p = boxed();
+    run(&mut p, &set(json!({"id": "a1", "at": 4, "x": 0.5})));
+    let key_move = |args: Value| command::<AnnotKeyMove>(args);
+    let answer = run(&mut p, &key_move(json!({"id": "a1", "at": 4, "to": 5})));
+    assert_eq!(answer, "аннотации ~1 a1");
+    let a = annotation(&p, 0);
+    let times: Vec<_> = a.keys.iter().map(|k| k.at).collect();
+    assert_eq!(times, [ms(0), ms(3000)]);
+    assert_eq!(a.keys[1].rect.x(), 0.5, "the look goes with it");
+    assert!(close(drawn(&p, 0, 5.5).0, 0.5));
+    let same = key_move(json!({"id": "a1", "at": 5, "to": 5.0005}));
+    assert_eq!(run(&mut p, &same), "", "within 1 ms");
+    run(&mut p, &key_move(json!({"id": "a1", "at": 2, "to": 5})));
+    let a = annotation(&p, 0);
+    assert_eq!(a.keys.len(), 1, "the key there is replaced");
+    assert_eq!(a.keys[0].rect.x(), 0.1);
+    let error = fail(&mut p, &key_move(json!({"id": "a1", "at": 3, "to": 4})));
+    assert!(error.contains("нет ключа"), "{error}");
+    let error = fail(&mut p, &key_move(json!({"id": "a1", "at": 5, "to": 7})));
+    assert!(error.contains("с 0:02.000 до 0:06.000"), "{error}");
+}
+
+#[test]
+fn a_moved_key_stays_on_the_recording_through_a_cut_and_a_speed_up() {
+    let mut p = cut_and_fast();
+    run(
+        &mut p,
+        &add(json!({"kind": "text", "at": 0.5, "duration": 3})),
+    );
+    run(&mut p, &key_add(json!({"id": "a1", "at": 1})));
+    let to = command::<AnnotKeyMove>(json!({"id": "a1", "at": 1, "to": 3}));
+    run(&mut p, &to);
+    assert_eq!(
+        annotation(&p, 0).keys[0].at,
+        ms(5500),
+        "output 3 s is source 6 s"
     );
 }

@@ -19,16 +19,7 @@ use crate::editor::tests::project;
 /// plan: the CLI's parsing and apply.
 pub(super) fn by_cli(lines: &[Vec<String>]) -> Project {
     let registry = Registry::devcast().unwrap();
-    let steps: Vec<Step> = lines
-        .iter()
-        .map(|words| {
-            let (info, taken) = registry.resolve(words).unwrap();
-            Step::new(
-                info.name,
-                dc_ops::parse_args(info, &words[taken..]).unwrap(),
-            )
-        })
-        .collect();
+    let steps = steps(lines);
     let mut project = project();
     dc_ops::apply(
         &registry,
@@ -39,6 +30,21 @@ pub(super) fn by_cli(lines: &[Vec<String>]) -> Project {
     )
     .unwrap();
     project
+}
+
+/// The steps of the lines (their words) as `devcast` parses them.
+pub(super) fn steps(lines: &[Vec<String>]) -> Vec<Step> {
+    let registry = Registry::devcast().unwrap();
+    lines
+        .iter()
+        .map(|words| {
+            let (info, taken) = registry.resolve(words).unwrap();
+            Step::new(
+                info.name,
+                dc_ops::parse_args(info, &words[taken..]).unwrap(),
+            )
+        })
+        .collect()
 }
 
 pub(super) fn words(line: &str) -> Vec<String> {

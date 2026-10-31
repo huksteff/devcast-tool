@@ -107,6 +107,7 @@ devcast annot key add a1 --at 5                          # ключ: запом�
 devcast annot set a1 --at 7 --x 0.6 --rotation 20        # правка в ключе в 7 с; без --at — во всех ключах
 devcast text set a1 --at 7 --size 64 --color "#fde047ff"
 devcast annot key copy a1 --at 7 --to 7.5                # --into a3 — в аннотацию того же вида
+devcast annot key move a1 --at 7.5 --to 8                # перенести ключ; ключ там заменяется
 devcast annot key rm a1 --at 5
 devcast annot add image --at 8 --duration 2 --rect 0.7,0.05,0.25,0.2
 devcast image set a3 --file логотип.png               # PNG, JPEG, WebP, GIF; копия в assets/images/, --at — в ключе

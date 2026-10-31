@@ -4,7 +4,7 @@
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeDelta};
 
-use super::snap::{Edge, Moving, Shift, edge, shift};
+use super::snap::{Edge, Moving, Shift, edge, point, shift};
 
 fn t(secs: f64) -> OutputTime {
     OutputTime::from_secs_f64(secs)
@@ -131,4 +131,24 @@ fn an_edge_sticks_and_keeps_the_least_length_and_the_neighbours() {
     );
     assert_eq!(edge(range, false, t(-1.0), &[], &[], PPS, video).at, t(0.0));
     assert_eq!(edge(range, true, t(30.0), &[], &[], PPS, video).at, video);
+}
+
+#[test]
+fn a_key_sticks_and_stays_inside_its_annotation() {
+    let inside = (t(2.0), t(6.0));
+    assert_eq!(
+        point(t(4.05), &[t(4.0), t(9.0)], PPS, inside),
+        Edge {
+            at: t(4.0),
+            stuck: Some(t(4.0))
+        }
+    );
+    assert_eq!(point(t(4.9), &[t(4.0)], PPS, inside).stuck, None);
+    assert_eq!(point(t(1.0), &[], PPS, inside).at, t(2.0));
+    let past = point(t(6.05), &[t(6.1)], PPS, inside);
+    assert_eq!(
+        (past.at, past.stuck),
+        (t(6.0), None),
+        "a target outside does not hold"
+    );
 }

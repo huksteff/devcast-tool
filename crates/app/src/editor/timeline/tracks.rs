@@ -13,6 +13,7 @@ use dc_fx_keys::Keys;
 use dc_fx_zoom::{Mode, ZoomEffect, ZoomState};
 use dc_ui_kit::strings::timeline as text;
 
+use super::marks;
 use super::scale::length;
 use super::wave::{self, Source, Wave};
 use crate::editor::selection::Item;
@@ -51,6 +52,8 @@ pub struct Region {
     pub item: Option<Item>,
     /// The sound a region of a sound row plays (7.11).
     pub wave: Option<Wave>,
+    /// Output times of the keys of an annotation that show (7.12), in time order.
+    pub keys: Vec<OutputTime>,
 }
 
 /// A speed range on the clips row.
@@ -204,6 +207,7 @@ impl Tracks {
                     let range = map.output_span(&a.media, a.range)?;
                     Some(Region {
                         item: Some(Item::Annotation(a.id)),
+                        keys: marks::shown(map, a, range),
                         ..region(range, kind_name(a.kind).to_owned())
                     })
                 })
@@ -211,13 +215,9 @@ impl Tracks {
             self.add(Row::Annotations(track), regions, false);
         }
         for annotation in &state.annotations {
-            // A key past a trimmed edge is not shown: no jump to it.
-            let shown = annotation.keys.iter().filter_map(|key| {
-                let t = annotation.range.start() + key.at;
-                annotation.range.contains(t).then_some(())?;
-                map.locate(&annotation.media, t).map(|(_, at)| at)
-            });
-            self.keys.extend(shown);
+            if let Some(span) = map.output_span(&annotation.media, annotation.range) {
+                self.keys.extend(marks::shown(map, annotation, span));
+            }
         }
         self.keys.sort_unstable();
         self.keys.dedup();
@@ -253,6 +253,7 @@ fn region(range: Range<Output>, label: String) -> Region {
         clip: None,
         item: None,
         wave: None,
+        keys: Vec::new(),
     }
 }
 
