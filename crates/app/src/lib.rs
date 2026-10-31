@@ -50,12 +50,10 @@ pub fn run() -> Result<(), AppError> {
     if let [_, flag, socket, dir] = args.as_slice()
         && flag == crash::SERVER_ARG
     {
-        return crash::serve(std::path::Path::new(socket), dir.into());
+        return crash::serve(std::path::Path::new(socket), dir.into(), std::io::stdin());
     }
     let settings = dc_project::settings::dir()?;
     let _log = logging::init(&settings.join(logging::FOLDER))?;
-    let _crash = crash::install(&settings)
-        .inspect_err(|e| tracing::error!("дампы падений не будут записаны: {e}"));
     let store = settings::Store::load(&settings.join(settings::FILE))?;
     let listener = match instance::claim()? {
         Claim::First(listener) => listener,
@@ -64,6 +62,9 @@ pub fn run() -> Result<(), AppError> {
             return Ok(());
         }
     };
+    // Only the first instance writes dumps: a second start must not leave a dump writer behind.
+    let _crash = crash::install(&settings)
+        .inspect_err(|e| tracing::error!("дампы падений не будут записаны: {e}"));
     let gpu = gpu::device()?;
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,

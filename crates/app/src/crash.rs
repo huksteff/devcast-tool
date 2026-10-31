@@ -2,11 +2,16 @@
 //! with `--crash-server`, and a crash of the app asks that process to write the dump of the
 //! crashed one into `%APPDATA%\DevCast\crashes`. The only module of dc-app with `unsafe`
 //! (owner's decision): crash-handler's crash callback is an `unsafe` contract.
+//!
+//! The server lives exactly as long as its parent: the parent holds the write end of the
+//! server's stdin and never writes, so the server reads end-of-file once the parent is gone,
+//! however it ended (closed, killed, crashed after the dump) and even if it never connected.
 
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crash_handler::{CrashEventResult, CrashHandler};
 
@@ -19,7 +24,8 @@ pub const FOLDER: &str = "crashes";
 /// What the server prints once it listens.
 const READY: &str = "ready";
 
-/// Keeps the dump writer and the handler alive for the life of the app.
+/// Keeps the dump writer and the handler alive for the life of the app; dropping it closes
+/// the server's stdin, which ends the server.
 pub struct Guard {
     _handler: CrashHandler,
     _server: Child,
@@ -34,6 +40,7 @@ pub fn install(settings: &Path) -> Result<Guard, AppError> {
         .arg(SERVER_ARG)
         .arg(&socket)
         .arg(settings.join(FOLDER))
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
         .map_err(|e| error(&e))?;
@@ -63,8 +70,13 @@ pub fn install(settings: &Path) -> Result<Guard, AppError> {
     })
 }
 
-/// The dump writer: listens on `socket`, writes dumps into `dir`, ends with its client.
-pub fn serve(socket: &Path, dir: PathBuf) -> Result<(), AppError> {
+/// The dump writer: listens on `socket`, writes dumps into `dir`, ends with its client or
+/// once `parent` (the stdin from the app) reaches its end.
+pub fn serve(
+    socket: &Path,
+    dir: PathBuf,
+    parent: impl Read + Send + 'static,
+) -> Result<(), AppError> {
     let error = |e: &dyn std::fmt::Display| AppError::Crash(e.to_string());
     std::fs::create_dir_all(&dir).map_err(|e| AppError::settings_file(&dir, e))?;
     let mut server = minidumper::Server::with_name(socket).map_err(|e| error(&e))?;
@@ -72,7 +84,17 @@ pub fn serve(socket: &Path, dir: PathBuf) -> Result<(), AppError> {
     writeln!(out, "{READY}")
         .and_then(|()| out.flush())
         .map_err(|e| error(&e))?;
-    let shutdown = AtomicBool::new(false);
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let gone = Arc::clone(&shutdown);
+    std::thread::Builder::new()
+        .name("devcast-crash-parent".to_owned())
+        .spawn(move || {
+            let mut parent = parent;
+            // The parent never writes: data, end or a broken pipe all mean it is gone.
+            let _ignored = parent.read(&mut [0; 1]);
+            gone.store(true, Ordering::Relaxed);
+        })
+        .map_err(|e| error(&e))?;
     server
         .run(Box::new(Dumps { dir }), &shutdown, None)
         .map_err(|e| error(&e))
