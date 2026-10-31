@@ -4,6 +4,8 @@
 
 use dc_core::OutputTime;
 
+use super::timeline::Viewport;
+
 /// Tool of a click on the timeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Tool {
@@ -68,8 +70,10 @@ pub struct View {
     /// Open groups of the inspector panel («Основное», «Тонкая настройка»); remembered from 7.13.
     pub basic_open: bool,
     pub fine_open: bool,
-    /// Playhead; moves from 7.5 (playback) and 7.7 (dragging).
+    /// Playhead: playback, keys and the timeline move it.
     pub playhead: OutputTime,
+    /// What the timeline shows: scale, scroll, row heights, the playhead drag (7.6, 7.7).
+    pub timeline: Viewport,
 }
 
 impl Default for View {
@@ -86,6 +90,7 @@ impl Default for View {
             basic_open: true,
             fine_open: false,
             playhead: OutputTime::ZERO,
+            timeline: Viewport::default(),
         }
     }
 }

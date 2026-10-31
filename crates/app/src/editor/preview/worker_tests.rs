@@ -52,6 +52,7 @@ fn ask(worker: &Worker, generation: u64, project: &Arc<Project>, secs: f64, size
         revision: 1,
         time: OutputTime::from_secs_f64(secs),
         size,
+        scrub: false,
     };
     let project = Arc::clone(project);
     assert!(worker.send(Request {

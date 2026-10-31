@@ -28,6 +28,10 @@ pub enum Transport {
     Step(i64),
     /// To the next keyframe (`true`) or the previous one, or 5 s that way; playback goes on.
     Jump(bool),
+    /// The playhead is dragged here: playback pauses meanwhile, the preview shows keyframes.
+    Scrub(dc_core::OutputTime),
+    /// The drag of the playhead ended; playback goes on when it played before (`true`).
+    Release(bool),
 }
 
 impl Action {
@@ -92,6 +96,16 @@ fn transport_run(editor: &mut EditorWindow, transport: Transport, now: Instant) 
             view.playhead = seek::step(view.playhead, frames, editor.fps, end);
             None
         }
+        Transport::Scrub(at) => {
+            if playback.is_playing() {
+                playback.pause(now);
+            }
+            view.playhead = at;
+            None
+        }
+        Transport::Release(resume) => (resume && view.playhead < end)
+            .then(|| playback.play(view.playhead, now))
+            .flatten(),
         Transport::Jump(forward) => {
             let playing = playback.is_playing();
             let at = if playing {

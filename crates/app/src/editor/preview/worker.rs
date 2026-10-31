@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
 use dc_core::{CursorTracks, KeyTracks, PixelSize, Project};
-use dc_encode::Sources;
+use dc_encode::{Seek, Sources};
 use dc_ops::Evaluator;
 use dc_project::ProjectDir;
 use dc_render::{Compositor, Gpu, TextMeasure};
@@ -179,8 +179,13 @@ impl<'d> Painter<'d> {
         want: &Want,
     ) -> Result<Rendered, String> {
         let scene = evaluator.evaluate(want.time);
+        let seek = if want.scrub {
+            Seek::Keyframe
+        } else {
+            Seek::Exact
+        };
         self.sources
-            .feed(gpu, &mut self.compositor, &scene)
+            .feed_at(gpu, &mut self.compositor, &scene, seek)
             .map_err(|e| e.to_string())?;
         let target = self.target(gpu, want.size);
         self.compositor

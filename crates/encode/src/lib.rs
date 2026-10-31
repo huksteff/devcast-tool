@@ -29,7 +29,7 @@ pub use packet::{Packet, StreamParameters};
 pub use queue::{ExportQueue, Job, JobState, JobStatus};
 pub use reader::Mp4Reader;
 pub use select::{Selection, open_for_export, select};
-pub use still::{Sources, frame_png, sheet_png};
+pub use still::{Seek, Sources, frame_png, sheet_png};
 
 /// Initializes FFmpeg once per process and keeps its own log to errors only:
 /// encoders print statistics at `info`, and failures come back as [`EncodeError`] anyway.

@@ -87,7 +87,7 @@ impl Preview {
         self.live.as_ref().is_some_and(Live::take_news)
     }
 
-    /// The frame of `canvas` at `time`, shown `shown` points large.
+    /// The frame of `canvas` at `time`, shown `shown` points large; a keyframe while `scrub`.
     fn frame(
         &mut self,
         canvas: PixelSize,
@@ -95,6 +95,7 @@ impl Preview {
         pixels_per_point: f32,
         quality: Quality,
         time: OutputTime,
+        scrub: bool,
     ) -> Shown {
         let Some(live) = &mut self.live else {
             return Shown::default();
@@ -103,6 +104,7 @@ impl Preview {
             revision: self.revision,
             time,
             size: fit::render_size(canvas, shown, pixels_per_point, quality),
+            scrub,
         };
         live.frame(&self.project, want)
     }
@@ -184,9 +186,14 @@ fn frame(ui: &mut Ui, editor: &mut EditorWindow) {
     let view = &editor.view;
     let size = frame_rect(area, canvas.map(|c| (c.width, c.height)), view.scale, ppp).size();
     let shown = match canvas {
-        Some(canvas) => editor
-            .preview
-            .frame(canvas, size, ppp, view.quality, view.playhead),
+        Some(canvas) => editor.preview.frame(
+            canvas,
+            size,
+            ppp,
+            view.quality,
+            view.playhead,
+            view.timeline.scrub.is_some(),
+        ),
         None => Shown::default(),
     };
     ScrollArea::both()

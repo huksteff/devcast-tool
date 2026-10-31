@@ -12,6 +12,15 @@ use dc_render::{Bitmap, Compositor, Gpu, Image, Layer, Nv12, Scene};
 
 use crate::error::EncodeError;
 
+/// Which video frame a scene gets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Seek {
+    /// Exactly the frame shown at its time (export, `devcast frame`, the paused preview).
+    Exact,
+    /// The keyframe at or before it: fast, while the playhead is dragged (decision 003).
+    Keyframe,
+}
+
 /// Decoders of a project's media, kept open between frames, and its pictures decoded once: the
 /// frames of an animated picture are uploaded one by one as the scenes show them.
 pub struct Sources<'p> {
@@ -36,12 +45,26 @@ impl<'p> Sources<'p> {
         compositor: &mut Compositor,
         scene: &Scene,
     ) -> Result<(), EncodeError> {
+        self.feed_at(gpu, compositor, scene, Seek::Exact)
+    }
+
+    /// [`Self::feed`] with the video frames picked by `seek`.
+    pub fn feed_at(
+        &mut self,
+        gpu: &Gpu,
+        compositor: &mut Compositor,
+        scene: &Scene,
+        seek: Seek,
+    ) -> Result<(), EncodeError> {
         for (_, layer) in scene.painted() {
             match layer {
                 Layer::Video(video) => {
                     let decoder = self.decoder(&video.source.media)?;
                     let color = decoder.probe().color;
-                    let frame = decoder.frame_at(video.source.time)?;
+                    let frame = match seek {
+                        Seek::Exact => decoder.frame_at(video.source.time)?,
+                        Seek::Keyframe => decoder.keyframe_at(video.source.time)?,
+                    };
                     let nv12 = Nv12::new(frame.size, frame.y(), frame.uv(), color)?;
                     compositor.upload(gpu, &video.source, nv12);
                 }

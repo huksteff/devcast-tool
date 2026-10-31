@@ -211,7 +211,9 @@ pub(super) fn editor() -> (tempfile::TempDir, EditorWindow) {
 pub(super) struct State {
     _temp: tempfile::TempDir,
     pub editor: EditorWindow,
-    outcome: Option<Outcome>,
+    pub outcome: Option<Outcome>,
+    /// The timeline sizes the settings give the editor.
+    pub layout: crate::settings::EditorLayout,
     /// Some frame asked for the settings window, on this page.
     pub settings: Option<crate::settings_window::Page>,
     /// The shortcuts the settings give the editor.
@@ -226,6 +228,7 @@ pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State>
         _temp: temp,
         editor,
         outcome: None,
+        layout: crate::settings::EditorLayout::default(),
         settings: None,
         keys: crate::keymap::EditorKeys::default(),
         now: None,
@@ -235,7 +238,7 @@ pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State>
         .build_ui_state(
             |ui, state: &mut State| {
                 let now = state.now.unwrap_or_else(std::time::Instant::now);
-                let outcome = editor_ui(ui, &mut state.editor, 300.0, &state.keys, now);
+                let outcome = editor_ui(ui, &mut state.editor, state.layout, &state.keys, now);
                 assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
                 state.settings = state.settings.or(outcome.open_settings);
                 state.outcome = Some(outcome);
@@ -259,7 +262,10 @@ fn editor_window() {
     harness.run();
     harness.snapshot("editor");
     let outcome = harness.state().outcome.clone().unwrap();
-    assert!((outcome.timeline_height - 300.0).abs() < 1.0, "{outcome:?}");
+    assert!(
+        (outcome.layout.timeline_height - 300.0).abs() < 1.0,
+        "{outcome:?}"
+    );
     harness.get_by_label("Демо-запись");
     harness.get_by_label(&names::annotations(2));
     harness.get_by_label(&names::audio(1));

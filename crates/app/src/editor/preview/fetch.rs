@@ -5,12 +5,15 @@
 
 use dc_core::{OutputTime, PixelSize};
 
-/// The frame the preview wants: of this project revision, at this output moment, this large.
+/// The frame the preview wants: of this project revision, at this output moment, this large,
+/// exact or quick.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Want {
     pub revision: u64,
     pub time: OutputTime,
     pub size: PixelSize,
+    /// The playhead is being dragged: the keyframe before `time` will do (decision 003).
+    pub scrub: bool,
 }
 
 /// What was asked and what is shown; `F` is a rendered frame.
@@ -98,6 +101,7 @@ mod tests {
                 width,
                 height: width / 2,
             },
+            scrub: false,
         }
     }
 

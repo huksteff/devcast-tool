@@ -5,11 +5,11 @@ use dc_core::OutputTime;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::{
-    self, BG, BORDER, FS_S, Hue, REC, ROW_LINE, S2, SURFACE, TEXT_2, TEXT_3, WHITE,
+    self, BG, BORDER, FS_S, Hue, REC, REC_STRONG, ROW_LINE, S2, SURFACE, TEXT_2, TEXT_3, WHITE,
 };
 use eframe::egui::{Align2, Color32, Painter, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
 
-use super::scale::{TimeScale, ruler_label, timecode};
+use super::scale::{TimeScale, tick_label, timecode};
 use super::tracks::{Region, Row, Track, Tracks};
 
 /// Side of a header button, points.
@@ -21,6 +21,8 @@ const RADIUS: u8 = 4;
 const SPEED: f32 = 14.0;
 /// Ruler labels, the playhead time and the clip facts, points (mockup).
 const SMALL: f32 = 10.0;
+/// Top of the second line of a clip (its facts) in the region.
+const DETAIL_TOP: f32 = 22.0;
 /// Faded regions keep this share of their colour.
 const FADED: f32 = 0.4;
 
@@ -82,7 +84,7 @@ pub fn ruler(painter: &Painter, rect: Rect, scale: &TimeScale) {
             Stroke::new(1.0, TEXT_3),
         );
         if big {
-            let label = ruler_label(t / 1_000_000);
+            let label = tick_label(OutputTime::from_micros(t), step);
             lanes.text(
                 pos2(x + 3.0, rect.top() + 3.0),
                 Align2::LEFT_TOP,
@@ -148,15 +150,22 @@ fn paint_region(painter: &Painter, body: Rect, region: &Region, hue: Hue) {
         Stroke::new(1.0, line),
         StrokeKind::Inside,
     );
-    if region.label.is_empty() {
+    // Rows scaled low (Shift+wheel) leave no room for text.
+    if region.label.is_empty() || body.height() < FS_S {
         return;
     }
     let clip = painter.with_clip_rect(body.shrink(1.0).intersect(painter.clip_rect()));
     let font = fonts::text(FS_S, Weight::Medium);
-    match &region.detail {
+    // The text of a region scrolled half out of the lanes stays at their left edge.
+    let start = body.left().max(painter.clip_rect().left());
+    let detail = region
+        .detail
+        .as_ref()
+        .filter(|_| body.height() >= DETAIL_TOP + SMALL + 2.0);
+    match detail {
         None => {
             clip.text(
-                pos2(body.left() + 6.0, body.center().y),
+                pos2(start + 6.0, body.center().y),
                 Align2::LEFT_CENTER,
                 &region.label,
                 font,
@@ -164,7 +173,7 @@ fn paint_region(painter: &Painter, body: Rect, region: &Region, hue: Hue) {
             );
         }
         Some(detail) => {
-            let left = body.left() + S2;
+            let left = start + S2;
             clip.text(
                 pos2(left, body.top() + 4.0),
                 Align2::LEFT_TOP,
@@ -173,7 +182,7 @@ fn paint_region(painter: &Painter, body: Rect, region: &Region, hue: Hue) {
                 ink,
             );
             let mono = fonts::mono(SMALL);
-            let at = pos2(left, body.top() + 22.0);
+            let at = pos2(left, body.top() + DETAIL_TOP);
             clip.text(at, Align2::LEFT_TOP, detail, mono, ink.gamma_multiply(0.8));
         }
     }
@@ -196,17 +205,20 @@ pub fn speeds(painter: &Painter, rect: Rect, tracks: &Tracks, scale: &TimeScale)
     }
 }
 
-/// The red playhead from the ruler down to `bottom`, with its time on the ruler.
+/// The red playhead from the ruler down to `bottom`, with its time in a chip on the ruler (mockup:
+/// line 2, chip padding 5 × 2, 2 from the top); nothing when `x` is off the lanes.
 pub fn playhead(painter: &Painter, ruler: Rect, bottom: f32, x: f32, t: OutputTime) {
-    if x < ruler.left() + super::HEAD {
+    if x < ruler.left() + super::HEAD || x > ruler.right() {
         return;
     }
-    painter.vline(x, ruler.top()..=bottom, Stroke::new(1.5, REC));
+    painter.vline(x, ruler.top()..=bottom, Stroke::new(2.0, REC));
     let font = fonts::mono(SMALL);
     let galley = painter.layout_no_wrap(timecode(t), font, WHITE);
-    let size = galley.size() + vec2(8.0, 2.0);
-    let left = (x - size.x / 2.0).max(ruler.left() + super::HEAD);
-    let tag = Rect::from_min_size(pos2(left, ruler.top() + 1.0), size);
-    painter.rect_filled(tag, 3, REC);
-    painter.galley(tag.min + vec2(4.0, 1.0), galley, WHITE);
+    let size = galley.size() + vec2(10.0, 4.0);
+    let left = (x - size.x / 2.0)
+        .min(ruler.right() - size.x)
+        .max(ruler.left() + super::HEAD);
+    let tag = Rect::from_min_size(pos2(left, ruler.top() + 2.0), size);
+    painter.rect_filled(tag, 3, REC_STRONG);
+    painter.galley(tag.min + vec2(5.0, 2.0), galley, WHITE);
 }

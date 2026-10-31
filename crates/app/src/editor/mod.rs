@@ -38,6 +38,7 @@ use eframe::egui::{self, Frame, Ui, vec2};
 
 use crate::app::{Shared, lock, on_hud_monitor, other_window};
 use crate::keymap::EditorKeys;
+use crate::settings::EditorLayout;
 use crate::settings_window::Page;
 pub use actions::{Action, Transport};
 pub use document::{Document, DocumentError, LOCK_OWNER, Way};
@@ -222,8 +223,8 @@ impl Shared {
 pub struct Outcome {
     /// The settings window to open on this page.
     pub open_settings: Option<Page>,
-    /// Height of the timeline after the frame, points.
-    pub timeline_height: f32,
+    /// Timeline height and row factor after the frame.
+    pub layout: EditorLayout,
     /// Why an action failed, for a toast.
     pub errors: Vec<String>,
 }
@@ -263,13 +264,13 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
 /// One frame of the editor window; closing it writes what is unsaved to the session and shows
 /// the HUD again.
 fn frame(ui: &mut Ui, shared: &mut Shared) {
-    let height = shared.store.get().editor.timeline_height;
+    let layout = shared.store.get().editor;
     let keys = shared.store.get().editor_keys.clone();
     let Some(editor) = shared.editor.as_mut() else {
         return;
     };
     let now = Instant::now();
-    let outcome = editor_ui(ui, editor, height, &keys, now);
+    let outcome = editor_ui(ui, editor, layout, &keys, now);
     let saved = editor.doc.autosave(now);
     if let Ok(Some(wait)) = saved {
         ui.ctx().request_repaint_after(wait);
@@ -284,26 +285,36 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
     if let Some(page) = outcome.open_settings {
         shared.open_settings_at(page);
     }
-    let released = ui.input(|i| !i.pointer.any_down());
-    if released && (outcome.timeline_height - height).abs() >= 1.0 {
-        let saved = shared
-            .store
-            .update(|s| s.editor.timeline_height = outcome.timeline_height.round());
-        shared.report(saved);
-    }
+    save_layout(shared, ui, layout, outcome.layout);
     if close {
         shared.editor = None;
         shared.show_hud();
     }
 }
 
-/// The whole window: header, timeline at the bottom (`timeline_height` until dragged),
-/// inspector on the right, preview in the middle, the help over them; then the actions of the
+/// Keeps a dragged timeline height (once the pointer is let go) and a new row factor.
+fn save_layout(shared: &mut Shared, ui: &Ui, was: EditorLayout, now: EditorLayout) {
+    let released = ui.input(|i| !i.pointer.any_down());
+    let height = released && (now.timeline_height - was.timeline_height).abs() >= 1.0;
+    let rows = (now.rows - was.rows).abs() > 1e-3;
+    if height || rows {
+        let saved = shared.store.update(|s| {
+            if height {
+                s.editor.timeline_height = now.timeline_height.round();
+            }
+            s.editor.rows = now.rows;
+        });
+        shared.report(saved);
+    }
+}
+
+/// The whole window: header, timeline at the bottom (`layout`: its height until dragged, its row
+/// factor until the wheel changes it), inspector on the right, preview in the middle, the help over them; then the actions of the
 /// frame, at `now`. `keys` are the shortcuts of the settings.
 pub fn editor_ui(
     ui: &mut Ui,
     editor: &mut EditorWindow,
-    timeline_height: f32,
+    layout: EditorLayout,
     keys: &EditorKeys,
     now: Instant,
 ) -> Outcome {
@@ -328,10 +339,10 @@ pub fn editor_ui(
     let most = (ui.available_height() * TIMELINE_MAX_SHARE).max(TIMELINE_MIN);
     let timeline = egui::Panel::bottom("editor-timeline")
         .resizable(true)
-        .default_size(timeline_height.clamp(TIMELINE_MIN, most))
+        .default_size(layout.timeline_height.clamp(TIMELINE_MIN, most))
         .size_range(TIMELINE_MIN..=most)
         .frame(Frame::new().fill(SURFACE))
-        .show(ui, |ui| timeline::ui(ui, editor));
+        .show(ui, |ui| timeline::ui(ui, editor, layout.rows));
     egui::Panel::right("editor-inspector")
         .exact_size(INSPECTOR)
         .frame(Frame::new().fill(SURFACE))
@@ -357,7 +368,10 @@ pub fn editor_ui(
     }
     Outcome {
         open_settings,
-        timeline_height: timeline.response.rect.height(),
+        layout: EditorLayout {
+            timeline_height: timeline.response.rect.height(),
+            rows: timeline.inner,
+        },
         errors,
     }
 }

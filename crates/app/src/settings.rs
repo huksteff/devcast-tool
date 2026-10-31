@@ -119,12 +119,15 @@ impl Default for Updates {
 pub struct EditorLayout {
     /// Height of the timeline under the preview (mockup: about 300).
     pub timeline_height: f32,
+    /// Height factor of the timeline rows, 0.5..3 (Shift+wheel).
+    pub rows: f32,
 }
 
 impl Default for EditorLayout {
     fn default() -> Self {
         Self {
             timeline_height: 300.0,
+            rows: 1.0,
         }
     }
 }

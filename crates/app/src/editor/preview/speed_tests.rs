@@ -90,6 +90,7 @@ fn measure(gpu: &Arc<Gpu>, dir: &ProjectDir, project: Project, size: PixelSize) 
             revision: 1,
             time: OutputTime::from_secs_f64(1.0 + f64::from(generation) / 60.0),
             size,
+            scrub: false,
         };
         let project = Arc::clone(&project);
         assert!(worker.send(Request {

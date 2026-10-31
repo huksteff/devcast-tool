@@ -207,6 +207,9 @@ pub mod timeline {
     pub const MAKE_CAPTIONS: &str = "Создать субтитры";
     pub const SCALE: &str = "Масштаб времени";
     pub const FIT: &str = "Весь проект";
+    pub const RULER: &str = "Шкала времени";
+    pub const PLAYHEAD: &str = "Указатель";
+    pub const NAVIGATION: &str = "Прокрутка таймлайна";
     pub const DETACH: &str = "Таймлайн в отдельном окне";
     pub const ADD_AUDIO: &str = "Аудиодорожка";
     pub const CAPTIONS: &str = "Субтитры";
