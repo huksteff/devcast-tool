@@ -139,6 +139,13 @@ fn content(ui: &mut Ui, shared: &Shared) -> Option<(bar::Clicked, f32)> {
                 timer: live.timer(),
                 paused: live.paused(),
                 mic,
+                asking: matches!(
+                    shared.popover,
+                    Some(popover::Open {
+                        kind: popover::Kind::Cancel,
+                        ..
+                    })
+                ),
             };
             return live::live_bar(ui, &view);
         }

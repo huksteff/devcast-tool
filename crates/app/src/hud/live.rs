@@ -27,6 +27,8 @@ pub struct LiveView {
     pub paused: bool,
     /// Level of the recorded microphone, 0..1; `None` — recorded without one.
     pub mic: Option<f32>,
+    /// «Отменить запись?» is open: its ✕ stays red and lit (mockup 1b).
+    pub asking: bool,
 }
 
 pub fn live_bar(ui: &mut Ui, view: &LiveView) -> Option<(Clicked, f32)> {
@@ -57,7 +59,7 @@ pub fn live_bar(ui: &mut Ui, view: &LiveView) -> Option<(Clicked, f32)> {
     );
     hit(
         &mut clicked,
-        ui.add(IconButton::new(Icon::Close, hud::CANCEL)),
+        ui.add(cancel_button(view.asking)),
         Clicked::Cancel,
     );
     hit(
@@ -69,7 +71,8 @@ pub fn live_bar(ui: &mut Ui, view: &LiveView) -> Option<(Clicked, f32)> {
     clicked
 }
 
-/// Red square and the timer on a soft red (yellow while paused) button, at least 112 px.
+/// Red square and the timer on a soft red button, at least 112 px; while paused the timer and
+/// the fill turn yellow, the square stays red (mockup 1b).
 fn stop_button(ui: &mut Ui, timer: &str, paused: bool) -> Response {
     let (color, fill) = if paused {
         (PAUSE, PAUSE_SOFT)
@@ -92,7 +95,7 @@ fn stop_button(ui: &mut Ui, timer: &str, paused: bool) -> Response {
         pos2(rect.left() + 8.0, rect.center().y - 7.0),
         vec2(14.0, 14.0),
     );
-    ui.painter().rect_filled(square, 3, color);
+    ui.painter().rect_filled(square, 3, REC);
     let top = rect.center().y - galley.size().y / 2.0;
     ui.painter()
         .galley(pos2(square.right() + S2, top), galley, color);
@@ -188,6 +191,12 @@ pub fn preparing(ui: &mut Ui) {
                 .color(TEXT_3),
         );
     });
+}
+
+/// ✕; red and lit while its question «Отменить запись?» is open.
+fn cancel_button(asking: bool) -> IconButton<'static> {
+    let button = IconButton::new(Icon::Close, hud::CANCEL).held(asking);
+    if asking { button.color(REC) } else { button }
 }
 
 #[cfg(test)]

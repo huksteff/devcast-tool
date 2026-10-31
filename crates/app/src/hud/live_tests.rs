@@ -37,6 +37,7 @@ fn recording_bar() {
         timer: "12:47".to_owned(),
         paused: false,
         mic: Some(0.6),
+        asking: false,
     });
     harness.run();
     harness.snapshot("hud_recording");
@@ -58,6 +59,7 @@ fn paused_bar() {
         timer: "12:47".to_owned(),
         paused: true,
         mic: None,
+        asking: false,
     });
     harness.run();
     harness.snapshot("hud_paused");

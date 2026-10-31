@@ -22,6 +22,7 @@ pub struct IconButton<'a> {
     label: &'a str,
     on: bool,
     dim: bool,
+    held: bool,
     badge: Option<&'a str>,
     color: Option<Color32>,
 }
@@ -34,6 +35,7 @@ impl<'a> IconButton<'a> {
             label,
             on: false,
             dim: false,
+            held: false,
             badge: None,
             color: None,
         }
@@ -59,6 +61,12 @@ impl<'a> IconButton<'a> {
         self
     }
 
+    /// Looks pressed (the hover fill): what it opened is still open.
+    pub fn held(mut self, held: bool) -> Self {
+        self.held = held;
+        self
+    }
+
     pub fn badge(mut self, badge: &'a str) -> Self {
         self.badge = Some(badge);
         self
@@ -73,7 +81,7 @@ impl<'a> IconButton<'a> {
     fn colors(&self, hovered: bool) -> (Color32, Color32) {
         let (fill, fg) = if self.on {
             (ACCENT_SOFT, ACCENT_HI)
-        } else if hovered {
+        } else if hovered || self.held {
             (SURFACE_3, TEXT)
         } else if self.dim {
             (Color32::TRANSPARENT, TEXT_3)
