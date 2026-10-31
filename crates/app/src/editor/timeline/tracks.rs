@@ -6,7 +6,7 @@ use dc_core::project::MediaKind;
 use dc_core::time::Output;
 use dc_core::{ChannelLevels, ClipId, Effect, OutputTime, Project, Range, TimeDelta, TimeMap};
 use dc_fx_annotations::{Annotations, Kind, TRACKS};
-use dc_fx_audio_tracks::{Audio, AudioState, TRACKS as AUDIO_TRACKS};
+use dc_fx_audio_tracks::{Audio, AudioState, Sound, TRACKS as AUDIO_TRACKS};
 use dc_fx_callout::{Action, Callout, CalloutState};
 use dc_fx_captions::CaptionsEffect;
 use dc_fx_keys::Keys;
@@ -14,6 +14,7 @@ use dc_fx_zoom::{Mode, ZoomEffect, ZoomState};
 use dc_ui_kit::strings::timeline as text;
 
 use super::scale::length;
+use super::wave::{self, Source, Wave};
 use crate::editor::selection::Item;
 
 /// A row of the timeline.
@@ -48,6 +49,8 @@ pub struct Region {
     pub clip: Option<ClipId>,
     /// The effect object of a region that can be picked and edited.
     pub item: Option<Item>,
+    /// The sound a region of a sound row plays (7.11).
+    pub wave: Option<Wave>,
 }
 
 /// A speed range on the clips row.
@@ -89,6 +92,12 @@ pub struct Tracks {
 }
 
 impl Tracks {
+    /// The sources of the waves of the sound rows.
+    pub fn sources(&self) -> impl Iterator<Item = &Source> {
+        let regions = self.rows.iter().flat_map(|t| &t.regions);
+        regions.filter_map(|r| r.wave.as_ref()).map(|w| &w.source)
+    }
+
     /// The rows of `project`; `sound` names the sound tracks its recordings have (`mic`,
     /// `system`); `least` adds the empty rows the user added.
     pub fn of(project: &Project, sound: &[String], least: Least) -> Self {
@@ -113,10 +122,12 @@ impl Tracks {
         tracks.add(Row::Cursor, cursor, false);
         tracks.add(Row::Keys, Vec::new(), !keys.settings.show);
         tracks.annotations(project, &map, least.annotations);
+        // A broken sound state is a problem already (read above): its rows draw no levels.
+        let levels = dc_fx_audio_tracks::sound(project).unwrap_or_default();
         for (row, name) in [(Row::Mic, MIC_TRACK), (Row::System, SYSTEM_TRACK)] {
             if sound.iter().any(|s| s == name) {
                 let off = muted(audio.settings.channels.get(name));
-                let regions = source_sound(project, &map, name, off);
+                let regions = source_sound(project, &map, (name, &levels), off);
                 tracks.add(row, regions, off);
             }
         }
@@ -224,6 +235,7 @@ impl Tracks {
                 .map(|c| Region {
                     faded: c.muted,
                     item: Some(Item::Sound(c.id)),
+                    wave: Some(wave::extra(c)),
                     ..region(c.range, file_name(&c.file.path))
                 })
                 .collect();
@@ -240,6 +252,7 @@ fn region(range: Range<Output>, label: String) -> Region {
         faded: false,
         clip: None,
         item: None,
+        wave: None,
     }
 }
 
@@ -308,8 +321,14 @@ fn callouts_of(map: &TimeMap, state: &CalloutState, problems: &mut Vec<String>) 
     regions
 }
 
-/// The sound track `name` of every recording clip; pale where the clip is silent.
-fn source_sound(project: &Project, map: &TimeMap, name: &str, all_off: bool) -> Vec<Region> {
+/// The sound track `name` of every recording clip at its `levels`; pale where the clip is
+/// silent.
+fn source_sound(
+    project: &Project,
+    map: &TimeMap,
+    (name, levels): (&str, &Sound),
+    all_off: bool,
+) -> Vec<Region> {
     let mut regions = Vec::new();
     for clip in &project.clips {
         if clip.media.kind != MediaKind::Recording {
@@ -320,8 +339,15 @@ fn source_sound(project: &Project, map: &TimeMap, name: &str, all_off: bool) -> 
         };
         let own = clip.audio.channels.get(name).and_then(|l| l.muted);
         let faded = clip.audio.muted || own.unwrap_or(all_off);
+        let level = levels
+            .clips
+            .iter()
+            .find(|c| c.clip == clip.id)
+            .and_then(|c| c.channels.get(name))
+            .map_or(1.0, |l| (l.volume * l.gain) as f32);
         regions.push(Region {
             faded,
+            wave: Some(wave::recording(map, clip.id, &clip.media, name, level)),
             ..region(range, String::new())
         });
     }

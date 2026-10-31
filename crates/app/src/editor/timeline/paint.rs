@@ -13,6 +13,7 @@ use eframe::egui::{Align2, Color32, Painter, Rect, Shape, Stroke, StrokeKind, po
 
 use super::scale::{TimeScale, tick_label, timecode};
 use super::tracks::{Region, Row, Track, Tracks};
+use crate::editor::waves::Waves;
 
 /// Side of a header button, points.
 pub const HEAD_BUTTON: f32 = 22.0;
@@ -122,13 +123,24 @@ pub fn header(painter: &Painter, rect: Rect, track: &Track) {
     );
 }
 
-/// The lane background and the regions of `track`.
-pub fn lane(painter: &Painter, rect: Rect, track: &Track, scale: &TimeScale) {
+/// The lane background and the regions of `track`, with the waves of `waves` that came.
+pub fn lane(painter: &Painter, rect: Rect, track: &Track, scale: &TimeScale, waves: &Waves) {
     painter.rect_filled(rect, 0, BG);
     painter.hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, ROW_LINE));
     let hue = hue(track.row);
     for region in &track.regions {
-        region_body(painter, body(rect, scale, region.range), region, hue);
+        let body = body(rect, scale, region.range);
+        let ink = region_fill(painter, body, region, hue);
+        let wave = region.wave.as_ref();
+        if let Some((wave, peaks)) = wave.and_then(|w| Some((w, waves.peaks(&w.source)?))) {
+            let color = if region.faded {
+                hue.line.gamma_multiply(FADED)
+            } else {
+                hue.line
+            };
+            super::wave::paint(painter, body, wave, peaks, scale, color);
+        }
+        region_label(painter, body, region, ink);
     }
 }
 
@@ -149,6 +161,12 @@ pub fn speed_band(rect: Rect, scale: &TimeScale, range: Range<Output>) -> Rect {
 }
 
 pub fn region_body(painter: &Painter, body: Rect, region: &Region, hue: Hue) {
+    let ink = region_fill(painter, body, region, hue);
+    region_label(painter, body, region, ink);
+}
+
+/// The fill and the outline of a region; the colour of its text.
+fn region_fill(painter: &Painter, body: Rect, region: &Region, hue: Hue) -> Color32 {
     let (fill, line, ink) = if region.faded {
         (
             hue.fill.gamma_multiply(FADED),
@@ -165,6 +183,11 @@ pub fn region_body(painter: &Painter, body: Rect, region: &Region, hue: Hue) {
         Stroke::new(1.0, line),
         StrokeKind::Inside,
     );
+    ink
+}
+
+/// The name of a region (with its facts below on a clip, at the top over a wave).
+fn region_label(painter: &Painter, body: Rect, region: &Region, ink: Color32) {
     // Rows scaled low (Shift+wheel) leave no room for text.
     if region.label.is_empty() || body.height() < FS_S {
         return;
@@ -178,6 +201,10 @@ pub fn region_body(painter: &Painter, body: Rect, region: &Region, hue: Hue) {
         .as_ref()
         .filter(|_| body.height() >= DETAIL_TOP + SMALL + 2.0);
     match detail {
+        None if region.wave.is_some() => {
+            let at = pos2(start + 6.0, body.top() + 2.0);
+            clip.text(at, Align2::LEFT_TOP, &region.label, font, ink);
+        }
         None => {
             clip.text(
                 pos2(start + 6.0, body.center().y),

@@ -22,6 +22,8 @@ mod selection;
 mod timeline;
 mod transport;
 mod view;
+mod waves;
+mod window;
 
 #[cfg(test)]
 mod editing_tests;
@@ -33,18 +35,17 @@ mod playback_tests;
 mod test_project;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod waves_tests;
 
-use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use dc_core::PixelSize;
 use dc_fx_crop::{Aspect, Crop};
 use dc_project::ProjectDir;
-use dc_ui_kit::strings::editor as text;
 use dc_ui_kit::tokens::{BG, SURFACE};
 use eframe::egui::{self, Frame, Ui, vec2};
 
-use crate::app::{Shared, lock, on_hud_monitor, other_window};
 use crate::keymap::EditorKeys;
 use crate::settings::EditorLayout;
 use crate::settings_window::Page;
@@ -54,6 +55,7 @@ pub use keys::wired;
 use playback::seek::{FALLBACK_FPS, frame_rate};
 pub use timeline::Tracks;
 pub use view::View;
+pub use window::show;
 
 /// Size of the window at the start and its least size, points (mockup).
 const SIZE: egui::Vec2 = vec2(1280.0, 800.0);
@@ -83,6 +85,8 @@ pub struct EditorWindow {
     pub preview: preview::Preview,
     /// The clock and the sound while playing.
     pub playback: playback::Playback,
+    /// Peaks of the waves on the sound rows, as they come.
+    pub waves: waves::Waves,
     /// Frames per second of a frame step: the highest of the clips' videos (v1), 30 without.
     pub fps: f64,
     /// Shortcuts of the settings, taken each frame.
@@ -131,6 +135,7 @@ impl EditorWindow {
             canvas: None,
             view: View::default(),
             preview,
+            waves: waves::Waves::default(),
             keys: EditorKeys::default(),
             help: None,
             actions: Vec::new(),
@@ -161,6 +166,7 @@ impl EditorWindow {
     /// the selection that still fits.
     fn retrack(&mut self) {
         self.tracks = Tracks::of(self.doc.project(), &self.sound, self.view.least);
+        self.waves.want(self.tracks.sources());
         let end = self.end();
         self.view.keep(&self.tracks, end);
     }
@@ -196,6 +202,17 @@ impl EditorWindow {
             })
     }
 
+    /// Starts reading the peaks of the sound rows; without it the rows stay plain.
+    pub fn start_waves(&mut self, ctx: egui::Context) -> Result<(), crate::AppError> {
+        let dir = self.doc.dir().clone();
+        self.waves
+            .start(dir, ctx)
+            .map_err(|source| crate::AppError::Thread {
+                name: "devcast-peaks",
+                source,
+            })
+    }
+
     /// Queues `action` to run after this frame's layout.
     pub fn ask(&mut self, action: Action) {
         self.actions.push(action);
@@ -210,29 +227,6 @@ impl EditorWindow {
     }
 }
 
-impl Shared {
-    /// Opens the editor with the project a recording has just saved and hides the HUD; a
-    /// project that cannot be opened (another writer holds it) is a toast.
-    pub fn open_editor(&mut self, recorded: &dc_capture::win::RecordedProject) {
-        match EditorWindow::new(recorded) {
-            Ok((mut editor, problems)) => {
-                if let Some(gpu) = self.gpu.clone() {
-                    let started = editor.start_preview(gpu, self.ctx.clone());
-                    self.report(started);
-                }
-                let sound = editor.start_sound();
-                self.report(sound);
-                for problem in problems {
-                    self.report(Err(problem));
-                }
-                self.editor = Some(editor);
-                self.hide_hud();
-            }
-            Err(error) => self.report(Err(error)),
-        }
-    }
-}
-
 /// What a frame of the editor asks of the app.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Outcome {
@@ -242,85 +236,6 @@ pub struct Outcome {
     pub layout: EditorLayout,
     /// Why an action failed, for a toast.
     pub errors: Vec<String>,
-}
-
-/// Shows the editor while one is open; closing it brings the HUD back.
-pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
-    let (title, corner) = {
-        let shared = lock(shared);
-        let Some(editor) = shared.editor.as_ref() else {
-            return;
-        };
-        (
-            text::title(&editor.name),
-            on_hud_monitor(ctx, &shared, SIZE),
-        )
-    };
-    let mut builder = egui::ViewportBuilder::default()
-        .with_icon(crate::logo::window_icon())
-        .with_title(title)
-        .with_inner_size(SIZE)
-        .with_min_inner_size(MIN_SIZE);
-    if let Some(corner) = corner {
-        builder = builder.with_position(corner);
-    }
-    let id = egui::ViewportId::from_hash_of("editor");
-    let window = Arc::clone(shared);
-    ctx.show_viewport_deferred(id, builder, move |ui, _| other_window(ui, &window, frame));
-    let news = lock(shared)
-        .editor
-        .as_ref()
-        .is_some_and(|e| e.preview.take_news());
-    if news {
-        ctx.request_repaint_of(id);
-    }
-}
-
-/// One frame of the editor window; closing it writes what is unsaved to the session and shows
-/// the HUD again.
-fn frame(ui: &mut Ui, shared: &mut Shared) {
-    let layout = shared.store.get().editor;
-    let keys = shared.store.get().editor_keys.clone();
-    let Some(editor) = shared.editor.as_mut() else {
-        return;
-    };
-    let now = Instant::now();
-    let outcome = editor_ui(ui, editor, layout, &keys, now);
-    let saved = editor.doc.autosave(now);
-    if let Ok(Some(wait)) = saved {
-        ui.ctx().request_repaint_after(wait);
-    }
-    let close = ui.input(|i| i.viewport().close_requested());
-    let flushed = if close { editor.doc.flush() } else { Ok(()) };
-    for error in outcome.errors {
-        shared.report(Err(error));
-    }
-    shared.report(saved.map(drop));
-    shared.report(flushed);
-    if let Some(page) = outcome.open_settings {
-        shared.open_settings_at(page);
-    }
-    save_layout(shared, ui, layout, outcome.layout);
-    if close {
-        shared.editor = None;
-        shared.show_hud();
-    }
-}
-
-/// Keeps a dragged timeline height (once the pointer is let go) and a new row factor.
-fn save_layout(shared: &mut Shared, ui: &Ui, was: EditorLayout, now: EditorLayout) {
-    let released = ui.input(|i| !i.pointer.any_down());
-    let height = released && (now.timeline_height - was.timeline_height).abs() >= 1.0;
-    let rows = (now.rows - was.rows).abs() > 1e-3;
-    if height || rows {
-        let saved = shared.store.update(|s| {
-            if height {
-                s.editor.timeline_height = now.timeline_height.round();
-            }
-            s.editor.rows = now.rows;
-        });
-        shared.report(saved);
-    }
 }
 
 /// The whole window: header, timeline at the bottom (`layout`: its height until dragged, its row
@@ -336,6 +251,7 @@ pub fn editor_ui(
     if editor.keys != *keys {
         editor.keys = keys.clone();
     }
+    editor.waves.receive();
     keys::run(ui, editor);
     let volume = (editor.view.volume / 100.0) as f32;
     let tick = editor.playback.tick(now, editor.end(), volume);

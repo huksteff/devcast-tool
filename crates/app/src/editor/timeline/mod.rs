@@ -11,7 +11,8 @@
 //! regions stick. The clips row is `clips.rs` (pick, drag to another place, the blade), the
 //! picked range of the ruler `range.rs` (Shift+drag, its menu and speed popover), the effect
 //! regions `regions.rs` with the ghost of quick adding `ghost.rs`, the track headers `heads.rs`
-//! (eye, mute, removing a row, the layer order of annotation rows; the crop waits for 7.20).
+//! (eye, mute, removing a row, the layer order of annotation rows; the crop waits for 7.20), the
+//! waves of the sound rows `wave.rs` (peaks from `editor/waves.rs`).
 
 mod clips;
 mod gesture;
@@ -26,6 +27,7 @@ mod scale;
 mod snap;
 mod tracks;
 mod viewport;
+mod wave;
 
 #[cfg(test)]
 mod clips_tests;
@@ -39,6 +41,8 @@ mod snap_tests;
 mod ui_tests;
 #[cfg(test)]
 mod viewport_tests;
+#[cfg(test)]
+mod wave_tests;
 
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::timeline as text;
@@ -49,6 +53,7 @@ use eframe::egui::{self, Align, Frame, Layout, Margin, Rect, ScrollArea, Sense, 
 pub use scale::{TimeScale, timecode};
 pub use tracks::{Least, Row, Track, Tracks};
 pub use viewport::Viewport;
+pub use wave::Source;
 
 use viewport::Lanes;
 
@@ -107,7 +112,8 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32) -> f32 {
             let mut shown = Vec::new();
             let mut headers = Vec::new();
             for track in &editor.tracks.rows {
-                let (press, head, lane, lifted) = row(ui, track, &editor.tracks, &scale, rows);
+                let shows = (&editor.tracks, &editor.waves);
+                let (press, head, lane, lifted) = row(ui, track, shows, &scale, rows);
                 asked = asked.or(press);
                 if let (true, Row::Annotations(from)) = (lifted, track.row) {
                     editor.view.lift = Some(from);
@@ -283,7 +289,7 @@ fn separator(ui: &mut Ui) {
 fn row(
     ui: &mut Ui,
     track: &Track,
-    tracks: &Tracks,
+    (tracks, waves): (&Tracks, &crate::editor::waves::Waves),
     scale: &TimeScale,
     rows: f32,
 ) -> (Option<heads::Press>, Rect, Rect, bool) {
@@ -291,7 +297,13 @@ fn row(
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
     let head = rect.with_max_x(rect.left() + HEAD);
     let lane = rect.with_min_x(head.right());
-    paint::lane(&ui.painter().with_clip_rect(lane), lane, track, scale);
+    paint::lane(
+        &ui.painter().with_clip_rect(lane),
+        lane,
+        track,
+        scale,
+        waves,
+    );
     if track.row == Row::Clips {
         paint::speeds(&ui.painter().with_clip_rect(lane), lane, tracks, scale);
     }
