@@ -6,11 +6,14 @@ use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver};
 
 use dc_capture::{Preview, Source, SourceList};
+use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
+use dc_ui_kit::strings::kit;
 use dc_ui_kit::strings::picker as text;
 use dc_ui_kit::tokens::{
-    ACCENT_HI, ACCENT_SOFT, FS_S, R2, S2, S3, SURFACE_2, SURFACE_3, TEXT, TEXT_3,
+    ACCENT_HI, ACCENT_SOFT, FS_S, R2, S1, S2, S3, SURFACE_2, SURFACE_3, TEXT, TEXT_2, TEXT_3,
 };
+use dc_ui_kit::widgets::IconButton;
 use eframe::egui::{
     self, Color32, ColorImage, Rect, Response, Sense, Stroke, StrokeKind, TextureHandle, Ui,
     WidgetInfo, pos2, vec2,
@@ -23,12 +26,16 @@ pub const MAX_HEIGHT: f32 = super::popover::MAX_HEIGHT;
 /// Longer side of a preview, pixels.
 const PREVIEW_SIDE: u32 = 320;
 const COLUMNS: usize = 4;
+/// Side of the icon before a card title, points (mockup: 14 px).
+const TITLE_ICON: f32 = 14.0;
 
 /// One card of the grid.
 pub struct Card {
     pub source: Source,
     pub title: String,
     pub sub: String,
+    /// Before the title: monitor, window or area.
+    pub icon: Icon,
 }
 
 /// Cards of the monitors (the primary one named so) and of the windows that are not minimized.
@@ -43,7 +50,8 @@ pub fn cards(sources: &SourceList) -> (Vec<Card>, Vec<Card>) {
             } else {
                 text::screen(m.index)
             },
-            sub: format!("{} × {}", m.bounds.width(), m.bounds.height()),
+            sub: text::screen_size(m.bounds.width(), m.bounds.height(), m.scale),
+            icon: Icon::Monitor,
         })
         .collect();
     let windows = sources
@@ -57,6 +65,7 @@ pub fn cards(sources: &SourceList) -> (Vec<Card>, Vec<Card>) {
                 .app
                 .as_ref()
                 .map_or_else(String::new, |app| format!("{app}.exe")),
+            icon: Icon::Window,
         })
         .collect();
     (screens, windows)
@@ -117,6 +126,8 @@ pub enum Pick {
     Source(Source),
     /// «Область…»: select an area on the screen.
     Area,
+    /// The ✕ of the header: close without a choice.
+    Close,
 }
 
 /// The grid; `last_area` is the size of the last area for its card.
@@ -128,19 +139,26 @@ pub fn picker(
     last_area: Option<(u32, u32)>,
 ) -> Option<Pick> {
     let (screens, windows) = cards(sources);
-    ui.label(
-        egui::RichText::new(text::TITLE)
-            .font(fonts::text(13.0, Weight::Semibold))
-            .color(TEXT),
-    );
-    ui.add_space(S2);
+    let mut picked = None;
+    ui.horizontal(|ui| {
+        ui.label(
+            egui::RichText::new(text::TITLE)
+                .font(fonts::text(13.0, Weight::Semibold))
+                .color(TEXT),
+        );
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui.add(IconButton::new(Icon::Close, kit::CLOSE)).clicked() {
+                picked = Some(Pick::Close);
+            }
+        });
+    });
+    ui.add_space(S1);
     if screens.is_empty() && windows.is_empty() {
         ui.label(egui::RichText::new(text::EMPTY).color(TEXT_3));
-        return None;
+        return picked;
     }
-    let mut picked = None;
     egui::ScrollArea::vertical()
-        .max_height(MAX_HEIGHT - 60.0)
+        .max_height(MAX_HEIGHT - 76.0)
         .show(ui, |ui| {
             for (caption, cards) in [(text::SCREENS, &screens), (text::WINDOWS, &windows)] {
                 if cards.is_empty() {
@@ -170,6 +188,7 @@ fn grid(
         source: *chosen,
         title: text::AREA.to_owned(),
         sub: last.map_or_else(|| text::NO_AREA.to_owned(), |(w, h)| text::last_area(w, h)),
+        icon: Icon::Area,
     });
     let all: Vec<&Card> = cards.iter().chain(area_card.as_ref()).collect();
     let mut picked = None;
@@ -229,7 +248,7 @@ fn card_ui(
     painter.rect_filled(thumb, 5, thumb_fill);
     if area {
         let icon = Rect::from_center_size(thumb.center(), vec2(28.0, 28.0));
-        dc_ui_kit::Icon::Area.paint(painter, icon, dc_ui_kit::tokens::TEXT_2);
+        Icon::Area.paint(painter, icon, TEXT_2);
     }
     if let Some(texture) = texture {
         let size = texture.size_vec2();
@@ -238,17 +257,17 @@ fn card_ui(
         let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
         painter.image(texture.id(), image, uv, Color32::WHITE);
     }
+    let line = thumb.bottom() + 6.0;
+    let icon = Rect::from_min_size(pos2(thumb.left(), line), vec2(TITLE_ICON, TITLE_ICON));
+    card.icon.paint(painter, icon, TEXT_2);
+    let title_left = icon.right() + 6.0;
     let font = fonts::text(FS_S, Weight::Regular);
     let mut job = egui::text::LayoutJob::single_section(
         card.title.clone(),
         egui::TextFormat::simple(font, TEXT),
     );
-    job.wrap = egui::text::TextWrapping::truncate_at_width(thumb.width());
-    painter.galley(
-        pos2(thumb.left(), thumb.bottom() + 6.0),
-        painter.layout_job(job),
-        TEXT,
-    );
+    job.wrap = egui::text::TextWrapping::truncate_at_width(thumb.right() - title_left);
+    painter.galley(pos2(title_left, line), painter.layout_job(job), TEXT);
     painter.text(
         pos2(thumb.left(), thumb.bottom() + 22.0),
         egui::Align2::LEFT_TOP,

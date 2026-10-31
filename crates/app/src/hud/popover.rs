@@ -283,6 +283,7 @@ fn source(ui: &mut Ui, shared: &mut Shared) {
     shared.previews = None;
     match picked {
         Pick::Area => shared.area = Some(crate::area::AreaSession::open(shared)),
+        Pick::Close => {}
         Pick::Source(source) => {
             let saved = shared.store.update(|s| s.recording.source = source);
             shared.report(saved);

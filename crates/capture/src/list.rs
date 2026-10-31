@@ -52,6 +52,8 @@ pub struct MonitorInfo {
     /// Position and size on the virtual desktop, in physical pixels.
     pub bounds: Area,
     pub primary: bool,
+    /// Scale of the interface set in Windows, percent (100 = 96 dpi, 150 = 144 dpi).
+    pub scale: u32,
 }
 
 impl MonitorInfo {
@@ -87,6 +89,7 @@ mod tests {
             name: None,
             bounds: Area::new(x, y, 1920, 1080).unwrap(),
             primary: index == 1,
+            scale: 100,
         }
     }
 

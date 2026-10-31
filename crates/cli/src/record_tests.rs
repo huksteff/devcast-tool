@@ -148,12 +148,14 @@ fn sources_are_listed_one_per_line() {
                 name: Some("DELL U2720Q".to_owned()),
                 bounds: Area::new(0, 0, 2560, 1440).unwrap(),
                 primary: true,
+                scale: 100,
             },
             MonitorInfo {
                 index: 2,
                 name: None,
                 bounds: Area::new(-1920, 11, 1920, 1080).unwrap(),
                 primary: false,
+                scale: 100,
             },
         ],
         windows: vec![WindowInfo {

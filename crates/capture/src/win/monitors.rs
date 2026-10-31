@@ -1,6 +1,7 @@
 //! Monitors: the order and numbering of windows-capture (`Monitor::from_index`, from 1).
 
 use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, HMONITOR, MONITORINFO};
+use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use windows::Win32::UI::WindowsAndMessaging::MONITORINFOF_PRIMARY;
 use windows_capture::monitor::Monitor;
 
@@ -56,5 +57,49 @@ fn info(monitor: &Monitor, index: u32) -> Result<MonitorInfo, CaptureError> {
         name: monitor.name().ok().filter(|n| !n.trim().is_empty()),
         bounds,
         primary: raw.dwFlags & MONITORINFOF_PRIMARY != 0,
+        scale: scale(HMONITOR(monitor.as_raw_hmonitor()))?,
     })
+}
+/// Windows scale of the monitor, percent.
+fn scale(monitor: HMONITOR) -> Result<u32, CaptureError> {
+    let (mut x, mut y) = (0u32, 0u32);
+    // SAFETY: the handle comes from EnumDisplayMonitors; `x` and `y` are live u32 outputs.
+    unsafe { GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &raw mut x, &raw mut y) }.map_err(
+        |e| CaptureError::platform("узнать масштаб монитора")(e.to_string()),
+    )?;
+    Ok(percent(x))
+}
+
+/// Scale in percent from the effective DPI (96 dpi = 100 %), rounded.
+fn percent(dpi: u32) -> u32 {
+    if dpi == 0 {
+        return 100;
+    }
+    (dpi * 100 + 48) / 96
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scale_from_dpi() {
+        assert_eq!(percent(96), 100);
+        assert_eq!(percent(120), 125);
+        assert_eq!(percent(144), 150);
+        assert_eq!(percent(192), 200);
+        assert_eq!(percent(0), 100);
+    }
+
+    #[test]
+    fn every_monitor_has_a_scale() {
+        for monitor in list().unwrap() {
+            assert!(
+                (100..=500).contains(&monitor.scale),
+                "{}: {} %",
+                monitor.index,
+                monitor.scale
+            );
+        }
+    }
 }
