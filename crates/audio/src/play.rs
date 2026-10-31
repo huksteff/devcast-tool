@@ -88,8 +88,12 @@ impl Line {
             *sample = queued * volume;
         }
         out[taken..].fill(0.0);
-        state.stamp = Some((state.played, plays_at));
-        state.played += (taken / CHANNELS) as u64;
+        // A buffer of silence moves no stamp: its time would hold the estimate one device
+        // latency short of what was played, and the end of the project was never reached.
+        if taken > 0 {
+            state.stamp = Some((state.played, plays_at));
+            state.played += (taken / CHANNELS) as u64;
+        }
         drop(state);
         self.changed.notify_all();
     }
@@ -212,6 +216,24 @@ mod tests {
             "never more than given to the device"
         );
         assert_eq!(line.heard(plays_at), 960, "never back");
+    }
+
+    #[test]
+    fn silence_after_the_end_does_not_hold_the_clock_back() {
+        let line = Line::new(1.0);
+        line.push(&vec![0.5; 480 * CHANNELS]);
+        line.fed();
+        let t0 = Instant::now();
+        let latency = Duration::from_millis(20);
+        line.pull(&mut vec![0.0; 960 * CHANNELS], t0 + latency);
+        // The device keeps asking every 10 ms after the queue ran dry.
+        for i in 1..=10 {
+            let at = t0 + Duration::from_millis(10 * i);
+            line.pull(&mut vec![0.0; 960 * CHANNELS], at + latency);
+        }
+        let later = t0 + latency + Duration::from_millis(15);
+        assert_eq!(line.heard(later), 480);
+        assert!(line.finished(later), "the end of the project is reached");
     }
 
     #[test]
