@@ -20,10 +20,13 @@ mod instance;
 mod logging;
 mod logo;
 mod meters;
+mod models;
 mod recorder;
 mod session;
 mod settings;
+mod settings_captions;
 mod settings_hotkeys;
+mod settings_rows;
 mod settings_window;
 mod tray;
 

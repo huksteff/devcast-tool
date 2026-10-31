@@ -55,7 +55,7 @@ impl From<Countdown> for u32 {
 }
 
 /// Speech recognition model (the CLI's `--model fast|accurate`, decision 010).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SpeechModel {
     /// «Быстрая»: Whisper small, the default everywhere (owner's decision).
@@ -63,6 +63,18 @@ pub enum SpeechModel {
     Fast,
     /// «Точная»: Whisper large-v3-turbo.
     Accurate,
+}
+
+impl SpeechModel {
+    pub const ALL: [Self; 2] = [Self::Fast, Self::Accurate];
+
+    /// The Whisper model file behind the choice.
+    pub const fn model(self) -> dc_transcribe::Model {
+        match self {
+            Self::Fast => dc_transcribe::Model::Small,
+            Self::Accurate => dc_transcribe::Model::LargeV3Turbo,
+        }
+    }
 }
 
 /// Global shortcuts as text (`Ctrl+Shift+R`); `None` — not assigned.

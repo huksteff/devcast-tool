@@ -1256,6 +1256,7 @@ dependencies = [
  "dc-ipc",
  "dc-project",
  "dc-render",
+ "dc-transcribe",
  "dc-ui-kit",
  "dirs 6.0.0",
  "eframe",

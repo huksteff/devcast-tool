@@ -122,7 +122,10 @@ impl Shared {
     /// Opens the settings window with the current microphones.
     pub fn open_settings(&mut self) {
         self.refresh_microphones();
-        self.settings = Some(SettingsWindow::new(self.microphones.clone()));
+        self.settings = Some(SettingsWindow::new(
+            self.microphones.clone(),
+            crate::models::Models::of_app(),
+        ));
     }
 
     /// Opens the level meters the open windows show and closes the rest.
@@ -349,7 +352,8 @@ fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
         .with_icon(crate::logo::window_icon())
         .with_title(settings_text::TITLE)
         .with_inner_size(settings_window::SIZE)
-        .with_min_inner_size(settings_window::MIN_SIZE);
+        .with_min_inner_size(settings_window::MIN_SIZE)
+        .with_maximize_button(false);
     if let Some(corner) = on_hud_monitor(ctx, &lock(&shared), settings_window::SIZE) {
         builder = builder.with_position(corner);
     }

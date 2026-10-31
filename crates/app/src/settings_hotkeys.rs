@@ -8,14 +8,15 @@ use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::hotkeys as text;
 use dc_ui_kit::tokens::{
-    BORDER, CONTROL_S, FS_S, ICON, PAUSE, PAUSE_SOFT, R1, S1, S2, S3, SURFACE_2, SURFACE_3, TEXT,
-    TEXT_2, TEXT_3,
+    BORDER, CONTROL, CONTROL_S, FS_S, ICON, PAUSE, PAUSE_SOFT, R1, S1, S2, S3, SURFACE_2,
+    SURFACE_3, TEXT, TEXT_2, TEXT_3,
 };
-use dc_ui_kit::widgets::{Button, IconButton, Kind, text_field};
+use dc_ui_kit::widgets::{Button, IconButton, Kind, search_field};
 use eframe::egui::{self, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, vec2};
 
 use crate::hotkeys::{Command, combo, taken_by};
 use crate::settings::Hotkeys;
+use crate::settings_rows::{row, row_height, separator};
 
 /// A shortcut another command already has, waiting for «Заменить» or «Отмена».
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,12 +35,13 @@ pub struct HotkeyPage {
     pub conflict: Option<Conflict>,
 }
 
-const TITLE: f32 = 220.0;
+/// Width of the shortcut button, points.
+const KEYS: f32 = 200.0;
 
 impl HotkeyPage {
     /// The page; `taken` are the commands whose shortcut the system did not give us.
     pub fn ui(&mut self, ui: &mut Ui, hotkeys: &mut Hotkeys, taken: &[Command]) {
-        text_field(ui, &mut self.search, text::SEARCH, ui.available_width());
+        search_field(ui, &mut self.search, text::SEARCH, ui.available_width());
         ui.add_space(S3);
         ui.horizontal(|ui| {
             ui.label(
@@ -76,9 +78,10 @@ impl HotkeyPage {
     fn row(&mut self, ui: &mut Ui, command: Command, hotkeys: &mut Hotkeys, taken: bool) {
         let capturing = self.capture == Some(command);
         let conflict = self.conflict.clone().filter(|c| c.command == command);
-        ui.horizontal(|ui| {
-            ui.set_min_height(40.0);
-            let (rect, _) = ui.allocate_exact_size(vec2(TITLE, 20.0), Sense::hover());
+        row(ui, row_height(0.0), |ui| {
+            let spacing = ui.spacing().item_spacing.x;
+            let title = ui.available_width() - KEYS - CONTROL - 2.0 * spacing;
+            let (rect, _) = ui.allocate_exact_size(vec2(title, 20.0), Sense::hover());
             ui.painter().text(
                 rect.left_center(),
                 egui::Align2::LEFT_CENTER,
@@ -121,6 +124,7 @@ impl HotkeyPage {
         {
             self.capture = Some(command);
         }
+        separator(ui);
     }
 
     /// Takes the shortcut pressed for `command`.
@@ -175,7 +179,7 @@ fn keys_button(
     capturing: bool,
     warn: bool,
 ) -> egui::Response {
-    let width = 200.0;
+    let width = KEYS;
     let (rect, response) = ui.allocate_exact_size(vec2(width, 30.0), Sense::click());
     let label = format!("{}: {}", command.title(), keys.unwrap_or(text::NONE));
     response.widget_info(|| WidgetInfo::labeled(egui::Role::Button, true, &label));
@@ -251,7 +255,12 @@ fn notice(ui: &mut Ui, message: &str, buttons: &[&str]) -> Option<usize> {
             ui.horizontal(|ui| {
                 let (rect, _) = ui.allocate_exact_size(vec2(ICON, ICON), Sense::hover());
                 Icon::Warn.paint(ui.painter(), rect, PAUSE);
-                let room = ui.available_width() - 2.0 * 96.0;
+                let spacing = ui.spacing().item_spacing.x;
+                let taken: f32 = buttons
+                    .iter()
+                    .map(|caption| Button::new(caption).small().size(ui).x + spacing)
+                    .sum();
+                let room = ui.available_width() - taken;
                 ui.allocate_ui(vec2(room, CONTROL_S), |ui| {
                     ui.set_width(room);
                     ui.add(egui::Label::new(RichText::new(message).size(FS_S).color(TEXT)).wrap());
@@ -263,7 +272,6 @@ fn notice(ui: &mut Ui, message: &str, buttons: &[&str]) -> Option<usize> {
                 }
             });
         });
-    ui.add_space(S1);
     clicked
 }
 
