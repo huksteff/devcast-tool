@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "fx/*", "xtask"]
+# Patched copies of other crates (third_party/*/PATCHED.md): not ours, not linted or checked.
+exclude = ["third_party"]
 
 [workspace.package]
 version = "0.1.0"
@@ -46,3 +48,8 @@ wgpu = "30"
 # speech tens of times slower (decision 010).
 [profile.dev.package.whisper-rs-sys]
 opt-level = 3
+
+# Two small fixes of the window layer on Windows, until upstream has them (decision 019).
+[patch.crates-io]
+egui-winit = { path = "third_party/egui-winit-0.37.0" }
+winit = { path = "third_party/winit-0.30.13" }

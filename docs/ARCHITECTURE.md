@@ -72,6 +72,7 @@
 | [016](decisions/016-text-measure.md) Ширина текста | `TextMeasure` в dc-render меряет строку теми же шрифтами и разметкой, что проход текста; его даёт `Evaluator::new`, и субтитры делятся на строки и страницы один раз, до кадров. |
 | [017](decisions/017-turned-text.md) Повёрнутый текст | glyphon не поворачивает глифы: текст с поворотом рисуется прямо в слой размера цели и ложится на кадр повёрнутым; часть больше цели — плитками. |
 | [018](decisions/018-recognition-process.md) Распознавание вне окна | `devcast-app` не линкует whisper и Vulkan: модели качает `dc-models`, речь распознаёт `devcast --captions-worker` рядом с exe (протокол `dc_ops::recognition`); правило в `xtask verify`. |
+| [019](decisions/019-patched-winit.md) Копии egui-winit и winit | `third_party/` — точные копии с двумя правками для Windows (тень окна без рамки по `has_shadow`, `SetFocus` окну переднего плана без фокуса), `[patch.crates-io]`; вне workspace, проверки их не трогают. |
 
 ## Крейты
 
@@ -119,6 +120,7 @@ xtask/           verify (fmt, clippy, тесты, длины, зависимос
 spikes/          пробы этапа 1; удаляются после переноса выводов
 fixtures/        короткие записи (Git LFS), проекты, эталонные кадры по бэкендам
 skill/           SKILL.md для Claude Code: монтаж через CLI
+third_party/     исправленные копии чужих крейтов (egui-winit, winit; решение 019), не члены workspace
 ```
 
 **Правила зависимостей** (проверяет `cargo xtask verify`):

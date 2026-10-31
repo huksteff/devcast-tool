@@ -339,3 +339,15 @@ fn every_popover_has_its_own_title() {
     titles.dedup();
     assert_eq!(titles.len(), kinds.len());
 }
+
+/// Its shadow fell on the HUD 8 px below and darkened it (live check of stage 6).
+#[test]
+fn popover_window_has_no_shadow_and_sits_above_the_bar() {
+    let open = popover::Open::new(popover::Kind::Sound, 100.0);
+    let bar = egui::Rect::from_min_size(egui::pos2(500.0, 900.0), egui::vec2(400.0, 56.0));
+    let builder = popover::builder(open, 300.0, bar);
+    assert_eq!(builder.has_shadow, Some(false));
+    assert_eq!(builder.decorations, Some(false));
+    let position = builder.position.unwrap();
+    assert_eq!(position.y + 40.0, bar.top() - 8.0);
+}

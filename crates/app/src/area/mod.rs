@@ -19,6 +19,10 @@ pub struct Screen {
     pub monitor: MonitorInfo,
     frame: Option<TextureHandle>,
     pub selection: Selection,
+    /// The window asks for the keyboard focus on its next frame (only on the HUD's monitor,
+    /// once): the closed picker had the focus, and Windows leaves it nowhere, so Esc and Enter
+    /// reached no window until a click (winit gives it with its patch, decision 019).
+    focus: bool,
 }
 
 /// The open selection on all monitors.
@@ -34,6 +38,7 @@ impl AreaSession {
             _ => None,
         };
         let monitors = shared.sources.monitors.clone();
+        let hud = shared.store.get().hud.monitor(&monitors).map(|m| m.index);
         let screens = monitors
             .into_iter()
             .map(|monitor| {
@@ -59,6 +64,7 @@ impl AreaSession {
                 let rect = last.and_then(|a| local(&monitor, a));
                 let size = (b.width() as i32, b.height() as i32);
                 Screen {
+                    focus: hud == Some(monitor.index),
                     monitor,
                     frame,
                     selection: Selection {
@@ -101,12 +107,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         let b = monitor.bounds;
         // A borderless window the size of the monitor, not winit's fullscreen: DXGI refuses a
         // swapchain for a window created fullscreen (DXGI_ERROR_INVALID_CALL, the app fell).
-        let builder = egui::ViewportBuilder::default()
-            .with_icon(crate::logo::window_icon())
-            .with_title(dc_ui_kit::strings::area::HINT)
-            .with_decorations(false)
-            .with_always_on_top()
-            .with_taskbar(false)
+        let builder = crate::borderless::window(dc_ui_kit::strings::area::HINT)
             .with_position(egui::pos2(b.x() as f32 / ppp, b.y() as f32 / ppp))
             .with_inner_size(egui::vec2(b.width() as f32 / ppp, b.height() as f32 / ppp));
         let shared = Arc::clone(shared);
@@ -130,6 +131,9 @@ fn screen_ui(ui: &mut egui::Ui, shared: &mut Shared, index: u32) {
     else {
         return;
     };
+    if std::mem::take(&mut screen.focus) {
+        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Focus);
+    }
     let frame = screen.frame.as_ref().map(TextureHandle::id);
     let was_dragging = screen.selection.drag.is_some();
     let action = overlay::overlay(ui, frame, &mut screen.selection);

@@ -52,13 +52,8 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         (countdown.left, target_center(source, &shared.sources))
     };
     let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
-    let mut builder = egui::ViewportBuilder::default()
-        .with_icon(crate::logo::window_icon())
-        .with_title(text::CANCEL_HINT)
-        .with_decorations(false)
+    let mut builder = crate::borderless::window(text::CANCEL_HINT)
         .with_resizable(false)
-        .with_always_on_top()
-        .with_taskbar(false)
         .with_active(true)
         .with_inner_size(vec2(SIDE, SIDE));
     if let Some((x, y)) = center {

@@ -49,8 +49,6 @@ tray-icon = "0.26"
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-# The version eframe uses: its window is switched to a borderless one without a frame.
-winit = { version = "0.30", default-features = false }
 
 [dev-dependencies]
 dc-ui-kit = { path = "../ui-kit", features = ["kittest"] }

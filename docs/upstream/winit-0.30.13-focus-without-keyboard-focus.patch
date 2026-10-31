@@ -1,0 +1,16 @@
+--- a/src/platform_impl/windows/window.rs
++++ b/src/platform_impl/windows/window.rs
+@@ -1022,6 +1022,13 @@
+ 
+         if is_visible && !is_minimized && !is_foreground {
+             unsafe { force_window_active(self.window) };
++        } else if is_foreground {
++            // DevCast patch: a foreground window can still have no keyboard focus (the focused
++            // window of this thread was destroyed); then give the focus to this window.
++            use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetFocus, SetFocus};
++            if unsafe { GetFocus() } == 0 {
++                unsafe { SetFocus(self.window) };
++            }
+         }
+     }
+ 

@@ -123,21 +123,21 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::Cancel | Kind::Quit => 280.0,
         Kind::Failed => 360.0,
     };
-    let builder = egui::ViewportBuilder::default()
-        .with_icon(crate::logo::window_icon())
-        .with_title(open.kind.title())
-        .with_decorations(false)
-        .with_resizable(false)
-        .with_always_on_top()
-        .with_taskbar(false)
-        .with_inner_size(vec2(width, 40.0))
-        .with_position(pos2(bar.left() + open.anchor - S2, bar.top() - GAP - 40.0));
     let shared = Arc::clone(shared);
+    let builder = builder(open, width, bar);
     ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
         other_window(ui, &shared, |ui, shared| {
             frame(ui, shared, open, width, bar)
         });
     });
+}
+
+/// The window of `open`, `width` wide, `GAP` above the bar (it starts 40 high, then fits).
+pub fn builder(open: Open, width: f32, bar: Rect) -> egui::ViewportBuilder {
+    crate::borderless::window(open.kind.title())
+        .with_resizable(false)
+        .with_inner_size(vec2(width, 40.0))
+        .with_position(pos2(bar.left() + open.anchor - S2, bar.top() - GAP - 40.0))
 }
 
 /// One frame of the popover window: its content, its size to fit, closing on Esc or lost focus.

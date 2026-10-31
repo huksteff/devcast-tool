@@ -3,6 +3,7 @@
 
 mod app;
 mod area;
+mod borderless;
 mod countdown;
 #[allow(
     unsafe_code,
@@ -67,14 +68,9 @@ pub fn run() -> Result<(), AppError> {
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: gpu::options(&gpu),
-        viewport: eframe::egui::ViewportBuilder::default()
-            .with_icon(logo::window_icon())
-            .with_title(APP_NAME)
+        viewport: borderless::window(APP_NAME)
             .with_inner_size(hud::START_SIZE)
-            .with_decorations(false)
-            .with_resizable(false)
-            .with_always_on_top()
-            .with_taskbar(false),
+            .with_resizable(false),
         ..Default::default()
     };
     eframe::run_native(
@@ -83,7 +79,6 @@ pub fn run() -> Result<(), AppError> {
         Box::new(move |cc| {
             dc_ui_kit::install(&cc.egui_ctx)?;
             let hwnd = window_handle(cc)?;
-            without_frame(cc)?;
             let shown = instance::serve(listener, cc.egui_ctx.clone());
             let mut shared = app::Shared::new(cc.egui_ctx.clone(), store);
             let state = cc
@@ -97,18 +92,6 @@ pub fn run() -> Result<(), AppError> {
         }),
     )
     .map_err(|e| AppError::Window(e.to_string()))
-}
-
-/// egui asks winit for the shadow of a borderless window, and winit gets it by keeping one
-/// row of the caption above the content: a light 1 px line across the top of the HUD on
-/// Windows 10, and the content 1 px lower than the window. The HUD has its own rounded shape.
-fn without_frame(cc: &eframe::CreationContext<'_>) -> Result<(), AppError> {
-    use winit::platform::windows::WindowExtWindows;
-    let window = cc
-        .winit_window()
-        .ok_or_else(|| AppError::Window("у главного окна нет окна winit".to_owned()))?;
-    window.set_undecorated_shadow(false);
-    Ok(())
 }
 
 /// Opens `path` in Explorer.
