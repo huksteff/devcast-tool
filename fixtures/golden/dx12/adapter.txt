@@ -1,1 +1,1 @@
-Microsoft Basic Render Driver | 10.0.19041.5794 |  | unknown (not recorded on the PC that made them)
+Microsoft Basic Render Driver | 10.0.26100.9711 |  | AMD Ryzen 7 5800X 8-Core Processor
