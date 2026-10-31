@@ -1,5 +1,6 @@
 //! Input telemetry of the recordings on the track (`dc_capture::input::Telemetry`), placed on
-//! the output: for `devcast events` and auto zooms. A recording's folder is the folder of its
+//! the output: for `devcast events` and auto zooms (the evaluator reads it through
+//! `dc_capture::project::telemetry_tracks`). A recording's folder is the folder of its
 //! video (`media/recording-N/video.mp4`); imported videos have no telemetry.
 
 use std::path::Path;
@@ -7,7 +8,7 @@ use std::path::Path;
 use dc_capture::input::Telemetry;
 use dc_capture::project::recording_dir;
 use dc_core::project::{Media, MediaKind};
-use dc_core::{Clip, CursorTracks, KeyTracks, OutputTime, Point, Project, SourceTime, TimeMap};
+use dc_core::{Clip, OutputTime, Point, Project, SourceTime, TimeMap};
 
 use crate::error::CliError;
 
@@ -31,24 +32,6 @@ pub(crate) fn read<'a>(root: &Path, project: &'a Project) -> Result<Vec<Recorded
         recorded.push(Recorded { media, telemetry });
     }
     Ok(recorded)
-}
-
-/// The cursor and the shortcuts of every recording on the track, for `dc_ops::Evaluator`.
-pub(crate) fn tracks(
-    root: &Path,
-    project: &Project,
-) -> Result<(CursorTracks, KeyTracks), CliError> {
-    let mut cursors = CursorTracks::new();
-    let mut keys = KeyTracks::new();
-    for r in read(root, project)? {
-        let cursor = r
-            .telemetry
-            .cursor_track(&recording_dir(root, r.media), r.media)
-            .map_err(|e| CliError::Failed(e.to_string()))?;
-        cursors.insert(r.media.path.clone(), cursor);
-        keys.insert(r.media.path.clone(), r.telemetry.key_presses());
-    }
-    Ok((cursors, keys))
 }
 
 /// Pixel (`x`, `y`) of the recorded picture as fractions of the frame of `media`.

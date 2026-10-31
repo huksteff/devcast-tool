@@ -16,6 +16,7 @@ use crate::editor::EditorWindow;
 use crate::hotkeys::{Command, GlobalKeys};
 use crate::hud::{HudWindow, picker, popover};
 use crate::meters::Meters;
+pub use crate::monitor::on_hud_monitor;
 use crate::session::Session;
 use crate::settings::Hotkeys;
 use crate::settings::Store;
@@ -49,6 +50,8 @@ pub struct Shared {
     /// Hotkeys whose shortcut the system or another program holds.
     pub taken_hotkeys: Vec<Command>,
     pub toasts: Toasts,
+    /// The device and egui renderer the editor preview draws with; none in tests without a GPU.
+    pub gpu: Option<crate::gpu::PreviewGpu>,
 }
 
 /// Which windows are open and the step of the recording: what the HUD's frame acts on.
@@ -91,6 +94,7 @@ impl Shared {
             editor: None,
             failure: None,
             toasts: Toasts::default(),
+            gpu: None,
         };
         shared.refresh_sources();
         shared
@@ -234,32 +238,6 @@ pub fn clear_color() -> [f32; 4] {
 /// The shared state; a panic in another window does not lock the rest out.
 pub fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
-}
-
-/// Corner of a window of `size` centred on the HUD's monitor, in points of the main window as
-/// the other windows are placed; `None` while the monitors are unknown.
-pub fn on_hud_monitor(
-    ctx: &egui::Context,
-    shared: &Shared,
-    size: egui::Vec2,
-) -> Option<egui::Pos2> {
-    let bounds = shared
-        .store
-        .get()
-        .hud
-        .monitor(&shared.sources.monitors)?
-        .bounds;
-    let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
-    Some(centred(bounds, ppp, size))
-}
-
-/// Corner of a window of `size` points centred on `bounds` (physical desktop pixels).
-pub fn centred(bounds: dc_capture::Area, ppp: f32, size: egui::Vec2) -> egui::Pos2 {
-    let center = egui::pos2(
-        (bounds.x() + bounds.width() as i32 / 2) as f32 / ppp,
-        (bounds.y() + bounds.height() as i32 / 2) as f32 / ppp,
-    );
-    center - size / 2.0
 }
 
 /// A frame of a window besides the HUD. The HUD is drawn only on its own events, yet its frame

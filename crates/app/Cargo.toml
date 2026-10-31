@@ -18,6 +18,7 @@ workspace = true
 crash-handler = "0.6"
 dc-capture = { path = "../capture" }
 dc-core = { path = "../core" }
+dc-encode = { path = "../encode" }
 dc-fx-annotations = { path = "../../fx/annotations" }
 dc-fx-audio-tracks = { path = "../../fx/audio-tracks" }
 dc-fx-callout = { path = "../../fx/callout" }

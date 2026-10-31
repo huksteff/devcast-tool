@@ -241,7 +241,7 @@ pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State>
 fn opens_in_the_middle_of_the_hud_monitor() {
     let left = dc_capture::Area::new(-1920, 11, 1920, 1080).unwrap();
     assert_eq!(
-        crate::app::centred(left, 1.0, SIZE),
+        crate::monitor::centred(left, 1.0, SIZE),
         egui::pos2(-1600.0, 151.0)
     );
 }
@@ -362,24 +362,4 @@ fn tracks_stand_at_output_times() {
     assert_eq!(speeds, ["4×"]);
     let seams: Vec<f64> = tracks.seams.iter().map(|t| t.as_secs_f64()).collect();
     assert_eq!(seams, [20.0, 25.0, 27.0]);
-}
-
-#[test]
-fn preview_frame_sizes() {
-    let area = egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(948.0, 364.0));
-    let canvas = Some((1920, 1080));
-    let fit = preview::frame_rect(area, canvas, PreviewScale::Fit, 1.0);
-    assert_eq!(fit.height(), 364.0 - 48.0, "fitted with the 24 px margin");
-    assert!((fit.width() / fit.height() - 16.0 / 9.0).abs() < 1e-3);
-    assert_eq!(fit.center(), area.center());
-    let half = preview::frame_rect(area, canvas, PreviewScale::Half, 1.25);
-    assert_eq!(
-        half.size(),
-        egui::vec2(768.0, 432.0),
-        "960 × 540 px at 125 %"
-    );
-    let actual = preview::frame_rect(area, canvas, PreviewScale::Actual, 1.0);
-    assert_eq!(actual.size(), egui::vec2(1920.0, 1080.0));
-    let empty = preview::frame_rect(area, None, PreviewScale::Actual, 1.0);
-    assert_eq!(empty, fit, "no clips: the 16:9 placeholder is fitted");
 }

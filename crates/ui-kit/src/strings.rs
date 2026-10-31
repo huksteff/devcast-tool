@@ -144,6 +144,7 @@ pub mod editor {
     pub const ACTUAL: &str = "100%";
     pub const QUALITY_FULL: &str = "Полное";
     pub const QUALITY_FAST: &str = "Быстрое";
+    pub const PREVIEW_STOPPED: &str = "Превью остановилось: закрой редактор и открой проект снова";
     pub const ASPECT_FREE: &str = "Свободный";
     pub const ASPECT_SOURCE: &str = "Как запись";
     pub const ASPECT_16_9: &str = "16:9";

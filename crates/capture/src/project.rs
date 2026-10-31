@@ -11,11 +11,12 @@ use std::path::{Path, PathBuf};
 
 use dc_core::geom::PixelSize;
 use dc_core::project::{Clip, ClipId, Media, MediaKind};
-use dc_core::{Project, Range, Rect, SourceTime, TimeDelta};
+use dc_core::{CursorTracks, KeyTracks, Project, Range, Rect, SourceTime, TimeDelta};
 use dc_project::dir::MEDIA_DIR;
 
 use crate::cancel::remove_recording;
 use crate::error::CaptureError;
+use crate::input::Telemetry;
 use crate::manifest::{MANIFEST, Manifest, VIDEO_TRACK};
 use crate::recover::recover;
 
@@ -52,6 +53,28 @@ pub fn recording_dir(root: &Path, media: &Media) -> PathBuf {
     let mut dir = root.join(&media.path);
     dir.pop();
     dir
+}
+
+/// The cursor and the shortcuts of every recording on the track of the project at `root`, for
+/// `dc_ops::Evaluator` (decision 015): the same for the preview, the export and `devcast frame`.
+/// Imported videos have no telemetry.
+pub fn telemetry_tracks(
+    root: &Path,
+    project: &Project,
+) -> Result<(CursorTracks, KeyTracks), CaptureError> {
+    let mut cursors = CursorTracks::new();
+    let mut keys = KeyTracks::new();
+    for clip in &project.clips {
+        let media = &clip.media;
+        if media.kind != MediaKind::Recording || cursors.contains_key(&media.path) {
+            continue;
+        }
+        let dir = recording_dir(root, media);
+        let telemetry = Telemetry::read(&dir)?;
+        cursors.insert(media.path.clone(), telemetry.cursor_track(&dir, media)?);
+        keys.insert(media.path.clone(), telemetry.key_presses());
+    }
+    Ok((cursors, keys))
 }
 
 /// Adds the finished recording in `media/<folder>/` (its `manifest`) to the end of `project`

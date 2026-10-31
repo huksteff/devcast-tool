@@ -21,6 +21,7 @@ mod logging;
 mod logo;
 mod meters;
 mod models;
+mod monitor;
 mod recorder;
 mod session;
 mod settings;
@@ -57,9 +58,10 @@ pub fn run() -> Result<(), AppError> {
             return Ok(());
         }
     };
+    let gpu = gpu::device()?;
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
-        wgpu_options: gpu::options(),
+        wgpu_options: gpu::options(&gpu),
         viewport: eframe::egui::ViewportBuilder::default()
             .with_icon(logo::window_icon())
             .with_title(APP_NAME)
@@ -78,7 +80,12 @@ pub fn run() -> Result<(), AppError> {
             let hwnd = window_handle(cc)?;
             without_frame(cc)?;
             let shown = instance::serve(listener, cc.egui_ctx.clone());
-            let shared = app::Shared::new(cc.egui_ctx.clone(), store);
+            let mut shared = app::Shared::new(cc.egui_ctx.clone(), store);
+            let state = cc
+                .wgpu_render_state
+                .as_ref()
+                .ok_or_else(|| AppError::Window("окна рисуются без wgpu".to_owned()))?;
+            shared.gpu = Some(gpu::PreviewGpu::new(gpu, state));
             let tray = tray::Tray::new(&cc.egui_ctx)?;
             let keys = hotkeys::GlobalKeys::new(&cc.egui_ctx)?;
             Ok(Box::new(app::App::new(shown, shared, hwnd, tray, keys)))

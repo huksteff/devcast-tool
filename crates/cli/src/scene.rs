@@ -13,7 +13,8 @@ use crate::error::CliError;
 
 /// The evaluator of `project` whose folder is `root`.
 pub(crate) fn evaluator<'p>(root: &Path, project: &'p Project) -> Result<Evaluator<'p>, CliError> {
-    let (cursors, keys) = crate::telemetry::tracks(root, project)?;
+    let (cursors, keys) = dc_capture::project::telemetry_tracks(root, project)
+        .map_err(|e| CliError::Failed(e.to_string()))?;
     let mut measure = TextMeasure::new();
     measure.load_builtin_fonts().map_err(fonts)?;
     Evaluator::new(project, cursors, keys, &mut measure)

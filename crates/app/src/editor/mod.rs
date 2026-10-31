@@ -58,6 +58,8 @@ pub struct EditorWindow {
     pub aspect: Aspect,
     pub canvas: Option<PixelSize>,
     pub view: View,
+    /// The frame of the project at the playhead.
+    pub preview: preview::Preview,
     /// Actions the controls asked for in this frame.
     actions: Vec<Action>,
 }
@@ -87,6 +89,7 @@ impl EditorWindow {
                 || doc.dir().name().to_owned(),
                 |s| s.to_string_lossy().into_owned(),
             );
+        let preview = preview::Preview::new(doc.project());
         let mut editor = Self {
             doc,
             name,
@@ -95,6 +98,7 @@ impl EditorWindow {
             aspect: Aspect::default(),
             canvas: None,
             view: View::default(),
+            preview,
             actions: Vec::new(),
         };
         editor.refresh();
@@ -113,6 +117,22 @@ impl EditorWindow {
         self.canvas = dc_fx_crop::canvas(project, &crop.settings);
         self.aspect = crop.settings.aspect;
         self.tracks = tracks;
+        self.preview.changed(project);
+    }
+
+    /// Starts rendering the preview on the shared device; the thread wakes the main window.
+    pub fn start_preview(
+        &mut self,
+        gpu: crate::gpu::PreviewGpu,
+        ctx: egui::Context,
+    ) -> Result<(), crate::AppError> {
+        let dir = self.doc.dir().clone();
+        self.preview
+            .start(gpu, dir, ctx)
+            .map_err(|source| crate::AppError::Thread {
+                name: "devcast-preview",
+                source,
+            })
     }
 
     /// Queues `action` to run after this frame's layout.
@@ -126,7 +146,11 @@ impl Shared {
     /// project that cannot be opened (another writer holds it) is a toast.
     pub fn open_editor(&mut self, recorded: &dc_capture::win::RecordedProject) {
         match EditorWindow::new(recorded) {
-            Ok((editor, problems)) => {
+            Ok((mut editor, problems)) => {
+                if let Some(gpu) = self.gpu.clone() {
+                    let started = editor.start_preview(gpu, self.ctx.clone());
+                    self.report(started);
+                }
                 for problem in problems {
                     self.report(Err(problem));
                 }
@@ -168,12 +192,16 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     if let Some(corner) = corner {
         builder = builder.with_position(corner);
     }
-    let shared = Arc::clone(shared);
-    ctx.show_viewport_deferred(
-        egui::ViewportId::from_hash_of("editor"),
-        builder,
-        move |ui, _| other_window(ui, &shared, frame),
-    );
+    let id = egui::ViewportId::from_hash_of("editor");
+    let window = Arc::clone(shared);
+    ctx.show_viewport_deferred(id, builder, move |ui, _| other_window(ui, &window, frame));
+    let news = lock(shared)
+        .editor
+        .as_ref()
+        .is_some_and(|e| e.preview.take_news());
+    if news {
+        ctx.request_repaint_of(id);
+    }
 }
 
 /// One frame of the editor window; closing it writes what is unsaved to the session and shows
