@@ -101,6 +101,8 @@ pub fn escape(editor: &mut EditorWindow) {
     let view = &mut editor.view;
     let gesture = view.gesture.take().is_some();
     if gesture
+        || view.remove.take().is_some()
+        || view.lift.take().is_some()
         || view.menu.take().is_some()
         || view.drag.take().is_some()
         || view.range.take().is_some()

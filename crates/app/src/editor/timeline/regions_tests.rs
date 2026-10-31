@@ -17,7 +17,7 @@ use crate::editor::tests::project;
 
 /// The project `devcast` makes of the test project with each line (its words) as one step of a
 /// plan: the CLI's parsing and apply.
-fn by_cli(lines: &[Vec<String>]) -> Project {
+pub(super) fn by_cli(lines: &[Vec<String>]) -> Project {
     let registry = Registry::devcast().unwrap();
     let steps: Vec<Step> = lines
         .iter()
@@ -41,7 +41,7 @@ fn by_cli(lines: &[Vec<String>]) -> Project {
     project
 }
 
-fn words(line: &str) -> Vec<String> {
+pub(super) fn words(line: &str) -> Vec<String> {
     line.split(' ').map(str::to_owned).collect()
 }
 
@@ -51,13 +51,13 @@ fn region(harness: &H, label: &str) -> Pos2 {
 }
 
 /// Output second `secs` on the row headed `row`.
-fn on_row(harness: &H, row: &str, secs: f64) -> Pos2 {
+pub(super) fn on_row(harness: &H, row: &str, secs: f64) -> Pos2 {
     let y = harness.get_by_label(row).rect().center().y;
     pos2(x_of(harness, secs), y)
 }
 
 /// A drag with the primary button from `from` to `to` in a few steps, released there.
-fn drag(harness: &mut H, from: Pos2, to: Pos2, modifiers: Modifiers) {
+pub(super) fn drag(harness: &mut H, from: Pos2, to: Pos2, modifiers: Modifiers) {
     button(harness, from, true, modifiers);
     harness.run();
     for share in [0.25, 0.5, 0.75, 1.0] {
@@ -67,7 +67,7 @@ fn drag(harness: &mut H, from: Pos2, to: Pos2, modifiers: Modifiers) {
     harness.run();
 }
 
-fn click(harness: &mut H, at: Pos2, modifiers: Modifiers) {
+pub(super) fn click(harness: &mut H, at: Pos2, modifiers: Modifiers) {
     harness.event(Event::ModifiersChanged(modifiers));
     button(harness, at, true, modifiers);
     button(harness, at, false, modifiers);
@@ -76,19 +76,19 @@ fn click(harness: &mut H, at: Pos2, modifiers: Modifiers) {
     harness.run();
 }
 
-fn picked(harness: &H) -> Vec<Item> {
+pub(super) fn picked(harness: &H) -> Vec<Item> {
     harness.state().editor.view.selection.regions().collect()
 }
 
-fn zoom(n: u32) -> Item {
+pub(super) fn zoom(n: u32) -> Item {
     Item::Zoom(dc_core::Id::from_number(n))
 }
 
-fn annotation(n: u32) -> Item {
+pub(super) fn annotation(n: u32) -> Item {
     Item::Annotation(dc_core::Id::from_number(n))
 }
 
-fn at(harness: &mut H, secs: f64) {
+pub(super) fn at(harness: &mut H, secs: f64) {
     harness.state_mut().editor.view.playhead = OutputTime::from_secs_f64(secs);
     harness.run();
 }
@@ -287,7 +287,7 @@ fn ctrl_a_picks_every_region_of_the_picked_kind_or_all_zooms() {
         [annotation(1), annotation(2), annotation(3)],
         "all tracks of annotations"
     );
-    let empty = on_row(&harness, text::ZOOMS, 40.0);
+    let empty = on_row(&harness, text::CLIPS, 49.5);
     click(&mut harness, empty, Modifiers::NONE);
     assert!(
         picked(&harness).is_empty(),

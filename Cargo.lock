@@ -1591,6 +1591,7 @@ dependencies = [
  "dc-fx-text",
  "dc-fx-zoom",
  "dc-media",
+ "dc-project",
  "dc-render",
  "insta",
  "schemars",

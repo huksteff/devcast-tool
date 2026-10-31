@@ -5,8 +5,8 @@ use dc_capture::audio::{MIC_TRACK, SYSTEM_TRACK};
 use dc_core::project::MediaKind;
 use dc_core::time::Output;
 use dc_core::{ChannelLevels, ClipId, Effect, OutputTime, Project, Range, TimeDelta, TimeMap};
-use dc_fx_annotations::{Annotations, Kind};
-use dc_fx_audio_tracks::{Audio, AudioState};
+use dc_fx_annotations::{Annotations, Kind, TRACKS};
+use dc_fx_audio_tracks::{Audio, AudioState, TRACKS as AUDIO_TRACKS};
 use dc_fx_callout::{Action, Callout, CalloutState};
 use dc_fx_captions::CaptionsEffect;
 use dc_fx_keys::Keys;
@@ -65,6 +65,14 @@ pub struct Track {
     pub off: bool,
 }
 
+/// Rows shown even when they hold nothing: the user added them («+ Дорожка»), the project only
+/// knows tracks with objects on them. At least this many annotation and extra sound rows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Least {
+    pub annotations: u32,
+    pub audio: u32,
+}
+
 /// All rows of a project.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Tracks {
@@ -82,8 +90,8 @@ pub struct Tracks {
 
 impl Tracks {
     /// The rows of `project`; `sound` names the sound tracks its recordings have (`mic`,
-    /// `system`).
-    pub fn of(project: &Project, sound: &[String]) -> Self {
+    /// `system`); `least` adds the empty rows the user added.
+    pub fn of(project: &Project, sound: &[String], least: Least) -> Self {
         let map = TimeMap::build(project);
         let mut tracks = Self {
             duration: map.duration(),
@@ -104,7 +112,7 @@ impl Tracks {
         let cursor = callouts_of(&map, &callout, &mut tracks.problems);
         tracks.add(Row::Cursor, cursor, false);
         tracks.add(Row::Keys, Vec::new(), !keys.settings.show);
-        tracks.annotations(project, &map);
+        tracks.annotations(project, &map, least.annotations);
         for (row, name) in [(Row::Mic, MIC_TRACK), (Row::System, SYSTEM_TRACK)] {
             if sound.iter().any(|s| s == name) {
                 let off = muted(audio.settings.channels.get(name));
@@ -112,7 +120,7 @@ impl Tracks {
                 tracks.add(row, regions, off);
             }
         }
-        tracks.extra_sound(&audio);
+        tracks.extra_sound(&audio, least.audio);
         tracks
     }
 
@@ -166,15 +174,16 @@ impl Tracks {
         self.add(Row::Clips, regions, false);
     }
 
-    /// Annotation rows up to the highest used track, at least one.
-    fn annotations(&mut self, project: &Project, map: &TimeMap) {
+    /// Annotation rows up to the highest used track, at least `least` and one.
+    fn annotations(&mut self, project: &Project, map: &TimeMap, least: u32) {
         let state = self.read::<Annotations>(project);
         let count = state
             .annotations
             .iter()
             .map(|a| a.track + 1)
             .max()
-            .unwrap_or(1);
+            .unwrap_or(1)
+            .max(least.clamp(1, TRACKS));
         for track in 0..count {
             let regions = state
                 .annotations
@@ -203,9 +212,10 @@ impl Tracks {
         self.keys.dedup();
     }
 
-    /// Extra sound rows up to the highest used track; none without extra sound.
-    fn extra_sound(&mut self, state: &AudioState) {
-        let count = state.clips.iter().map(|c| c.track + 1).max().unwrap_or(0);
+    /// Extra sound rows up to the highest used track, at least `least`.
+    fn extra_sound(&mut self, state: &AudioState, least: u32) {
+        let used = state.clips.iter().map(|c| c.track + 1).max().unwrap_or(0);
+        let count = used.max(least.min(AUDIO_TRACKS));
         for track in 0..count {
             let regions = state
                 .clips

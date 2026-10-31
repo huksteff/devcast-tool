@@ -8,8 +8,7 @@ use eframe::egui::Pos2;
 
 use super::clipboard::Copied;
 use super::selection::{Item, Selection};
-use super::timeline::Tracks;
-use super::timeline::Viewport;
+use super::timeline::{Least, Row, Tracks, Viewport};
 
 /// Tool of a click on the timeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -93,6 +92,12 @@ pub struct View {
     pub gesture: Option<Gesture>,
     /// Copied regions for Ctrl+V (7.9).
     pub clipboard: Vec<Copied>,
+    /// Empty rows the user added (7.10): the project has no empty tracks.
+    pub least: Least,
+    /// The row whose «remove?» question is open by its ×.
+    pub remove: Option<Row>,
+    /// The annotation track whose header is dragged to another place (layer order).
+    pub lift: Option<u32>,
 }
 
 impl Default for View {
@@ -117,6 +122,9 @@ impl Default for View {
             drag: None,
             gesture: None,
             clipboard: Vec::new(),
+            least: Least::default(),
+            remove: None,
+            lift: None,
         }
     }
 }
@@ -127,6 +135,10 @@ impl View {
     pub fn keep(&mut self, tracks: &Tracks, end: OutputTime) {
         self.selection.keep(tracks);
         self.gesture = None;
+        self.lift = None;
+        self.remove = self
+            .remove
+            .filter(|r| tracks.rows.iter().any(|t| t.row == *r));
         self.range = self.range.filter(|r| r.end() <= end);
         if self.range.is_none() {
             self.menu = None;

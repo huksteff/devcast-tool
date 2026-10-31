@@ -172,7 +172,7 @@ fn the_help_shows_the_users_shortcuts_and_grey_unwired_ones() {
     harness.get_by_label("Лезвие: Ctrl+Alt+B");
     harness.get_by_label("Добавить зум: Нет");
     assert!(keys::wired(EditorKey::Undo) && keys::wired(EditorKey::PlayPause));
-    assert!(!keys::wired(EditorKey::AddZoom) && !keys::wired(EditorKey::Save));
+    assert!(!keys::wired(EditorKey::Keyframe) && !keys::wired(EditorKey::Save));
 }
 
 #[test]

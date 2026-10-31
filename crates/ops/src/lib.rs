@@ -11,6 +11,7 @@ pub mod plan;
 pub mod registry;
 pub mod settings;
 pub mod sound;
+pub mod sound_file;
 
 pub use apply::{Applied, apply, apply_commands, as_commands, duration_change};
 pub use argv::parse_args;
@@ -19,6 +20,7 @@ pub use evaluate::{EvaluateError, Evaluator};
 pub use plan::{Step, parse_plan};
 pub use registry::{RESERVED_FIELDS, Registry};
 pub use settings::{settings_commands, settings_steps};
+pub use sound_file::{DiscardError, SoundImport, SoundPlace, import_sound};
 
 #[cfg(test)]
 mod annotations_blur_tests;

@@ -6,6 +6,7 @@
 //! (`keys.rs`) come from the settings' table, F1 or «?» opens their help (`help.rs`).
 
 mod actions;
+mod adding;
 mod clipboard;
 mod document;
 mod header;
@@ -16,6 +17,7 @@ mod montage;
 mod playback;
 mod preview;
 mod regions;
+mod rows;
 mod selection;
 mod timeline;
 mod transport;
@@ -141,21 +143,26 @@ impl EditorWindow {
     /// Rebuilds the view of the project after it changed at `now`; playback goes on with the
     /// new project. Returns why its sound cannot go on.
     fn refresh(&mut self, now: Instant) -> Option<String> {
+        self.retrack();
         let project = self.doc.project();
-        let mut tracks = Tracks::of(project, &self.sound);
         let crop = project.state::<Crop>().unwrap_or_else(|e| {
-            tracks.problems.push(e.to_string());
+            self.tracks.problems.push(e.to_string());
             Default::default()
         });
         self.canvas = dc_fx_crop::canvas(project, &crop.settings);
         self.aspect = crop.settings.aspect;
-        self.tracks = tracks;
-        let end = self.end();
-        self.view.keep(&self.tracks, end);
         self.fps = frame_rate(self.doc.dir(), project);
         self.preview.changed(project);
         let (project, revision) = self.preview.project();
         self.playback.changed(project, revision, now)
+    }
+
+    /// Rebuilds the rows of the timeline from the project and the rows the user added; keeps
+    /// the selection that still fits.
+    fn retrack(&mut self) {
+        self.tracks = Tracks::of(self.doc.project(), &self.sound, self.view.least);
+        let end = self.end();
+        self.view.keep(&self.tracks, end);
     }
 
     /// The output end: where playback stops.

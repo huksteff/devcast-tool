@@ -5,16 +5,18 @@
 //! (`viewport.rs`): the whole project until the user zooms (slider, Ctrl+wheel around the
 //! pointer; «↔» fits again), the wheel and the navigation bar scroll, Shift+wheel scales the rows
 //! ×0.5–3 (kept in the settings). The ruler and the playhead move the playhead (`pointer.rs`).
-//! The toolbar's other commands are disabled until their tasks («+ Дорожка» and
-//! «+ Аудиодорожка» 7.10, «Подобрать зумы» 7.14 — its suggestions are not a registry command
-//! yet, «Создать субтитры» 7.17, own window 7.26); the magnet makes the blade stick (regions
-//! 7.9). The clips row is `clips.rs` (pick, drag to another place, the blade), the picked range
-//! of the ruler `range.rs` (Shift+drag, its menu and speed popover). The eye of the captions and
-//! keys rows toggles their `show` setting; the other track header buttons wait for 7.10
-//! (removing), 7.19 (sound), 7.20 (crop).
+//! «+ Дорожка ▾» adds an empty annotation or extra sound row; the toolbar's other commands are
+//! disabled until their tasks («Подобрать зумы» 7.14 — its suggestions are not a registry
+//! command yet, «Создать субтитры» 7.17, own window 7.26); the magnet makes the blade and the
+//! regions stick. The clips row is `clips.rs` (pick, drag to another place, the blade), the
+//! picked range of the ruler `range.rs` (Shift+drag, its menu and speed popover), the effect
+//! regions `regions.rs` with the ghost of quick adding `ghost.rs`, the track headers `heads.rs`
+//! (eye, mute, removing a row, the layer order of annotation rows; the crop waits for 7.20).
 
 mod clips;
 mod gesture;
+mod ghost;
+mod heads;
 mod paint;
 mod places;
 mod pointer;
@@ -30,6 +32,8 @@ mod clips_tests;
 #[cfg(test)]
 mod regions_tests;
 #[cfg(test)]
+mod rows_tests;
+#[cfg(test)]
 mod snap_tests;
 #[cfg(test)]
 mod ui_tests;
@@ -40,19 +44,16 @@ use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::{BORDER, S2, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind, Slider};
-use eframe::egui::{
-    self, Align, Frame, Layout, Margin, Rect, ScrollArea, Sense, Stroke, Ui, UiBuilder, vec2,
-};
+use eframe::egui::{self, Align, Frame, Layout, Margin, Rect, ScrollArea, Sense, Stroke, Ui, vec2};
 
 pub use scale::{TimeScale, timecode};
-pub use tracks::{Row, Track, Tracks};
+pub use tracks::{Least, Row, Track, Tracks};
 pub use viewport::Viewport;
 
-use serde_json::Value;
 use viewport::Lanes;
 
+use super::EditorWindow;
 use super::view::Tool;
-use super::{Action, EditorWindow};
 
 /// Heights of the toolbar, the ruler, the «+ Аудиодорожка» row and the navigation bar; width of
 /// a track header (mockup).
@@ -104,19 +105,26 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32) -> f32 {
             ui.spacing_mut().item_spacing.y = 0.0;
             let mut asked = None;
             let mut shown = Vec::new();
+            let mut headers = Vec::new();
             for track in &editor.tracks.rows {
-                let (action, lane) = row(ui, track, &editor.tracks, &scale, rows);
-                asked = asked.or(action);
+                let (press, head, lane, lifted) = row(ui, track, &editor.tracks, &scale, rows);
+                asked = asked.or(press);
+                if let (true, Row::Annotations(from)) = (lifted, track.row) {
+                    editor.view.lift = Some(from);
+                }
                 shown.push((track.row, lane));
+                headers.push((track.row, head));
             }
-            if let Some(action) = asked {
-                editor.ask(action);
+            if let Some(press) = asked {
+                heads::press(editor, press);
             }
             if let Some(&(_, lane)) = shown.iter().find(|(row, _)| *row == Row::Clips) {
                 clips::ui(ui, lane, editor, &scale, &lanes);
             }
             regions::ui(ui, &shown, editor, &scale, &lanes);
-            add_row(ui);
+            heads::lift(ui, editor, &headers);
+            heads::question(ui, editor, &headers);
+            heads::add_row(ui, editor);
         });
     let below_ruler = area.with_min_y(area.top() + RULER).with_min_x(lanes.left);
     regions::picked_tip(ui, editor, below_ruler);
@@ -181,14 +189,7 @@ fn playhead(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes, ruler: Rect, 
 fn toolbar(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes) {
     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
         ui.spacing_mut().item_spacing.x = 2.0;
-        ui.add_enabled(
-            false,
-            Button::new(text::ADD_TRACK)
-                .kind(Kind::Ghost)
-                .small()
-                .icon(Icon::Plus)
-                .menu(),
-        );
+        add_menu(ui, editor);
         let magnet = IconButton::new(Icon::Magnet, text::MAGNET).on(editor.view.magnet);
         let hint = super::keys::hint(text::MAGNET, crate::keymap::EditorKey::Snap, &editor.keys);
         if ui.add(magnet).on_hover_text(hint).clicked() {
@@ -217,6 +218,31 @@ fn toolbar(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes) {
     let rect = ui.max_rect();
     ui.painter()
         .hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, BORDER));
+}
+
+/// «+ Дорожка ▾»: its menu adds an empty annotation row or an empty extra sound row.
+fn add_menu(ui: &mut Ui, editor: &mut EditorWindow) {
+    let button = Button::new(text::ADD_TRACK)
+        .kind(Kind::Ghost)
+        .small()
+        .icon(Icon::Plus)
+        .menu();
+    let response = ui.add(button);
+    egui::Popup::menu(&response).show(|ui| {
+        let item = |label| Button::new(label).kind(Kind::Ghost).small();
+        if ui
+            .add(item(text::ADD_ANNOTATIONS_ROW).icon(Icon::Text))
+            .clicked()
+        {
+            heads::add_annotation_row(editor);
+        }
+        if ui
+            .add(item(text::ADD_AUDIO_ROW).icon(Icon::Speaker))
+            .clicked()
+        {
+            heads::add_sound_row(editor);
+        }
+    });
 }
 
 /// «↔» and the scale slider (laid out right to left); they scale around the playhead when it is
@@ -252,88 +278,23 @@ fn separator(ui: &mut Ui) {
         .vline(rect.center().x, rect.y_range(), Stroke::new(1.0, BORDER));
 }
 
-/// A track `rows` times its height: header with its button, lane with the regions; the action of
-/// a pressed button.
+/// A track `rows` times its height: header with its button, lane with the regions; what the
+/// header asked, the header and the lane, whether its header began a drag.
 fn row(
     ui: &mut Ui,
     track: &Track,
     tracks: &Tracks,
     scale: &TimeScale,
     rows: f32,
-) -> (Option<Action>, Rect) {
+) -> (Option<heads::Press>, Rect, Rect, bool) {
     let height = paint::height(track.row) * rows;
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
     let head = rect.with_max_x(rect.left() + HEAD);
     let lane = rect.with_min_x(head.right());
-    paint::header(ui.painter(), head, track);
-    let name = paint::name(track.row);
-    ui.interact(head, ui.scope_id().with(("track", &name)), Sense::hover())
-        .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, true, &name));
     paint::lane(&ui.painter().with_clip_rect(lane), lane, track, scale);
     if track.row == Row::Clips {
         paint::speeds(&ui.painter().with_clip_rect(lane), lane, tracks, scale);
     }
-    (head_button(ui, head, track, height), lane)
-}
-
-/// The button at the right of the header `head`; the action when it was pressed.
-fn head_button(ui: &mut Ui, head: Rect, track: &Track, height: f32) -> Option<Action> {
-    let (icon, label, dim) = header_button(track)?;
-    let side = paint::HEAD_BUTTON.min(height - 4.0);
-    let at = Rect::from_center_size(
-        egui::pos2(head.right() - 4.0 - side / 2.0, head.center().y),
-        vec2(side, side),
-    );
-    let mut cell = ui.new_child(UiBuilder::new().max_rect(at));
-    let button = IconButton::new(icon, label)
-        .size(side, 13.0_f32.min(side - 4.0))
-        .dim(dim);
-    let Some(action) = toggle(track) else {
-        cell.add_enabled(false, button);
-        return None;
-    };
-    let hint = if track.off { text::SHOW } else { text::HIDE };
-    let clicked = cell.add(button).on_hover_text(hint).clicked();
-    clicked.then_some(action)
-}
-
-/// What the header button of `track` does now: shows or hides the captions or the pressed keys
-/// (the `show` setting of the effect). The other buttons wait for 7.10, 7.19 and 7.20.
-fn toggle(track: &Track) -> Option<Action> {
-    let op = match track.row {
-        Row::Captions => "captions style",
-        Row::Keys => "keys",
-        _ => return None,
-    };
-    Some(Action::op(op, [("show", Value::Bool(track.off))]))
-}
-
-/// The header button of `track`: icon, accessible name, faded.
-fn header_button(track: &Track) -> Option<(Icon, &'static str, bool)> {
-    let off = track.off;
-    Some(match track.row {
-        Row::Captions | Row::Keys if off => (Icon::EyeOff, text::HIDDEN, true),
-        Row::Captions | Row::Keys => (Icon::Eye, text::SHOWN, false),
-        Row::Clips => (Icon::Crop, text::CLIP_CROP, false),
-        Row::Annotations(_) | Row::Audio(_) => (Icon::Close, text::REMOVE_TRACK, false),
-        Row::Mic | Row::System if off => (Icon::Mute, text::MUTED, true),
-        Row::Mic | Row::System => (Icon::Speaker, text::SOUND, false),
-        Row::Zooms | Row::Cursor => return None,
-    })
-}
-
-/// «+ Аудиодорожка» under the tracks.
-fn add_row(ui: &mut Ui) {
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), ADD_ROW), Sense::hover());
-    let head = rect.with_max_x(rect.left() + HEAD);
-    let mut cell = ui.new_child(
-        UiBuilder::new()
-            .max_rect(head.shrink2(vec2(4.0, 1.0)))
-            .layout(Layout::left_to_right(Align::Center)),
-    );
-    let add = Button::new(text::ADD_AUDIO)
-        .kind(Kind::Ghost)
-        .small()
-        .icon(Icon::Plus);
-    cell.add_enabled(false, add);
+    let (press, lifted) = heads::header(ui, head, track, height);
+    (press, head, lane, lifted)
 }

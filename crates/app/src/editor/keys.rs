@@ -8,7 +8,7 @@ use eframe::egui::{self, Ui};
 
 use super::view::Tool;
 use super::{Action, EditorWindow, Transport, Way};
-use super::{clipboard, montage};
+use super::{adding, clipboard, montage};
 use crate::keymap::{EditorKey, EditorKeys};
 use crate::shortcut::Shortcut;
 
@@ -23,8 +23,7 @@ enum Act {
     Montage(fn(&mut EditorWindow)),
 }
 
-/// The action of `key`, `None` until its task: adding zooms and annotations 7.10, the next
-/// annotation 7.10, keyframes 7.25, projects 7.28.
+/// The action of `key`, `None` until its task: keyframes 7.25, projects 7.28.
 fn act(key: EditorKey) -> Option<Act> {
     Some(match key {
         EditorKey::Undo => Act::Travel(Way::Undo),
@@ -46,10 +45,10 @@ fn act(key: EditorKey) -> Option<Act> {
         EditorKey::Cut => Act::Montage(clipboard::cut),
         EditorKey::Paste => Act::Montage(clipboard::paste),
         EditorKey::SelectAll => Act::Montage(clipboard::select_all),
-        EditorKey::AddZoom
-        | EditorKey::AddAnnotation
-        | EditorKey::Keyframe
-        | EditorKey::NextAnnotation
+        EditorKey::AddZoom => Act::Montage(adding::zoom),
+        EditorKey::AddAnnotation => Act::Montage(adding::annotation),
+        EditorKey::NextAnnotation => Act::Montage(adding::next_annotation),
+        EditorKey::Keyframe
         | EditorKey::NewProject
         | EditorKey::OpenProject
         | EditorKey::Save
@@ -63,9 +62,11 @@ pub fn wired(key: EditorKey) -> bool {
 }
 
 /// Runs the shortcuts pressed this frame. None while a text field takes the keys; while the
-/// help is open only its own shortcut (it closes the help).
+/// help is open only its own shortcut (it closes the help). A shortcut takes the keyboard
+/// focus from a widget: Tab (the next annotation) would otherwise move it to a button, and
+/// Space would press that button too.
 pub fn run(ui: &Ui, editor: &mut EditorWindow) {
-    if ui.ctx().egui_wants_keyboard_input() {
+    if ui.ctx().text_edit_focused() {
         return;
     }
     // Esc is not in the table: it always steps back (mockup 2b, 2c).
@@ -92,6 +93,11 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow) {
         if repeat && key == EditorKey::PlayPause {
             continue;
         }
+        ui.ctx().memory_mut(|m| {
+            if let Some(id) = m.focused() {
+                m.surrender_focus(id);
+            }
+        });
         match act(key) {
             Some(Act::Travel(way)) => editor.ask(Action::Travel(way)),
             Some(Act::Tool(tool)) => editor.view.tool = tool,

@@ -8,8 +8,10 @@ use dc_ops::Step;
 use eframe::egui::Ui;
 use serde_json::{Map, Value};
 
+use super::adding;
 use super::playback::seek;
 use super::selection::{Item, Selected};
+use super::timeline::Least;
 use super::{EditorWindow, Way};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -20,6 +22,10 @@ pub enum Action {
     /// Registry commands that add regions, as one undo step; the added regions get picked.
     Paste(Vec<Step>),
     Transport(Transport),
+    /// Rows shown at least: an empty row added or removed; the timeline is rebuilt.
+    Rows(Least),
+    /// A sound file added to an extra sound row, as one undo step; it gets picked.
+    Sound(adding::SoundFile),
 }
 
 /// Playback and the playhead.
@@ -53,6 +59,7 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
     let mut errors = Vec::new();
     let mut changed = false;
     let mut moved = false;
+    let mut rows = false;
     for action in std::mem::take(&mut editor.actions) {
         match action {
             Action::Travel(way) => changed |= editor.doc.travel(way, now).is_some(),
@@ -71,6 +78,21 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                     Err(error) => errors.push(error.to_string()),
                 }
             }
+            Action::Rows(least) => {
+                editor.view.least = least;
+                rows = true;
+            }
+            Action::Sound(file) => {
+                let before = items(editor);
+                match adding::sound(editor, &file, now) {
+                    Ok(()) => {
+                        errors.extend(editor.refresh(now));
+                        pick_new(editor, &before);
+                        moved = true;
+                    }
+                    Err(error) => errors.push(error),
+                }
+            }
             Action::Transport(transport) => {
                 errors.extend(transport_run(editor, transport, now));
                 moved = true;
@@ -81,7 +103,10 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
         // Commands keep effect states valid, so a rebuilt view finds no new problems.
         errors.extend(editor.refresh(now));
     }
-    if changed || moved {
+    if rows && !changed {
+        editor.retrack();
+    }
+    if changed || moved || rows {
         ui.ctx().request_repaint();
     }
     errors

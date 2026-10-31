@@ -1,7 +1,7 @@
 //! The regions of the effect rows in «Выбор» (mockup 2a, 2b): one way for zooms, captions,
 //! callout events, annotations and extra sound. A click picks a region, Ctrl+click adds or takes
-//! it out, a click on an empty lane drops the selection; a drag from an empty lane draws a
-//! rubber band. A drag of a region carries all picked regions, a drag of an edge (`EDGE` inside
+//! it out, a click on an empty lane drops the selection — or adds the ghost's region where one
+//! shows (`ghost.rs`); a drag from an empty lane draws a rubber band. A drag of a region carries all picked regions, a drag of an edge (`EDGE` inside
 //! each end) changes the length; the edges of the speed bands on the clips row drag the same
 //! way. What follows the pointer and what the release asks for is `gesture.rs`.
 
@@ -50,7 +50,8 @@ pub fn ui(
             ui.scope_id().with(("lane", index)),
             Sense::click_and_drag(),
         );
-        if empty.clicked() && !ctrl {
+        let added = super::ghost::ui(ui, editor, row, lane, &empty, scale);
+        if empty.clicked() && !ctrl && !added {
             editor.view.selection.clear();
         }
         if let (true, Some(from)) = (empty.drag_started(), press) {

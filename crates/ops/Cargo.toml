@@ -24,6 +24,7 @@ dc-fx-keys = { path = "../../fx/keys" }
 dc-fx-shape = { path = "../../fx/shape" }
 dc-fx-text = { path = "../../fx/text" }
 dc-fx-zoom = { path = "../../fx/zoom" }
+dc-project = { path = "../project" }
 dc-render = { path = "../render" }
 schemars.workspace = true
 serde.workspace = true

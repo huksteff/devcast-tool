@@ -113,3 +113,58 @@ pub fn picked(count: usize, delete: &str, copy: &str) -> String {
 pub fn span(start: &str, end: &str) -> String {
     format!("{start} – {end}")
 }
+
+/// «+ Дорожка ▾» menu and the rows it adds (7.10).
+pub const ADD_ANNOTATIONS_ROW: &str = "Дорожка аннотаций";
+pub const ADD_AUDIO_ROW: &str = "Аудиодорожка";
+pub const MUTE: &str = "Выключить звук";
+pub const UNMUTE: &str = "Включить звук";
+/// Hint of an annotation row header: dragging it changes the layer order.
+pub const LAYER_HINT: &str = "Перетащите, чтобы поднять или опустить слой";
+/// The «+» of the dashed ghost of quick adding.
+pub const GHOST: &str = "+";
+pub const PICK_SOUND: &str = "Добавить звук";
+pub const SOUND_FILES: &str = "Звук";
+pub const REMOVE_CANCEL: &str = "Отмена";
+pub const REMOVE_CONFIRM: &str = "Удалить дорожку";
+
+/// «Удалить «Аннотации 1»?».
+pub fn remove_title(name: &str) -> String {
+    format!("Удалить «{name}»?")
+}
+
+/// «На дорожке 2 аннотации, они удалятся вместе с ней. Вернуть — Ctrl+Z.» (`undo` — the user's
+/// undo keys, empty when unassigned).
+pub fn remove_annotations(count: usize, undo: &str) -> String {
+    let what = plural(count, "аннотация", "аннотации", "аннотаций");
+    removed(count, what, "она", undo)
+}
+
+/// «На дорожке 1 файл, он удалится вместе с ней. Вернуть — Ctrl+Z.».
+pub fn remove_sound(count: usize, undo: &str) -> String {
+    let what = plural(count, "файл", "файла", "файлов");
+    removed(count, what, "он", undo)
+}
+
+/// `it` is the pronoun of one object.
+fn removed(count: usize, what: &str, it: &str, undo: &str) -> String {
+    let text = if count == 1 {
+        format!("На дорожке {count} {what}, {it} удалится вместе с ней.")
+    } else {
+        format!("На дорожке {count} {what}, они удалятся вместе с ней.")
+    };
+    match undo {
+        "" => text,
+        undo => format!("{text} Вернуть — {undo}."),
+    }
+}
+
+/// The Russian form of `count`: «1 файл», «2 файла», «5 файлов».
+fn plural<'a>(count: usize, one: &'a str, few: &'a str, many: &'a str) -> &'a str {
+    let (tens, ones) = (count % 100, count % 10);
+    match ones {
+        1 if tens != 11 => one,
+        2..=4 if !(12..=14).contains(&tens) => few,
+        _ => many,
+    }
+}

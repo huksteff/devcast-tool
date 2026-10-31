@@ -1,12 +1,13 @@
 //! `devcast audio add <file> --at t [--track n] [--duration s]`: the sound file is read whole and
-//! copied into the project's `assets/audio/` (`dc_audio::import_sound`), then
-//! `dc_fx_audio_tracks::AudioAdd` places it on the output timeline as one undo step. A failed
-//! change deletes the file it copied.
+//! copied into the project's `assets/audio/`, then `dc_fx_audio_tracks::AudioAdd` places it on
+//! the output timeline as one undo step (`dc_ops::import_sound`, shared with the editor). A
+//! failed change deletes the file it copied.
 
 use std::path::PathBuf;
 
 use dc_core::TimeDelta;
-use dc_fx_audio_tracks::{AUDIO_DIR, AudioAdd, SoundFile};
+use dc_fx_audio_tracks::AudioAdd;
+use dc_ops::SoundPlace;
 
 use crate::edit::{self, Ctx};
 use crate::error::CliError;
@@ -37,26 +38,18 @@ pub(crate) fn add(ctx: &Ctx<'_>, args: &AddArgs) -> Result<Answer, CliError> {
     let at = crate::ls::time(Some(&args.at), "--at")?.unwrap_or_default();
     let source = ctx.cwd.join(&args.file);
     let mut workspace = ctx.open(true)?;
-    let imported = dc_audio::import_sound(workspace.dir(), AUDIO_DIR, &source, ctx.globals.dry_run)
-        .map_err(|e| CliError::Failed(e.to_string()))?;
-    let command = AudioAdd {
-        file: SoundFile {
-            path: imported.path.clone(),
-            duration: imported.duration,
-        },
+    let place = SoundPlace {
         at,
         track: args.track,
         duration: args.duration.map(TimeDelta::from_secs_f64),
     };
-    let answer = edit::apply_commands(ctx, &mut workspace, AudioAdd::NAME, &[&command]);
-    if let (Err(error), true) = (&answer, imported.copied) {
-        let file = workspace.dir().root().join(&imported.path);
-        std::fs::remove_file(&file).map_err(|e| {
-            CliError::Failed(format!(
-                "{error}; копию звука «{}» удалить не удалось ({e}): удали её вручную",
-                file.display()
-            ))
-        })?;
+    let imported = dc_ops::import_sound(workspace.dir(), &source, place, ctx.globals.dry_run)
+        .map_err(|e| CliError::Failed(e.to_string()))?;
+    let answer = edit::apply_commands(ctx, &mut workspace, AudioAdd::NAME, &[&imported.command]);
+    if let Err(error) = &answer {
+        imported
+            .discard()
+            .map_err(|e| CliError::Failed(format!("{error}; {e}")))?;
     }
     answer
 }

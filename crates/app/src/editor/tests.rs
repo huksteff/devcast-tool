@@ -40,12 +40,20 @@ pub(super) struct State {
 }
 
 pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State> {
+    harness_with(size, crate::settings::EditorLayout::default())
+}
+
+/// [`harness`] with the timeline sizes `layout` of the settings from the first frame.
+pub(super) fn harness_with(
+    size: egui::Vec2,
+    layout: crate::settings::EditorLayout,
+) -> egui_kittest::Harness<'static, State> {
     let (temp, editor) = editor();
     let state = State {
         _temp: temp,
         editor,
         outcome: None,
-        layout: crate::settings::EditorLayout::default(),
+        layout,
         settings: None,
         keys: crate::keymap::EditorKeys::default(),
         now: None,

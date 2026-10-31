@@ -173,7 +173,7 @@ fn keyframes_of_annotations_are_the_jump_targets_at_output_times() {
     };
     state.annotations[0].keys = vec![key(1.0), key(6.0), key(20.0)];
     project.set_state::<Annotations>(&state).unwrap();
-    let tracks = Tracks::of(&project, &[]);
+    let tracks = Tracks::of(&project, &[], Default::default());
     assert_eq!(
         tracks.keys,
         vec![at(24.0), at(26.0)],

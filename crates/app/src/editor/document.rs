@@ -85,13 +85,31 @@ impl Document {
             steps,
             false,
         )?;
+        Ok(self.record(applied, now))
+    }
+
+    /// Ready commands (not of the registry: `audio add` after its file is copied) as one undo
+    /// step named `name`, as `devcast` applies them.
+    pub fn apply_commands(
+        &mut self,
+        name: &str,
+        commands: &[&dyn dc_core::Command],
+        now: Instant,
+    ) -> Result<Applied, OpsError> {
+        let applied =
+            dc_ops::apply_commands(&mut self.project, &mut self.history, name, commands, false)?;
+        Ok(self.record(applied, now))
+    }
+
+    /// Queues the history event of a change for the session.
+    fn record(&mut self, applied: Applied, now: Instant) -> Applied {
         if applied.changed
             && let Some(change) = self.history.changes().last()
         {
             self.pending.push(Event::Do(change.clone()));
             self.autosave.changed(now);
         }
-        Ok(applied)
+        applied
     }
 
     /// One step back or forward; the step taken, `None` when there is none.
