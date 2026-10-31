@@ -51,6 +51,16 @@ pub(super) fn harness_with(
     layout: crate::settings::EditorLayout,
 ) -> egui_kittest::Harness<'static, State> {
     let (temp, editor) = editor();
+    harness_of(temp, editor, size, layout)
+}
+
+/// The harness of `editor`, whose project lives in `temp`.
+pub(super) fn harness_of(
+    temp: tempfile::TempDir,
+    editor: EditorWindow,
+    size: egui::Vec2,
+    layout: crate::settings::EditorLayout,
+) -> egui_kittest::Harness<'static, State> {
     let state = State {
         _temp: temp,
         editor,
@@ -140,7 +150,7 @@ fn controls_hold_their_state() {
 fn commands_without_a_registry_command_are_disabled() {
     let mut harness = harness(SIZE);
     harness.run();
-    for label in [text::EXPORT, names::SUGGEST_ZOOMS] {
+    for label in [text::EXPORT, names::MAKE_CAPTIONS] {
         assert!(
             harness.get_by_label(label).accesskit_node().is_disabled(),
             "{label} must wait for its task"

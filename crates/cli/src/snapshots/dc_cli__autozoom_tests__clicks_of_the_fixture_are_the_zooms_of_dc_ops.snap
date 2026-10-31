@@ -1,0 +1,6 @@
+---
+source: crates/cli/src/autozoom_tests.rs
+expression: suggest.stdout
+---
+0:01.125–0:10.993  clicks=9  x=0.312  y=0.554
+добавить все: devcast zoom add --at clicks

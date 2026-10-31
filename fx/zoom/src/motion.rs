@@ -23,6 +23,8 @@ pub struct ZoomMotion {
     pub blur: Option<f64>,
     /// Close zooms hand over without zooming out in between.
     pub connect: Option<bool>,
+    /// Zooms on clusters of clicks are added right after a recording.
+    pub auto: Option<bool>,
 }
 
 impl Command for ZoomMotion {
@@ -50,6 +52,7 @@ impl Command for ZoomMotion {
             new.motion_blur = within("сила motion blur", value, 0.0, MOTION_BLUR_MAX)?;
         }
         new.connect = self.connect.unwrap_or(new.connect);
+        new.auto = self.auto.unwrap_or(new.auto);
         if *new == old {
             return Ok(Diff::default());
         }
@@ -62,7 +65,7 @@ impl Command for ZoomMotion {
 impl Op for ZoomMotion {
     const NAME: &'static str = "zoom motion";
     const ABOUT: &'static str =
-        "Движение камеры всех зумов: пресет focused/smooth, плавность, вход и выход, blur, склейка";
+        "Движение камеры всех зумов: пресет, плавность, вход и выход, blur, склейка, автозумы";
     const EXAMPLE: &'static str = "zoom motion --preset smooth --smoothness 0.7";
     const SETTINGS: Option<&'static str> = Some("zoom");
 }
@@ -92,7 +95,8 @@ fn changes(old: &ZoomSettings, new: &ZoomSettings) -> String {
         })
         .number("плавность", old.smoothness, new.smoothness, 2)
         .number("motion blur", old.motion_blur, new.motion_blur, 2)
-        .value("склейка", on_off(old.connect), on_off(new.connect));
+        .value("склейка", on_off(old.connect), on_off(new.connect))
+        .value("автозумы", on_off(old.auto), on_off(new.auto));
     let preset = new
         .preset()
         .map(|p| format!(" ({})", p.title()))

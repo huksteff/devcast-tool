@@ -134,3 +134,35 @@ fn a_recording_gets_auto_zooms_unless_the_setting_is_off() {
   1  zoom add  зумы +3 z1..z3"
     );
 }
+
+/// `zoom add --at clicks` on the fixture recording `clicks.dcproj` adds exactly the zooms of
+/// `dc_ops::click_zooms` — the path the editor's «Подобрать зумы» takes.
+#[test]
+fn clicks_of_the_fixture_are_the_zooms_of_dc_ops() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path().join("Подбор зумов.dcproj");
+    crate::test_util::fixture_copy("clicks.dcproj", &root);
+    let dir = dc_project::ProjectDir::open(&root).unwrap();
+    let mut expected = dir.load().unwrap();
+    let found = dc_ops::click_zooms(&root, &expected).unwrap();
+    let commands = dc_ops::click_commands(&found, dc_fx_zoom::DEFAULT_SCALE, Default::default());
+    let name = <dc_fx_zoom::ZoomAdd as dc_core::Op>::NAME;
+    let mut history = dc_core::History::default();
+    let commands = dc_ops::as_commands(&commands);
+    dc_ops::apply_commands(&mut expected, &mut history, name, &commands, false).unwrap();
+    let defaults = crate::test_util::defaults_file(tmp.path());
+    let registry = dc_ops::Registry::devcast().unwrap();
+    let suggest = crate::test_util::run_line_with("zoom suggest", &root, &registry, &defaults);
+    insta::assert_snapshot!(suggest.stdout);
+    let out = crate::test_util::run_line_with("zoom add --at clicks", &root, &registry, &defaults);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let added = dc_project::ProjectDir::open(&root).unwrap().load().unwrap();
+    assert_eq!(
+        added.state::<ZoomEffect>().unwrap().zooms.len(),
+        found.zooms.len()
+    );
+    assert_eq!(
+        serde_json::to_value(&added).unwrap(),
+        serde_json::to_value(&expected).unwrap()
+    );
+}

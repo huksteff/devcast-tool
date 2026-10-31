@@ -5,9 +5,9 @@
 //! (`viewport.rs`): the whole project until the user zooms (slider, Ctrl+wheel around the
 //! pointer; «↔» fits again), the wheel and the navigation bar scroll, Shift+wheel scales the rows
 //! ×0.5–3 (kept in the settings). The ruler and the playhead move the playhead (`pointer.rs`).
-//! «+ Дорожка ▾» adds an empty annotation or extra sound row; the toolbar's other commands are
-//! disabled until their tasks («Подобрать зумы» 7.14 — its suggestions are not a registry
-//! command yet, «Создать субтитры» 7.17, own window 7.26); the magnet makes the blade and the
+//! «+ Дорожка ▾» adds an empty annotation or extra sound row; «Подобрать зумы» adds the zooms of the
+//! clicks (`devcast zoom add --at clicks`); the other commands are disabled until their tasks
+//! («Создать субтитры» 7.17, own window 7.26); the magnet makes the blade and the
 //! regions stick. The clips row is `clips.rs` (pick, drag to another place, the blade), the
 //! picked range of the ruler `range.rs` (Shift+drag, its menu and speed popover), the effect
 //! regions `regions.rs` with the ghost of quick adding `ghost.rs`, the track headers `heads.rs`
@@ -61,8 +61,8 @@ pub use wave::Source;
 
 use viewport::Lanes;
 
-use super::EditorWindow;
 use super::view::Tool;
+use super::{Action, EditorWindow};
 
 /// Heights of the toolbar, the ruler, the «+ Аудиодорожка» row and the navigation bar; width of
 /// a track header (mockup).
@@ -207,13 +207,14 @@ fn toolbar(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes) {
             editor.view.magnet = !editor.view.magnet;
         }
         separator(ui);
+        let suggest = Button::new(text::SUGGEST_ZOOMS)
+            .kind(Kind::Ghost)
+            .small()
+            .icon(Icon::Wand);
+        if ui.add(suggest).clicked() {
+            editor.actions.push(Action::SuggestZooms);
+        }
         ui.add_enabled_ui(false, |ui| {
-            ui.add(
-                Button::new(text::SUGGEST_ZOOMS)
-                    .kind(Kind::Ghost)
-                    .small()
-                    .icon(Icon::Wand),
-            );
             ui.add(
                 Button::new(text::MAKE_CAPTIONS)
                     .kind(Kind::Ghost)

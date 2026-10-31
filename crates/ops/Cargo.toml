@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 dc-audio = { path = "../audio" }
+dc-capture = { path = "../capture" }
 dc-core = { path = "../core" }
 dc-fx-annotations = { path = "../../fx/annotations" }
 dc-fx-audio-tracks = { path = "../../fx/audio-tracks" }
@@ -35,7 +36,6 @@ thiserror.workspace = true
 workspace = true
 
 [dev-dependencies]
-dc-capture = { path = "../capture" }
 dc-media = { path = "../media" }
 dc-render = { path = "../render", features = ["golden"] }
 insta.workspace = true

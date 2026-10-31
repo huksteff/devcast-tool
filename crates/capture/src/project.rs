@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use dc_core::geom::PixelSize;
 use dc_core::project::{Clip, ClipId, Media, MediaKind};
-use dc_core::{CursorTracks, KeyTracks, Project, Range, Rect, SourceTime, TimeDelta};
+use dc_core::{CursorTracks, KeyTracks, Point, Project, Range, Rect, SourceTime, TimeDelta};
 use dc_project::dir::MEDIA_DIR;
 
 use crate::cancel::remove_recording;
@@ -55,6 +55,36 @@ pub fn recording_dir(root: &Path, media: &Media) -> PathBuf {
     dir
 }
 
+/// One recording on the track and its input telemetry.
+pub struct Recorded<'a> {
+    pub media: &'a Media,
+    pub telemetry: Telemetry,
+}
+
+/// The telemetry of every recording on the track of the project at `root`, once each, in clip
+/// order: auto zooms (`dc_ops::autozoom`) and `devcast events`. Imported videos have none.
+pub fn recorded<'a>(root: &Path, project: &'a Project) -> Result<Vec<Recorded<'a>>, CaptureError> {
+    let mut recorded: Vec<Recorded<'a>> = Vec::new();
+    for clip in &project.clips {
+        let media = &clip.media;
+        if media.kind != MediaKind::Recording || recorded.iter().any(|r| r.media.path == media.path)
+        {
+            continue;
+        }
+        let telemetry = Telemetry::read(&recording_dir(root, media))?;
+        recorded.push(Recorded { media, telemetry });
+    }
+    Ok(recorded)
+}
+
+/// Pixel (`x`, `y`) of the recorded picture as fractions of the frame of `media`.
+pub fn fraction(media: &Media, x: i32, y: i32) -> Point {
+    Point {
+        x: f64::from(x) / f64::from(media.size.width),
+        y: f64::from(y) / f64::from(media.size.height),
+    }
+}
+
 /// The cursor and the shortcuts of every recording on the track of the project at `root`, for
 /// `dc_ops::Evaluator` (decision 015): the same for the preview, the export and `devcast frame`.
 /// Imported videos have no telemetry.
@@ -64,13 +94,8 @@ pub fn telemetry_tracks(
 ) -> Result<(CursorTracks, KeyTracks), CaptureError> {
     let mut cursors = CursorTracks::new();
     let mut keys = KeyTracks::new();
-    for clip in &project.clips {
-        let media = &clip.media;
-        if media.kind != MediaKind::Recording || cursors.contains_key(&media.path) {
-            continue;
-        }
+    for Recorded { media, telemetry } in recorded(root, project)? {
         let dir = recording_dir(root, media);
-        let telemetry = Telemetry::read(&dir)?;
         cursors.insert(media.path.clone(), telemetry.cursor_track(&dir, media)?);
         keys.insert(media.path.clone(), telemetry.key_presses());
     }

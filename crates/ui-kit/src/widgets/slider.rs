@@ -1,5 +1,5 @@
 //! Slider with a number field: a 4 px rail filled blue up to a white knob, and the exact value
-//! typed or dragged in a 56 px field next to it. A typed number applies on Enter or when the field
+//! typed or dragged in a 64 px field next to it. A typed number applies on Enter or when the field
 //! loses focus, not at every key.
 
 use std::ops::RangeInclusive;
@@ -10,7 +10,7 @@ use crate::tokens::{ACCENT_HI, CONTROL, S2, SURFACE_3, WHITE};
 
 const RAIL: f32 = 4.0;
 const KNOB: f32 = 7.0;
-const FIELD: f32 = 56.0;
+const FIELD: f32 = 64.0;
 
 #[must_use = "show it with `.show(ui)`"]
 pub struct Slider<'a> {
@@ -77,6 +77,7 @@ impl<'a> Slider<'a> {
                 DragValue::new(&mut *self.value)
                     .range(self.range.clone())
                     .speed(self.step)
+                    .max_decimals(decimals(self.step))
                     .suffix(self.suffix)
                     .update_while_editing(false),
             );
@@ -121,5 +122,28 @@ impl<'a> Slider<'a> {
             painter.circle(pos2(x, y), KNOB, WHITE, Stroke::new(2.0, ACCENT_HI));
         }
         response
+    }
+}
+
+/// Digits after the point a value in steps of `step` needs (0.05 → 2, 1 → 0): the field shows
+/// no more, so a long value (1.01505 s) does not widen it past its 64 px.
+fn decimals(step: f64) -> usize {
+    let mut digits = 0;
+    let mut scaled = step;
+    while digits < 6 && (scaled - scaled.round()).abs() > 1e-9 {
+        scaled *= 10.0;
+        digits += 1;
+    }
+    digits
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn decimals_follow_the_step() {
+        assert_eq!(super::decimals(1.0), 0);
+        assert_eq!(super::decimals(0.1), 1);
+        assert_eq!(super::decimals(0.05), 2);
+        assert_eq!(super::decimals(0.25), 2);
     }
 }

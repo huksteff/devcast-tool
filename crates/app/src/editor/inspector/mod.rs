@@ -11,9 +11,13 @@
 mod keys;
 mod object;
 mod rows;
+mod zoom;
+mod zoom_region;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod zoom_tests;
 
 use dc_core::{Effect, Project, StateError};
 use dc_ops::Step;
@@ -28,6 +32,7 @@ use dc_ui_kit::widgets::IconButton;
 use eframe::egui::{
     self, Align, Frame, Layout, Margin, Rect, ScrollArea, Sense, Stroke, Ui, UiBuilder, pos2, vec2,
 };
+use serde_json::{Map, Value};
 
 use super::view::{Panel, View};
 use super::{Action, EditorWindow};
@@ -58,7 +63,7 @@ type PanelUi = fn(&mut Ui, &mut Cx<'_>);
 fn tab(panel: Panel) -> Result<(&'static str, PanelUi), &'static str> {
     match panel {
         Panel::Keys => Ok((keys::ID, keys::ui)),
-        Panel::Zoom => Err("7.14"),
+        Panel::Zoom => Ok((zoom::ID, zoom::ui)),
         Panel::Cursor => Err("7.15"),
         Panel::Captions => Err("7.17"),
         Panel::Sound => Err("7.19"),
@@ -362,4 +367,17 @@ fn padded(ui: &mut Ui, body: impl FnOnce(&mut Ui)) {
 fn bottom_line(ui: &Ui, rect: Rect) {
     ui.painter()
         .hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, BORDER));
+}
+
+/// Arguments of a command from its fields (`("show", true)` is `--show true`).
+pub fn args<const N: usize>(fields: [(&str, Value); N]) -> Map<String, Value> {
+    fields
+        .into_iter()
+        .map(|(name, value)| (name.to_owned(), value))
+        .collect()
+}
+
+/// `op` with the default fields of a group; nothing when the fields are the defaults already.
+pub fn reset(op: &str, now: &Map<String, Value>, default: Map<String, Value>) -> Option<Step> {
+    (*now != default).then(|| Step::new(op, default))
 }

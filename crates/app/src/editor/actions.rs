@@ -26,6 +26,9 @@ pub enum Action {
     Rows(Least),
     /// A sound file added to an extra sound row, as one undo step; it gets picked.
     Sound(adding::SoundFile),
+    /// The zooms the clicks of the recordings suggest (`devcast zoom add --at clicks`), as one
+    /// undo step; they get picked.
+    SuggestZooms,
 }
 
 /// Playback and the playhead.
@@ -87,6 +90,18 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                 match adding::sound(editor, &file, now) {
                     Ok(()) => {
                         errors.extend(editor.refresh(now));
+                        pick_new(editor, &before);
+                        moved = true;
+                    }
+                    Err(error) => errors.push(error),
+                }
+            }
+            Action::SuggestZooms => {
+                let before = items(editor);
+                match adding::suggested(editor, now) {
+                    Ok(none) => {
+                        errors.extend(editor.refresh(now));
+                        errors.extend(none);
                         pick_new(editor, &before);
                         moved = true;
                     }

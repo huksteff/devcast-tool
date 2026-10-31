@@ -3,13 +3,12 @@
 //! Every edit and «Сбросить» is the `keys` command (`devcast keys …`, the settings key `keys`).
 
 use dc_fx_keys::{Keys, KeysSettings, Position};
-use dc_ops::Step;
 use dc_ui_kit::strings::{editor as text, inspector as names};
 use dc_ui_kit::tokens::HUE_KEYS;
 use eframe::egui::Ui;
 use serde_json::{Map, Value, json};
 
-use super::{Cx, Group, Header, header, padded, rows};
+use super::{Cx, Group, Header, args, header, padded, reset, rows};
 use crate::editor::Action;
 
 /// Id of the panel in the remembered groups.
@@ -49,14 +48,22 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
         id: "basic",
         title: text::BASIC,
         open: true,
-        reset: Some(reset(&basic_args(&now), basic_args(&default))),
+        reset: Some(
+            reset(OP, &basic_args(&now), basic_args(&default))
+                .into_iter()
+                .collect(),
+        ),
     };
     cx.group(ui, basic, |ui, cx| basic_rows(ui, cx, &now));
     let fine = Group {
         id: "fine",
         title: text::FINE,
         open: false,
-        reset: Some(reset(&fine_args(&now), fine_args(&default))),
+        reset: Some(
+            reset(OP, &fine_args(&now), fine_args(&default))
+                .into_iter()
+                .collect(),
+        ),
     };
     cx.group(ui, fine, |ui, cx| fine_rows(ui, cx, &now));
     padded(ui, |ui| rows::note(ui, names::KEYS_NOTE));
@@ -120,19 +127,4 @@ fn fine_args(s: &KeysSettings) -> Map<String, Value> {
         ("background", json!(s.background)),
         ("duration", json!(s.duration.as_secs_f64())),
     ])
-}
-
-fn args<const N: usize>(fields: [(&str, Value); N]) -> Map<String, Value> {
-    fields
-        .into_iter()
-        .map(|(name, value)| (name.to_owned(), value))
-        .collect()
-}
-
-/// `keys` with the default fields of a group; nothing when they are the defaults already.
-fn reset(now: &Map<String, Value>, default: Map<String, Value>) -> Vec<Step> {
-    if *now == default {
-        return Vec::new();
-    }
-    vec![Step::new(OP, default)]
 }

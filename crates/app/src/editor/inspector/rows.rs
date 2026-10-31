@@ -7,7 +7,7 @@
 
 use dc_render::Rgba;
 use dc_ui_kit::tokens::{FS_S, S2, TEXT_3};
-use dc_ui_kit::widgets::{Slider, Toggle, anchors as anchor_grid, color_button};
+use dc_ui_kit::widgets::{Slider, Toggle, anchors as anchor_grid, color_button, segmented};
 use eframe::egui::{self, Color32, Id, Response, RichText, Ui};
 
 use crate::settings_rows;
@@ -93,6 +93,27 @@ pub fn colors(ui: &mut Ui, label: &str, colors: &[(&str, Rgba)]) -> Option<(usiz
             }
         }
         changed
+    })
+}
+
+/// One of `options` (value, caption) in a segmented row; `value` none of them when the project
+/// has something else (custom zoom durations are no preset). The option clicked.
+pub fn choice<T: PartialEq + Copy>(
+    ui: &mut Ui,
+    label: &str,
+    value: Option<T>,
+    options: &[(T, &str)],
+) -> Option<T> {
+    row(ui, label, |ui| {
+        let mut chosen = value;
+        let options: Vec<(Option<T>, &str, bool)> = options
+            .iter()
+            .map(|(v, name)| (Some(*v), *name, true))
+            .collect();
+        segmented(ui, &mut chosen, &options)
+            .changed()
+            .then_some(chosen)
+            .flatten()
     })
 }
 

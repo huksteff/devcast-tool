@@ -4,6 +4,7 @@
 mod annotations;
 pub mod apply;
 pub mod argv;
+pub mod autozoom;
 mod devcast;
 pub mod error;
 pub mod evaluate;
@@ -15,6 +16,7 @@ pub mod sound_file;
 
 pub use apply::{Applied, apply, apply_commands, as_commands, duration_change};
 pub use argv::parse_args;
+pub use autozoom::{click_commands, click_zooms, no_click_zooms};
 pub use error::OpsError;
 pub use evaluate::{EvaluateError, Evaluator};
 pub use plan::{Step, parse_plan};

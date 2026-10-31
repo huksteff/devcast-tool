@@ -20,16 +20,16 @@ use crate::editor::view::Panel;
 use crate::editor::{Action, SIZE, Way};
 use crate::settings::InspectorGroups;
 
-type H = Harness<'static, State>;
+pub(super) type H = Harness<'static, State>;
 
-fn started() -> H {
+pub(super) fn started() -> H {
     let mut harness = harness(SIZE);
     harness.run();
     harness
 }
 
 /// The step `devcast <line>` parses.
-fn step(line: &str) -> Step {
+pub(super) fn step(line: &str) -> Step {
     let registry = Registry::devcast().unwrap();
     let words: Vec<String> = line.split(' ').map(str::to_owned).collect();
     let (info, taken) = registry.resolve(&words).unwrap();
@@ -40,7 +40,7 @@ fn step(line: &str) -> Step {
 }
 
 /// The test project after `devcast <line>` for each line, one plan.
-fn cli(lines: &[&str]) -> Project {
+pub(super) fn cli(lines: &[&str]) -> Project {
     let registry = Registry::devcast().unwrap();
     let steps: Vec<Step> = lines.iter().map(|line| step(line)).collect();
     let mut project = project();
@@ -55,11 +55,11 @@ fn cli(lines: &[&str]) -> Project {
     project
 }
 
-fn project_json(harness: &H) -> serde_json::Value {
+pub(super) fn project_json(harness: &H) -> serde_json::Value {
     json(harness.state().editor.doc.project())
 }
 
-fn undo(harness: &mut H) {
+pub(super) fn undo(harness: &mut H) {
     let doc = &mut harness.state_mut().editor.doc;
     doc.travel(Way::Undo, Instant::now());
     harness.run();
@@ -76,7 +76,7 @@ fn button(harness: &mut H, pos: Pos2, pressed: bool) {
     harness.run();
 }
 
-fn first_zoom(harness: &H) -> Item {
+pub(super) fn first_zoom(harness: &H) -> Item {
     let tracks = &harness.state().editor.tracks;
     let row = tracks
         .rows
@@ -87,7 +87,7 @@ fn first_zoom(harness: &H) -> Item {
         .unwrap()
 }
 
-fn pick(harness: &mut H, item: Option<Selected>) {
+pub(super) fn pick(harness: &mut H, item: Option<Selected>) {
     let selection = &mut harness.state_mut().editor.view.selection;
     selection.clear();
     if let Some(item) = item {
@@ -144,7 +144,7 @@ fn picking_one_object_opens_its_panel_and_a_tab_opens_its_own() {
 #[test]
 fn tabs_without_their_panel_wait_for_their_task() {
     let harness = started();
-    for title in [text::ZOOM, text::CURSOR, text::CAPTIONS, text::SOUND] {
+    for title in [text::CURSOR, text::CAPTIONS, text::SOUND] {
         let mut tabs = harness.query_all_by_role_and_label(egui::Role::Button, title);
         assert!(tabs.any(|t| t.accesskit_node().is_disabled()), "{title}");
     }

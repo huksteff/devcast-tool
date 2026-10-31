@@ -51,3 +51,25 @@ pub fn with_length(span: &str, length: &str) -> String {
 pub fn reset_group(group: &str) -> String {
     format!("Сбросить «{group}»")
 }
+
+pub const ZOOM_MODE: &str = "Режим";
+pub const ZOOM_FOLLOW: &str = "За курсором";
+pub const ZOOM_FIXED: &str = "Точка";
+pub const ZOOM_FOLLOW_NOTE: &str = "Камера идёт за курсором, начиная с точки фокуса.";
+pub const ZOOM_FIXED_NOTE: &str = "Камера стоит на точке фокуса.";
+pub const ZOOM_SCALE: &str = "Масштаб";
+pub const ZOOM_X: &str = "Фокус по X";
+pub const ZOOM_Y: &str = "Фокус по Y";
+pub const ZOOM_MOTION: &str = "Движение";
+pub const ZOOM_FOCUSED: &str = "Focused";
+pub const ZOOM_SMOOTH: &str = "Smooth";
+pub const ZOOM_CONNECT: &str = "Склеить с соседним";
+pub const ZOOM_AUTO: &str = "Автозумы после записи";
+pub const ZOOM_SMOOTHNESS: &str = "Плавность камеры";
+pub const ZOOM_IN: &str = "Вход";
+pub const ZOOM_OUT: &str = "Выход";
+pub const ZOOM_BLUR: &str = "Motion blur";
+pub const ZOOM_SHARED: &str = "Движение, склейка и тонкая настройка общие для всех зумов проекта.";
+pub const ZOOM_SUGGEST: &str = "Подобрать зумы по кликам";
+/// Unit after a percentage in a number field.
+pub const PERCENT: &str = " %";

@@ -1,15 +1,15 @@
 //! The panel of the object picked on the timeline: a zoom, a cue, a callout event, an annotation
 //! (also through one of its keys), an extra sound or a clip. The frame gives each its header —
 //! the colour of its row, its name, where it is — and «Удалить» (the same command as Delete);
-//! its parameters come with the task named in the body. An annotation's panel puts its keyframe
-//! strip under the header (7.18, 7.25).
+//! a zoom gets its parameters (`zoom_region.rs`), the others name the task that brings theirs.
+//! An annotation's panel puts its keyframe strip under the header (7.18, 7.25).
 
 use dc_core::Range;
 use dc_core::time::Output;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{editor as text, inspector as names, timeline as rows_text};
 
-use super::{Cx, Header, header, header_button, padded, rows};
+use super::{Cx, Header, header, header_button, padded, rows, zoom_region};
 use crate::editor::selection::{Item, Selected};
 use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
 use crate::editor::{Action, montage, regions};
@@ -37,7 +37,10 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
             cx.actions.push(action);
         }
     });
-    padded(ui, |ui| rows::note(ui, &names::later(about.task)));
+    match picked {
+        Selected::Region(Item::Zoom(id)) => zoom_region::ui(ui, cx, id),
+        _ => padded(ui, |ui| rows::note(ui, &names::later(about.task))),
+    }
 }
 
 /// The row and the region of `picked`.
