@@ -199,14 +199,7 @@ fn toggle(shared: &mut Shared, kind: popover::Kind, anchor: f32) {
         shared.refresh_microphones();
     }
     if !open && kind == popover::Kind::Source {
-        shared.refresh_sources();
-        let (screens, windows) = picker::cards(&shared.sources);
-        let all = screens
-            .iter()
-            .chain(&windows)
-            .map(|card| card.source)
-            .collect();
-        shared.previews = Some(picker::Previews::start(&shared.ctx, all));
+        shared.previews = Some(picker::Previews::start(&shared.ctx));
     }
 }
 

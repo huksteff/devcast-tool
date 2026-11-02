@@ -1,6 +1,8 @@
 //! Source picker (mockup 2): a grid of previews of monitors and windows, four in a row, the
-//! chosen one outlined in blue. Previews are taken one by one on a worker thread (one WGC frame
-//! each, as the recording takes them) and appear as they come.
+//! chosen one outlined in blue. The popover opens at once with the sources known; the worker
+//! thread lists them anew (asking WGC about every window takes a few hundred ms), then takes the
+//! previews one by one (one WGC frame each, as the recording takes them); both appear as they
+//! come.
 
 use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver};
@@ -78,19 +80,45 @@ pub fn cards(sources: &SourceList) -> (Vec<Card>, Vec<Card>) {
     (screens, windows)
 }
 
-/// Previews arriving from the worker, as textures by source.
+/// What the worker sends: the fresh list first, then the previews.
+enum Arrival {
+    Listed(Result<SourceList, String>),
+    Preview(Source, Preview),
+}
+
+/// The fresh source list and the previews arriving from the worker, as textures by source.
 pub struct Previews {
-    receiver: Receiver<(Source, Preview)>,
+    receiver: Receiver<Arrival>,
     textures: HashMap<Source, TextureHandle>,
+    /// The fresh list, until the popover takes it.
+    listed: Option<Result<SourceList, String>>,
 }
 
 impl Previews {
-    /// Starts taking previews of `sources`; each one wakes the UI. A failed preview leaves its
-    /// card grey (a window can close meanwhile).
-    pub fn start(ctx: &egui::Context, sources: Vec<Source>) -> Self {
+    /// Lists the sources anew, then takes the previews of their cards; each arrival wakes the UI.
+    /// A failed preview leaves its card grey (a window can close meanwhile).
+    pub fn start(ctx: &egui::Context) -> Self {
         let (sender, receiver) = mpsc::channel();
         let ctx = ctx.clone();
         std::thread::spawn(move || {
+            // The main window passes the repaint on to the popover with the cards.
+            let wake = || ctx.request_repaint_of(egui::ViewportId::ROOT);
+            let listed = dc_capture::win::list_sources().map_err(|e| e.to_string());
+            let sources: Vec<Source> = match &listed {
+                Ok(list) => {
+                    let (screens, windows) = cards(list);
+                    screens
+                        .iter()
+                        .chain(&windows)
+                        .map(|card| card.source)
+                        .collect()
+                }
+                Err(_) => Vec::new(),
+            };
+            if sender.send(Arrival::Listed(listed)).is_err() {
+                return;
+            }
+            wake();
             for source in sources {
                 let preview = match source {
                     Source::Monitor(index) => dc_capture::win::preview_monitor(index, PREVIEW_SIDE),
@@ -99,11 +127,10 @@ impl Previews {
                 };
                 match preview {
                     Ok(preview) => {
-                        if sender.send((source, preview)).is_err() {
+                        if sender.send(Arrival::Preview(source, preview)).is_err() {
                             return;
                         }
-                        // The main window passes the repaint on to the popover with the cards.
-                        ctx.request_repaint_of(egui::ViewportId::ROOT);
+                        wake();
                     }
                     Err(error) => tracing::info!("нет превью {source}: {error}"),
                 }
@@ -112,18 +139,32 @@ impl Previews {
         Self {
             receiver,
             textures: HashMap::new(),
+            listed: None,
         }
     }
 
-    /// Takes the previews that came and returns the textures.
-    pub fn textures(&mut self, ctx: &egui::Context) -> &HashMap<Source, TextureHandle> {
-        for (source, preview) in self.receiver.try_iter() {
+    /// The textures of the previews that came.
+    pub fn textures(&self) -> &HashMap<Source, TextureHandle> {
+        &self.textures
+    }
+
+    /// Takes what came: the previews become textures; the fresh source list, once it came, is
+    /// returned (once).
+    pub fn receive(&mut self, ctx: &egui::Context) -> Option<Result<SourceList, String>> {
+        for arrival in self.receiver.try_iter() {
+            let (source, preview) = match arrival {
+                Arrival::Listed(listed) => {
+                    self.listed = Some(listed);
+                    continue;
+                }
+                Arrival::Preview(source, preview) => (source, preview),
+            };
             let size = [preview.width as usize, preview.height as usize];
             let image = ColorImage::from_rgba_unmultiplied(size, &preview.rgba);
             let texture = ctx.load_texture(source.to_string(), image, egui::TextureOptions::LINEAR);
             self.textures.insert(source, texture);
         }
-        &self.textures
+        self.listed.take()
     }
 }
 

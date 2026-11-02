@@ -72,6 +72,9 @@ pub struct Open {
     focused: bool,
     /// Exclusion from capture as last set on the window.
     excluded: Option<bool>,
+    /// The window is shown: it opens hidden and shows once it has the size and place of its
+    /// content, so it never appears 40 px high and jumps.
+    shown: bool,
 }
 
 impl Open {
@@ -81,6 +84,7 @@ impl Open {
             anchor,
             focused: false,
             excluded: None,
+            shown: false,
         }
     }
 
@@ -138,6 +142,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
 pub fn builder(open: Open, width: f32, bar: Rect) -> egui::ViewportBuilder {
     let window = window_rect(open, vec2(width, 40.0), bar);
     borderless::floating(open.kind.title())
+        .with_visible(false)
         .with_resizable(false)
         .with_inner_size(window.size())
         .with_position(window.min)
@@ -192,6 +197,10 @@ fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
             .send_viewport_cmd(egui::ViewportCommand::InnerSize(window.size()));
         ui.ctx()
             .send_viewport_cmd(egui::ViewportCommand::OuterPosition(window.min));
+    } else if let Some(open) = shared.popover.as_mut().filter(|o| !o.shown) {
+        open.shown = true;
+        ui.ctx()
+            .send_viewport_cmd(egui::ViewportCommand::Visible(true));
     }
     let focused = ui.input(|i| i.viewport().focused);
     let lost_focus = shared
@@ -285,7 +294,12 @@ fn source(ui: &mut Ui, shared: &mut Shared) {
     let Some(previews) = previews else {
         return;
     };
-    let textures = previews.textures(ui.ctx());
+    match previews.receive(ui.ctx()) {
+        Some(Ok(list)) => *sources = list,
+        Some(Err(error)) => tracing::warn!("список источников не обновлён: {error}"),
+        None => {}
+    }
+    let textures = previews.textures();
     let chosen = store.get().recording.source;
     let last = match store.get().last_area {
         Some(Source::Area(area)) => Some((area.width(), area.height())),
