@@ -147,9 +147,36 @@ fn rewrite_compacts_to_the_current_stacks() {
     assert!(f.reload().needs_rewrite);
     f.log.rewrite(&f.history).unwrap();
     let text = std::fs::read_to_string(&f.log.path).unwrap();
-    assert_eq!(text.lines().count(), 3, "do 100, do 101, undo");
+    assert_eq!(text.lines().count(), 4, "version, do 100, do 101, undo");
     let loaded = f.reload();
     assert!(!loaded.needs_rewrite && loaded.warnings.is_empty());
     assert_eq!(loaded.history.changes(), f.history.changes());
     assert_eq!(loaded.history.redo_changes(), f.history.redo_changes());
+}
+
+#[test]
+fn the_log_starts_with_its_schema_version() {
+    let mut f = Fixture::new();
+    f.set(1);
+    let text = std::fs::read_to_string(&f.log.path).unwrap();
+    let first = text.lines().next().unwrap();
+    assert_eq!(first, format!(r#"{{"schema_version":{SCHEMA_VERSION}}}"#));
+    assert_eq!(f.reload().history.changes().len(), 1);
+}
+
+#[test]
+fn a_log_of_another_schema_version_starts_anew() {
+    let mut f = Fixture::new();
+    f.set(1);
+    f.set(2);
+    let text = std::fs::read_to_string(&f.log.path).unwrap();
+    let (_, events) = text.split_once('\n').unwrap();
+    let other = format!("{{\"schema_version\":{}}}\n{events}", SCHEMA_VERSION + 1);
+    let newer = format!("схемой проекта версии {}", SCHEMA_VERSION + 1);
+    for (log, found) in [(other, newer), (events.to_owned(), "без версии".to_owned())] {
+        std::fs::write(&f.log.path, log).unwrap();
+        let loaded = f.reload();
+        assert!(!loaded.history.can_undo() && loaded.needs_rewrite);
+        assert!(loaded.warnings[0].contains(&found), "{:?}", loaded.warnings);
+    }
 }

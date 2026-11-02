@@ -1,5 +1,8 @@
-//! `history.jsonl`: undo/redo kept between runs. An append-only log, one event per line:
-//! `{"do":{change}}`, `"undo"`, `"redo"`. Replaying it rebuilds the stacks.
+//! `history.jsonl`: undo/redo kept between runs. An append-only log: the first line is the
+//! schema version of its snapshots `{"schema_version":1}`, then one event per line:
+//! `{"do":{change}}`, `"undo"`, `"redo"`. Replaying it rebuilds the stacks. Snapshots hold only the
+//! parts a change touched, and migrations work on a whole `project.json`, so a log of another
+//! schema version is not migrated: history starts anew with a warning.
 //!
 //! The log is appended right before `session.json`/`project.json` is written, so it describes the
 //! state on disk. Every [`Change`] stores absolute snapshots, which gives two recovery rules:
@@ -11,6 +14,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use dc_core::history::Parts;
+use dc_core::project::SCHEMA_VERSION;
 use dc_core::{Change, History, Project};
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +31,13 @@ pub enum Event {
     Do(Change),
     Undo,
     Redo,
+}
+
+/// The first line of the log.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Header {
+    schema_version: u32,
 }
 
 #[derive(Debug)]
@@ -56,7 +67,7 @@ impl HistoryLog {
         }
         let mut text = String::new();
         for event in events {
-            text.push_str(&to_line(event)?);
+            text.push_str(&json_line(event)?);
             text.push('\n');
         }
         let mut file = std::fs::OpenOptions::new()
@@ -64,6 +75,14 @@ impl HistoryLog {
             .append(true)
             .open(&self.path)
             .map_err(ProjectError::io("открыть", &self.path))?;
+        let empty = file
+            .metadata()
+            .map_err(ProjectError::io("прочитать", &self.path))?
+            .len()
+            == 0;
+        if empty {
+            text.insert_str(0, &format!("{}\n", header()?));
+        }
         file.write_all(text.as_bytes())
             .and_then(|()| file.sync_data())
             .map_err(ProjectError::io("записать", &self.path))
@@ -78,7 +97,21 @@ impl HistoryLog {
             Err(e) => return Err(ProjectError::io("прочитать", &self.path)(e)),
         };
         let (mut undo, mut redo, mut warnings) = (Vec::new(), Vec::new(), Vec::new());
-        let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
+        let mut lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
+        let version = lines
+            .first()
+            .and_then(|l| serde_json::from_str::<Header>(l).ok())
+            .map(|h| h.schema_version);
+        if version.is_some() {
+            lines.remove(0);
+        }
+        if version != Some(SCHEMA_VERSION) && !lines.is_empty() {
+            let found = version.map_or("без версии".to_owned(), |v| format!("версии {v}"));
+            warnings.push(format!(
+                "история записана схемой проекта {found}, а программа пишет версию {SCHEMA_VERSION}: её снимки не переносятся, история начата заново"
+            ));
+            lines.clear();
+        }
         for (index, line) in lines.iter().enumerate() {
             match serde_json::from_str::<Event>(line) {
                 Ok(event) => replay(&mut undo, &mut redo, event),
@@ -120,15 +153,15 @@ impl HistoryLog {
         let mut undo_lines = history
             .changes()
             .iter()
-            .map(|c| to_line(&Event::Do(c.clone())))
+            .map(|c| json_line(&Event::Do(c.clone())))
             .collect::<Result<Vec<_>>>()?;
         // Redo steps are written as done and then undone, the next one to redo undone last.
         let redo_lines = redo
             .iter()
             .rev()
-            .map(|c| to_line(&Event::Do(c.clone())))
+            .map(|c| json_line(&Event::Do(c.clone())))
             .collect::<Result<Vec<_>>>()?;
-        let undo_marks = vec![to_line(&Event::Undo)?; redo.len()];
+        let undo_marks = vec![json_line(&Event::Undo)?; redo.len()];
         let size = |lines: &[String]| lines.iter().map(|l| l.len() + 1).sum::<usize>();
         let fixed = size(&redo_lines) + size(&undo_marks);
         let mut total = fixed + size(&undo_lines);
@@ -139,6 +172,8 @@ impl HistoryLog {
         }
         undo_lines.drain(..drop);
         let mut text = String::with_capacity(total);
+        text.push_str(&header()?);
+        text.push('\n');
         for line in undo_lines.iter().chain(&redo_lines).chain(&undo_marks) {
             text.push_str(line);
             text.push('\n');
@@ -147,8 +182,14 @@ impl HistoryLog {
     }
 }
 
-fn to_line(event: &Event) -> Result<String> {
-    serde_json::to_string(event).map_err(|e| ProjectError::Corrupt {
+fn header() -> Result<String> {
+    json_line(&Header {
+        schema_version: SCHEMA_VERSION,
+    })
+}
+
+fn json_line(value: &impl Serialize) -> Result<String> {
+    serde_json::to_string(value).map_err(|e| ProjectError::Corrupt {
         path: PathBuf::from(HISTORY_FILE),
         message: e.to_string(),
     })
