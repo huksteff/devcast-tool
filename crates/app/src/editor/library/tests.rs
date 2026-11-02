@@ -232,6 +232,7 @@ fn plus_double_click_button_and_drag_are_clip_add() {
 }
 
 #[test]
+#[ignore = "moves folders through the real Windows Recycle Bin; run at night"]
 fn the_bin_and_its_undo() {
     let folder = Folder::new();
     let mut harness = opened(&folder);
