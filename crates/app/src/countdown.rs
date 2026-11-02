@@ -56,6 +56,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
     let size = borderless::outer_size(vec2(SIDE, SIDE));
     let mut builder = borderless::floating(text::CANCEL_HINT)
+        .with_visible(false)
         .with_resizable(false)
         .with_active(true)
         .with_inner_size(size);
@@ -71,12 +72,16 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         move |ui, _| {
             other_window(ui, &shared, |ui, shared| {
                 // Never in a recording, whatever moment the recorder starts at.
-                if let Session::Countdown(countdown) = &mut shared.session
-                    && !countdown.excluded
-                {
-                    ui.ctx()
-                        .send_viewport_cmd(egui::ViewportCommand::ContentProtected(true));
-                    countdown.excluded = true;
+                if let Session::Countdown(countdown) = &mut shared.session {
+                    if !countdown.excluded {
+                        ui.ctx()
+                            .send_viewport_cmd(egui::ViewportCommand::ContentProtected(true));
+                        countdown.excluded = true;
+                    } else if !countdown.shown {
+                        ui.ctx()
+                            .send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                        countdown.shown = true;
+                    }
                 }
                 if face(ui, left) {
                     shared.cancel_countdown();
@@ -127,6 +132,9 @@ pub struct Countdown {
     /// Its window has been excluded from capture. Sent once: a command makes the window draw
     /// again, and sending it every frame drew the countdown nonstop and starved the HUD.
     pub excluded: bool,
+    /// Its window is shown. It opens hidden and shows on the frame after its first: shown at
+    /// once, a transparent window is black until it has drawn a picture.
+    pub shown: bool,
 }
 
 impl Countdown {
@@ -135,6 +143,7 @@ impl Countdown {
             left: seconds,
             next: now + SECOND,
             excluded: false,
+            shown: false,
         }
     }
 
