@@ -6,9 +6,7 @@ use dc_fx_captions::{
     Animation, BOTTOM_MAX, CaptionsSettings, RADIUS_MAX, ROWS_MAX, SIZE_MAX, SIZE_MIN, WIDTH_MAX,
     WIDTH_MIN,
 };
-use dc_render::FAMILIES;
 use dc_ui_kit::strings::{captions as text, editor, inspector as names};
-use dc_ui_kit::widgets::dropdown;
 use eframe::egui::Ui;
 use serde_json::{Map, Value, json};
 
@@ -52,14 +50,8 @@ pub fn groups(ui: &mut Ui, cx: &mut Cx<'_>, now: &CaptionsSettings, default: &Ca
 }
 
 fn style_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &CaptionsSettings) {
-    let families: Vec<(String, &str)> = FAMILIES.iter().map(|f| ((*f).to_owned(), *f)).collect();
-    let font = rows::row(ui, text::FONT, |ui| {
-        let mut chosen = now.font.clone();
-        let width = ui.available_width();
-        dropdown(ui, text::FONT, &mut chosen, &families, width)
-            .changed()
-            .then_some(chosen)
-    });
+    let choose = dc_ops::Step::new(OP, Map::new());
+    let font = super::font::font(ui, cx, text::FONT, &now.font, choose);
     if let Some(font) = font {
         cx.actions.push(set("font", json!(font)));
     }

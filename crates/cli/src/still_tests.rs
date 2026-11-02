@@ -139,7 +139,7 @@ fn frame_is_the_frame_of_the_export() {
 
 /// Mean difference between the BT.709 limited-range luma of `picture` (as the export writes it)
 /// and `luma`, 0..255.
-fn mean_difference(picture: &Picture, luma: &[u8]) -> f64 {
+pub(crate) fn mean_difference(picture: &Picture, luma: &[u8]) -> f64 {
     let rgba = &picture.frames[0].rgba;
     let total: f64 = rgba
         .as_chunks::<4>()

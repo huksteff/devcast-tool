@@ -208,7 +208,7 @@ fn write(
     }
     let failed = |e: &dyn std::fmt::Display| CliError::Failed(e.to_string());
     let gpu = Gpu::new(AdapterChoice::Auto).map_err(|e| failed(&e))?;
-    let mut compositor = crate::scene::compositor(&gpu)?;
+    let mut compositor = crate::scene::compositor(&gpu, workspace.dir().root())?;
     let mut sources = Sources::new(workspace.dir());
     let png = render(&gpu, &mut compositor, &mut sources).map_err(|e| failed(&e))?;
     std::fs::write(out, png).map_err(|e| {

@@ -20,8 +20,8 @@ pub const TEXT_MAX: usize = 2000;
 pub struct TextBody {
     /// The words; a line break starts a new line, long lines wrap at the box width.
     pub text: String,
-    /// Font family: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono or a font file put in
-    /// the project's assets/.
+    /// Font family: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono or one added to the
+    /// project's `assets/fonts/` (`devcast font add`).
     pub font: String,
     /// Font size, px when the short side of the frame is 1080 px, 12..128; the zoom camera
     /// scales it with the box.

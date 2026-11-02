@@ -1,11 +1,13 @@
 //! The kinds' parts of the annotation panel (7.18): shape, blur, drawing and image edit the
-//! project as `devcast shape/blur/drawing set …` and `devcast image set` do, one undo step each.
+//! project as `devcast shape/blur/drawing set …` and `devcast image set` do, one undo step each;
+//! «Добавить шрифт…» of the text adds the font as `devcast font add` and chooses it.
 
 use std::path::Path;
 
 use dc_core::{Command as _, PixelSize};
-use dc_fx_annotations::AnnotId;
+use dc_fx_annotations::{AnnotId, Annotations};
 use dc_fx_image::{ImageSet, PictureFile};
+use dc_fx_text::TextBody;
 use dc_ui_kit::strings::annotations as text;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
@@ -149,4 +151,39 @@ fn a_picked_picture_is_image_set() {
     harness.snapshot("inspector_annotation_image");
     undo(&mut harness);
     assert_eq!(project_json(&harness), json(&cli(&made)), "one step");
+}
+
+#[test]
+fn an_added_font_is_chosen_and_listed() {
+    const FAMILY: &str = "Press Start 2P";
+    let mut harness = picked(1, 26.0);
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/fonts/PressStart2P-Regular.ttf");
+    let id = serde_json::Map::from_iter([("id".to_owned(), serde_json::json!("a1"))]);
+    let then = dc_ops::Step::new("text set", id);
+    let file = crate::editor::fonts::FontFile { path, then };
+    harness.state_mut().editor.ask(Action::Font(file));
+    harness.run();
+    let font = |harness: &H| {
+        let project = harness.state().editor.doc.project();
+        let annotations = project.state::<Annotations>().unwrap().annotations;
+        annotations[0].body::<TextBody>().unwrap().font
+    };
+    assert_eq!(font(&harness), FAMILY);
+    let root = harness.state().editor.doc.dir().root().to_path_buf();
+    assert!(root.join("assets/fonts/PressStart2P-Regular.ttf").is_file());
+    harness
+        .get_by_role_and_label(egui::Role::ComboBox, text::FONT)
+        .click();
+    harness.run();
+    assert!(
+        harness.query_by_label("Montserrat").is_some(),
+        "the list is open"
+    );
+    assert!(
+        harness.query_all_by_label(FAMILY).next().is_some(),
+        "{FAMILY} is listed"
+    );
+    undo(&mut harness);
+    assert_eq!(font(&harness), "Inter", "one step");
 }

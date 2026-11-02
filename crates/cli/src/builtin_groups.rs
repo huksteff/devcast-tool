@@ -8,7 +8,7 @@ use clap::Subcommand;
 use crate::edit::{self, Ctx};
 use crate::error::CliError;
 use crate::run::Answer;
-use crate::{audio, autozoom, captions, defaults, image, import, style};
+use crate::{audio, autozoom, captions, defaults, font, image, import, style};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum ClipCommand {
@@ -75,6 +75,20 @@ pub(crate) enum ImageCommand {
         after_help = "image set a3 --file логотип.png --at 4.5"
     )]
     Set(image::SetArgs),
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum FontCommand {
+    #[command(
+        about = "Добавить свой шрифт .ttf/.otf: файл копируется в assets/fonts/, стиль выбирает его по семейству",
+        after_help = "font add шрифт.ttf"
+    )]
+    Add(font::AddArgs),
+    #[command(
+        about = "Шрифты, которые можно выбрать в тексте и субтитрах: встроенные и добавленные в проект",
+        after_help = "font ls"
+    )]
+    Ls,
 }
 
 #[derive(Debug, Subcommand)]
@@ -161,6 +175,15 @@ impl ImageCommand {
     pub(crate) fn execute(self, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         match self {
             Self::Set(args) => image::set(ctx, &args),
+        }
+    }
+}
+
+impl FontCommand {
+    pub(crate) fn execute(self, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
+        match self {
+            Self::Add(args) => font::add(ctx, &args),
+            Self::Ls => font::ls(ctx),
         }
     }
 }

@@ -15,6 +15,7 @@ mod export_args;
 mod export_job;
 mod export_queue;
 pub mod find;
+mod font;
 pub mod globals;
 mod grid;
 mod help;
@@ -55,6 +56,8 @@ mod edit_tests;
 mod events_tests;
 #[cfg(test)]
 mod export_tests;
+#[cfg(test)]
+mod font_tests;
 #[cfg(test)]
 mod image_tests;
 #[cfg(test)]

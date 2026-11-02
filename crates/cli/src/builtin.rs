@@ -7,8 +7,8 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 use crate::builtin_groups::{
-    AudioCommand, CaptionsCommand, ClipCommand, DefaultsCommand, ImageCommand, StyleCommand,
-    ZoomCommand,
+    AudioCommand, CaptionsCommand, ClipCommand, DefaultsCommand, FontCommand, ImageCommand,
+    StyleCommand, ZoomCommand,
 };
 use crate::edit::{self, Ctx, Way};
 use crate::error::CliError;
@@ -164,6 +164,12 @@ enum Builtin {
         #[command(subcommand)]
         command: ImageCommand,
     },
+    /// `font add`, `font ls`: the project's own fonts.
+    #[command(disable_help_subcommand = true)]
+    Font {
+        #[command(subcommand)]
+        command: FontCommand,
+    },
     #[command(
         about = "Стиль проекта: настройки эффектов настройка.параметр=значение, все — одна запись истории",
         after_help = "set zoom.preset=smooth captions.size=36 cursor.size=3"
@@ -297,6 +303,7 @@ impl Cli {
             Builtin::Captions { command } => command.execute(ctx),
             Builtin::Audio { command } => command.execute(ctx),
             Builtin::Image { command } => command.execute(ctx),
+            Builtin::Font { command } => command.execute(ctx),
             Builtin::Set { assignments } => style::set(ctx, &assignments),
             Builtin::Defaults { command } => command.execute(ctx),
             Builtin::Style { command } => command.execute(ctx),

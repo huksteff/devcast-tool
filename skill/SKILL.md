@@ -111,6 +111,8 @@ devcast annot key move a1 --at 7.5 --to 8                # перенести к
 devcast annot key rm a1 --at 5
 devcast annot add image --at 8 --duration 2 --rect 0.7,0.05,0.25,0.2
 devcast image set a3 --file логотип.png               # PNG, JPEG, WebP, GIF; копия в assets/images/, --at — в ключе
+devcast font add шрифт.ttf                          # свой .ttf/.otf: копия в assets/fonts/, выводит семейство
+devcast font ls                                      # встроенные шрифты и шрифты проекта
 devcast annot add drawing --at 9 --duration 2 --rect 0.1,0.5,0.4,0.4
 devcast drawing add a4 --points 0.1,0.8,0.5,0.2,0.9,0.8 --color "#ef4444ff" --width 6   # пары x,y — доли бокса
 devcast drawing add a4 --points 0,1,1,0    # две точки — прямая, одна — точка
@@ -127,7 +129,7 @@ devcast annot rm a2
 ```
 Ключи: время ключа — момент внутри аннотации на готовом видео; между ключами положение, размер, поворот, размер шрифта, цвета и радиус меняются плавно (smoothstep), текст, шрифт и начертание — скачком на ключе; до первого ключа держится первый, после последнего — последний. Первая правка с `--at` позже начала сама ставит ключ в начало: получается движение от исходного вида. Ключи привязаны к кадрам записи: едут с `annot move`, не сдвигаются от вырезов, на ускоренном участке движение ускоряется вместе с видео. Без последнего ключа аннотация остаётся такой, как в нём.
 
-Текст: `--text` (перевод строки — новая строка), `--font` Inter (по умолчанию), Montserrat, Roboto, PT Serif, JetBrains Mono; `--size` 12–128 (px при 1080p); `--bold`, `--italic`, `--underline`; `--align` left, center, right; `--color "#fde047ff"` — цвет букв, `--background "#000000b0"` — плашка (альфа 00 — без плашки), `--radius` 0–64 — её углы. Текст с пробелами — в кавычках: `--text "Нажми сюда"`.
+Текст: `--text` (перевод строки — новая строка), `--font` Inter (по умолчанию), Montserrat, Roboto, PT Serif, JetBrains Mono или семейство шрифта проекта (`font add` печатает его, `font ls` — все; с пробелами — в кавычках: `--font "Press Start 2P"`; шрифт, которого нет, — ошибка `frame`/`export` с подсказкой); `--size` 12–128 (px при 1080p); `--bold`, `--italic`, `--underline`; `--align` left, center, right; `--color "#fde047ff"` — цвет букв, `--background "#000000b0"` — плашка (альфа 00 — без плашки), `--radius` 0–64 — её углы. Текст с пробелами — в кавычках: `--text "Нажми сюда"`.
 
 Картинки: `annot add image` создаёт пустую аннотацию, `image set a3 --file логотип.png` кладёт в неё файл (PNG, JPEG, WebP, GIF; SVG не поддерживается — сохрани в PNG). Картинка вписывается в бокс с сохранением пропорций по центру; анимированный GIF и WebP проигрываются по кругу от появления аннотации по готовому видео. `--at 5` меняет картинку в ключе (скачком на ключе).
 
@@ -172,7 +174,7 @@ devcast clip rm c1
 - `devcast ls captions` — реплики с временем и текстом.
 - `devcast captions set s3 --text "Новый текст"` — неизменённые слова сохраняют время; `--from 12.5 --to 15` — границы.
 - `devcast captions split s3 --at 14.2` (в паузе между словами у этого момента), `devcast captions merge s3` (со следующей), `devcast captions rm s3`, `devcast captions clear`.
-- Вид: `devcast captions style --size 36 --rows 2 --animation pop` — шрифт (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono), размер в px при 1080p, `--color` сказанных слов, `--highlight` текущего, `--inactive` несказанных (#rrggbbaa), `--shadow`, `--bottom` и `--width` в % кадра, `--radius`, `--background` (прозрачность плашки 0–1), `--show false` — скрыть.
+- Вид: `devcast captions style --size 36 --rows 2 --animation pop` — шрифт (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono или шрифт проекта из `font ls`), размер в px при 1080p, `--color` сказанных слов, `--highlight` текущего, `--inactive` несказанных (#rrggbbaa), `--shadow`, `--bottom` и `--width` в % кадра, `--radius`, `--background` (прозрачность плашки 0–1), `--show false` — скрыть.
 - Перевод: `devcast captions export -o субтитры.txt` → в файле строка `s3 текст` на реплику; переведи текст, id не трогай → `devcast captions import субтитры.txt`. Время реплик не меняется, реплики не из файла остаются как были.
 
 ## План: много правок одним шагом отмены

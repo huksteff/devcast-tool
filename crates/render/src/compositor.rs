@@ -71,9 +71,9 @@ impl Compositor {
         }
     }
 
-    /// Loads the `.ttf` and `.otf` files of `dir`: the built-in fonts (`assets/fonts` of the
-    /// program) and those of a project's `assets/`. No other fonts are used, the system's
-    /// included (decision 005).
+    /// Loads the `.ttf` and `.otf` files of `dir` not loaded yet: the built-in fonts (`fonts`
+    /// next to the program) and those of a project (`dc_ops::fonts`). No other fonts are used,
+    /// the system's included (decision 005).
     pub fn load_fonts(&mut self, dir: &Path) -> Result<(), RenderError> {
         self.text.load_fonts(dir)
     }

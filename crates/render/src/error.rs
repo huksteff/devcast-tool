@@ -48,9 +48,11 @@ pub enum RenderError {
     )]
     NoBuiltinFonts(std::io::Error),
     #[error(
-        "шрифт «{family}» не загружен. Выбери встроенный шрифт (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono) или положи файл шрифта в assets/ проекта"
+        "шрифт «{family}» не загружен. Выбери встроенный шрифт (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono) или добавь файл шрифта в проект: devcast font add <файл.ttf>"
     )]
     NoFont { family: String },
+    #[error("в файле «{}» нет шрифта, который можно нарисовать: возьми другой файл .ttf или .otf", path.display())]
+    NotAFont { path: PathBuf },
     #[error("текст не подготовился к рисованию: {0}. Уменьши размер или количество текста в кадре")]
     Text(glyphon::PrepareError),
     #[error("текст не нарисовался: {0}. Это ошибка программы: сообщи разработчику")]

@@ -90,15 +90,11 @@ fn serve(gpu: &Gpu, dir: &ProjectDir, inbox: &Receiver<Request>, reply: &dyn Fn(
     loop {
         let project = Arc::clone(&request.project);
         let revision = request.want.revision;
-        let evaluator = match &mut painter {
-            Ok(painter) => painter.evaluator(&project),
-            Err(error) => Err(error.clone()),
-        };
+        let evaluator = painter.evaluator(&project);
         loop {
-            let answer = match (&mut painter, &evaluator) {
-                (Ok(painter), Ok(evaluator)) => painter.draw(gpu, evaluator, &request.want),
-                (Err(error), _) => Err(error.clone()),
-                (_, Err(error)) => Err(error.clone()),
+            let answer = match &evaluator {
+                Ok(evaluator) => painter.draw(gpu, evaluator, &request.want),
+                Err(error) => Err(error.clone()),
             };
             if !reply((request.generation, answer)) {
                 return;
@@ -142,24 +138,27 @@ struct Painter<'d> {
 }
 
 impl<'d> Painter<'d> {
-    /// The fonts of `devcast frame`: built-in ones, loaded once.
-    fn new(gpu: &Gpu, dir: &'d ProjectDir) -> Result<Self, String> {
-        let mut measure = TextMeasure::new();
-        measure.load_builtin_fonts().map_err(|e| e.to_string())?;
-        let mut compositor = Compositor::new(gpu);
-        compositor.load_builtin_fonts().map_err(|e| e.to_string())?;
-        Ok(Self {
+    /// Without fonts: each revision loads those of `devcast frame` (`dc_ops::fonts`).
+    fn new(gpu: &Gpu, dir: &'d ProjectDir) -> Self {
+        Self {
             root: dir.root().to_path_buf(),
-            measure,
-            compositor,
+            measure: TextMeasure::new(),
+            compositor: Compositor::new(gpu),
             sources: Sources::new(dir),
             telemetry: None,
             target: None,
             serial: 0,
-        })
+        }
     }
 
+    /// The evaluator of a revision; the fonts added to the project since the last one are
+    /// loaded first.
     fn evaluator<'p>(&mut self, project: &'p Project) -> Result<Evaluator<'p>, String> {
+        let (measure, compositor) = (&mut self.measure, &mut self.compositor);
+        dc_ops::fonts::load(&self.root, |dir| measure.load_fonts(dir))
+            .map_err(|e| e.to_string())?;
+        dc_ops::fonts::load(&self.root, |dir| compositor.load_fonts(dir))
+            .map_err(|e| e.to_string())?;
         let paths = recordings(project);
         let telemetry = match self.telemetry.take() {
             Some(known) if known.paths == paths => known,

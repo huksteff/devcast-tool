@@ -12,7 +12,7 @@ use super::playback::seek;
 use super::selection::{Item, Selected};
 use super::timeline::Least;
 use super::{EditorWindow, Way};
-use super::{adding, crop, generation};
+use super::{adding, crop, fonts, generation};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
@@ -28,6 +28,8 @@ pub enum Action {
     Sound(adding::SoundFile),
     /// A picture file shown by an image annotation, as one undo step (`devcast image set`).
     Picture(adding::PictureFile),
+    /// A font file added to the project and chosen by a panel's command, as one undo step.
+    Font(fonts::FontFile),
     /// The zooms the clicks of the recordings suggest (`devcast zoom add --at clicks`), as one
     /// undo step; they get picked.
     SuggestZooms,
@@ -104,6 +106,10 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
             }
             Action::Picture(file) => match adding::picture(editor, &file, now) {
                 Ok(()) => changed = true,
+                Err(error) => errors.push(error),
+            },
+            Action::Font(file) => match fonts::add(editor, file, now) {
+                Ok(applied) => changed |= applied,
                 Err(error) => errors.push(error),
             },
             Action::SuggestZooms => {

@@ -5,9 +5,8 @@
 
 use dc_fx_text::{RADIUS_MAX, SIZE_MAX, SIZE_MIN, TextAlign, TextBody};
 use dc_ops::Step;
-use dc_render::FAMILIES;
 use dc_ui_kit::strings::annotations as text;
-use dc_ui_kit::widgets::{IconButton, dropdown};
+use dc_ui_kit::widgets::IconButton;
 use eframe::egui::Ui;
 use serde_json::{Value, json};
 
@@ -30,15 +29,7 @@ impl Section for TextBody {
         if let Some(step) = rows::text_area(ui, text::TEXT_HINT, edit.id, &self.text, apply) {
             cx.actions.push(crate::editor::Action::Apply(vec![step]));
         }
-        let families: Vec<(String, &str)> =
-            FAMILIES.iter().map(|f| ((*f).to_owned(), *f)).collect();
-        let font = rows::row(ui, text::FONT, |ui| {
-            let mut chosen = self.font.clone();
-            let width = ui.available_width();
-            dropdown(ui, text::FONT, &mut chosen, &families, width)
-                .changed()
-                .then_some(chosen)
-        });
+        let font = super::font::font(ui, cx, text::FONT, &self.font, edit.step(SET, []));
         if let Some(font) = font {
             cx.actions.push(edit.apply(SET, [("font", json!(font))]));
         }

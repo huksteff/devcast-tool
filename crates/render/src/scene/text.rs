@@ -62,7 +62,7 @@ pub struct TextRun {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Font {
     /// Family name of a loaded font: `Inter`, `Montserrat`, `Roboto`, `PT Serif`,
-    /// `JetBrains Mono` or one from the project's `assets/`.
+    /// `JetBrains Mono` or one from the project's `assets/fonts/`.
     pub family: String,
     /// Px of the frame.
     pub size: f32,

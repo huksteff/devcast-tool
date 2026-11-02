@@ -16,8 +16,8 @@ pub struct TextSet {
     pub id: AnnotId,
     /// The words; a line break starts a new line.
     pub text: Option<String>,
-    /// Font family: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono or a font from the
-    /// project's assets/.
+    /// Font family: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono or one added to the
+    /// project (`devcast font add`).
     pub font: Option<String>,
     /// Font size, px when the short side of the frame is 1080 px, 12..128.
     pub size: Option<f64>,
@@ -107,7 +107,7 @@ fn check_font(font: &str) -> Result<String, CommandError> {
     let font = font.trim();
     if font.is_empty() {
         return Err(CommandError::new(
-            "шрифт не указан: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono или шрифт из assets/ проекта",
+            "шрифт не указан: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono или шрифт проекта (devcast font ls)",
         ));
     }
     Ok(font.to_owned())

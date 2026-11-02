@@ -2,7 +2,7 @@
 //! command `captions style`.
 
 use dc_core::{Command, CommandError, Diff, Op, Project, within};
-use dc_render::{DEFAULT_FAMILY, FAMILIES, Rgba};
+use dc_render::{DEFAULT_FAMILY, Rgba};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -48,7 +48,8 @@ impl Animation {
 pub struct CaptionsSettings {
     /// Show the captions; on by default, since there are none until `captions gen`.
     pub show: bool,
-    /// A built-in family: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono.
+    /// Font family: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono or one added to the
+    /// project (`devcast font add`); a family not loaded fails the frame with a hint.
     pub font: String,
     /// Font size in px when the short side of the output is 1080 px, `SIZE_MIN..=SIZE_MAX`; it
     /// scales with the output only (decision 000).
@@ -100,7 +101,8 @@ impl Default for CaptionsSettings {
 pub struct CaptionsStyle {
     /// Show (true) or hide (false) the captions.
     pub show: Option<bool>,
-    /// Inter, Montserrat, Roboto, PT Serif or JetBrains Mono.
+    /// Inter, Montserrat, Roboto, PT Serif, JetBrains Mono or a family added to the project
+    /// (`devcast font add`).
     pub font: Option<String>,
     /// Font size, px at 1080p, 16..72.
     pub size: Option<f64>,
@@ -216,14 +218,11 @@ impl Op for CaptionsStyle {
 }
 
 fn family(font: &str) -> Result<String, CommandError> {
-    FAMILIES
-        .iter()
-        .find(|f| f.eq_ignore_ascii_case(font))
-        .map(|f| (*f).to_owned())
-        .ok_or_else(|| {
-            CommandError::new(format!(
-                "шрифта «{font}» нет: выбери из {}",
-                FAMILIES.join(", ")
-            ))
-        })
+    let font = font.trim();
+    if font.is_empty() {
+        return Err(CommandError::new(
+            "шрифт не указан: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono или шрифт проекта (devcast font ls)",
+        ));
+    }
+    Ok(font.to_owned())
 }

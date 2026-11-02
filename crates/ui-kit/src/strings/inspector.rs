@@ -6,6 +6,11 @@ pub const DELETE: &str = "Удалить";
 pub const CUE: &str = "Реплика";
 pub const CALLOUT: &str = "Облачко";
 pub const SOUND: &str = "Звук";
+/// Under the font picker of a text annotation and of the captions: a font file is copied into
+/// the project (`devcast font add`) and chosen.
+pub const ADD_FONT: &str = "Добавить шрифт…";
+pub const PICK_FONT: &str = "Шрифт для проекта";
+pub const FONT_FILES: &str = "Шрифты";
 
 pub const KEYS_SHOW: &str = "Показывать";
 pub const KEYS_WHERE: &str = "Где";

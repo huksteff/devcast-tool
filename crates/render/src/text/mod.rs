@@ -9,7 +9,7 @@ mod shadow;
 
 pub(crate) use shadow::ShadowArea;
 
-pub use fonts::{BUILTIN_FONTS, builtin_dir};
+pub use fonts::{BUILTIN_FONTS, FONT_EXTENSIONS, builtin_dir, families_in, file_families, is_font};
 pub use measure::TextMeasure;
 
 use std::path::Path;
@@ -74,7 +74,7 @@ impl TextPass {
         }
     }
 
-    /// Loads every `.ttf` and `.otf` file of `dir` (not its subfolders).
+    /// Loads the `.ttf` and `.otf` files of `dir` not loaded yet (not its subfolders).
     pub(crate) fn load_fonts(&mut self, dir: &Path) -> Result<(), RenderError> {
         fonts::load(&mut self.fonts, dir)
     }

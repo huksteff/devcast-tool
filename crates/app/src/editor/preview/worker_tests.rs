@@ -80,11 +80,11 @@ fn ask_for(
 fn devcast_frame(gpu: &Gpu, dir: &ProjectDir, project: &Project, secs: f64) -> Image {
     let (cursors, keys) = dc_capture::project::telemetry_tracks(dir.root(), project).unwrap();
     let mut measure = TextMeasure::new();
-    measure.load_builtin_fonts().unwrap();
+    dc_ops::fonts::load(dir.root(), |d| measure.load_fonts(d)).unwrap();
     let evaluator = Evaluator::new(project, cursors, keys, &mut measure).unwrap();
     let scene = evaluator.evaluate(OutputTime::from_secs_f64(secs));
     let mut compositor = Compositor::new(gpu);
-    compositor.load_builtin_fonts().unwrap();
+    dc_ops::fonts::load(dir.root(), |d| compositor.load_fonts(d)).unwrap();
     Sources::new(dir)
         .feed(gpu, &mut compositor, &scene)
         .unwrap();
@@ -241,4 +241,65 @@ fn without_the_camera_the_frame_is_the_whole_picture() {
     let (still, whole) = frame(2, false);
     assert_eq!(still, dc_render::Camera::IDENTITY);
     assert!(zoomed_in != whole, "the camera is left out");
+}
+
+/// `project` with black words in family `font` over 1–4 s of the output (the fixture's screen is
+/// white).
+fn with_text(mut project: Project, font: &str) -> Project {
+    let registry = dc_ops::Registry::devcast().unwrap();
+    let lines: [&[&str]; 2] = [
+        &["annot", "add", "text", "--at", "1", "--duration", "3"],
+        &[
+            "text",
+            "set",
+            "a1",
+            "--text",
+            "DEVCAST",
+            "--size",
+            "96",
+            "--font",
+            font,
+            "--color",
+            "#000000ff",
+        ],
+    ];
+    let steps: Vec<_> = lines
+        .iter()
+        .map(|words| {
+            let words: Vec<String> = words.iter().map(|w| (*w).to_owned()).collect();
+            let (info, taken) = registry.resolve(&words).unwrap();
+            let args = dc_ops::parse_args(info, &words[taken..]).unwrap();
+            dc_ops::Step::new(info.name, args)
+        })
+        .collect();
+    let mut history = dc_core::History::default();
+    dc_ops::apply(&registry, &mut project, &mut history, &steps, false).unwrap();
+    project
+}
+
+/// A font added to the project after the thread started is drawn by the next revision, as
+/// `devcast frame` draws it.
+#[test]
+fn a_font_added_later_is_loaded_with_the_next_revision() {
+    let gpu = Arc::new(Gpu::new(AdapterChoice::Software).unwrap());
+    let (_temp, dir, project) = fixture();
+    let canvas = PixelSize {
+        width: 1280,
+        height: 720,
+    };
+    let (worker, wakes) = start(&gpu, &dir);
+    ask(&worker, 1, &Arc::new(project.clone()), 2.0, canvas);
+    let plain = gpu.read(&next(&worker, &wakes).1.unwrap().texture).unwrap();
+    let font =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/fonts/PressStart2P-Regular.ttf");
+    dc_ops::import_font(&dir, &font, false).unwrap();
+    let project = with_text(project, "Press Start 2P");
+    ask(&worker, 2, &Arc::new(project.clone()), 2.0, canvas);
+    let preview = gpu.read(&next(&worker, &wakes).1.unwrap().texture).unwrap();
+    let expected = devcast_frame(&gpu, &dir, &project, 2.0);
+    assert!(
+        preview.rgba == expected.rgba,
+        "the preview differs from devcast frame"
+    );
+    assert!(preview.rgba != plain.rgba, "the words are drawn");
 }

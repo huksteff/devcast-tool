@@ -58,7 +58,7 @@
 | [002](decisions/002-multi-window.md) Окна | Deferred viewports eframe, перерисовка только по запросу (в простое CPU 0%). Баг egui #8466 проверяется в 7.26. |
 | [003](decisions/003-video-decode.md) Видео | FFmpeg 9 shared (проба на BtbN; `xtask deps` качает GyanD 9.0.2) + ffmpeg-next 9. Декодирование программное. **Наши записи пишутся с GOP 1 с.** Пока тянут указатель — ближайший ключевой кадр, на отпускании — точный кадр. |
 | [004](decisions/004-overlays-wgsl.md) Эффекты | Свои WGSL-шейдеры: SDF-фигуры, двухпроходное размытие с уменьшением разрешения, свечение. 4K-кадр — 0,5 мс на RTX 3060 Ti. |
-| [005](decisions/005-text.md) Текст | glyphon + cosmic-text. В `FontSystem` загружаются **только наши шрифты** (`assets/fonts`: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono, Noto Color Emoji), чтобы кадры совпадали на всех ПК. |
+| [005](decisions/005-text.md) Текст | glyphon + cosmic-text. В `FontSystem` загружаются **только наши шрифты** (`assets/fonts`: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono, Noto Color Emoji) и шрифты проекта (`assets/fonts/` проекта, `devcast font add`), чтобы кадры совпадали на всех ПК. |
 | [006](decisions/006-export.md) Экспорт | RGB→NV12 на GPU, кольцо буферов. Кодек по производителю GPU → MF → x264, только после самопроверки. **Цветовые метки BT.709 в файле обязательны.** |
 | [007](decisions/007-capture.md) Захват | windows-capture (WGC), без курсора; рамка выключается только на Windows 11 (в кадр не попадает). Кадр — в момент прихода по QPC. Захват окна и монитора проверены (60 fps при владельце). |
 | [008](decisions/008-audio.md) Звук | cpal, шкала QPC. Тишина до первого и после последнего пакета дописывается. **Дрейф часов устройства (~41 ppm) компенсируется ресэмплингом.** |

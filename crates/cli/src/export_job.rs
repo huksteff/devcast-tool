@@ -69,7 +69,7 @@ pub(crate) fn run(
         },
         sound: &mut sound,
     };
-    let mut compositor = crate::scene::compositor(gpu).map_err(scene_error)?;
+    let mut compositor = crate::scene::compositor(gpu, &spec.root).map_err(scene_error)?;
     let mut sources = Sources::new(&dir);
     let settings = &spec.settings;
     match settings.format {

@@ -11,6 +11,7 @@ mod clipboard;
 mod closing;
 mod crop;
 mod document;
+mod fonts;
 mod generation;
 mod header;
 mod help;
@@ -117,6 +118,8 @@ pub struct EditorWindow {
     pub groups: InspectorGroups,
     /// «Создать субтитры»: the model, the worker process and the choices of the panel (7.17).
     pub captions: generation::Generation,
+    /// Families of the font pickers: built-in and the project's own.
+    pub fonts: Vec<String>,
     /// Actions the controls asked for in this frame.
     actions: Vec<Action>,
 }
@@ -146,6 +149,10 @@ impl EditorWindow {
                 || doc.dir().name().to_owned(),
                 |s| s.to_string_lossy().into_owned(),
             );
+        let fonts = fonts::families(doc.dir()).unwrap_or_else(|e| {
+            problems.push(e);
+            Vec::new()
+        });
         let preview = preview::Preview::new(doc.project());
         let (project, revision) = preview.project();
         let mut editor = Self {
@@ -163,6 +170,7 @@ impl EditorWindow {
             presses: presses::Presses::default(),
             streams: streams::Streams::default(),
             captions: generation::Generation::default(),
+            fonts,
             keys: EditorKeys::default(),
             help: None,
             crop: None,

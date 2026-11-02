@@ -2,8 +2,8 @@ use crate::skill::{SKILL, install};
 use crate::test_util::Recordings;
 
 /// Every `devcast …` line of SKILL.md's code blocks runs, in order, on a 30 s project of two
-/// recordings with telemetry, a picture `логотип.png` and a sound `музыка.mp3`; the JSON block is
-/// the plan.
+/// recordings with telemetry, a picture `логотип.png`, a sound `музыка.mp3` and a font
+/// `шрифт.ttf`; the JSON block is the plan.
 #[test]
 fn skill_examples_run() {
     let f = Recordings::with_telemetry(&[20.0, 10.0]);
@@ -15,6 +15,9 @@ fn skill_examples_run() {
     std::fs::write(f.dir.root().join("логотип.png"), logo).unwrap();
     let music = f.dir.root().join("музыка.mp3");
     crate::test_util::ffmpeg(&["-f", "lavfi", "-i", "sine=d=6", music.to_str().unwrap()]);
+    let font = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/fonts/PressStart2P-Regular.ttf");
+    std::fs::copy(font, f.dir.root().join("шрифт.ttf")).unwrap();
     let mut transcript = String::new();
     for block in SKILL.split("```").skip(1).step_by(2) {
         if let Some(plan) = block.strip_prefix("json") {
