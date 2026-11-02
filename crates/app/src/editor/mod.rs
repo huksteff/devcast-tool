@@ -8,6 +8,7 @@
 mod actions;
 mod adding;
 mod clipboard;
+mod closing;
 mod crop;
 mod document;
 mod generation;
@@ -105,6 +106,8 @@ pub struct EditorWindow {
     pub help: Option<help::Help>,
     /// The crop and format dialog while it is open.
     pub crop: Option<crop::CropDialog>,
+    /// Closing the window after a write that failed.
+    pub closing: closing::Closing,
     /// The settings new projects start with: «Сбросить» of the inspector brings them back.
     pub defaults: dc_project::Defaults,
     /// Open and closed groups of the inspector, taken from the settings each frame.
@@ -159,6 +162,7 @@ impl EditorWindow {
             keys: EditorKeys::default(),
             help: None,
             crop: None,
+            closing: closing::Closing::default(),
             defaults: dc_project::Defaults::factory(),
             groups: InspectorGroups::default(),
             actions: Vec::new(),

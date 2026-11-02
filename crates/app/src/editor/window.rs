@@ -88,7 +88,8 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
 }
 
 /// One frame of the editor window; closing it writes what is unsaved to the session and shows
-/// the HUD again. If that fails, the window stays open with the error.
+/// the HUD again. If that fails, the window stays open with the error; closing again asks
+/// whether to close without the edits (`closing.rs`).
 fn frame(ui: &mut Ui, shared: &mut Shared) {
     crate::borderless::opaque(ui);
     let layout = shared.store.get().editor;
@@ -107,6 +108,7 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
     }
     let close = ui.input(|i| i.viewport().close_requested());
     let flushed = close.then(|| editor.doc.flush());
+    let discard = editor.closing.ask(ui);
     for error in outcome.errors {
         shared.report(Err(error));
     }
@@ -120,17 +122,23 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
         shared.report(saved);
     }
     match flushed {
-        None => {}
-        Some(Ok(())) => {
-            shared.editor = None;
-            shared.show_hud();
-        }
+        Some(Ok(())) => close_editor(shared),
         Some(Err(error)) => {
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            shared.report(Err(error));
+            let first = shared.editor.as_mut().is_some_and(|e| e.closing.failed());
+            if first {
+                shared.report(Err(error));
+            }
         }
+        None if discard => close_editor(shared),
+        None => {}
     }
+}
+
+fn close_editor(shared: &mut Shared) {
+    shared.editor = None;
+    shared.show_hud();
 }
 
 /// Keeps a dragged timeline height (once the pointer is let go) and a new row factor.

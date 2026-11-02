@@ -174,6 +174,12 @@ pub mod editor {
     pub const BASIC: &str = "Основное";
     pub const FINE: &str = "Тонкая настройка";
     pub const RESET: &str = "Сбросить";
+    /// Asked by a close after the edits could not be written on the previous one.
+    pub const CLOSE_UNSAVED_TITLE: &str = "Закрыть без сохранения последних правок?";
+    pub const CLOSE_UNSAVED_TEXT: &str =
+        "Правки после последней записи на диск не сохранились и пропадут.";
+    pub const CLOSE_UNSAVED_CONFIRM: &str = "Закрыть";
+    pub const CLOSE_UNSAVED_CANCEL: &str = "Остаться";
 
     /// Undo with its step: «Отменить: зум 1,50×»; `step` — summary of the step.
     pub fn undo_step(step: &str) -> String {
