@@ -127,7 +127,7 @@ impl Tracks {
         );
         tracks.clips(project, &map);
         tracks.add(Row::Zooms, zooms_of(&map, &zooms), false);
-        let cursor = callouts_of(&map, &callout, &mut tracks.problems);
+        let cursor = callouts_of(&map, &callout);
         tracks.add(Row::Cursor, cursor, false);
         tracks.add(Row::Keys, Vec::new(), !keys.settings.show);
         tracks.annotations(project, &map, least.annotations);
@@ -305,22 +305,15 @@ fn zooms_of(map: &TimeMap, state: &ZoomState) -> Vec<Region> {
         .collect()
 }
 
-fn callouts_of(map: &TimeMap, state: &CalloutState, problems: &mut Vec<String>) -> Vec<Region> {
+fn callouts_of(map: &TimeMap, state: &CalloutState) -> Vec<Region> {
     let mut regions = Vec::new();
     for event in &state.events {
-        let span = match event.span() {
-            Ok(span) => span,
-            Err(e) => {
-                problems.push(format!("{}: {e}", event.id));
-                continue;
-            }
-        };
         let label = match &event.action {
             Action::On => text::CALLOUT_ON.to_owned(),
             Action::Off => text::CALLOUT_OFF.to_owned(),
             Action::Text { text } => text.clone(),
         };
-        regions.extend(map.output_span(&event.media, span).map(|r| Region {
+        regions.extend(event.output(map).map(|r| Region {
             item: Some(Item::Callout(event.id)),
             ..region(r, label)
         }));

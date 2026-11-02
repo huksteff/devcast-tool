@@ -1,10 +1,11 @@
 //! Callout events and style as stored in `project.effects["callout"]`.
 
-use dc_core::time::{InvertedRange, Source};
-use dc_core::{Effect, Id, IdCounter, IdKind, Item, Range, SettingsArgs, SourceTime, TimeDelta};
+use dc_core::time::Output;
+use dc_core::{
+    Effect, Id, IdCounter, IdKind, Item, Range, SettingsArgs, SourceTime, TimeDelta, TimeMap,
+};
 use dc_render::{GradientColors, Rgba};
 use schemars::JsonSchema;
-use serde::ser::Error as _;
 use serde::{Deserialize, Serialize};
 
 pub const SIZE_MIN: f64 = 0.5;
@@ -25,10 +26,7 @@ impl Effect for Callout {
         state
             .events
             .iter()
-            .map(|e| {
-                let span = e.span().map_err(serde_json::Error::custom)?;
-                Item::of(e.id, &e.media, span, e)
-            })
+            .map(|e| Item::lasting(e.id, &e.media, e.at, e.duration, e))
             .collect()
     }
 
@@ -97,10 +95,10 @@ pub struct CalloutEvent {
 }
 
 impl CalloutEvent {
-    /// The event on the recording's timeline: from `at`, `duration` long. Fails on a negative
-    /// duration of a hand-edited project.
-    pub fn span(&self) -> Result<Range<Source>, InvertedRange> {
-        Range::new(self.at, self.at + self.duration)
+    /// Where the event plays: from the first shown moment at or after `at`, `duration` of output
+    /// time long; `None` if it is cut out or its duration is negative (hand-edited project).
+    pub fn output(&self, map: &TimeMap) -> Option<Range<Output>> {
+        map.lasting(&self.media, self.at, self.duration)
     }
 }
 

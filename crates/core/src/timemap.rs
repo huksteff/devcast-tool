@@ -89,6 +89,24 @@ impl TimeMap {
         Range::new(start, end).ok()
     }
 
+    /// From where source moment `at` of `media` plays (the first shown moment after it if it is
+    /// cut), `duration` of output time long; `None` if nothing of the recording from `at` on is
+    /// shown or `duration` is negative.
+    pub fn lasting(
+        &self,
+        media: &str,
+        at: SourceTime,
+        duration: TimeDelta,
+    ) -> Option<Range<Output>> {
+        let start = self
+            .segments
+            .iter()
+            .filter(|s| s.media == media && s.source.end() > at)
+            .map(|s| s.output_at(at.max(s.source.start())))
+            .min()?;
+        Range::new(start, start + duration).ok()
+    }
+
     pub fn duration(&self) -> TimeDelta {
         self.duration
     }

@@ -115,6 +115,39 @@ fn add_maps_output_time_through_cuts_speed_and_clips() {
 }
 
 #[test]
+fn region_lasts_output_time_over_speed_and_starts_after_a_cut() {
+    let mut p = project(&[10.0]);
+    let c = &mut p.clips[0];
+    c.cuts.push(Range::new(secs(1.0), secs(3.0)).unwrap());
+    c.speeds.push(SpeedRange {
+        range: Range::new(secs(4.0), secs(8.0)).unwrap(),
+        factor: 2.0,
+    });
+    let mut s = CalloutState::default();
+    for at in [5.0, 2.0] {
+        let id = s.ids.allocate();
+        s.events.push(crate::CalloutEvent {
+            id,
+            media: p.clips[0].media.path.clone(),
+            at: secs(at),
+            duration: TimeDelta::from_secs_f64(1.0),
+            action: Action::Text { text: "x".into() },
+        });
+    }
+    p.set_state::<Callout>(&s).unwrap();
+    let map = dc_core::TimeMap::build(&p);
+    let spans: Vec<(f64, f64)> = (crate::effect().items)(&p)
+        .unwrap()
+        .iter()
+        .map(|i| i.place.output(&map).unwrap())
+        .map(|r| (r.start().as_secs_f64(), r.end().as_secs_f64()))
+        .collect();
+    assert_eq!(spans, [(2.5, 3.5), (1.0, 2.0)]);
+    let shown = s.events[0].output(&map).unwrap();
+    assert_eq!(shown.start().as_secs_f64(), 2.5);
+}
+
+#[test]
 fn add_rejects_bad_arguments() {
     let mut p = project(&[10.0]);
     for (args, message) in [
@@ -283,10 +316,12 @@ fn state_round_trips_and_lists_events() {
     );
     let items = (crate::effect().items)(&p).unwrap();
     assert_eq!((items[0].id.as_str(), items[0].list), ("co1", "callouts"));
-    let dc_core::Place::Source { range, .. } = &items[0].place else {
-        panic!("{:?}", items[0].place)
-    };
-    assert_eq!(*range, Range::new(secs(1.0), secs(2.0)).unwrap());
+    let map = dc_core::TimeMap::build(&p);
+    let range = items[0].place.output(&map).unwrap();
+    assert_eq!(
+        (range.start().as_secs_f64(), range.end().as_secs_f64()),
+        (1.0, 2.0)
+    );
     assert_eq!(items[0].fields["text"], "Кириллица 🎬");
 }
 

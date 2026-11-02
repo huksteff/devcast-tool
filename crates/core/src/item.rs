@@ -6,15 +6,38 @@ use serde::ser::Error as _;
 use serde_json::{Map, Value};
 
 use crate::id::{Id, IdKind};
-use crate::time::{Output, Range, Source};
+use crate::time::{Output, Range, Source, SourceTime, TimeDelta};
+use crate::timemap::TimeMap;
 
 /// Where an object of a track is.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Place {
     /// On a recording (`Media.path`), in its source time: cutting moves it with the frames.
     Source { media: String, range: Range<Source> },
+    /// From a moment of a recording, lasting output time: cutting moves its start with the frames,
+    /// a sped-up part does not shorten it (callout events).
+    Lasting {
+        media: String,
+        at: SourceTime,
+        duration: TimeDelta,
+    },
     /// On the output timeline: cutting does not move it (extra sound tracks).
     Output(Range<Output>),
+}
+
+impl Place {
+    /// Where it plays on the output; `None` if it is cut out or its recording is not on the track.
+    pub fn output(&self, map: &TimeMap) -> Option<Range<Output>> {
+        match self {
+            Self::Source { media, range } => map.output_span(media, *range),
+            Self::Lasting {
+                media,
+                at,
+                duration,
+            } => map.lasting(media, *at, *duration),
+            Self::Output(range) => Some(*range),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -38,6 +61,23 @@ impl Item {
     ) -> Result<Self, serde_json::Error> {
         let media = media.to_owned();
         Self::placed(id, Place::Source { media, range }, object)
+    }
+
+    /// An object starting at `at` of recording `media` and lasting `duration` of output time.
+    pub fn lasting<K: IdKind>(
+        id: Id<K>,
+        media: &str,
+        at: SourceTime,
+        duration: TimeDelta,
+        object: &impl Serialize,
+    ) -> Result<Self, serde_json::Error> {
+        let media = media.to_owned();
+        let place = Place::Lasting {
+            media,
+            at,
+            duration,
+        };
+        Self::placed(id, place, object)
     }
 
     /// An object of the output timeline at `range`; its `id` and `range` fields are left out.
