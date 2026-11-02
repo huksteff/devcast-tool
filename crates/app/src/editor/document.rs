@@ -155,7 +155,7 @@ impl Document {
 
     /// Writes what is not on disk yet (closing the editor, leaving the app).
     pub fn flush(&mut self) -> Result<(), ProjectError> {
-        if self.pending.is_empty() {
+        if !self.autosave.has_unwritten() {
             return Ok(());
         }
         self.write()

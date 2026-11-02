@@ -88,7 +88,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
 }
 
 /// One frame of the editor window; closing it writes what is unsaved to the session and shows
-/// the HUD again.
+/// the HUD again. If that fails, the window stays open with the error.
 fn frame(ui: &mut Ui, shared: &mut Shared) {
     crate::borderless::opaque(ui);
     let layout = shared.store.get().editor;
@@ -106,12 +106,11 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
         ui.ctx().request_repaint_after(wait);
     }
     let close = ui.input(|i| i.viewport().close_requested());
-    let flushed = if close { editor.doc.flush() } else { Ok(()) };
+    let flushed = close.then(|| editor.doc.flush());
     for error in outcome.errors {
         shared.report(Err(error));
     }
     shared.report(saved.map(drop));
-    shared.report(flushed);
     if let Some(page) = outcome.open_settings {
         shared.open_settings_at(page);
     }
@@ -120,9 +119,17 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
         let saved = shared.store.update(|s| s.inspector = groups);
         shared.report(saved);
     }
-    if close {
-        shared.editor = None;
-        shared.show_hud();
+    match flushed {
+        None => {}
+        Some(Ok(())) => {
+            shared.editor = None;
+            shared.show_hud();
+        }
+        Some(Err(error)) => {
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            shared.report(Err(error));
+        }
     }
 }
 
@@ -141,3 +148,7 @@ fn save_layout(shared: &mut Shared, ui: &Ui, was: EditorLayout, now: EditorLayou
         shared.report(saved);
     }
 }
+
+#[cfg(test)]
+#[path = "window_tests.rs"]
+mod tests;

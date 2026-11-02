@@ -89,6 +89,11 @@ impl Autosave {
     pub fn has_unsaved(&self) -> bool {
         self.unsaved
     }
+
+    /// A change is not in `session.json` yet.
+    pub fn has_unwritten(&self) -> bool {
+        self.pending.is_some()
+    }
 }
 
 impl Default for Autosave {
