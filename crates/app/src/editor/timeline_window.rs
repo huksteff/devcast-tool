@@ -96,10 +96,12 @@ impl EditorWindow {
         }
     }
 
-    /// Takes what the threads sent: peaks, sound tracks, presses (which rebuild the rows).
-    /// Either window's frame takes it, whichever runs first.
+    /// Takes what the threads sent: peaks, sound tracks, presses (which rebuild the rows), the
+    /// pictures of the library and the projects menu. Either window's frame takes it, whichever
+    /// runs first.
     pub(super) fn receive(&mut self) {
         self.waves.receive();
+        self.library.thumbs.receive();
         self.streams.receive();
         if self.presses.receive() {
             self.retrack();

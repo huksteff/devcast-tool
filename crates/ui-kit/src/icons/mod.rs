@@ -77,10 +77,12 @@ pub enum Icon {
     Trash,
     /// Duplicate the object of a panel.
     Copy,
+    /// «Сохранить» of the projects menu.
+    Save,
 }
 
 impl Icon {
-    pub const ALL: [Self; 53] = [
+    pub const ALL: [Self; 54] = [
         Self::Monitor,
         Self::Window,
         Self::Area,
@@ -134,6 +136,7 @@ impl Icon {
         Self::Mute,
         Self::Trash,
         Self::Copy,
+        Self::Save,
     ];
 
     /// Draws the icon into `rect` (usually 16 × 16) in `color`.

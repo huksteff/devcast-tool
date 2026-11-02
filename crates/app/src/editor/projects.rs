@@ -105,14 +105,15 @@ fn list(ui: &mut Ui, editor: &mut EditorWindow) {
     let items = [
         (text::NEW, Some(Icon::Plus), EditorKey::NewProject),
         (text::OPEN, Some(Icon::Folder), EditorKey::OpenProject),
-        (text::SAVE, None, EditorKey::Save),
+        (text::SAVE, Some(Icon::Save), EditorKey::Save),
         (text::SAVE_AS, None, EditorKey::SaveAs),
     ];
     for (label, icon, key) in items {
-        let mut item = Button::new(label).kind(Kind::Ghost).small();
-        if let Some(icon) = icon {
-            item = item.icon(icon);
-        }
+        let item = Button::new(label).kind(Kind::Ghost).small();
+        let item = match icon {
+            Some(icon) => item.icon(icon),
+            None => item.icon_room(),
+        };
         let enabled = key != EditorKey::Save || editor.doc.unsaved();
         let hint = keys::hint(label, key, &editor.keys);
         if ui.add_enabled(enabled, item).on_hover_text(hint).clicked() {

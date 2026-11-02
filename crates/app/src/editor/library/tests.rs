@@ -281,3 +281,27 @@ fn import_makes_a_project_like_devcast_new() {
     assert_eq!(json(&made), json(&expected));
     assert!(harness.query_by_label("логотип").is_some());
 }
+
+#[test]
+fn pictures_of_the_thread_reach_the_tiles_and_the_projects_menu() {
+    let (_temp, mut editor) = crate::editor::tests::editor();
+    let (woke, wakes) = std::sync::mpsc::channel();
+    let picture = |_: &super::thumbs::Thumb| {
+        Ok(eframe::egui::ColorImage::filled(
+            [2, 2],
+            eframe::egui::Color32::WHITE,
+        ))
+    };
+    let wake = move || woke.send(()).unwrap_or_default();
+    editor.library.thumbs.start_with(picture, wake).unwrap();
+    let root = editor.doc.dir().root().to_path_buf();
+    editor.library.want_pictures(std::iter::once(&root));
+    wakes.recv_timeout(Duration::from_secs(10)).unwrap();
+    let ctx = eframe::egui::Context::default();
+    assert!(
+        editor.library.picture(&ctx, &root).is_none(),
+        "not taken yet"
+    );
+    editor.receive();
+    assert!(editor.library.picture(&ctx, &root).is_some());
+}

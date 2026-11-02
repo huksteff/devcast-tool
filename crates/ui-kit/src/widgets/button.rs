@@ -32,6 +32,8 @@ pub struct Button<'a> {
     kind: Kind,
     small: bool,
     icon: Option<Icon>,
+    /// Room for an icon without one: menu items line up with those that have an icon.
+    icon_room: bool,
     menu: bool,
 }
 
@@ -42,6 +44,7 @@ impl<'a> Button<'a> {
             kind: Kind::Secondary,
             small: false,
             icon: None,
+            icon_room: false,
             menu: false,
         }
     }
@@ -58,6 +61,12 @@ impl<'a> Button<'a> {
 
     pub fn icon(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
+        self
+    }
+
+    /// The room of an icon before the text, without an icon (a menu item among items with icons).
+    pub fn icon_room(mut self) -> Self {
+        self.icon_room = true;
         self
     }
 
@@ -84,7 +93,11 @@ impl<'a> Button<'a> {
             fonts::text(size, Weight::Medium),
             TEXT,
         );
-        let icon_width = self.icon.map_or(0.0, |_| ICON + 6.0);
+        let icon_width = if self.icon.is_some() || self.icon_room {
+            ICON + 6.0
+        } else {
+            0.0
+        };
         let chevron = if self.menu { CHEVRON + 4.0 } else { 0.0 };
         let width = galley.size().x + icon_width + chevron + 2.0 * padding;
         (vec2(width, height), padding, icon_width, galley)
@@ -122,8 +135,8 @@ impl Widget for Button<'_> {
                     vec2(ICON, ICON),
                 );
                 icon.paint(painter, icon_rect, text);
-                x += icon_width;
             }
+            x += icon_width;
             let top = rect.center().y - galley.size().y / 2.0;
             let text_right = x + galley.size().x;
             painter.galley(egui::pos2(x, top), galley, text);
