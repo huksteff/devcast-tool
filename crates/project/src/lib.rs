@@ -10,6 +10,7 @@ pub mod error;
 pub mod history_log;
 pub mod lock;
 pub mod migrate;
+mod rename;
 pub mod settings;
 pub mod working;
 
