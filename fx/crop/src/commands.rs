@@ -1,7 +1,7 @@
 use dc_core::project::crop_problem;
 use dc_core::{Command, CommandError, Diff, Op, Project, Rect};
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::Crop;
 use crate::state::Aspect;
@@ -47,7 +47,7 @@ impl Op for CropClip {
 }
 
 /// Sets the aspect of the output frame.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SetAspect {
     /// Aspect of the output frame.

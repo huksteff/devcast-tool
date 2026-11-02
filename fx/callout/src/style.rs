@@ -3,12 +3,12 @@
 use dc_core::{Changes, Command, CommandError, Diff, Op, Project, within};
 use dc_render::{GradientColors, Rgba};
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::model::{Callout, CalloutSettings, GLOW_MAX, SIZE_MAX, SIZE_MIN};
 use crate::text::check_text;
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CalloutStyle {
     /// Text an `on` event shows, one line up to 80 characters; "" — wait for a `text` event.
@@ -25,6 +25,21 @@ pub struct CalloutStyle {
     pub colors: Option<String>,
     /// Glow around the bubble, 0..40; 0 — none.
     pub glow: Option<f64>,
+}
+
+impl CalloutStyle {
+    /// Every argument as in `settings`, for `devcast defaults show`.
+    pub(crate) fn of(settings: &CalloutSettings) -> Self {
+        Self {
+            text: Some(settings.text.clone()),
+            background: Some(settings.background),
+            text_color: Some(settings.text_color),
+            size: Some(settings.size),
+            gradient: Some(settings.gradient),
+            colors: Some(colors(&settings.colors)),
+            glow: Some(settings.glow),
+        }
+    }
 }
 
 impl Command for CalloutStyle {
@@ -76,6 +91,12 @@ impl Op for CalloutStyle {
 }
 
 /// `облачко: размер 1.00→1.50, градиент вкл`.
+/// `#14b8c4ff,#a855f7ff`, as `--colors` takes it.
+fn colors(colors: &GradientColors) -> String {
+    let colors: Vec<String> = colors.colors().iter().map(Rgba::to_string).collect();
+    colors.join(",")
+}
+
 fn changes(old: &CalloutSettings, new: &CalloutSettings) -> String {
     let mut changes = Changes::default();
     changes

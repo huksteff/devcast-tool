@@ -95,7 +95,7 @@ impl Default for CaptionsSettings {
     }
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CaptionsStyle {
     /// Show (true) or hide (false) the captions.
@@ -124,6 +124,27 @@ pub struct CaptionsStyle {
     pub background: Option<f64>,
     /// none, fade, rise or pop.
     pub animation: Option<Animation>,
+}
+
+impl CaptionsStyle {
+    /// Every argument as in `settings`, for `devcast defaults show`.
+    pub(crate) fn of(settings: &CaptionsSettings) -> Self {
+        Self {
+            show: Some(settings.show),
+            font: Some(settings.font.clone()),
+            size: Some(settings.size),
+            color: Some(settings.color),
+            highlight: Some(settings.highlight),
+            inactive: Some(settings.inactive),
+            shadow: Some(settings.shadow),
+            rows: Some(settings.rows),
+            bottom: Some(settings.bottom),
+            width: Some(settings.width),
+            radius: Some(settings.radius),
+            background: Some(settings.background),
+            animation: Some(settings.animation),
+        }
+    }
 }
 
 impl Command for CaptionsStyle {

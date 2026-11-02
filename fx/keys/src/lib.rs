@@ -13,7 +13,7 @@ pub use state::{
     DURATION_MAX, DURATION_MIN, KeysSettings, KeysState, Position, SIZE_MAX, SIZE_MIN,
 };
 
-use dc_core::{Effect, EffectInfo, OpInfo};
+use dc_core::{Effect, EffectInfo, OpInfo, SettingsArgs};
 
 pub struct Keys;
 
@@ -21,6 +21,10 @@ impl Effect for Keys {
     const ID: &'static str = "keys";
     const TITLE: &'static str = "Клавиши";
     type State = KeysState;
+
+    fn settings_args(state: &KeysState) -> Result<Vec<SettingsArgs>, serde_json::Error> {
+        Ok(vec![SettingsArgs::of(&KeysSet::of(&state.settings))?])
+    }
 }
 
 pub fn ops() -> Vec<OpInfo> {

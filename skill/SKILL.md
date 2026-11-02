@@ -199,7 +199,7 @@ devcast apply plan.json
 ```
 devcast set zoom.preset=smooth captions.size=36 cursor.size=3
 devcast set captions.rows=2 clicks.style=ripple crop.aspect=16:9
-devcast defaults show                       # с чем начинаются новые проекты и записи: что не заводское
+devcast defaults show                       # что не заводское в новых проектах и записях, строками для set
 devcast defaults set captions.size=36       # как set, но для новых проектов
 devcast defaults from-project               # настройки этого проекта — по умолчанию
 devcast defaults reset                      # заводские

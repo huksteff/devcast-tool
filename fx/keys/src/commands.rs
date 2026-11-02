@@ -3,12 +3,12 @@
 use dc_core::{Changes, Command, CommandError, Diff, Op, Project, TimeDelta, within};
 use dc_render::Rgba;
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::Keys;
 use crate::state::{DURATION_MAX, DURATION_MIN, KeysSettings, Position, SIZE_MAX, SIZE_MIN};
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct KeysSet {
     /// Show the shortcuts pressed during the recordings (Ctrl+Shift+P, F5); off by default.
@@ -24,6 +24,20 @@ pub struct KeysSet {
     /// Seconds a shortcut stays after its last press (0.3..5); pressed again meanwhile, it is
     /// counted: Ctrl+Z ×3.
     pub duration: Option<f64>,
+}
+
+impl KeysSet {
+    /// Every argument as in `settings`, for `devcast defaults show`.
+    pub(crate) fn of(settings: &KeysSettings) -> Self {
+        Self {
+            show: Some(settings.show),
+            position: Some(settings.position),
+            size: Some(settings.size),
+            color: Some(settings.color),
+            background: Some(settings.background),
+            duration: Some(settings.duration.as_secs_f64()),
+        }
+    }
 }
 
 impl Command for KeysSet {

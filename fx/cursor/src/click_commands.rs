@@ -6,7 +6,7 @@ use dc_core::{
 };
 use dc_render::Rgba;
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::Cursor;
 use crate::click_state::{
@@ -60,7 +60,7 @@ fn describe(style: &ClickStyle) -> String {
     )
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ClicksSet {
     /// off, ripple, spotlight, echo or flash.
@@ -73,6 +73,19 @@ pub struct ClicksSet {
     pub opacity: Option<f64>,
     /// Seconds, 0.12..1.2.
     pub duration: Option<f64>,
+}
+
+impl ClicksSet {
+    /// Every argument as in `style`, for `devcast defaults show`.
+    pub(crate) fn of(style: &ClickStyle) -> Self {
+        Self {
+            style: Some(style.kind),
+            color: Some(style.color),
+            scale: Some(style.scale),
+            opacity: Some(style.opacity),
+            duration: Some(style.duration.as_secs_f64()),
+        }
+    }
 }
 
 impl Command for ClicksSet {

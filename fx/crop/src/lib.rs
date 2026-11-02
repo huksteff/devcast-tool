@@ -9,7 +9,7 @@ pub use canvas::canvas;
 pub use commands::{CropClip, SetAspect};
 pub use state::{Aspect, CropSettings, CropState};
 
-use dc_core::{Effect, EffectInfo, OpInfo};
+use dc_core::{Effect, EffectInfo, OpInfo, SettingsArgs};
 
 pub struct Crop;
 
@@ -17,6 +17,13 @@ impl Effect for Crop {
     const ID: &'static str = "crop";
     const TITLE: &'static str = "Кроп";
     type State = CropState;
+
+    fn settings_args(state: &CropState) -> Result<Vec<SettingsArgs>, serde_json::Error> {
+        let aspect = SetAspect {
+            aspect: state.settings.aspect,
+        };
+        Ok(vec![SettingsArgs::of(&aspect)?])
+    }
 }
 
 pub fn ops() -> Vec<OpInfo> {

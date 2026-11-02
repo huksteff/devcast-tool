@@ -1,7 +1,7 @@
 //! Caption cues as stored in `project.effects["captions"]`.
 
 use dc_core::time::Source;
-use dc_core::{CommandError, Effect, Id, IdCounter, IdKind, Item, Range, index_of};
+use dc_core::{CommandError, Effect, Id, IdCounter, IdKind, Item, Range, SettingsArgs, index_of};
 
 use crate::style::CaptionsSettings;
 use schemars::JsonSchema;
@@ -21,6 +21,11 @@ impl Effect for CaptionsEffect {
             .iter()
             .map(|c| Item::of(c.id, &c.media, c.range, &Shown { text: c.text() }))
             .collect()
+    }
+
+    fn settings_args(state: &CaptionsState) -> Result<Vec<SettingsArgs>, serde_json::Error> {
+        let style = crate::style::CaptionsStyle::of(&state.settings);
+        Ok(vec![SettingsArgs::of(&style)?])
     }
 }
 

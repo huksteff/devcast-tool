@@ -2,7 +2,7 @@
 
 use dc_core::{Changes, Command, CommandError, Diff, Op, Project, TimeDelta, within};
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::Cursor;
 use crate::state::{
@@ -10,7 +10,7 @@ use crate::state::{
     SWAY_MAX, Smoothing,
 };
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CursorSet {
     /// Draw the cursor; click effects stay either way.
@@ -30,6 +30,22 @@ pub struct CursorSet {
     /// The last 0.67 s bring the cursor back to where it starts.
     #[serde(rename = "loop")]
     pub looped: Option<bool>,
+}
+
+impl CursorSet {
+    /// Every argument as in `settings`, for `devcast defaults show`.
+    pub(crate) fn of(settings: &CursorSettings) -> Self {
+        Self {
+            show: Some(settings.show),
+            size: Some(settings.size),
+            smoothing: Some(settings.smoothing),
+            blur: Some(settings.blur),
+            bounce: Some(settings.bounce),
+            bounce_time: Some(settings.bounce_time.as_secs_f64()),
+            sway: Some(settings.sway),
+            looped: Some(settings.looped),
+        }
+    }
 }
 
 impl Command for CursorSet {

@@ -1,7 +1,7 @@
 //! Zoom regions and motion settings as stored in `project.effects["zoom"]`.
 
 use dc_core::time::Source;
-use dc_core::{Effect, Id, IdCounter, IdKind, Item, Point, Range, TimeDelta};
+use dc_core::{Effect, Id, IdCounter, IdKind, Item, Point, Range, SettingsArgs, TimeDelta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +27,11 @@ impl Effect for ZoomEffect {
             .iter()
             .map(|z| Item::of(z.id, &z.media, z.range, z))
             .collect()
+    }
+
+    fn settings_args(state: &ZoomState) -> Result<Vec<SettingsArgs>, serde_json::Error> {
+        let motion = crate::motion::ZoomMotion::of(&state.settings);
+        Ok(vec![SettingsArgs::of(&motion)?])
     }
 }
 

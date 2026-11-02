@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+use crate::command::Op;
 use crate::id::{IdKind, is_valid_prefix};
 use crate::item::Item;
 use crate::project::{ClipKind, Project};
@@ -40,6 +41,40 @@ pub trait Effect: 'static {
     /// Objects of the effect's track, for `devcast ls`.
     fn items(_state: &Self::State) -> Result<Vec<Item>, serde_json::Error> {
         Ok(Vec::new())
+    }
+
+    /// Settings of `state` as its settings ops filled with every argument (see [`SettingsArgs`]),
+    /// for `devcast defaults show`; empty when no op has [`crate::Op::SETTINGS`] for it.
+    fn settings_args(_state: &Self::State) -> Result<Vec<SettingsArgs>, serde_json::Error> {
+        Ok(Vec::new())
+    }
+}
+
+/// One settings op ([`crate::Op::SETTINGS`]) as `devcast set` takes it: the key and each argument
+/// with its value as on the command line (`--arg value`). A line `key.arg=value` goes into `set`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SettingsArgs {
+    pub key: &'static str,
+    pub args: serde_json::Map<String, serde_json::Value>,
+}
+
+impl SettingsArgs {
+    /// `op` with every argument filled in; arguments left `None` are skipped.
+    pub fn of<O: Op + Serialize>(op: &O) -> Result<Self, serde_json::Error> {
+        let Some(key) = O::SETTINGS else {
+            return Err(serde::ser::Error::custom(format!(
+                "команда «{}» не меняет настройки: у неё нет Op::SETTINGS",
+                O::NAME
+            )));
+        };
+        let serde_json::Value::Object(mut args) = serde_json::to_value(op)? else {
+            return Err(serde::ser::Error::custom(format!(
+                "аргументы команды «{}» — не объект",
+                O::NAME
+            )));
+        };
+        args.retain(|_, value| !value.is_null());
+        Ok(Self { key, args })
     }
 }
 
@@ -96,6 +131,8 @@ pub struct EffectInfo {
     /// The [`SETTINGS_FIELD`] of its state in `project` with every default filled in (a missing
     /// state is `Default`); `None` when the state has no settings.
     pub settings: fn(&Project) -> Result<Option<serde_json::Value>, StateError>,
+    /// See [`Effect::settings_args`].
+    pub settings_args: fn(&Project) -> Result<Vec<SettingsArgs>, StateError>,
 }
 
 impl fmt::Debug for EffectInfo {
@@ -129,6 +166,13 @@ impl EffectInfo {
                     message: e.to_string(),
                 })?;
                 Ok(value.get(SETTINGS_FIELD).cloned())
+            },
+            settings_args: |project| {
+                let state = project.state::<E>()?;
+                E::settings_args(&state).map_err(|e| StateError {
+                    effect: E::ID,
+                    message: e.to_string(),
+                })
             },
         }
     }

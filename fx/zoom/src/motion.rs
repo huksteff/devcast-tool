@@ -2,13 +2,13 @@
 
 use dc_core::{Changes, Command, CommandError, Diff, Op, Project, TimeDelta, on_off, within};
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::model::{
     MOTION_BLUR_MAX, Preset, TRANSITION_MAX, TRANSITION_MIN, ZoomEffect, ZoomSettings,
 };
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ZoomMotion {
     /// Applied first; the other arguments adjust it.
@@ -25,6 +25,21 @@ pub struct ZoomMotion {
     pub connect: Option<bool>,
     /// Zooms on clusters of clicks are added right after a recording.
     pub auto: Option<bool>,
+}
+
+impl ZoomMotion {
+    /// Every argument as in `settings`, for `devcast defaults show`.
+    pub(crate) fn of(settings: &ZoomSettings) -> Self {
+        Self {
+            preset: None,
+            smoothness: Some(settings.smoothness),
+            zoom_in: Some(settings.zoom_in.as_secs_f64()),
+            zoom_out: Some(settings.zoom_out.as_secs_f64()),
+            blur: Some(settings.motion_blur),
+            connect: Some(settings.connect),
+            auto: Some(settings.auto),
+        }
+    }
 }
 
 impl Command for ZoomMotion {

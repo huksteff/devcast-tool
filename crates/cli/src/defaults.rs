@@ -13,70 +13,71 @@ use crate::edit::{Ctx, applied_json};
 use crate::error::CliError;
 use crate::run::Answer;
 
-/// `defaults show`: the defaults that differ from the factory ones, a field per line.
+/// `defaults show`: the defaults that differ from the factory ones, a line per argument in the form
+/// `devcast set` and `defaults set` take (`zoom.zoom_in=1.522575`), so a line can be copied there.
 pub(crate) fn show(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
     let file = ctx.defaults_file()?;
     let defaults = Defaults::load(&file)?;
     let mut project = Project::default();
     defaults.apply(&mut project);
-    let current = settings(ctx, &project)?;
-    let factory = settings(ctx, &Project::default())?;
-    let mut changed = Map::new();
-    for (id, value) in &current {
-        let mut now = BTreeMap::new();
-        let mut then = BTreeMap::new();
-        flatten(id, value, &mut now);
-        if let Some(value) = factory.get(id) {
-            flatten(id, value, &mut then);
-        }
-        for (key, value) in now {
-            if then.get(&key) != Some(&value) {
-                changed.insert(key, value);
-            }
-        }
-    }
+    let factory: BTreeMap<String, Value> =
+        assignments(ctx, &Project::default())?.into_iter().collect();
+    let changed: Vec<(String, Value)> = assignments(ctx, &project)?
+        .into_iter()
+        .filter(|(key, value)| factory.get(key) != Some(value))
+        .collect();
     let mut lines: Vec<String> = changed
         .iter()
-        .map(|(key, value)| match value {
-            Value::String(text) => format!("{key}={text}"),
-            other => format!("{key}={other}"),
-        })
+        .map(|(key, value)| format!("{key}={}", argument(value)))
         .collect();
     lines.push(match changed.is_empty() {
         true => "все настройки по умолчанию заводские".to_owned(),
         false => "остальные — заводские".to_owned(),
     });
-    let json = json!({"file": file, "changed": changed, "settings": current});
+    let changed: Map<String, Value> = changed.into_iter().collect();
+    let json = json!({"file": file, "changed": changed, "settings": settings(ctx, &project)?});
     Ok(Answer::new(lines.join("\n"), json))
+}
+
+/// `key.arg` → value of every settings argument of every effect, in registration order.
+fn assignments(ctx: &Ctx<'_>, project: &Project) -> Result<Vec<(String, Value)>, CliError> {
+    let mut all = Vec::new();
+    for effect in ctx.registry.effects().iter() {
+        for op in (effect.settings_args)(project).map_err(broken)? {
+            for (arg, value) in op.args {
+                all.push((format!("{}.{arg}", op.key), value));
+            }
+        }
+    }
+    Ok(all)
+}
+
+/// A value as written after `=` on the command line; text with spaces or empty is quoted.
+fn argument(value: &Value) -> String {
+    match value {
+        Value::String(text) if text.is_empty() || text.contains(char::is_whitespace) => {
+            format!("\"{text}\"")
+        }
+        Value::String(text) => text.clone(),
+        other => other.to_string(),
+    }
+}
+
+fn broken(error: dc_core::StateError) -> CliError {
+    CliError::Failed(format!(
+        "{error}; файл настроек по умолчанию: devcast defaults reset вернёт заводские"
+    ))
 }
 
 /// Effect id → its settings with every default filled in.
 fn settings(ctx: &Ctx<'_>, project: &Project) -> Result<BTreeMap<String, Value>, CliError> {
     let mut all = BTreeMap::new();
     for effect in ctx.registry.effects().iter() {
-        let value = (effect.settings)(project).map_err(|e| {
-            CliError::Failed(format!(
-                "{e}; файл настроек по умолчанию: devcast defaults reset вернёт заводские"
-            ))
-        })?;
-        if let Some(value) = value {
+        if let Some(value) = (effect.settings)(project).map_err(broken)? {
             all.insert(effect.id.to_owned(), value);
         }
     }
     Ok(all)
-}
-
-fn flatten(key: &str, value: &Value, out: &mut BTreeMap<String, Value>) {
-    match value {
-        Value::Object(fields) => {
-            for (inner, value) in fields {
-                flatten(&format!("{key}.{inner}"), value, out);
-            }
-        }
-        other => {
-            out.insert(key.to_owned(), other.clone());
-        }
-    }
 }
 
 /// `defaults set zoom.preset=smooth`: like `devcast set`, into the defaults file.

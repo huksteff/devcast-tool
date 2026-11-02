@@ -1,7 +1,7 @@
 //! Callout events and style as stored in `project.effects["callout"]`.
 
 use dc_core::time::{InvertedRange, Source};
-use dc_core::{Effect, Id, IdCounter, IdKind, Item, Range, SourceTime, TimeDelta};
+use dc_core::{Effect, Id, IdCounter, IdKind, Item, Range, SettingsArgs, SourceTime, TimeDelta};
 use dc_render::{GradientColors, Rgba};
 use schemars::JsonSchema;
 use serde::ser::Error as _;
@@ -30,6 +30,11 @@ impl Effect for Callout {
                 Item::of(e.id, &e.media, span, e)
             })
             .collect()
+    }
+
+    fn settings_args(state: &CalloutState) -> Result<Vec<SettingsArgs>, serde_json::Error> {
+        let style = crate::style::CalloutStyle::of(&state.settings);
+        Ok(vec![SettingsArgs::of(&style)?])
     }
 }
 

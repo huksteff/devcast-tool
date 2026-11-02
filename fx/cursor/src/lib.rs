@@ -28,7 +28,7 @@ pub use state::{
     SIZE_MIN, SWAY_MAX, Smoothing,
 };
 
-use dc_core::{Effect, EffectInfo, OpInfo};
+use dc_core::{Effect, EffectInfo, OpInfo, SettingsArgs};
 
 pub struct Cursor;
 
@@ -36,6 +36,13 @@ impl Effect for Cursor {
     const ID: &'static str = "cursor";
     const TITLE: &'static str = "Курсор";
     type State = CursorState;
+
+    fn settings_args(state: &CursorState) -> Result<Vec<SettingsArgs>, serde_json::Error> {
+        Ok(vec![
+            SettingsArgs::of(&CursorSet::of(&state.settings))?,
+            SettingsArgs::of(&ClicksSet::of(&state.settings.click))?,
+        ])
+    }
 }
 
 pub fn ops() -> Vec<OpInfo> {
