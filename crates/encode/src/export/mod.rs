@@ -72,9 +72,11 @@ pub(crate) fn frame_count(duration: TimeDelta, fps: u32) -> u64 {
     micros.div_ceil(1_000_000) as u64
 }
 
-/// Output moment of frame `n` at `fps`.
+/// Output moment of frame `n` at `fps`, rounded to the nearest µs as FFmpeg's `rescale` gives
+/// the time of frame `n` of a video at `fps`: the decoder then shows exactly that frame.
 pub(crate) fn frame_time(n: u64, fps: u32) -> OutputTime {
-    let micros = u128::from(n) * 1_000_000 / u128::from(fps);
+    let fps = u128::from(fps);
+    let micros = (u128::from(n) * 2_000_000 + fps) / (2 * fps);
     OutputTime::from_micros(micros as i64)
 }
 
@@ -136,5 +138,22 @@ mod tests {
         assert_eq!(frame_count(us(20_016_666), 30), 601);
         assert_eq!(frame_count(us(0), 30), 0);
         assert_eq!(frame_time(3, 60), OutputTime::from_micros(50_000));
+    }
+
+    /// The decoder shows the last frame starting at or before a moment, and a frame starts at
+    /// its PTS rescaled to µs: export frame n must not fall short of source frame n.
+    #[test]
+    fn export_frame_n_is_the_moment_of_source_frame_n() {
+        use ffmpeg_next::Rescale as _;
+        for fps in [30, 60, 120] {
+            for n in 0..=600_u64 {
+                let source = (n as i64).rescale((1, fps as i32), (1, 1_000_000));
+                assert_eq!(
+                    frame_time(n, fps).micros(),
+                    source,
+                    "frame {n} at {fps} fps"
+                );
+            }
+        }
     }
 }
