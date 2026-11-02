@@ -2,8 +2,6 @@
 
 /// Before the format choice.
 pub const FORMAT: &str = "Формат видео";
-/// «Исходный» format of the dialog: the source frame of the first clip.
-pub const SOURCE: &str = "Исходный";
 pub const HINT: &str =
     "Тяните рамку или края · Shift — сохранить пропорцию · двойной клик — весь кадр";
 pub const NOTE: &str =

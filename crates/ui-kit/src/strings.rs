@@ -148,7 +148,8 @@ pub mod editor {
     /// The output frame in the preview, edited with the pointer (7.21, 7.22).
     pub const PREVIEW_FRAME: &str = "Кадр превью";
     pub const ASPECT_FREE: &str = "Свободный";
-    pub const ASPECT_SOURCE: &str = "Как запись";
+    /// The source frame of the first clip, in the preview and the crop dialog.
+    pub const ASPECT_SOURCE: &str = "Исходный";
     pub const ASPECT_16_9: &str = "16:9";
     pub const ASPECT_16_10: &str = "16:10";
     pub const ASPECT_4_3: &str = "4:3";

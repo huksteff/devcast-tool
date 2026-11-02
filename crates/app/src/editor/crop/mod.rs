@@ -228,7 +228,7 @@ fn body(ui: &mut Ui, dialog: &mut CropDialog, preview: &mut super::preview::Prev
             &mut dialog.aspect,
             &[
                 (Aspect::Free, names::ASPECT_FREE, true),
-                (Aspect::Source, text::SOURCE, true),
+                (Aspect::Source, names::ASPECT_SOURCE, true),
                 (Aspect::Wide16x9, names::ASPECT_16_9, true),
                 (Aspect::Wide16x10, names::ASPECT_16_10, true),
                 (Aspect::Standard4x3, names::ASPECT_4_3, true),
