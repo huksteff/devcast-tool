@@ -170,6 +170,7 @@ fn rename(ui: &mut Ui, rect: Rect, editor: &mut EditorWindow) {
     let Some(name) = editor.renaming.as_mut() else {
         return;
     };
+    let chars = name.chars().count();
     let field = Rect::from_center_size(rect.center(), vec2(RENAME_WIDTH, 28.0));
     let mut child = ui.new_child(UiBuilder::new().max_rect(field));
     let edit = egui::TextEdit::singleline(name)
@@ -177,9 +178,18 @@ fn rename(ui: &mut Ui, rect: Rect, editor: &mut EditorWindow) {
         .font(fonts::text(FS_L, Weight::Semibold))
         .align(egui::Align2::CENTER_CENTER)
         .hint_text(projects_text::NAME);
-    let response = child.add(edit);
+    let output = edit.show(&mut child);
+    let response = output.response;
     if !response.has_focus() && !response.lost_focus() {
+        // The whole name is picked, as in Explorer: typing replaces it.
         response.request_focus();
+        let mut state = output.state;
+        let all = egui::text::CCursorRange::two(
+            egui::text::CCursor::new(0),
+            egui::text::CCursor::new(chars),
+        );
+        state.cursor.set_char_range(Some(all));
+        state.store(ui.ctx(), response.id);
     }
     if !response.lost_focus() {
         return;

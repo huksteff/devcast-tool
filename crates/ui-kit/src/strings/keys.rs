@@ -40,8 +40,7 @@ pub const TITLE: &str = "Горячие клавиши";
 pub const SEARCH: &str = "Найти команду или клавишу";
 pub const EDIT_IN_SETTINGS: &str = "Изменить в настройках";
 pub const NOTHING_FOUND: &str = "Ничего не найдено";
-pub const FOOTER: &str =
-    "Работают и в русской раскладке. Серым — клавиши функций, которые ещё не готовы.";
+pub const FOOTER: &str = "Работают и в русской раскладке.";
 
 /// The editor group of the settings.
 pub const EDITOR_GROUP: &str = "Редактор";

@@ -67,3 +67,32 @@ fn save_as_copies_the_project_and_opens_the_copy() {
         "the working state is in the copy"
     );
 }
+
+#[test]
+fn typing_after_a_click_on_the_name_replaces_it() {
+    let mut harness = harness(SIZE);
+    harness.run();
+    harness.get_by_label("Демо-запись").click();
+    harness.run();
+    harness.event(eframe::egui::Event::Text("Урок 2".to_owned()));
+    harness.run();
+    let typed = harness.state().editor.renaming.clone();
+    assert_eq!(
+        typed.as_deref(),
+        Some("Урок 2"),
+        "the picked name is replaced"
+    );
+    harness.event(eframe::egui::Event::Key {
+        key: eframe::egui::Key::Enter,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: eframe::egui::Modifiers::NONE,
+    });
+    let mut leaves = Vec::new();
+    for _ in 0..3 {
+        harness.step();
+        leaves.extend(harness.state().outcome.as_ref().unwrap().leave.clone());
+    }
+    assert_eq!(leaves, [Leave::Rename("Урок 2".to_owned())]);
+}
