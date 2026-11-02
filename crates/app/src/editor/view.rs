@@ -7,7 +7,7 @@ use dc_core::{ClipId, OutputTime, Range};
 use dc_fx_annotations::AnnotId;
 use eframe::egui::Pos2;
 
-use super::clipboard::Copied;
+use super::clipboard::Clipboard;
 use super::selection::{Item, Selected, Selection};
 use super::timeline::{Least, Row, Tracks, Viewport};
 
@@ -63,7 +63,9 @@ pub struct View {
     pub scale: PreviewScale,
     /// Acts from 7.4 (preview quality).
     pub quality: Quality,
-    /// Automatic keyframes; acts from 7.25.
+    /// Automatic keyframes (7.25): an annotation edit goes into a key at the playhead, a new one
+    /// when there is none; off — only while the playhead stands on a key (v1 `keyframeMode`, off
+    /// by default and not kept).
     pub auto_keys: bool,
     /// Keyframe markers on the annotation regions (7.12).
     pub markers: bool,
@@ -93,8 +95,8 @@ pub struct View {
     pub drag: Option<ClipDrag>,
     /// Regions being dragged, an edge being dragged or a rubber band being drawn (7.9).
     pub gesture: Option<Gesture>,
-    /// Copied regions for Ctrl+V (7.9).
-    pub clipboard: Vec<Copied>,
+    /// Copied regions or key for Ctrl+V (7.9, 7.25).
+    pub clipboard: Clipboard,
     /// Empty rows the user added (7.10): the project has no empty tracks.
     pub least: Least,
     /// The row whose «remove?» question is open by its ×.
@@ -111,7 +113,7 @@ impl Default for View {
             tool: Tool::default(),
             scale: PreviewScale::default(),
             quality: Quality::default(),
-            auto_keys: true,
+            auto_keys: false,
             markers: true,
             volume: 80.0,
             magnet: true,
@@ -126,7 +128,7 @@ impl Default for View {
             menu: None,
             drag: None,
             gesture: None,
-            clipboard: Vec::new(),
+            clipboard: Clipboard::default(),
             least: Least::default(),
             remove: None,
             lift: None,

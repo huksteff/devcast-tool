@@ -54,10 +54,17 @@ const ANIMATIONS: [(Animation, &str, &str); 9] = [
 
 /// «Ключ 2 из 3 · 0:33.40» or «Ключа нет», and ‹ › to the neighbour keys; `at` — the key at
 /// the playhead.
-pub fn keys_strip(ui: &mut Ui, cx: &mut Cx<'_>, keys: &[OutputTime], at: Option<OutputTime>) {
+/// `on` is the key at the playhead, `at` where edits go.
+pub fn keys_strip(
+    ui: &mut Ui,
+    cx: &mut Cx<'_>,
+    keys: &[OutputTime],
+    on: Option<OutputTime>,
+    at: Option<OutputTime>,
+) {
     let (rect, response) =
         ui.allocate_exact_size(vec2(ui.available_width(), STRIP), Sense::hover());
-    let said = match at {
+    let said = match on {
         Some(key) => {
             let number = keys.iter().position(|k| *k == key).map_or(0, |i| i + 1);
             text::key_of(number, keys.len(), &timecode(key))
@@ -70,7 +77,7 @@ pub fn keys_strip(ui: &mut Ui, cx: &mut Cx<'_>, keys: &[OutputTime], at: Option<
     painter.rect_filled(rect, 0, SURFACE_2);
     let centre = pos2(rect.left() + S3 + 6.0, rect.center().y);
     let diamond = Rect::from_center_size(centre, vec2(12.0, 12.0));
-    if at.is_some() {
+    if on.is_some() {
         let points = [
             diamond.center_top(),
             diamond.right_center(),
@@ -121,12 +128,12 @@ pub fn keys_strip(ui: &mut Ui, cx: &mut Cx<'_>, keys: &[OutputTime], at: Option<
         }
     }
     bottom_line(ui, rect);
-    if !keys.is_empty() {
-        let note = if at.is_some() {
-            text::KEY_ON_NOTE
-        } else {
-            text::KEY_OFF_NOTE
-        };
+    let note = match (on, at) {
+        (Some(_), _) => Some(text::KEY_ON_NOTE),
+        (None, Some(_)) => Some(text::KEY_AUTO_NOTE),
+        (None, None) => (!keys.is_empty()).then_some(text::KEY_OFF_NOTE),
+    };
+    if let Some(note) = note {
         padded(ui, |ui| rows::note(ui, note));
     }
 }

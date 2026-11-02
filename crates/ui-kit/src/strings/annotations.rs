@@ -17,6 +17,7 @@ pub const NO_KEYS: &str = "Ключей нет";
 pub const KEY_PREVIOUS: &str = "Предыдущий ключ";
 pub const KEY_NEXT: &str = "Следующий ключ";
 pub const KEY_ON_NOTE: &str = "Правка меняет этот ключ.";
+pub const KEY_AUTO_NOTE: &str = "Авто-ключи: правка ставит ключ в этот момент.";
 pub const KEY_OFF_NOTE: &str =
     "Указатель не на ключе: правка меняет значение во всей аннотации и во всех ключах.";
 

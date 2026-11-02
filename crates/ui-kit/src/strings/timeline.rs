@@ -186,3 +186,65 @@ pub fn shortcut(name: &str, count: usize) -> String {
         n => format!("{name} ×{n}"),
     }
 }
+
+/// «Ключ 2 · 0:33.40»: the title of a key marker's tooltip (7.25, mockup 2e).
+pub fn key_tip(number: usize, at: &str) -> String {
+    format!("Ключ {number} · {at}")
+}
+
+/// «по сравнению с ключом 1:»: what the lines of the tooltip compare the key with.
+pub fn key_since(number: usize) -> String {
+    format!("по сравнению с ключом {number}:")
+}
+
+pub const KEY_SINCE_BASE: &str = "по сравнению с аннотацией без ключей:";
+pub const KEY_SAME: &str = "Без изменений";
+pub const KEY_NONE: &str = "нет";
+pub const KEY_ON: &str = "вкл";
+pub const KEY_OFF: &str = "выкл";
+pub const KEY_POSITION: &str = "Позиция";
+pub const KEY_SIZE: &str = "Размер";
+pub const KEY_ROTATION: &str = "Поворот";
+
+/// «Позиция: 120, 80 → 120, 140»: a line of the tooltip.
+pub fn key_change(name: &str, from: &str, to: &str) -> String {
+    format!("{name}: {from} → {to}")
+}
+
+/// «Штрихи: изменено»: a list or a group of fields changed.
+pub fn key_changed(name: &str) -> String {
+    format!("{name}: изменено")
+}
+
+/// The name of field `name` of an annotation kind (the bodies of `dc-fx-*`) in the tooltip.
+pub fn key_field(name: &str) -> &str {
+    match name {
+        "text" => "Текст",
+        "font" => "Шрифт",
+        "size" => "Размер шрифта",
+        "bold" => "Жирный",
+        "italic" => "Курсив",
+        "underline" => "Подчёркнутый",
+        "align" => "Выравнивание",
+        "color" => "Цвет",
+        "background" => "Цвет плашки",
+        "radius" => "Скругление",
+        "figure" => "Фигура",
+        "from" => "Начало",
+        "to" => "Конец",
+        "width" => "Толщина",
+        "outline" => "Обводка",
+        "fill" => "Заливка",
+        "gradient" => "Градиент",
+        "colors" => "Цвета градиента",
+        "angle" => "Направление",
+        "cycle" => "Круг градиента",
+        "glow" => "Свечение",
+        "opacity" => "Прозрачность",
+        "picture" => "Картинка",
+        "strength" => "Сила",
+        "tint" => "Тонировка",
+        "strokes" => "Штрихи",
+        other => other,
+    }
+}

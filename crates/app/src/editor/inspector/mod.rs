@@ -69,7 +69,7 @@ use super::selection::{Item, Selected};
 use super::view::{Panel, View};
 use super::{Action, EditorWindow};
 use crate::settings::InspectorGroups;
-pub use annotation::Edit;
+pub use annotation::{Edit, target};
 pub use head::{Header, header, header_button};
 
 /// Width of the tab rail, side of a tab, height of the panel and group headers (mockup).
@@ -130,6 +130,8 @@ pub struct Cx<'a> {
     pub project: &'a Project,
     /// Where the playhead stands: an annotation edit goes to its key there (7.18).
     pub playhead: dc_core::OutputTime,
+    /// «Авто-ключи»: an annotation edit makes a key at the playhead (7.25).
+    pub auto_keys: bool,
     /// What the timeline shows of it: the shortcuts of the recordings for «Показ клавиш».
     pub tracks: &'a super::Tracks,
     /// The generation and the cue list of the captions panel (7.17).
@@ -248,6 +250,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
     let mut cx = Cx {
         project: editor.doc.project(),
         playhead: editor.view.playhead,
+        auto_keys: editor.view.auto_keys,
         tracks: &editor.tracks,
         captioning: captions::Captioning {
             generation: &mut editor.captions,

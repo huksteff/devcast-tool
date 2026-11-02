@@ -6,9 +6,9 @@
 //!
 //! Keys (QUESTIONS «Ключи аннотаций» 2, the CLI rule): while the playhead stands on a key, the
 //! kind's fields, the box and the rotation change in that key (`--at` the key); elsewhere they
-//! change in the annotation and in every key. The rows show what the playhead shows. The full
-//! keyframe controls (I, auto or manual) are task 7.25; here the strip names the key and steps
-//! the playhead to the previous or the next one.
+//! change in the annotation and in every key, or with «Авто-ключи» (7.25, v1) in a new key at the
+//! playhead. The rows show what the playhead shows; the strip names the key and steps the
+//! playhead to the previous or the next one.
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeDelta};
@@ -111,11 +111,9 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: AnnotId, range: Range<Output>, keys:
     let Some(shown) = read(cx, id, range) else {
         return;
     };
-    let at = keys
-        .iter()
-        .copied()
-        .find(|k| crate::editor::selection::same_moment(*k, cx.playhead));
-    keys_strip(ui, cx, keys, at);
+    let on = key_at(keys, cx.playhead);
+    let at = target(keys, cx.playhead, range, cx.auto_keys);
+    keys_strip(ui, cx, keys, on, at);
     let edit = Edit { id, at };
     match shown.annotation.kind {
         Kind::Text => panel::<dc_fx_text::TextBody>(ui, cx, &shown, edit),
@@ -124,6 +122,25 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: AnnotId, range: Range<Output>, keys:
         Kind::Drawing => panel::<dc_fx_drawing::DrawingBody>(ui, cx, &shown, edit),
         Kind::Blur => panel::<dc_fx_blur::BlurBody>(ui, cx, &shown, edit),
     }
+}
+
+/// The key of `keys` (output times) at `playhead`.
+pub fn key_at(keys: &[OutputTime], playhead: OutputTime) -> Option<OutputTime> {
+    let same = |k: &OutputTime| crate::editor::selection::same_moment(*k, playhead);
+    keys.iter().copied().find(same)
+}
+
+/// Where an edit of an annotation shown at `range` with keys at `keys` goes: the key at the
+/// playhead; with automatic keys (`auto`) the playhead while it shows the annotation (the command
+/// makes a key there); else nowhere — the annotation and every key.
+pub fn target(
+    keys: &[OutputTime],
+    playhead: OutputTime,
+    range: Range<Output>,
+    auto: bool,
+) -> Option<OutputTime> {
+    let inside = range.start() <= playhead && playhead < range.end();
+    key_at(keys, playhead).or((auto && inside).then_some(playhead))
 }
 
 /// Annotation `id` with what the playhead shows of it: before it — its start, after — its end.

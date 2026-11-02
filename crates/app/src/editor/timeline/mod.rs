@@ -20,6 +20,7 @@ mod dots;
 mod gesture;
 mod ghost;
 mod heads;
+mod key_tip;
 mod marks;
 mod paint;
 mod places;
@@ -35,6 +36,8 @@ mod wave;
 
 #[cfg(test)]
 mod clips_tests;
+#[cfg(test)]
+mod keyframes_tests;
 #[cfg(test)]
 mod marks_tests;
 #[cfg(test)]

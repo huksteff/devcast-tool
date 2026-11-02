@@ -297,3 +297,25 @@ fn esc_ends_a_drag_without_a_change() {
     assert!(drafted(&harness).is_none());
     assert_eq!(project_json(&harness), json(&cli(&[])));
 }
+
+#[test]
+fn auto_keys_put_a_drag_into_a_new_key_at_the_playhead() {
+    let mut harness = started();
+    harness.state_mut().editor.view.auto_keys = true;
+    at(&mut harness, 24.0);
+    let from = on_screen(&harness, pos2(600.0, 200.0));
+    let to = on_screen(&harness, pos2(700.0, 260.0));
+    drag(&mut harness, from, to, Modifiers::NONE);
+    let project = harness.state().editor.doc.project().clone();
+    let state = project.state::<Annotations>().unwrap();
+    let a1 = &state.annotations[0];
+    assert_eq!(a1.rect.x(), 0.1, "the annotation keeps its box");
+    let k = a1.keys.last().unwrap();
+    let line = format!("annot set a1 --x {} --y {} --at 24", k.rect.x(), k.rect.y());
+    assert_eq!(project_json(&harness), json(&cli(&[&line])));
+    at(&mut harness, 25.0);
+    let note = dc_ui_kit::strings::annotations::KEY_AUTO_NOTE;
+    harness.get_by_label(note);
+    undo(&mut harness);
+    assert_eq!(project_json(&harness), json(&cli(&[])), "one step");
+}

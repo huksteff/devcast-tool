@@ -3,7 +3,7 @@
 //! key and puts the playhead on it (Ctrl adds or takes it out, the playhead stays), a drag
 //! moves it in time inside its annotation, sticking like a region edge
 //! (`snap::point`); the release is `annot key move`, Delete is `annot key rm`
-//! (`editor/clipboard.rs`).
+//! (`editor/clipboard.rs`). Hovering a marker shows what its key changes (`key_tip.rs`).
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeMap};
@@ -15,9 +15,9 @@ use eframe::egui::{
     pos2, vec2,
 };
 
-use super::paint;
 use super::scale::{TimeScale, timecode};
 use super::tracks::Row;
+use super::{key_tip, paint};
 use crate::editor::selection::{Item, Selected};
 use crate::editor::view::{Gesture, Tool};
 use crate::editor::{Action, EditorWindow, Transport};
@@ -76,6 +76,15 @@ pub fn ui(ui: &Ui, rows: &[(Row, Rect)], editor: &mut EditorWindow, scale: &Time
                 // The blade cuts where it is clicked: the markers only show then.
                 if select {
                     let response = grab_zone(ui, lane, centre, (id, at));
+                    let response = match editor.canvas {
+                        Some(canvas) => response.on_hover_ui(|ui| {
+                            let project = editor.doc.project();
+                            if let Some(tip) = key_tip::tip(project, canvas, id, at) {
+                                key_tip::ui(ui, &tip);
+                            }
+                        }),
+                        None => response,
+                    };
                     pick(editor, &response, key, ctrl);
                     // As in DaVinci: a click puts the playhead on the key, so the inspector edits it.
                     if response.clicked() && !ctrl {

@@ -4,12 +4,13 @@
 
 use std::time::Instant;
 
+use dc_fx_annotations::AnnotId;
 use dc_ops::Step;
 use eframe::egui::Ui;
 use serde_json::{Map, Value};
 
 use super::playback::seek;
-use super::selection::{Item, Selected};
+use super::selection::{Item, Selected, same_moment};
 use super::timeline::Least;
 use super::{EditorWindow, Way};
 use super::{adding, crop, fonts, generation};
@@ -21,6 +22,9 @@ pub enum Action {
     Apply(Vec<Step>),
     /// Registry commands that add regions, as one undo step; the added regions get picked.
     Paste(Vec<Step>),
+    /// Registry commands that put a key of the annotation at the playhead, as one undo step;
+    /// that key gets picked (I, Ctrl+V of a key).
+    Keyed(Vec<Step>, AnnotId),
     Transport(Transport),
     /// Rows shown at least: an empty row added or removed; the timeline is rebuilt.
     Rows(Least),
@@ -96,6 +100,14 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                     add(e).map_err(|e| e.to_string())
                 });
             }
+            Action::Keyed(steps, id) => match editor.doc.apply(&steps, now) {
+                Ok(_) => {
+                    errors.extend(editor.refresh(now));
+                    pick_key(editor, id);
+                    moved = true;
+                }
+                Err(error) => errors.push(error.to_string()),
+            },
             Action::Rows(least) => {
                 editor.view.least = least;
                 rows = true;
@@ -216,6 +228,21 @@ fn adds(
             errors.push(error);
             false
         }
+    }
+}
+
+/// Picks the key of annotation `id` at the playhead, alone.
+pub fn pick_key(editor: &mut EditorWindow, id: AnnotId) {
+    let playhead = editor.view.playhead;
+    let key = editor
+        .tracks
+        .rows
+        .iter()
+        .flat_map(|t| &t.regions)
+        .filter(|r| r.item == Some(Item::Annotation(id)))
+        .find_map(|r| r.keys.iter().copied().find(|k| same_moment(*k, playhead)));
+    if let Some(at) = key {
+        editor.view.selection.only(Selected::Key { id, at });
     }
 }
 

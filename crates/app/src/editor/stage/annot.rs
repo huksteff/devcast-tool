@@ -17,8 +17,8 @@ use super::geom::{Boxed, GRAB, Grip, KNOB, Mapping, Resize};
 use super::snap::{Guide, Lines, PULL, axes};
 use super::{Drag, brush, finish, paint, show_draft};
 use crate::editor::EditorWindow;
-use crate::editor::inspector::Edit;
-use crate::editor::selection::{Item, Selected, same_moment};
+use crate::editor::inspector::{Edit, target};
+use crate::editor::selection::{Item, Selected};
 use crate::editor::timeline::Row;
 
 /// An annotation the playhead shows: where its edits go and its box now.
@@ -73,7 +73,7 @@ pub fn shown(editor: &EditorWindow, canvas: Vec2) -> Vec<OnFrame> {
                 continue;
             };
             let (rect, rotation) = annotation.frame_at(offset);
-            let at = region.keys.iter().copied().find(|k| same_moment(*k, now));
+            let at = target(&region.keys, now, region.range, editor.view.auto_keys);
             let edit = Edit { id, at };
             let boxed = Boxed::of(rect, rotation, canvas);
             let kind = annotation.kind;

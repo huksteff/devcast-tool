@@ -22,6 +22,8 @@ mod geom_tests;
 #[cfg(test)]
 mod tests;
 
+pub use annot::picked;
+
 use dc_fx_zoom::ZoomId;
 use dc_ops::Step;
 use dc_render::Camera;

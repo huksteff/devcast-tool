@@ -3,8 +3,10 @@
 //! add` and `callout add` carry all of a zoom and an event, annotations, cues and extra sound
 //! go through `paste` with their JSON — and its offset from the first copied region. Ctrl+V adds
 //! them at the playhead, keeping the offsets and the rows, in one undo step, and picks them.
+//! A picked key copies instead (7.25, v1): Ctrl+V is `annot key copy` of it to the playhead, into
+//! the picked annotation (else its own), and picks the pasted key.
 
-use dc_core::{Project, TimeDelta, TimeMap};
+use dc_core::{OutputTime, Project, TimeDelta, TimeMap};
 use dc_fx_annotations::{AnnotId, Annotations, TRACKS};
 use dc_fx_audio_tracks::Audio;
 use dc_fx_callout::{Action as CalloutAction, Callout};
@@ -18,6 +20,19 @@ use super::montage::arg;
 use super::regions::{key_remove, remove, seconds};
 use super::selection::{Item, Selected};
 use super::{Action, EditorWindow};
+
+/// What Ctrl+V puts at the playhead.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub enum Clipboard {
+    #[default]
+    Empty,
+    Regions(Vec<Copied>),
+    /// The key of annotation `id` at output `at`.
+    Key {
+        id: AnnotId,
+        at: OutputTime,
+    },
+}
 
 /// A copied region: the command that adds it, without its `at`, and its offset from the start
 /// of the first copied region.
@@ -43,8 +58,16 @@ pub fn delete(editor: &mut EditorWindow) {
     }
 }
 
-/// Ctrl+C: the picked regions go to the clipboard; clips are not copied.
+/// Ctrl+C: the picked regions go to the clipboard, or the picked key when no region is
+/// picked; clips are not copied.
 pub fn copy(editor: &mut EditorWindow) {
+    let selection = &editor.view.selection;
+    if selection.regions().next().is_none()
+        && let Some((id, at)) = selection.keys().next()
+    {
+        editor.view.clipboard = Clipboard::Key { id, at };
+        return;
+    }
     let picked: Vec<(Item, dc_core::Range<dc_core::time::Output>)> = editor
         .view
         .selection
@@ -65,7 +88,7 @@ pub fn copy(editor: &mut EditorWindow) {
         })
         .collect();
     if !copied.is_empty() {
-        editor.view.clipboard = copied;
+        editor.view.clipboard = Clipboard::Regions(copied);
     }
 }
 
@@ -81,9 +104,24 @@ pub fn cut(editor: &mut EditorWindow) {
 /// Ctrl+V: the clipboard at the playhead.
 pub fn paste(editor: &mut EditorWindow) {
     let at = editor.view.playhead;
-    let steps: Vec<Step> = editor
-        .view
-        .clipboard
+    let copied = match &editor.view.clipboard {
+        Clipboard::Empty => return,
+        Clipboard::Key { id, at: key } => {
+            let into = super::stage::picked(editor).unwrap_or(*id);
+            let mut args = Map::new();
+            args.insert("id".to_owned(), serde_json::json!(id));
+            args.insert("at".to_owned(), Value::String(arg(*key)));
+            args.insert("to".to_owned(), Value::String(arg(at)));
+            if into != *id {
+                args.insert("into".to_owned(), serde_json::json!(into));
+            }
+            let step = Step::new("annot key copy", args);
+            editor.ask(Action::Keyed(vec![step], into));
+            return;
+        }
+        Clipboard::Regions(copied) => copied,
+    };
+    let steps: Vec<Step> = copied
         .iter()
         .map(|copied| {
             let mut step = copied.step.clone();

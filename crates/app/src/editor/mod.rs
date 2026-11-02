@@ -16,6 +16,7 @@ mod generation;
 mod header;
 mod help;
 mod inspector;
+mod keyframes;
 mod keys;
 mod montage;
 mod playback;

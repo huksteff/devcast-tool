@@ -8,7 +8,7 @@ use eframe::egui::{self, Ui};
 
 use super::view::Tool;
 use super::{Action, EditorWindow, Transport, Way};
-use super::{adding, clipboard, montage};
+use super::{adding, clipboard, keyframes, montage};
 use crate::keymap::{EditorKey, EditorKeys};
 use crate::shortcut::Shortcut;
 
@@ -23,7 +23,7 @@ enum Act {
     Montage(fn(&mut EditorWindow)),
 }
 
-/// The action of `key`, `None` until its task: keyframes 7.25, projects 7.28.
+/// The action of `key`, `None` until its task: projects 7.28.
 fn act(key: EditorKey) -> Option<Act> {
     Some(match key {
         EditorKey::Undo => Act::Travel(Way::Undo),
@@ -48,11 +48,10 @@ fn act(key: EditorKey) -> Option<Act> {
         EditorKey::AddZoom => Act::Montage(adding::zoom),
         EditorKey::AddAnnotation => Act::Montage(adding::annotation),
         EditorKey::NextAnnotation => Act::Montage(adding::next_annotation),
-        EditorKey::Keyframe
-        | EditorKey::NewProject
-        | EditorKey::OpenProject
-        | EditorKey::Save
-        | EditorKey::SaveAs => return None,
+        EditorKey::Keyframe => Act::Montage(keyframes::add),
+        EditorKey::NewProject | EditorKey::OpenProject | EditorKey::Save | EditorKey::SaveAs => {
+            return None;
+        }
     })
 }
 
