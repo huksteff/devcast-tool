@@ -112,11 +112,16 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     let keys = shared.store.get().editor_keys.clone();
     let groups = shared.store.get().inspector.clone();
     let model = shared.store.get().speech_model;
+    let speech = (
+        shared.store.get().speech_language,
+        shared.store.get().speech_tracks,
+    );
     let recordings = shared.store.get().recordings_dir.clone();
     let Some(editor) = shared.editor.as_mut() else {
         return;
     };
     editor.captions.model = model;
+    (editor.captions.language, editor.captions.listen) = speech;
     let open = editor.doc.dir().root().to_path_buf();
     editor.library.folder(&recordings, &open);
     let now = Instant::now();
@@ -125,6 +130,7 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     let outcome = editor_ui(ui, editor, layout, (&keys, &groups), now);
     editor.touched(ui.ctx(), Side::Editor, &before);
     let toggled = editor.detached.open != was_open;
+    let chosen = (editor.captions.language, editor.captions.listen);
     let saved = editor.doc.autosave(now);
     if let Ok(Some(wait)) = saved {
         ui.ctx().request_repaint_after(wait);
@@ -142,6 +148,14 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     save_layout(shared, ui, layout, outcome.layout);
     if toggled {
         timeline_window::remember(shared);
+    }
+    if chosen != speech {
+        let (language, tracks) = chosen;
+        let saved = shared.store.update(|s| {
+            s.speech_language = language;
+            s.speech_tracks = tracks;
+        });
+        shared.report(saved);
     }
     if let Some(groups) = outcome.groups {
         let saved = shared.store.update(|s| s.inspector = groups);

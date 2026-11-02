@@ -1,10 +1,10 @@
-use dc_ui_kit::strings::{hud, settings as text};
+use dc_ui_kit::strings::{captions, hud, settings as text};
 use egui_kittest::kittest::Queryable;
 
 use super::*;
 use crate::downloads::Downloads;
 use crate::models::ModelState;
-use crate::settings::SpeechModel;
+use crate::settings::{Language, Listen, SpeechModel};
 use crate::settings_captions::Card;
 
 struct State {
@@ -28,15 +28,21 @@ fn harness() -> egui_kittest::Harness<'static, State> {
         "Микрофон (Rode NT-USB)".to_owned(),
         "Гарнитура (HyperX Cloud II)".to_owned(),
     ];
+    let defaults = DefaultsFile::load(dir.path().join("defaults.json")).unwrap();
+    let models = Models::new(Some(models), Downloads::default());
     let state = State {
-        window: SettingsWindow::new(mics, Models::new(Some(models), Downloads::default())),
+        window: SettingsWindow::new(mics, models, defaults),
         store,
         _dir: dir,
     };
     dc_ui_kit::testing::harness()
         .with_size(SIZE)
         .build_ui_state(
-            |ui, state: &mut State| state.window.ui(ui, &mut state.store, 0.4, &[]).unwrap(),
+            |ui, state: &mut State| {
+                let taken: &[Command] = &[];
+                let store = &mut state.store;
+                state.window.ui(ui, store, (0.4, taken), None).unwrap();
+            },
             state,
         )
 }
@@ -79,6 +85,21 @@ fn captions_and_updates_pages() {
         harness.state().store.get().speech_model,
         SpeechModel::Accurate
     );
+    harness
+        .get_by_role_and_label(egui::Role::ComboBox, captions::LANGUAGE)
+        .click();
+    harness.run();
+    harness.get_by_label(captions::RUSSIAN).click();
+    harness.run();
+    harness
+        .get_by_role_and_label(egui::Role::ComboBox, captions::TRACKS)
+        .click();
+    harness.run();
+    harness.get_by_label(captions::BOTH).click();
+    harness.run();
+    let settings = harness.state().store.get();
+    assert_eq!(settings.speech_language, Language::Russian);
+    assert_eq!(settings.speech_tracks, Listen::Both);
     harness.get_by_label(text::UPDATES).click();
     harness.run();
     harness

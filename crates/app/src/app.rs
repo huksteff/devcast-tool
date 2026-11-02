@@ -19,6 +19,7 @@ pub use crate::monitor::on_hud_monitor;
 use crate::session::Session;
 use crate::settings::Hotkeys;
 use crate::settings::Store;
+use crate::settings_defaults::{DefaultsFile, OpenProject};
 use crate::settings_window::{self, SettingsWindow};
 use crate::tray::{Tray, TrayAction};
 
@@ -138,9 +139,14 @@ impl Shared {
     /// Opens the settings window on `page`.
     pub fn open_settings_at(&mut self, page: crate::settings_window::Page) {
         self.refresh_microphones();
+        let defaults = match DefaultsFile::of_app() {
+            Ok(file) => file,
+            Err(error) => return self.report(Err(error)),
+        };
         let mut window = SettingsWindow::new(
             self.microphones.clone(),
             crate::models::Models::of_app(self.downloads.clone()),
+            defaults,
         );
         window.page = page;
         self.settings = Some(window);
@@ -366,6 +372,7 @@ fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
         meters,
         toasts,
         taken_hotkeys,
+        editor,
         ..
     } = shared;
     let Some(window) = settings else {
@@ -375,7 +382,12 @@ fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
         Some(mic) => meters.level(ctx, &AudioSource::Microphone(mic.clone())),
         None => 0.0,
     };
-    if let Err(error) = window.ui(ui, store, level, taken_hotkeys) {
+    let open = editor.as_mut().map(|editor| OpenProject {
+        name: &editor.name,
+        project: editor.doc.project(),
+        defaults: &mut editor.defaults,
+    });
+    if let Err(error) = window.ui(ui, store, (level, taken_hotkeys.as_slice()), open) {
         toasts.push(ui.ctx(), ToastKind::Error, error.to_string());
     }
     toasts.show(ui.ctx());
