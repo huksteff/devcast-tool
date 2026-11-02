@@ -266,5 +266,7 @@ pub(crate) fn summary(recorded: &RecordedProject) -> Result<Answer, CliError> {
         "pauses": manifest.pauses.len(),
         "frames": recorded.summary.video.frames,
     });
-    Ok(Answer::new(text, json))
+    let mut answer = Answer::new(text, json);
+    answer.warnings.extend(recorded.summary.problems());
+    Ok(answer)
 }

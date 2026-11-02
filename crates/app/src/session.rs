@@ -245,10 +245,13 @@ impl Shared {
     }
 
     /// The recording is saved in its project: the editor opens with it, the HUD hides until
-    /// the editor closes (v1).
+    /// the editor closes (v1). What went wrong on the way is reported.
     fn recorded(&mut self, project: dc_capture::win::RecordedProject) {
         tracing::info!("запись сохранена: {}", project.dir.root().display());
         self.open_editor(&project);
+        for problem in project.summary.problems() {
+            self.report(Err(problem));
+        }
     }
 
     /// Pause or resume.

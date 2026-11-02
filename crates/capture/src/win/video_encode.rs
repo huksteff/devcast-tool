@@ -175,6 +175,7 @@ impl Encoding {
             end,
             lead: FrameLead::measure(self.leads.iter().map(|l| l.1).collect()),
             leads: self.leads,
+            problems: Vec::new(),
         })
     }
 }

@@ -57,6 +57,8 @@ pub struct VideoSummary {
     pub lead: Option<FrameLead>,
     /// Every kept frame: its slot and how far its WGC time was ahead of its arrival (µs).
     pub leads: Vec<(i64, i64)>,
+    /// What went wrong without losing the video: capture stopped before the stop.
+    pub problems: Vec<String>,
 }
 
 pub struct VideoRecording {
@@ -133,7 +135,8 @@ impl VideoRecording {
     }
 
     /// Stops capturing, lets the last frame last until host time `at` and closes the last
-    /// segment.
+    /// segment. A capture that failed on the way keeps the video until then (the encoder
+    /// repeats the last picture) and its error is a problem of the summary.
     pub fn stop(self, at: HostTime) -> Result<VideoSummary, CaptureError> {
         let captured = self.capture.stop();
         let sent = self.control.send(Message::End(at));
@@ -143,9 +146,13 @@ impl VideoRecording {
             )
         })?;
         // A failed encoder also fails the capture and the End message; its error says why.
-        let summary = encoded?;
-        captured?;
+        let mut summary = encoded?;
         sent.map_err(|_| encoder_gone())?;
+        if let Err(error) = captured {
+            summary.problems.push(format!(
+                "захват экрана прервался до стопа, видео записано до этого места: {error}"
+            ));
+        }
         Ok(summary)
     }
 }

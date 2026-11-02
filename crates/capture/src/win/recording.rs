@@ -32,18 +32,34 @@ pub struct Recording {
 pub struct RecordingSummary {
     pub video: VideoSummary,
     pub audio: Vec<AudioSummary>,
-    pub input: InputSummary,
+    /// The input written, or why it stopped early: the recording is kept without it.
+    pub input: Result<InputSummary, String>,
     /// The finished MP4 of each track, in manifest order (video first).
     pub files: Vec<PathBuf>,
     /// The manifest of the finished recording: tracks with their files, pauses.
     pub manifest: Manifest,
 }
 
+impl RecordingSummary {
+    /// What went wrong without losing the recording: video, each sound track, input.
+    pub fn problems(&self) -> Vec<String> {
+        let sound = self.audio.iter().flat_map(|a| a.problems.iter().cloned());
+        let input = self.input.as_ref().err().cloned();
+        self.video
+            .problems
+            .iter()
+            .cloned()
+            .chain(sound)
+            .chain(input)
+            .collect()
+    }
+}
+
 /// The tracks once they are stopped.
 struct Stopped {
     video: VideoSummary,
     audio: Vec<AudioSummary>,
-    input: InputSummary,
+    input: Result<InputSummary, String>,
 }
 
 impl Recording {
@@ -151,7 +167,10 @@ impl Recording {
         Ok(Stopped {
             video,
             audio,
-            input: self.input.join()?,
+            input: self
+                .input
+                .join()
+                .map_err(|e| format!("курсор и клавиши записаны не до конца: {e}")),
         })
     }
 }

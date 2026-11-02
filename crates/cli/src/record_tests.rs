@@ -4,7 +4,6 @@
 use std::time::Duration;
 
 use dc_capture::audio::{AudioSummary, MicrophoneInfo, TimelineStats};
-use dc_capture::input::InputSummary;
 use dc_capture::win::{RecordedProject, RecordingSummary, VideoSummary};
 use dc_capture::{
     Area, Fps, HostTime, Manifest, MonitorInfo, Pause, RecordingConfig, Source, SourceList, Track,
@@ -232,9 +231,10 @@ fn stop_prints_one_line_about_the_project() {
                 end: 741,
                 lead: None,
                 leads: Vec::new(),
+                problems: vec!["захват экрана прервался".to_owned()],
             },
             audio: vec![audio("system"), audio("mic")],
-            input: InputSummary::default(),
+            input: Err("курсор и клавиши записаны не до конца".to_owned()),
             files: Vec::new(),
             manifest,
         },
@@ -249,4 +249,12 @@ fn stop_prints_one_line_about_the_project() {
     );
     assert_eq!(answer.json["duration"], 12.35);
     assert_eq!(answer.json["sound"], serde_json::json!(["system", "mic"]));
+    assert_eq!(
+        answer.warnings,
+        [
+            "захват экрана прервался",
+            "курсор и клавиши записаны не до конца"
+        ],
+        "a failed capture or input keeps the recording and warns"
+    );
 }
