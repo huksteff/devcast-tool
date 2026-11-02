@@ -2,18 +2,26 @@
 //!
 //! Order matters for crash safety: the track file is written under a temporary name and
 //! renamed, then the manifest records it, and only then the segments are deleted. Cut off at
-//! any point, the folder can be finalized again.
+//! any point, the folder can be finalized again. A sound track without a complete segment
+//! (a device that sent nothing) is dropped, files first; without video there is no recording.
 
 use std::path::{Path, PathBuf};
 
 use dc_encode::{Mp4Layout, Mp4Reader, Mp4Writer};
 
 use crate::error::CaptureError;
-use crate::manifest::{Manifest, Track};
+use crate::manifest::{Manifest, Track, VIDEO_TRACK};
 
 /// Joins the segments of every unfinished track, records the files in the manifest and
 /// deletes segment and temporary files. Returns the path of each track's file.
 pub fn finalize(dir: &Path, manifest: &mut Manifest) -> Result<Vec<PathBuf>, CaptureError> {
+    let (empty, tracks) = std::mem::take(&mut manifest.tracks)
+        .into_iter()
+        .partition::<Vec<_>, _>(|t| {
+            t.file.is_none() && t.segments.is_empty() && t.name != VIDEO_TRACK
+        });
+    manifest.tracks = tracks;
+    remove_leftovers(dir, &empty)?;
     for track in &mut manifest.tracks {
         if track.file.is_none() {
             join(dir, track)?;
@@ -23,7 +31,7 @@ pub fn finalize(dir: &Path, manifest: &mut Manifest) -> Result<Vec<PathBuf>, Cap
         }
     }
     manifest.write(dir)?;
-    remove_leftovers(dir, manifest)?;
+    remove_leftovers(dir, &manifest.tracks)?;
     Ok(manifest
         .tracks
         .iter()
@@ -57,9 +65,9 @@ fn join(dir: &Path, track: &Track) -> Result<(), CaptureError> {
     std::fs::rename(&partial, &target).map_err(CaptureError::file("переименовать", &partial))
 }
 
-/// Deletes the files of unfinished segments and temporary files of the manifest's tracks.
-/// Other files in the folder are not touched.
-fn remove_leftovers(dir: &Path, manifest: &Manifest) -> Result<(), CaptureError> {
+/// Deletes the files of unfinished segments of `tracks` and temporary files. Other files in
+/// the folder are not touched.
+fn remove_leftovers(dir: &Path, tracks: &[Track]) -> Result<(), CaptureError> {
     let entries = std::fs::read_dir(dir).map_err(CaptureError::file("прочитать папку", dir))?;
     for entry in entries {
         let path = entry
@@ -68,7 +76,7 @@ fn remove_leftovers(dir: &Path, manifest: &Manifest) -> Result<(), CaptureError>
         let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
-        let ours = manifest.tracks.iter().any(|t| {
+        let ours = tracks.iter().any(|t| {
             let segment = name.starts_with(&format!("{}-", t.name)) && name.ends_with(".mp4");
             let listed = t.segments.iter().any(|s| s.file == name);
             (segment && !listed) || name.ends_with(".tmp")

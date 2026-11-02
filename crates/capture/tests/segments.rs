@@ -144,3 +144,34 @@ fn recovery_keeps_complete_segments_and_drops_the_rest() {
     assert_eq!(recover(&dir).unwrap(), files);
     assert_eq!(read_all(&files[0]), packets);
 }
+
+/// The microphone sent nothing that closed a segment: the recording keeps its video and the
+/// empty track goes away with its half-written segment.
+#[test]
+fn a_sound_track_without_segments_is_dropped() {
+    let dir = tempfile::tempdir().unwrap();
+    let dir = dir.path().join("без звука");
+    let mut manifest = write_track(&dir, &(0..90).collect::<Vec<_>>(), 90);
+    manifest
+        .tracks
+        .push(Track::new("mic", 48_000, HostTime::from_micros(42)));
+    std::fs::write(dir.join("mic-000001.mp4"), "оборван").unwrap();
+
+    let files = finalize(&dir, &mut manifest).unwrap();
+    assert_eq!(files, [dir.join("video.mp4")]);
+    let finished = Manifest::read(&dir).unwrap();
+    assert_eq!(finished.tracks.len(), 1);
+    assert!(finished.is_finished());
+    assert!(!dir.join("mic-000001.mp4").exists());
+}
+
+#[test]
+fn a_video_track_without_segments_is_an_empty_recording() {
+    let dir = tempfile::tempdir().unwrap();
+    let dir = dir.path().join("пусто");
+    let mut manifest = write_track(&dir, &[], 0);
+    assert!(matches!(
+        finalize(&dir, &mut manifest),
+        Err(dc_capture::CaptureError::EmptyRecording(_))
+    ));
+}
