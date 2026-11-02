@@ -15,7 +15,7 @@ use super::capture::{FrameSink, VideoCapture};
 use super::clock::now;
 use super::frame::VideoFrame;
 use super::nv12::{Nv12Converter, even_size};
-use super::video_encode::{Message, encode, encoder_gone, release};
+use super::video_encode::{Message, encode, encoder_gone};
 use crate::config::Fps;
 use crate::error::CaptureError;
 use crate::event::HostTime;
@@ -63,7 +63,6 @@ pub struct VideoRecording {
     capture: VideoCapture<EncodeSink>,
     control: SyncSender<Message>,
     encoder: JoinHandle<Result<VideoSummary, CaptureError>>,
-    grid: FrameGrid,
     info: VideoStart,
 }
 
@@ -91,15 +90,7 @@ impl VideoRecording {
         let encoder_clock = clock.clone();
         let encoder = std::thread::Builder::new()
             .name("devcast-encode".to_owned())
-            .spawn(move || {
-                encode(
-                    &frames_rx,
-                    &returned_tx,
-                    encoder,
-                    &writer_rx,
-                    &encoder_clock,
-                )
-            })
+            .spawn(move || encode(&frames_rx, returned_tx, encoder, &writer_rx, encoder_clock))
             .map_err(|e| {
                 CaptureError::platform("запустить кодирование")(e.to_string())
             })?;
@@ -128,7 +119,6 @@ impl VideoRecording {
             capture,
             control: frames_tx,
             encoder,
-            grid,
             info: VideoStart {
                 codec: selection.codec,
                 speed: selection.speed,
@@ -146,10 +136,7 @@ impl VideoRecording {
     /// segment.
     pub fn stop(self, at: HostTime) -> Result<VideoSummary, CaptureError> {
         let captured = self.capture.stop();
-        let sent = self.control.send(Message::End {
-            grid: self.grid,
-            at,
-        });
+        let sent = self.control.send(Message::End(at));
         let encoded = self.encoder.join().map_err(|_| {
             CaptureError::platform("записать видео")(
                 "поток кодирования упал".to_owned(),
@@ -217,10 +204,11 @@ struct EncodeSink {
     /// Set at the first frame, which needs the capture's device and time.
     started: Option<(Nv12Converter, FrameGrid)>,
     lead: LeadFilter,
+    /// The slot of the last frame sent. The encoder gives the slots and its last one is never
+    /// earlier (it adds repeats and pause pictures), so a frame not after this one is dropped
+    /// here without converting it.
     last: Option<i64>,
     clock: PauseClock,
-    /// Capture time of the picture held during a pause, until it is released.
-    held: Option<HostTime>,
     frames: SyncSender<Message>,
     spare: Vec<Nv12Frame>,
     returned: Receiver<Nv12Frame>,
@@ -243,7 +231,6 @@ impl EncodeSink {
             lead: LeadFilter::default(),
             last: None,
             clock: clock.clone(),
-            held: None,
             frames,
             spare: (0..IN_FLIGHT + HELD_BY_ENCODER)
                 .map(|_| Nv12Frame::new(size.0, size.1))
@@ -270,36 +257,19 @@ impl FrameSink for EncodeSink {
             }
         };
         let lead = frame.time().micros() - arrived.micros();
-        if let Some(held) = self.held
-            && let Some(slot) = release(&self.clock, grid, self.last, held, time)?
-        {
-            send(&self.frames, Message::Release(slot))?;
-            self.last = Some(slot);
-            self.held = None;
-        }
         let placed = self.clock.place(time)?;
-        let slot = match placed.paused {
-            true => None,
-            false => match grid.place(self.last, placed.time) {
-                Some(slot) => Some(slot),
+        if !placed.paused {
+            match grid.place(self.last, placed.time) {
+                Some(slot) => self.last = Some(slot),
                 None => return Ok(ControlFlow::Continue(())),
-            },
-        };
+            }
+        }
         let mut buffer = match self.spare.pop() {
             Some(buffer) => buffer,
             None => self.returned.recv().map_err(|_| encoder_gone())?,
         };
         converter.convert(frame, &mut buffer)?;
-        let message = match slot {
-            Some(slot) => {
-                self.last = Some(slot);
-                Message::Frame(buffer, slot, lead)
-            }
-            None => {
-                self.held = Some(time);
-                Message::Held(buffer, lead, time)
-            }
-        };
+        let message = Message::Frame(buffer, time, lead);
         send(&self.frames, message)?;
         Ok(ControlFlow::Continue(()))
     }
