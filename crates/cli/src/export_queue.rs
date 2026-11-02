@@ -169,7 +169,7 @@ impl Server {
             Err(IpcError::Taken { .. }) => return Ok(None),
             Err(e) => return Err(CliError::Failed(e.to_string())),
         };
-        let queue = Arc::new(ExportQueue::new());
+        let queue = Arc::new(ExportQueue::new().map_err(|e| CliError::Failed(e.to_string()))?);
         let gpu = Arc::new(gpu);
         let closing = Arc::new(AtomicBool::new(false));
         let thread = std::thread::Builder::new()

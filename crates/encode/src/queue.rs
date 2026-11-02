@@ -1,8 +1,10 @@
 //! Export queue (SCOPE, «Экспорт»): exports run one after another on a worker thread, so the
-//! caller keeps editing and recording; each job reports its progress and can be cancelled.
+//! caller keeps editing and recording; each job reports its progress and can be cancelled. A
+//! job that panics fails alone: the queue goes on with the next one.
 
 use std::collections::VecDeque;
 use std::ops::ControlFlow;
+use std::panic::AssertUnwindSafe;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
@@ -48,6 +50,7 @@ pub struct JobStatus {
 
 pub struct ExportQueue {
     shared: Arc<Shared>,
+    /// Taken when the queue is dropped.
     worker: Option<JoinHandle<()>>,
 }
 
@@ -72,7 +75,7 @@ struct Entry {
 }
 
 impl ExportQueue {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, EncodeError> {
         let shared = Arc::new(Shared {
             state: Mutex::new(State::default()),
             changed: Condvar::new(),
@@ -83,8 +86,11 @@ impl ExportQueue {
                 let shared = Arc::clone(&shared);
                 move || work(&shared)
             })
-            .ok();
-        Self { shared, worker }
+            .map_err(EncodeError::Thread)?;
+        Ok(Self {
+            shared,
+            worker: Some(worker),
+        })
     }
 
     /// Puts `job` at the end of the queue; returns its id.
@@ -162,12 +168,6 @@ impl ExportQueue {
     }
 }
 
-impl Default for ExportQueue {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Drop for ExportQueue {
     fn drop(&mut self) {
         self.cancel(None);
@@ -177,7 +177,8 @@ impl Drop for ExportQueue {
         }
         self.shared.changed.notify_all();
         if let Some(worker) = self.worker.take() {
-            // A job that panicked has already reported nothing more can be done with it.
+            // Panics of jobs are caught in `run` and reported as `Failed`; the worker itself
+            // has nothing more to report once the queue is gone.
             let _ = worker.join();
         }
     }
@@ -253,15 +254,26 @@ fn run(shared: &Shared, id: u32, job: Job) {
             false => ControlFlow::Continue(()),
         }
     };
-    let result = job(&mut progress);
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| job(&mut progress)));
     shared.set(id, |entry| {
         entry.status.state = match result {
-            Ok(exported) => JobState::Done {
+            Ok(Ok(exported)) => JobState::Done {
                 exported: Box::new(exported),
                 elapsed: started.elapsed(),
             },
-            Err(EncodeError::Cancelled) => JobState::Cancelled,
-            Err(error) => JobState::Failed(error.to_string()),
+            Ok(Err(EncodeError::Cancelled)) => JobState::Cancelled,
+            Ok(Err(error)) => JobState::Failed(error.to_string()),
+            Err(panic) => JobState::Failed(panicked(panic.as_ref())),
         };
     });
+}
+
+/// The message of a job's panic.
+fn panicked(panic: &(dyn std::any::Any + Send)) -> String {
+    let reason = panic
+        .downcast_ref::<&str>()
+        .copied()
+        .or_else(|| panic.downcast_ref::<String>().map(String::as_str))
+        .unwrap_or("причина неизвестна");
+    format!("экспорт упал внутри программы ({reason}), файл не записан: сообщи разработчикам")
 }

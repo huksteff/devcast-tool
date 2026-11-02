@@ -67,7 +67,7 @@ fn states(queue: &ExportQueue) -> Vec<String> {
 
 #[test]
 fn jobs_run_one_after_another_in_order() {
-    let queue = ExportQueue::new();
+    let queue = ExportQueue::new().unwrap();
     let (events, heard) = channel();
     let (a, step_a) = stepped("a", 2, events.clone());
     let (b, step_b) = stepped("b", 1, events);
@@ -87,7 +87,7 @@ fn jobs_run_one_after_another_in_order() {
 
 #[test]
 fn status_shows_progress_and_the_queue() {
-    let queue = ExportQueue::new();
+    let queue = ExportQueue::new().unwrap();
     let (events, heard) = channel();
     let (a, step_a) = stepped("a", 3, events.clone());
     let (b, _step_b) = stepped("b", 1, events);
@@ -105,7 +105,7 @@ fn status_shows_progress_and_the_queue() {
 
 #[test]
 fn cancel_stops_the_running_job_and_skips_a_queued_one() {
-    let queue = ExportQueue::new();
+    let queue = ExportQueue::new().unwrap();
     let (events, heard) = channel();
     let (a, step_a) = stepped("a", 5, events.clone());
     let (b, _step_b) = stepped("b", 1, events);
@@ -129,7 +129,7 @@ fn cancel_stops_the_running_job_and_skips_a_queued_one() {
 
 #[test]
 fn a_failed_job_keeps_its_message_and_the_next_one_runs() {
-    let queue = ExportQueue::new();
+    let queue = ExportQueue::new().unwrap();
     let failing: Job = Box::new(|_| Err(EncodeError::NothingLeft));
     let (events, heard) = channel();
     let (b, step_b) = stepped("b", 1, events);
@@ -142,5 +142,23 @@ fn a_failed_job_keeps_its_message_and_the_next_one_runs() {
         panic!("{:?}", queue.status());
     };
     assert!(message.contains("всё вырезано"), "{message}");
+    assert_eq!(states(&queue)[1], "b done");
+}
+
+#[test]
+fn a_panicking_job_fails_and_the_next_one_runs() {
+    let queue = ExportQueue::new().unwrap();
+    let panicking: Job = Box::new(|_| panic!("сломано"));
+    let (events, heard) = channel();
+    let (b, step_b) = stepped("b", 1, events);
+    let id = queue.push("a".into(), panicking);
+    queue.push("b".into(), b);
+    let Some(JobState::Failed(message)) = queue.wait(id) else {
+        panic!("{:?}", queue.status());
+    };
+    assert!(message.contains("сломано"), "{message}");
+    step_b.send(()).unwrap();
+    heard.recv().unwrap();
+    queue.wait_idle();
     assert_eq!(states(&queue)[1], "b done");
 }

@@ -62,6 +62,11 @@ pub enum EncodeError {
     #[error("экспорт отменён, файл не записан")]
     Cancelled,
 
+    #[error(
+        "не удалось запустить поток очереди экспорта: {0}. Закрой лишние программы и попробуй снова"
+    )]
+    Thread(std::io::Error),
+
     #[error("звук проекта не свёлся: {0}")]
     Sound(Box<dyn std::error::Error + Send + Sync>),
 
