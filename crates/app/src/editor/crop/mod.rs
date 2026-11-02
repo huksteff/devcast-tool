@@ -291,7 +291,7 @@ fn footer(ui: &mut Ui, dialog: &mut CropDialog) -> Option<Answer> {
 }
 
 /// A part of the dialog with its own fill and padding, the whole width.
-fn section(ui: &mut Ui, fill: Color32, margin: Margin, add: impl FnOnce(&mut Ui)) {
+pub(super) fn section(ui: &mut Ui, fill: Color32, margin: Margin, add: impl FnOnce(&mut Ui)) {
     // The footer is the last part: its fill keeps the round corners of the dialog.
     let corners = CornerRadius {
         sw: R3,
@@ -305,7 +305,7 @@ fn section(ui: &mut Ui, fill: Color32, margin: Margin, add: impl FnOnce(&mut Ui)
     });
 }
 
-fn line(ui: &mut Ui) {
+pub(super) fn line(ui: &mut Ui) {
     let rect = ui.available_rect_before_wrap();
     let (rect, _) = ui.allocate_exact_size(egui::vec2(rect.width(), 1.0), egui::Sense::hover());
     ui.painter().rect_filled(rect, 0, BORDER);

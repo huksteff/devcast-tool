@@ -79,3 +79,32 @@ fn bad_file_says_what_to_do() {
     assert!(error.contains("0, 3, 5 или 10"), "{error}");
     assert!(error.contains("удали"), "{error}");
 }
+
+/// The export choices came after the first files: an old file gets the defaults, a file with
+/// only some of them keeps those.
+#[test]
+fn export_choices_missing_or_partial_take_defaults() {
+    use crate::export::{ExportChoices, Format, Res, Settings};
+    let dir = tempfile::tempdir().unwrap();
+    let path = path_in(&dir);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, r#"{"countdown": 5}"#).unwrap();
+    assert_eq!(
+        Store::load(&path).unwrap().get().export,
+        ExportChoices::default()
+    );
+    let gif = r#"{"format": "gif", "res": "P1080", "fps": 20, "quality": "High", "looped": false}"#;
+    std::fs::write(
+        &path,
+        format!(r#"{{"export": {{"format": "gif", "gif": {gif}}}}}"#),
+    )
+    .unwrap();
+    let export = Store::load(&path).unwrap().get().export;
+    assert_eq!(export.format, Format::Gif);
+    assert_eq!(
+        (export.gif.res, export.gif.fps, export.gif.looped),
+        (Res::P1080, 20, false)
+    );
+    assert_eq!(export.mp4, Settings::default_for(Format::Mp4));
+    assert_eq!(ExportChoices::default().gif.res, Res::P720);
+}

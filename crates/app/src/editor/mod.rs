@@ -149,8 +149,10 @@ pub struct EditorWindow {
     pub library: library::Library,
     /// The app's export queue; none without a graphics device.
     pub exports: Option<crate::exports::Exports>,
-    /// The export dialog while it is open.
+    /// The export dialog while it is open: its choices.
     pub export: Option<export::ExportDialog>,
+    /// The last choices of the export dialog (`settings.json`); it opens with them.
+    pub export_choices: dc_settings::ExportChoices,
     /// The export queue list of the header is open.
     pub queue_open: bool,
     /// Actions the controls asked for in this frame.
@@ -205,6 +207,7 @@ impl EditorWindow {
             library: library::Library::default(),
             exports: None,
             export: None,
+            export_choices: dc_settings::ExportChoices::default(),
             queue_open: false,
             actions: Vec::new(),
         };

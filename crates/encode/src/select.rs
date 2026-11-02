@@ -85,6 +85,23 @@ pub fn open_for_export(
     })
 }
 
+/// The codec an export starts with: the first in [`Codec::ORDER`] that passes the self-test.
+/// The self-test is cached per process, so asking again is free and an export of this process
+/// skips the codecs that failed here. Blocks for the first self-tests (a fraction of a second
+/// each): call it off the UI thread.
+pub fn export_codec() -> Result<Codec, EncodeError> {
+    let mut problems = Vec::new();
+    for codec in Codec::ORDER {
+        match self_test_once(codec) {
+            Ok(()) => return Ok(codec),
+            Err(problem) => problems.push(format!("{codec}: {problem}")),
+        }
+    }
+    Err(EncodeError::NoCodec {
+        details: problems.join("; "),
+    })
+}
+
 fn self_test_once(codec: Codec) -> Result<(), String> {
     static RESULTS: [OnceLock<Result<(), String>>; Codec::ORDER.len()] =
         [const { OnceLock::new() }; Codec::ORDER.len()];

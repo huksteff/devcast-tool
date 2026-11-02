@@ -48,7 +48,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
             .icon(Icon::Export);
         let can = editor.exports.is_some() && editor.canvas.is_some();
         if ui.add_enabled(can, export).clicked() {
-            editor.export = Some(super::export::ExportDialog::default());
+            super::export::open(editor);
         }
         let jobs = editor
             .exports

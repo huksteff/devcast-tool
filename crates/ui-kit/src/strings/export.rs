@@ -52,3 +52,42 @@ pub fn finished(file: &str) -> String {
 pub fn failed(file: &str, error: &str) -> String {
     format!("Экспорт не удался: {file}. {error}")
 }
+
+/// The row of the encoder: its caption and, under it, the state of the self-test.
+pub const ENCODES: &str = "Кодирует";
+pub const CHECKING: &str = "проверяю…";
+pub const CHECKED: &str = "самопроверка прошла";
+pub const CHECK_FAILED: &str = "самопроверка не прошла";
+/// The encoders of `dc_encode::Codec::ORDER`, as the row names them.
+pub const NVENC: &str = "видеокарта NVIDIA (NVENC)";
+pub const QSV: &str = "видеокарта Intel (Quick Sync)";
+pub const AMF: &str = "видеокарта AMD (AMF)";
+pub const MEDIA_FOUNDATION: &str = "Windows (Media Foundation)";
+pub const X264: &str = "процессор (x264)";
+/// The tooltip of «?» after the estimated size.
+pub const ESTIMATE_HINT: &str = "Примерный размер: настоящий зависит от того, сколько в видео движения. Точный размер будет в очереди экспорта, когда файл готов.";
+
+/// «1080p · 1920 × 1080»: a resolution and the frame it gives the project.
+pub fn resolution(name: &str, width: u32, height: u32) -> String {
+    format!("{name} · {width} × {height}")
+}
+
+/// «1:48 · ≈ 90 МБ» of the footer: the output length and, when known, the estimated file size.
+pub fn summary(seconds: u64, bytes: Option<u64>) -> String {
+    let (h, m, s) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
+    let length = if h > 0 {
+        format!("{h}:{m:02}:{s:02}")
+    } else {
+        format!("{m}:{s:02}")
+    };
+    let Some(bytes) = bytes else {
+        return length;
+    };
+    let megabytes = bytes as f64 / 1_048_576.0;
+    let size = if megabytes < 1000.0 {
+        format!("{} МБ", megabytes.round().max(1.0))
+    } else {
+        format!("{:.1} ГБ", megabytes / 1024.0).replace('.', ",")
+    };
+    format!("{length} · ≈ {size}")
+}

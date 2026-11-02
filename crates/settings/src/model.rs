@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use dc_capture::{RecordingConfig, Source};
 use serde::{Deserialize, Serialize};
 
+use crate::export::ExportChoices;
 use crate::keymap::EditorKeys;
 use crate::placement::HudPlacement;
 
@@ -225,6 +226,8 @@ pub struct AppSettings {
     pub inspector: InspectorGroups,
     /// Folders of the projects opened in the editor, newest first, at most 16 (the «Проекты» menu).
     pub recent_projects: Vec<PathBuf>,
+    /// The last choices of the editor's export dialog.
+    pub export: ExportChoices,
 }
 
 impl Default for AppSettings {
@@ -247,6 +250,7 @@ impl Default for AppSettings {
             editor_keys: EditorKeys::default(),
             inspector: InspectorGroups::default(),
             recent_projects: Vec::new(),
+            export: ExportChoices::default(),
         }
     }
 }

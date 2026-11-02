@@ -18,7 +18,7 @@ pub struct AudioSettings {
 }
 
 /// Bit rate of exported AAC, bit/s (decision 006).
-const AAC_BIT_RATE: usize = 192_000;
+pub const AAC_BIT_RATE: usize = 192_000;
 
 pub struct AudioEncoder {
     inner: ffmpeg::encoder::Audio,

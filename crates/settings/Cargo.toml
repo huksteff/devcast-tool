@@ -12,6 +12,8 @@ workspace = true
 
 [dependencies]
 dc-capture = { path = "../capture" }
+# The export settings (`export.rs`) convert to the encoder's.
+dc-encode = { path = "../encode" }
 dc-models = { path = "../models" }
 dc-project = { path = "../project" }
 dirs = "6"

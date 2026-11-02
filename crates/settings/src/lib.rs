@@ -3,6 +3,7 @@
 //! (its one `Store` for all windows) and `devcast` (the file when the app is not running).
 
 pub mod edit;
+pub mod export;
 pub mod keymap;
 pub mod model;
 pub mod placement;
@@ -10,6 +11,7 @@ pub mod shortcut;
 pub mod store;
 
 pub use edit::{Applied, Edit, EditError, Key, Setting, apply};
+pub use export::ExportChoices;
 pub use keymap::{Binding, Command, EditorKey, EditorKeys, Group, taken_by};
 pub use model::{
     AppSettings, Countdown, EditorLayout, FILE, Hotkeys, InspectorGroups, Language, Listen,

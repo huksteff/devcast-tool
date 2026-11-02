@@ -132,6 +132,7 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     let open = editor.doc.dir().root().to_path_buf();
     editor.library.folder(&recordings, &open);
     editor.projects.recent = recent;
+    super::export::recall(editor, shared.store.get());
     if ui.input(|i| i.viewport().close_requested()) {
         ui.ctx()
             .send_viewport_cmd(egui::ViewportCommand::CancelClose);
@@ -175,6 +176,13 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     }
     if let Some(groups) = outcome.groups {
         let saved = shared.store.update(|s| s.inspector = groups);
+        shared.report(saved);
+    }
+    let remembered = shared
+        .editor
+        .as_ref()
+        .map(|e| super::export::remember(e, &mut shared.store));
+    if let Some(saved) = remembered {
         shared.report(saved);
     }
     if let Some(leave) = outcome.leave {

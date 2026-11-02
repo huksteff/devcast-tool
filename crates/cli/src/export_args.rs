@@ -20,7 +20,7 @@ pub(crate) struct ExportArgs {
     #[arg(
         long,
         value_enum,
-        help = "Размер по короткой стороне: 720p, 1080p, 1440p, 4k (только mp4) или source — как в проекте [по умолчанию 1080p]"
+        help = "Размер по короткой стороне: 720p, 1080p, 1440p, 4k (только mp4) или source — как в проекте [mp4 — 1080p, gif — 720p]"
     )]
     pub res: Option<Res>,
     #[arg(

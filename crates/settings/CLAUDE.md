@@ -10,6 +10,7 @@
 - Id сочетаний (`Binding::id`) — ключи `settings.json` и `devcast hotkeys`, не меняются. Названия для людей — в dc-app (`keymap::Title`) и dc-ui-kit: здесь строк интерфейса нет.
 - Ключи `devcast config` — `edit::Key` (`recording.fps` …); значения разбирает и печатает CLI (`crates/cli/src/config.rs`).
 - Место HUD на мониторах — `placement.rs` (физические px).
+- Выбор экспорта (`export.rs`: `Settings` с умолчаниями владельца, `ExportChoices` — последний выбор диалога) живёт здесь, `dc_ops::export` его реэкспортирует: модель настроек не может зависеть от dc-ops.
 
 ## Как тестировать
 

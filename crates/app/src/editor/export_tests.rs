@@ -7,21 +7,26 @@ use std::time::Instant;
 
 use dc_core::PixelSize;
 use dc_encode::export::{Exported, Stages};
-use dc_encode::{EncodeError, Job};
+use dc_encode::{Codec, EncodeError, Job};
 use dc_ops::Step;
-use dc_ops::export::{Format, Settings, Spec};
+use dc_ops::export::{Format, Res, Settings, Spec};
+use dc_settings::Store;
 use dc_ui_kit::strings::{editor as names, export as text};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 
 use super::SIZE;
-use super::export::{ExportDialog, queue, spec};
-use super::tests::{editor, harness};
-use crate::exports::{Exports, Runner};
+use super::export::{ExportDialog, queue, recall, remember, spec};
+use super::tests::{editor, harness, harness_of};
+use crate::exports::{Encoder, Exports, Probe, Runner};
 
 /// A queue whose jobs write nothing: each takes its spec into `taken` and is done at once, or
-/// fails when its file is named `сбой.mp4`.
+/// fails when its file is named `сбой.mp4`. Its encoder check finds NVENC.
 fn stand_in() -> (Exports, Arc<Mutex<Vec<Spec>>>) {
+    stand_in_with(Arc::new(|| Ok(Codec::Nvenc)))
+}
+
+fn stand_in_with(probe: Probe) -> (Exports, Arc<Mutex<Vec<Spec>>>) {
     let taken = Arc::new(Mutex::new(Vec::new()));
     let seen = Arc::clone(&taken);
     let runner: Runner = Arc::new(move |spec: Spec| -> Job {
@@ -46,7 +51,7 @@ fn stand_in() -> (Exports, Arc<Mutex<Vec<Spec>>>) {
             })
         })
     });
-    (Exports::new(runner, || {}).unwrap(), taken)
+    (Exports::with_probe(runner, probe, || {}).unwrap(), taken)
 }
 
 /// The editor exports its working state, unsaved edits included, with the defaults of the
@@ -76,7 +81,7 @@ fn the_editor_job_is_the_cli_job() {
         format: Format::Gif,
         ..ExportDialog::default()
     };
-    assert_eq!(gif.settings().describe(), "gif 1080p 15 fps по кругу");
+    assert_eq!(gif.settings().describe(), "gif 720p 15 fps по кругу");
 }
 
 #[test]
@@ -88,14 +93,90 @@ fn export_opens_the_dialog_and_escape_closes_it() {
     harness.get_by_label(names::EXPORT).click();
     harness.run();
     harness.get_by_label(text::SAVE_AS);
+    harness.get_by_label(text::ESTIMATE_HINT);
+    let exports = harness.state().editor.exports.clone().unwrap();
+    assert_eq!(exports.wait_encoder(), Encoder::Ready(Codec::Nvenc));
+    harness.run();
+    harness.get_by_label_contains(text::CHECKED);
+    harness.get_by_label(text::NVENC);
     harness.snapshot("editor_export");
     harness.get_by_label(text::GIF).click();
     harness.run();
     harness.get_by_label(text::NO_SOUND);
+    assert!(
+        harness.query_by_label_contains(text::ENCODES).is_none(),
+        "GIF has no encoder row"
+    );
     harness.snapshot("editor_export_gif");
     harness.key_press(egui::Key::Escape);
     harness.run();
     assert!(harness.state().editor.export.is_none());
+}
+
+/// The check says «проверяю…» until it answers; a failed one shows what to do.
+#[test]
+fn the_encoder_row_waits_for_the_check_and_shows_its_failure() {
+    let (release, open) = std::sync::mpsc::channel::<()>();
+    let gate = Mutex::new(open);
+    let probe: Probe = Arc::new(move || {
+        gate.lock().unwrap().recv().unwrap();
+        Err("ни один кодек H.264 не работает: обнови драйвер".to_owned())
+    });
+    let mut harness = harness(SIZE);
+    let (exports, _) = stand_in_with(probe);
+    harness.state_mut().editor.exports = Some(exports.clone());
+    harness.run();
+    harness.get_by_label(names::EXPORT).click();
+    harness.run();
+    harness.get_by_label_contains(text::CHECKING);
+    release.send(()).unwrap();
+    assert!(matches!(exports.wait_encoder(), Encoder::Failed(_)));
+    harness.run();
+    harness.get_by_label_contains(text::CHECK_FAILED);
+    harness.get_by_label("ни один кодек H.264 не работает: обнови драйвер");
+}
+
+/// The last choices go to `settings.json` and the dialog of the next editor opens with them;
+/// a file without them gives the defaults.
+#[test]
+fn the_last_choices_survive_closing_the_dialog_and_the_app() {
+    let folder = tempfile::tempdir().unwrap();
+    let path = folder
+        .path()
+        .join("Настройки DevCast")
+        .join("settings.json");
+    let mut store = Store::load(&path).unwrap();
+    assert_eq!(store.get().export, ExportDialog::default());
+    let mut harness = harness(SIZE);
+    let (exports, _) = stand_in();
+    harness.state_mut().editor.exports = Some(exports.clone());
+    recall(&mut harness.state_mut().editor, store.get());
+    harness.run();
+    harness.get_by_label(names::EXPORT).click();
+    harness.run();
+    harness.get_by_label(text::GIF).click();
+    harness.run();
+    harness.get_by_label(text::P1080).click();
+    harness.run();
+    harness.key_press(egui::Key::Escape);
+    harness.run();
+    assert!(harness.state().editor.export.is_none());
+    remember(&harness.state().editor, &mut store).unwrap();
+    drop(harness);
+
+    let store = Store::load(&path).unwrap();
+    let (temp, mut again) = editor();
+    again.exports = Some(exports);
+    recall(&mut again, store.get());
+    let mut harness = harness_of(temp, again, SIZE, Default::default());
+    harness.run();
+    harness.get_by_label(names::EXPORT).click();
+    harness.run();
+    harness.get_by_label(text::NO_SOUND);
+    let shown = harness.state().editor.export.unwrap();
+    assert_eq!(shown.format, Format::Gif);
+    assert_eq!(shown.gif.res, Res::P1080);
+    assert_eq!(shown.mp4, Settings::default_for(Format::Mp4));
 }
 
 #[test]

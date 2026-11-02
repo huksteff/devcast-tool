@@ -72,7 +72,7 @@ fn dry_run_shows_the_export_and_writes_nothing() {
     );
     assert!(
         out.stdout
-            .contains("готовое.gif (gif 1080p 20 fps один раз)"),
+            .contains("готовое.gif (gif 720p 20 fps один раз)"),
         "{}",
         out.stdout
     );

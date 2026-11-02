@@ -28,7 +28,7 @@ pub use mp4::{Mp4Layout, Mp4Writer};
 pub use packet::{Packet, StreamParameters};
 pub use queue::{ExportQueue, Job, JobState, JobStatus, Watch};
 pub use reader::Mp4Reader;
-pub use select::{Selection, open_for_export, select};
+pub use select::{Selection, export_codec, open_for_export, select};
 pub use still::{Seek, Sources, frame_png, sheet_png};
 
 /// Initializes FFmpeg once per process and keeps its own log to errors only:
