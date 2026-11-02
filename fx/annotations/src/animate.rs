@@ -19,8 +19,8 @@ pub struct AnnotAnim {
     /// Length of the entrance, seconds of the output video, 0..10 (a sped-up part does not
     /// shorten it); 0.3 by default.
     pub enter_duration: Option<f64>,
-    /// Exit, the same names: an exit is the entrance played backwards (slide_left leaves to the
-    /// left, typewriter erases from the end).
+    /// Exit, the same names: an exit is the entrance played backwards, but a slide keeps moving
+    /// (slide_left leaves to the right), typewriter erases from the end.
     pub exit: Option<Animation>,
     /// Length of the exit, seconds of the output video, 0..10; 0.3 by default.
     pub exit_duration: Option<f64>,

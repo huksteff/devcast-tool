@@ -17,8 +17,9 @@ pub const STAGE_MAX: TimeDelta = TimeDelta::from_millis(10_000);
 /// How far a slide starts, reference px (v1): along x and along y.
 const SLIDE: [f64; 2] = [96.0, 72.0];
 
-/// How an annotation comes in or goes out. An exit is its entrance played backwards: a slide
-/// leaves to the side it is named after, typewriter erases from the end.
+/// How an annotation comes in or goes out. An exit is its entrance played backwards, except a
+/// slide, which keeps moving as in v1 (owner, 2026-11-02): slide_left comes in from the left and
+/// leaves to the right. Typewriter erases from the end.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Animation {
@@ -65,6 +66,19 @@ impl Animation {
             Self::Draw => matches!(kind, Kind::Shape | Kind::Drawing),
             _ => true,
         }
+    }
+
+    /// The look `p` of the way out (1 — still fully in, 0 — gone): the way in backwards, but a
+    /// slide goes on to the opposite side.
+    fn leaving(self, p: f64) -> Pose {
+        let onward = match self {
+            Self::SlideLeft => Self::SlideRight,
+            Self::SlideRight => Self::SlideLeft,
+            Self::SlideTop => Self::SlideBottom,
+            Self::SlideBottom => Self::SlideTop,
+            other => other,
+        };
+        onward.pose(p)
     }
 
     /// The look `p` of the way in (0 — not yet in, 1 — fully in).
@@ -167,7 +181,7 @@ impl Pose {
         if since < enter {
             annotation.enter.animation.pose(since / enter)
         } else if left < exit {
-            annotation.exit.animation.pose(left / exit)
+            annotation.exit.animation.leaving(left / exit)
         } else {
             Self::STILL
         }

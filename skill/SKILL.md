@@ -101,7 +101,7 @@ devcast shape set a2 --figure arrow --tail 0,1 --tip 1,0 --width 8 --color "#ef4
 devcast shape set a2 --figure highlight --color "#facc15ff"  # подсветка: заливка 28 %, без обводки
 devcast shape set a2 --figure rectangle --radius 12 --gradient --glow 14   # --colors — 2–4 цвета через запятую
 devcast annot anim a2 --enter draw --enter-duration 0.8   # фигура прорисовывается по контуру
-devcast annot anim a1 --enter slide_left --exit fade --exit-duration 0.5   # slide_left/right/top/bottom — с той стороны
+devcast annot anim a1 --enter slide_left --exit fade --exit-duration 0.5   # slide_left/right/top/bottom — въезжает с той стороны, уезжает в противоположную
 devcast annot anim a1 --enter typewriter --enter-duration 1  # pop, fade, none; typewriter — у текста, draw — у фигур и рисунков
 devcast annot key add a1 --at 5                          # ключ: запомнить вид аннотации в этот момент
 devcast annot set a1 --at 7 --x 0.6 --rotation 20        # правка в ключе в 7 с; без --at — во всех ключах

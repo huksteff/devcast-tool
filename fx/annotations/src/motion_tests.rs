@@ -60,7 +60,7 @@ fn pop_grows_with_a_slight_overshoot() {
 }
 
 #[test]
-fn slides_come_from_their_side_and_leave_to_it() {
+fn slides_come_from_their_side_and_go_on_to_the_other() {
     let shift = |name: &str, t: f64| {
         let p = animated(json!({"enter": name, "enter_duration": 1, "exit": name,
             "exit_duration": 1}));
@@ -73,9 +73,12 @@ fn slides_come_from_their_side_and_leave_to_it() {
     assert_eq!(shift("slide_left", 2.5), [-48.0, 0.0]);
     assert_eq!(
         shift("slide_left", 3.5),
-        [-48.0, 0.0],
-        "the exit goes back left"
+        [48.0, 0.0],
+        "in from the left, out to the right"
     );
+    assert_eq!(shift("slide_right", 3.5), [-48.0, 0.0]);
+    assert_eq!(shift("slide_top", 3.5), [0.0, 36.0]);
+    assert_eq!(shift("slide_bottom", 3.5), [0.0, -36.0]);
     let p = animated(json!({"enter": "slide_bottom", "enter_duration": 1}));
     assert!(close(pose(&p, 0, 2.5).opacity, 0.5));
 }

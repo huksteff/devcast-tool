@@ -38,8 +38,8 @@ fn golden_pop_halfway_in() -> TestResult {
     check("pop", &project, 0.6)
 }
 
-/// 1.4 s is halfway through a 0.8 s exit to the left: 48 px at 1080 left of the turned box,
-/// half transparent.
+/// 1.4 s is halfway through a 0.8 s exit of a slide_left: it keeps moving, 48 px at 1080 right of
+/// the turned box, half transparent.
 #[test]
 fn golden_turned_slide_halfway_out() -> TestResult {
     let mut project = project(
