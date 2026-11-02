@@ -10,11 +10,11 @@ use std::thread::JoinHandle;
 
 use dc_encode::{ExportQueue, JobState, JobStatus};
 use dc_ipc::{IpcError, Listener};
+use dc_ops::export::Spec;
 use dc_render::Gpu;
 use serde::{Deserialize, Serialize};
 
 use crate::error::CliError;
-use crate::export_job::{self, Spec};
 use crate::round::thousandths;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -212,7 +212,7 @@ fn push(queue: &ExportQueue, gpu: &Arc<Gpu>, spec: Spec) -> u32 {
     let label = spec.label();
     queue.push(
         label,
-        Box::new(move |progress| export_job::run(&gpu, &spec, progress)),
+        Box::new(move |progress| dc_ops::export::run(&gpu, &spec, progress)),
     )
 }
 

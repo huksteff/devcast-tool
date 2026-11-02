@@ -22,6 +22,7 @@ fn every_string_has_glyphs() {
     texts.extend(literals(include_str!("../src/strings/sound.rs")));
     texts.extend(literals(include_str!("../src/strings/crop.rs")));
     texts.extend(literals(include_str!("../src/strings/library.rs")));
+    texts.extend(literals(include_str!("../src/strings/export.rs")));
     assert!(texts.iter().any(|t| t == "Горячие клавиши"));
     assert!(texts.len() > 80, "strings found: {}", texts.len());
     assert!(texts.iter().any(|t| t == "Отменить запись?"));

@@ -46,7 +46,7 @@ pub struct Mp4Settings {
 pub const MP4_FPS: [u32; 3] = [30, 60, 120];
 
 /// A recording "at 120 fps" whose average comes out a little lower still counts.
-const FPS_120_FROM: f64 = 100.0;
+pub const FPS_120_FROM: f64 = 100.0;
 
 impl Mp4Settings {
     pub(crate) fn check(&self, source_fps: f64) -> Result<(), EncodeError> {

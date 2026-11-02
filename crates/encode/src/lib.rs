@@ -26,7 +26,7 @@ pub use error::EncodeError;
 pub use frame::Nv12Frame;
 pub use mp4::{Mp4Layout, Mp4Writer};
 pub use packet::{Packet, StreamParameters};
-pub use queue::{ExportQueue, Job, JobState, JobStatus};
+pub use queue::{ExportQueue, Job, JobState, JobStatus, Watch};
 pub use reader::Mp4Reader;
 pub use select::{Selection, open_for_export, select};
 pub use still::{Seek, Sources, frame_png, sheet_png};

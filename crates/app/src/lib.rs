@@ -15,6 +15,7 @@ mod downloads;
 mod e2e_tests;
 mod editor;
 mod error;
+mod exports;
 mod gpu;
 mod hotkeys;
 mod hud;

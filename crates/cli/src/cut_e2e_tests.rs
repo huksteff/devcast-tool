@@ -7,11 +7,10 @@ use std::path::Path;
 use std::sync::Arc;
 
 use dc_core::{SourceTime, TimeMap};
+use dc_ops::export::{Format, Quality, Res, Settings, Spec, run};
 use dc_project::ProjectDir;
 use dc_render::{AdapterChoice, Gpu};
 
-use crate::export_args::{Format, QualityArg, Res, Settings};
-use crate::export_job::{Spec, run};
 use crate::test_util::{decoded, ffmpeg, run_line};
 
 const FPS: u32 = 30;
@@ -122,7 +121,7 @@ fn flashes_and_beeps_stay_together_after_ten_cuts_a_join_and_speed() {
             format: Format::Mp4,
             res: Res::Source,
             fps: FPS,
-            quality: QualityArg::High,
+            quality: Quality::High,
             looped: false,
         },
         out: out.clone(),

@@ -238,6 +238,9 @@ pub mod crop;
 /// The recordings library of the editor.
 pub mod library;
 
+/// The export dialog and queue of the editor.
+pub mod export;
+
 /// The settings window.
 pub mod settings {
     pub const TITLE: &str = "Настройки — DevCast";

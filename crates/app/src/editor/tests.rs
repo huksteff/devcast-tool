@@ -39,6 +39,9 @@ pub(super) struct State {
     pub now: Option<std::time::Instant>,
     /// The errors of the frames (toasts) when a test expects some; otherwise an error fails it.
     pub errors: Option<Vec<String>>,
+    /// Exports the frames told done (toasts): `run` draws several frames, and only the first
+    /// one after a job ends tells it.
+    pub done: Vec<String>,
 }
 
 pub(super) fn harness(size: egui::Vec2) -> egui_kittest::Harness<'static, State> {
@@ -71,6 +74,7 @@ pub(super) fn harness_of(
         groups: crate::settings::InspectorGroups::default(),
         now: None,
         errors: None,
+        done: Vec::new(),
     };
     dc_ui_kit::testing::harness()
         .with_size(size)
@@ -86,6 +90,7 @@ pub(super) fn harness_of(
                     Some(errors) => errors.extend(outcome.errors.iter().cloned()),
                     None => assert!(outcome.errors.is_empty(), "{:?}", outcome.errors),
                 }
+                state.done.extend(outcome.done.iter().cloned());
                 state.settings = state.settings.or(outcome.open_settings);
                 state.outcome = Some(outcome);
             },

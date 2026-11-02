@@ -1,11 +1,9 @@
-//! Arguments of `devcast export` and what they turn into: the format, the settings of
-//! `dc_encode::export` and the output file.
+//! Arguments of `devcast export` and what they turn into: the settings of
+//! `dc_ops::export` (shared with the editor) and the output file.
 
 use std::path::{Component, Path, PathBuf};
 
-use dc_encode::Quality;
-use dc_encode::export::{GifSettings, Mp4Settings, Resolution};
-use serde::{Deserialize, Serialize};
+use dc_ops::export::{self, Settings};
 
 use crate::error::CliError;
 
@@ -47,14 +45,13 @@ impl ExportArgs {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum Format {
     Mp4,
     Gif,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum Res {
     #[value(name = "720p")]
     P720,
@@ -67,89 +64,17 @@ pub(crate) enum Res {
     Source,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum QualityArg {
     Low,
     Medium,
     High,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum Switch {
     On,
     Off,
-}
-
-/// One export as it travels to the process that runs the queue.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct Settings {
-    pub format: Format,
-    pub res: Res,
-    pub fps: u32,
-    pub quality: QualityArg,
-    pub looped: bool,
-}
-
-impl Settings {
-    pub(crate) fn resolution(&self) -> Resolution {
-        match self.res {
-            Res::P720 => Resolution::P720,
-            Res::P1080 => Resolution::P1080,
-            Res::P1440 => Resolution::P1440,
-            Res::P2160 => Resolution::P2160,
-            Res::Source => Resolution::Source,
-        }
-    }
-
-    pub(crate) fn mp4(&self) -> Mp4Settings {
-        Mp4Settings {
-            resolution: self.resolution(),
-            fps: self.fps,
-            quality: match self.quality {
-                QualityArg::Low => Quality::Low,
-                QualityArg::Medium => Quality::Medium,
-                QualityArg::High => Quality::High,
-            },
-        }
-    }
-
-    pub(crate) fn gif(&self) -> GifSettings {
-        GifSettings {
-            resolution: self.resolution(),
-            fps: self.fps,
-            looped: self.looped,
-        }
-    }
-
-    /// One line: `mp4 1080p 60 fps high`.
-    pub(crate) fn describe(&self) -> String {
-        let res = match self.res {
-            Res::P720 => "720p",
-            Res::P1080 => "1080p",
-            Res::P1440 => "1440p",
-            Res::P2160 => "4k",
-            Res::Source => "source",
-        };
-        match self.format {
-            Format::Mp4 => format!("mp4 {res} {} fps {}", self.fps, quality_name(self.quality)),
-            Format::Gif => {
-                let looped = if self.looped {
-                    "по кругу"
-                } else {
-                    "один раз"
-                };
-                format!("gif {res} {} fps {looped}", self.fps)
-            }
-        }
-    }
-}
-
-fn quality_name(quality: QualityArg) -> &'static str {
-    match quality {
-        QualityArg::Low => "low",
-        QualityArg::Medium => "medium",
-        QualityArg::High => "high",
-    }
 }
 
 /// The output file (absolute: the queue may run in another process with another folder) and
@@ -165,38 +90,48 @@ pub(crate) fn settings(args: &ExportArgs, cwd: &Path) -> Result<(PathBuf, Settin
         .and_then(|e| e.to_str())
         .map(str::to_lowercase);
     let format = match (args.format, extension.as_deref()) {
-        (Some(format), _) => format,
-        (None, Some("mp4")) => Format::Mp4,
-        (None, Some("gif")) => Format::Gif,
+        (Some(Format::Mp4), _) | (None, Some("mp4")) => export::Format::Mp4,
+        (Some(Format::Gif), _) | (None, Some("gif")) => export::Format::Gif,
         _ => {
             return Err(usage(
                 "формат не понятен по имени файла: -o урок.mp4, -o урок.gif или --format mp4|gif",
             ));
         }
     };
-    let res = args.res.unwrap_or(Res::P1080);
-    if format == Format::Gif {
-        if matches!(res, Res::P1440 | Res::P2160) {
+    let mut settings = Settings::default_for(format);
+    if let Some(res) = args.res {
+        settings.res = match res {
+            Res::P720 => export::Res::P720,
+            Res::P1080 => export::Res::P1080,
+            Res::P1440 => export::Res::P1440,
+            Res::P2160 => export::Res::P2160,
+            Res::Source => export::Res::Source,
+        };
+    }
+    if format == export::Format::Gif {
+        if matches!(settings.res, export::Res::P1440 | export::Res::P2160) {
             return Err(usage("GIF — только 720p, 1080p или source: --res 720p"));
         }
         if args.quality.is_some() {
             return Err(usage("у GIF нет --quality: качество задают размер и fps"));
         }
     }
-    if format == Format::Mp4 && args.looped.is_some() {
+    if format == export::Format::Mp4 && args.looped.is_some() {
         return Err(usage("--loop — только для GIF"));
     }
-    let fps = args.fps.unwrap_or(match format {
-        Format::Mp4 => 60,
-        Format::Gif => 15,
-    });
-    let settings = Settings {
-        format,
-        res,
-        fps,
-        quality: args.quality.unwrap_or(QualityArg::High),
-        looped: args.looped != Some(Switch::Off),
-    };
+    if let Some(fps) = args.fps {
+        settings.fps = fps;
+    }
+    if let Some(quality) = args.quality {
+        settings.quality = match quality {
+            QualityArg::Low => export::Quality::Low,
+            QualityArg::Medium => export::Quality::Medium,
+            QualityArg::High => export::Quality::High,
+        };
+    }
+    if let Some(looped) = args.looped {
+        settings.looped = looped == Switch::On;
+    }
     Ok((resolved(&cwd.join(out)), settings))
 }
 

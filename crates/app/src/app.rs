@@ -57,6 +57,8 @@ pub struct Shared {
     pub gpu: Option<crate::gpu::PreviewGpu>,
     /// Model downloads, shared by the settings window and the editors (`downloads.rs`).
     pub downloads: crate::downloads::Downloads,
+    /// The export queue of the app, made when the first editor opens with a device.
+    pub exports: Option<crate::exports::Exports>,
 }
 
 /// Which windows are open and the step of the recording: what the HUD's frame acts on.
@@ -102,6 +104,7 @@ impl Shared {
             toasts: Toasts::default(),
             gpu: None,
             downloads: crate::downloads::Downloads::default(),
+            exports: None,
         };
         shared.refresh_sources();
         shared

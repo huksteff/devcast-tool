@@ -21,7 +21,7 @@ use crate::error::EncodeError;
 
 pub use gif::{GIF_FPS, GifSettings, export_gif};
 pub use mp4::export_mp4;
-pub use settings::{MP4_FPS, Mp4Settings, Resolution};
+pub use settings::{FPS_120_FROM, MP4_FPS, Mp4Settings, Resolution};
 pub use stages::Stages;
 
 /// Fills interleaved samples of [`Timeline::sound`] from output sample `start`.
