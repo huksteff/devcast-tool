@@ -1,16 +1,22 @@
 //! Atomic file replacement: write a temporary file next to the target, flush it to disk, then
 //! rename over the target. A crash leaves either the old file or the new one, never a mix. The
-//! temporary file is named after the process, so two processes writing the same file (the app
-//! and the CLI filling one probe cache) do not open each other's.
+//! temporary file is named after the process and a number of this write, so two writers of the
+//! same file (the app and the CLI, or the preview and sound threads filling one probe cache) do
+//! not open each other's.
 
 use std::io::Write;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::error::{ProjectError, Result};
 
+/// Number of the next write of this process.
+static WRITES: AtomicU64 = AtomicU64::new(0);
+
 pub fn write(path: &Path, bytes: &[u8]) -> Result<()> {
+    let write = WRITES.fetch_add(1, Ordering::Relaxed);
     let mut tmp = path.as_os_str().to_owned();
-    tmp.push(format!(".{}.tmp", std::process::id()));
+    tmp.push(format!(".{}-{write}.tmp", std::process::id()));
     let tmp = std::path::PathBuf::from(tmp);
     {
         let mut file = std::fs::File::create(&tmp).map_err(ProjectError::io("создать", &tmp))?;
@@ -64,5 +70,24 @@ mod tests {
             .map(|e| e.unwrap().file_name())
             .collect();
         assert_eq!(names.len(), 1, "{names:?}");
+    }
+
+    #[test]
+    fn threads_writing_one_file_do_not_clash() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("кэш probe.json");
+        std::thread::scope(|scope| {
+            for thread in 0..8u8 {
+                let path = &path;
+                scope.spawn(move || {
+                    for _ in 0..50 {
+                        write(path, &[thread; 64]).unwrap();
+                    }
+                });
+            }
+        });
+        let bytes = std::fs::read(&path).unwrap();
+        assert!(bytes.len() == 64 && bytes.iter().all(|b| *b == bytes[0]));
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
     }
 }
