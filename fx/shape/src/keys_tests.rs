@@ -26,7 +26,7 @@ fn shown(a: &Annotation, ms: i64) -> ShapeBody {
 /// Arrow a1 over output 1–2 s with a key at 1.5 s: tip moved up, thicker, red, a circle.
 fn keyed_shape() -> Project {
     let mut p = project();
-    let args = json!({"id": "a1", "at": 1.5, "to": "1,0", "width": 10,
+    let args = json!({"id": "a1", "at": 1.5, "tip": "1,0", "width": 10,
         "color": "#ff0000ff", "glow": 20, "figure": "circle"});
     assert_eq!(run(&mut p, &set(args)), "аннотации ~1 a1");
     p

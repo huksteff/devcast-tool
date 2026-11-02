@@ -19,10 +19,10 @@ pub struct ShapeSet {
     /// arrow, rectangle, ellipse, circle, line or highlight; becoming or leaving a highlight
     /// brings its look (fill, outline, opacity) unless given here.
     pub figure: Option<Figure>,
-    /// Start of an arrow or a line, `x,y` in fractions of the box, e.g. 0,1.
-    pub from: Option<String>,
-    /// End of an arrow (its tip) or a line, `x,y` in fractions of the box, e.g. 1,0.
-    pub to: Option<String>,
+    /// Tail: start of an arrow or a line, `x,y` in fractions of the box, e.g. 0,1.
+    pub tail: Option<String>,
+    /// Tip: end of an arrow (its head) or a line, `x,y` in fractions of the box, e.g. 1,0.
+    pub tip: Option<String>,
     /// Colour of an arrow, a line, an outline, #rrggbbaa.
     pub color: Option<Rgba>,
     /// Thickness, px when the short side of the frame is 1080 px, 1..64.
@@ -58,11 +58,11 @@ impl ShapeSet {
         if let Some(figure) = self.figure {
             new = new.refigured(figure);
         }
-        if let Some(from) = &self.from {
-            new.from = point("начало", from)?;
+        if let Some(tail) = &self.tail {
+            new.from = point("начало", tail)?;
         }
-        if let Some(to) = &self.to {
-            new.to = point("конец", to)?;
+        if let Some(tip) = &self.tip {
+            new.to = point("конец", tip)?;
         }
         if let Some(width) = self.width {
             new.width = within("толщина", width, WIDTH_MIN, WIDTH_MAX)?;
@@ -117,7 +117,7 @@ impl Op for ShapeSet {
     const NAME: &'static str = "shape set";
     const ABOUT: &'static str = "Изменить фигуру: вид, концы стрелки, цвета, толщину, заливку, градиент, свечение, прозрачность (с --at — в ключе)";
     const EXAMPLE: &'static str =
-        "shape set a2 --figure arrow --from 0,1 --to 1,0 --width 8 --color \"#ef4444ff\"";
+        "shape set a2 --figure arrow --tail 0,1 --tip 1,0 --width 8 --color \"#ef4444ff\"";
     const POSITIONAL: &'static [&'static str] = &["id"];
 }
 

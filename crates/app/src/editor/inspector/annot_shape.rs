@@ -1,8 +1,7 @@
 //! «Основное» of a shape (mockup 3c «Фигура»): the figure in tiles, the colours of the line and
 //! the fill, the gradient, thickness, outline and opacity (`shape set`); «Тонкая настройка» —
 //! glow, corner radius, the direction and loop of the gradient, the ends of an arrow or a line
-//! in percent of the box (`--from`, `--to`: their renaming to `--tail/--tip` waits for the owner,
-//! QUESTIONS «Фигуры» 5). «Сбросить» brings the look of the figure to the defaults and keeps the
+//! in percent of the box (`--tail`, `--tip`). «Сбросить» brings the look of the figure to the defaults and keeps the
 //! figure and its ends.
 
 use dc_fx_shape::{CYCLE_MAX, Figure, GLOW_MAX, RADIUS_MAX, ShapeBody, WIDTH_MAX, WIDTH_MIN};
@@ -125,8 +124,8 @@ impl Section for ShapeBody {
 fn ends(ui: &mut Ui, cx: &mut Cx<'_>, body: &ShapeBody, edit: Edit) {
     let percent = (1.0, names::PERCENT);
     let points = [
-        ("from", body.from, [text::TAIL_X, text::TAIL_Y]),
-        ("to", body.to, [text::TIP_X, text::TIP_Y]),
+        ("tail", body.from, [text::TAIL_X, text::TAIL_Y]),
+        ("tip", body.to, [text::TIP_X, text::TIP_Y]),
     ];
     for (field, point, [x_label, y_label]) in points {
         let x = rows::slider(ui, x_label, point.x * 100.0, 0.0..=100.0, percent);

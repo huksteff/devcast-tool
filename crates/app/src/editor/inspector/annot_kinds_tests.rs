@@ -58,7 +58,7 @@ fn arrow_ends_are_shape_set_from_and_to() {
     type_in(&mut harness, text::TIP_Y, 25.0);
     type_in(&mut harness, text::GLOW, 10.0);
     // The default arrow runs from 0,0.5 to 1,0.5 of its box.
-    let lines = ["shape set a3 --to 1,0.25", "shape set a3 --glow 10"];
+    let lines = ["shape set a3 --tip 1,0.25", "shape set a3 --glow 10"];
     steps_back(&mut harness, &lines, 0);
 }
 

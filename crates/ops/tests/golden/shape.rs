@@ -47,7 +47,7 @@ fn figures() -> Vec<(Value, Value)> {
     vec![
         (
             cell(0.0, 0.0),
-            json!({"figure": "arrow", "from": "0,1", "to": "1,0.2"}),
+            json!({"figure": "arrow", "tail": "0,1", "tip": "1,0.2"}),
         ),
         (
             cell(1.0, 0.0),
@@ -63,7 +63,7 @@ fn figures() -> Vec<(Value, Value)> {
         ),
         (
             cell(1.0, 1.0),
-            json!({"figure": "line", "from": "0,1", "to": "1,0", "color": "#e11d48ff", "width": 10}),
+            json!({"figure": "line", "tail": "0,1", "tip": "1,0", "color": "#e11d48ff", "width": 10}),
         ),
         (
             cell(2.0, 1.0),
@@ -87,7 +87,7 @@ fn golden_gradients_with_glow() -> TestResult {
         ),
         (
             json!({"rect": "0.55,0.25,0.4,0.5"}),
-            json!({"figure": "arrow", "from": "0,0.8", "to": "1,0.2", "width": 12,
+            json!({"figure": "arrow", "tail": "0,0.8", "tip": "1,0.2", "width": 12,
                 "gradient": true, "cycle": 0, "glow": 10}),
         ),
     ])?;

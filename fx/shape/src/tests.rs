@@ -66,7 +66,7 @@ fn a_new_shape_is_the_blue_v1_arrow_across_its_box() {
 #[test]
 fn set_changes_only_the_given_fields() {
     let mut p = project();
-    let args = json!({"id": "a1", "figure": "line", "from": "0, 1", "to": "1,0.25",
+    let args = json!({"id": "a1", "figure": "line", "tail": "0, 1", "tip": "1,0.25",
         "width": 12, "gradient": true, "colors": "#ff0000ff,#00ff00ff,#0000ffff",
         "angle": 90, "cycle": 0, "glow": 14});
     assert_eq!(
@@ -130,9 +130,9 @@ fn set_rejects_bad_values_and_other_kinds() {
         (json!({"id": "a1", "opacity": 1.5}), "от 0 до 1"),
         (json!({"id": "a1", "angle": 400}), "от -360 до 360"),
         (json!({"id": "a1", "cycle": 0.1}), "или 0"),
-        (json!({"id": "a1", "from": "0.5"}), "x,y в долях бокса"),
-        (json!({"id": "a1", "to": "1.5,0"}), "от 0 до 1"),
-        (json!({"id": "a1", "to": "a,b"}), "например 0,0.5"),
+        (json!({"id": "a1", "tail": "0.5"}), "x,y в долях бокса"),
+        (json!({"id": "a1", "tip": "1.5,0"}), "от 0 до 1"),
+        (json!({"id": "a1", "tip": "a,b"}), "например 0,0.5"),
         (json!({"id": "a1", "colors": "#ff0000ff"}), "от 2 до 4"),
         (json!({"id": "a1", "colors": "red,blue"}), "#rrggbbaa"),
         (json!({"id": "a2", "width": 4}), "не фигура"),

@@ -24,7 +24,7 @@ fn project(regions: &[(Value, Value)]) -> Result<Project, Box<dyn Error>> {
     }
     let line = json!({"kind": "shape", "at": 0.2, "duration": 1.6, "rect": "0,0,1,1"});
     serde_json::from_value::<AnnotAdd>(line)?.apply(&mut project)?;
-    let look = json!({"id": "a1", "figure": "line", "from": "0.02,0.9", "to": "0.98,0.1",
+    let look = json!({"id": "a1", "figure": "line", "tail": "0.02,0.9", "tip": "0.98,0.1",
         "color": "#ffffffff", "width": 24});
     serde_json::from_value::<ShapeSet>(look)?.apply(&mut project)?;
     for (i, (place, look)) in regions.iter().enumerate() {
