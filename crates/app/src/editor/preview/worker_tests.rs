@@ -1,5 +1,5 @@
 //! The render thread on the software adapter (like CI) with the fixture recording
-//! `clicks.dcproj`: its frame is the frame of `devcast frame` byte for byte.
+//! `clicks.devcast`: its frame is the frame of `devcast frame` byte for byte.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -14,15 +14,15 @@ use dc_render::{AdapterChoice, Compositor, Gpu, Image, TextMeasure};
 use super::fetch::Want;
 use super::worker::{Answer, Request, Worker};
 
-/// A copy of `clicks.dcproj` in a folder with Cyrillic and a space; lives while the guard does.
+/// A copy of `clicks.devcast` in a folder with Cyrillic and a space; lives while the guard does.
 fn fixture() -> (tempfile::TempDir, ProjectDir, Project) {
     let fixture =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/clicks.dcproj");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/clicks.devcast");
     let source = ProjectDir::open(fixture).unwrap();
     let project = source.load().unwrap();
     let temp = tempfile::tempdir().unwrap();
     let dir = source
-        .save_as(&project, temp.path().join("превью проекта.dcproj"))
+        .save_as(&project, temp.path().join("превью проекта.devcast"))
         .unwrap();
     (temp, dir, project)
 }

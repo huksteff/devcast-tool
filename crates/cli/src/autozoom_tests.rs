@@ -135,13 +135,13 @@ fn a_recording_gets_auto_zooms_unless_the_setting_is_off() {
     );
 }
 
-/// `zoom add --at clicks` on the fixture recording `clicks.dcproj` adds exactly the zooms of
+/// `zoom add --at clicks` on the fixture recording `clicks.devcast` adds exactly the zooms of
 /// `dc_ops::click_zooms` — the path the editor's «Подобрать зумы» takes.
 #[test]
 fn clicks_of_the_fixture_are_the_zooms_of_dc_ops() {
     let tmp = tempfile::tempdir().unwrap();
-    let root = tmp.path().join("Подбор зумов.dcproj");
-    crate::test_util::fixture_copy("clicks.dcproj", &root);
+    let root = tmp.path().join("Подбор зумов.devcast");
+    crate::test_util::fixture_copy("clicks.devcast", &root);
     let dir = dc_project::ProjectDir::open(&root).unwrap();
     let mut expected = dir.load().unwrap();
     let found = dc_ops::click_zooms(&root, &expected).unwrap();

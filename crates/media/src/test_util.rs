@@ -83,9 +83,9 @@ pub(crate) fn variable_rate(path: &Path) {
     );
 }
 
-/// The recording of `fixtures/recordings/speech.dcproj` (Git LFS): 1280×720, 60 fps slots with
+/// The recording of `fixtures/recordings/speech.devcast` (Git LFS): 1280×720, 60 fps slots with
 /// dropped frames, a keyframe every second.
 pub(crate) fn speech_video() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../fixtures/recordings/speech.dcproj/media/recording-1/video.mp4")
+        .join("../../fixtures/recordings/speech.devcast/media/recording-1/video.mp4")
 }

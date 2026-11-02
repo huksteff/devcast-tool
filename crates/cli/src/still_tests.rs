@@ -1,4 +1,4 @@
-//! `devcast frame` and `devcast sheet` on a copy of the fixture `clicks.dcproj` (a white screen
+//! `devcast frame` and `devcast sheet` on a copy of the fixture `clicks.devcast` (a white screen
 //! with a cursor) with annotations: what the evaluator shows reaches the PNG, the grid lies on
 //! top, the sheet has its frames in rows. Real GPU or WARP, like the export tests.
 
@@ -18,8 +18,8 @@ struct Clicks {
 impl Clicks {
     fn new() -> Self {
         let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path().join("Кадры урока.dcproj");
-        fixture_copy("clicks.dcproj", &root);
+        let root = tmp.path().join("Кадры урока.devcast");
+        fixture_copy("clicks.devcast", &root);
         let sticker =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/images/sticker.png");
         std::fs::copy(sticker, root.join("наклейка.png")).unwrap();

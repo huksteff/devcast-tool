@@ -1,4 +1,4 @@
-//! Task 5.25: the callout bubble at the real cursor of the fixture `clicks.dcproj` over bar videos.
+//! Task 5.25: the callout bubble at the real cursor of the fixture `clicks.devcast` over bar videos.
 
 use std::error::Error;
 

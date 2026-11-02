@@ -224,7 +224,7 @@ fn cancel(recording: ProjectRecording) -> Result<Answer, CliError> {
     ))
 }
 
-/// `записано: recording-1.dcproj — 0:12.345, 1920x1080, 60 fps, звук: system, mic`.
+/// `записано: recording-1.devcast — 0:12.345, 1920x1080, 60 fps, звук: system, mic`.
 pub(crate) fn summary(recorded: &RecordedProject) -> Result<Answer, CliError> {
     let manifest = &recorded.summary.manifest;
     let root = recorded.dir.root();

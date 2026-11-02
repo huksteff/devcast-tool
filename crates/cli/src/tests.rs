@@ -80,7 +80,7 @@ fn errors_go_to_stderr_with_exit_codes() {
     let out = f.run_in("test add --secs 1", empty);
     assert_eq!(out.code, 1);
     assert!(
-        out.stderr.contains("нет проекта *.dcproj"),
+        out.stderr.contains("нет проекта *.devcast"),
         "{}",
         out.stderr
     );
@@ -96,7 +96,7 @@ fn project_flag_and_folder_inside_project() {
         "--secs".to_owned(),
         "1".to_owned(),
         "--project".to_owned(),
-        "Мои видео/Урок 1.dcproj".to_owned(),
+        "Мои видео/Урок 1.devcast".to_owned(),
     ];
     assert_eq!(run(args, other, &f.registry).code, 0);
     assert_eq!(f.run_in("test rm c1", &f.dir.media_dir()).code, 0);

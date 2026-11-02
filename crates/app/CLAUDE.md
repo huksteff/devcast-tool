@@ -27,7 +27,7 @@
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-app`: логика окон и снимки egui_kittest (`tests/snapshots`, тесты — `*_tests.rs` рядом с кодом). Редактор — `editor/tests.rs` (проект `editor/test_project.rs` во временной `Демо-запись.dcproj`); правка = проект `devcast` тех же команд (`editor/editing_tests.rs::by_cli`), undo с выросшими счётчиками id — `editing_tests::undone`.
+- `cargo nextest run -p dc-app`: логика окон и снимки egui_kittest (`tests/snapshots`, тесты — `*_tests.rs` рядом с кодом). Редактор — `editor/tests.rs` (проект `editor/test_project.rs` во временной `Демо-запись.devcast`); правка = проект `devcast` тех же команд (`editor/editing_tests.rs::by_cli`), undo с выросшими счётчиками id — `editing_tests::undone`.
 - Превью на WARP = кадр `devcast frame` побайтно (`preview/worker_tests.rs`); распознавание — поддельные процессы (`recognition/job_tests.rs`); замер потока превью — `preview/speed_tests.rs` (`--run-ignored only`).
 - Живой прогон: `EGUI_INSPECTION=1 cargo run -p dc-app`, затем egui-mcp. Из Claude desktop (MSIX) сокет дампов не работает: запускать через `explorer.exe <путь к exe>`.
 

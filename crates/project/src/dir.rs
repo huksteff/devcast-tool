@@ -1,4 +1,4 @@
-//! The project folder `name.dcproj/`:
+//! The project folder `name.devcast/`:
 //!
 //! ```text
 //! project.json    saved state (Ctrl+S)
@@ -68,7 +68,7 @@ impl ProjectDir {
         &self.root
     }
 
-    /// Folder name, e.g. `Урок 1.dcproj`.
+    /// Folder name, e.g. `Урок 1.devcast`.
     pub fn name(&self) -> &str {
         &self.name
     }

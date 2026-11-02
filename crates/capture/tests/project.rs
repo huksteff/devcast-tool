@@ -32,7 +32,7 @@ fn stop_saves_a_project_and_cancel_deletes_it() {
         ..RecordingConfig::new(Source::Area(area))
     };
 
-    let root = fresh_dir("Запись проекта.dcproj");
+    let root = fresh_dir("Запись проекта.devcast");
     let recording =
         ProjectRecording::start(&config, &root, "devcast test", Defaults::factory()).unwrap();
     std::thread::sleep(Duration::from_secs(3));
@@ -54,7 +54,7 @@ fn stop_saves_a_project_and_cancel_deletes_it() {
     println!("{}: {project:?}", root.display());
     std::fs::remove_dir_all(&root).unwrap();
 
-    let root = fresh_dir("Отмена.dcproj");
+    let root = fresh_dir("Отмена.devcast");
     let recording =
         ProjectRecording::start(&config, &root, "devcast test", Defaults::factory()).unwrap();
     std::thread::sleep(Duration::from_secs(1));

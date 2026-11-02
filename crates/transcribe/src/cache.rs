@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn words_come_back_until_the_file_changes() {
         let tmp = tempfile::tempdir().unwrap();
-        let project = ProjectDir::create(tmp.path().join("Слова.dcproj")).unwrap();
+        let project = ProjectDir::create(tmp.path().join("Слова.devcast")).unwrap();
         let file = project.media_dir().join("mic.mp4");
         std::fs::write(&file, b"sound").unwrap();
         let track = SourceTrack {

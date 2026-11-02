@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn a_request_reads_back() {
         let request = Request {
-            dir: "Демо запись.dcproj".into(),
+            dir: "Демо запись.devcast".into(),
             project: Project::default(),
             speech: Speech {
                 model: Model::LargeV3Turbo,

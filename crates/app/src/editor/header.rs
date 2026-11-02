@@ -104,7 +104,7 @@ fn separator(ui: &mut Ui) {
     );
 }
 
-/// «● name .dcproj» centred in the header; the dot only with unsaved changes.
+/// «● name .devcast» centred in the header; the dot only with unsaved changes.
 fn name(ui: &mut Ui, rect: Rect, editor: &EditorWindow) {
     let unsaved = editor.doc.unsaved();
     let painter = ui.painter();

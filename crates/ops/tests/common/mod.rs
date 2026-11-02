@@ -1,5 +1,5 @@
 //! Shared by the golden tests: projects of bar videos rendered on the software adapter like CI.
-//! Cursor pictures come from the fixture recording `clicks.dcproj`, pictures of image annotations
+//! Cursor pictures come from the fixture recording `clicks.devcast`, pictures of image annotations
 //! from `fixtures/images`.
 
 use std::error::Error;
@@ -18,7 +18,7 @@ pub type TestResult = Result<(), Box<dyn Error>>;
 
 /// The fixture project whose `media/recording-1` holds real cursor pictures and telemetry.
 pub fn clicks_fixture() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/clicks.dcproj")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/clicks.devcast")
 }
 
 /// Colour bars over a luma ramp, BT.709 limited: every edge of the picture is visible.

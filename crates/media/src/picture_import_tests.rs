@@ -14,7 +14,7 @@ struct Setup {
 
 fn setup() -> Setup {
     let tmp = tempfile::tempdir().unwrap();
-    let project = ProjectDir::create(tmp.path().join("Урок.dcproj")).unwrap();
+    let project = ProjectDir::create(tmp.path().join("Урок.devcast")).unwrap();
     let pictures = tmp.path().join("Мои картинки");
     std::fs::create_dir(&pictures).unwrap();
     Setup {

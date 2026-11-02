@@ -79,7 +79,7 @@ const TIMELINE_MAX_SHARE: f32 = 0.75;
 #[derive(Debug)]
 pub struct EditorWindow {
     pub doc: Document,
-    /// Project name: the folder without `.dcproj`.
+    /// Project name: the folder without `.devcast`.
     pub name: String,
     /// Sound tracks the recordings have (`mic`, `system`): rows of the source sound.
     pub sound: Vec<String>,
@@ -136,7 +136,7 @@ impl EditorWindow {
     /// history, a broken effect state).
     pub fn open(dir: ProjectDir, sound: Vec<String>) -> Result<(Self, Vec<String>), DocumentError> {
         let (doc, mut problems) = Document::open(dir)?;
-        // The folder is `name.dcproj`; the header shows the extension apart.
+        // The folder is `name.devcast`; the header shows the extension apart.
         let name = std::path::Path::new(doc.dir().name())
             .file_stem()
             .map_or_else(

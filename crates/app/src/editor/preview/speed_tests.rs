@@ -33,7 +33,7 @@ fn ffmpeg(args: &[&str]) {
 
 /// A project of one imported 1080p60 `testsrc2` video, GOP 1 s like our recordings.
 fn full_hd(root: &Path) -> (ProjectDir, Project) {
-    let dir = ProjectDir::create(root.join("1080p.dcproj")).unwrap();
+    let dir = ProjectDir::create(root.join("1080p.devcast")).unwrap();
     std::fs::create_dir_all(dir.root().join("media")).unwrap();
     let video = dir.root().join("media").join("screen.mp4");
     ffmpeg(&[
@@ -121,19 +121,19 @@ fn measure(gpu: &Arc<Gpu>, dir: &ProjectDir, project: Project, size: PixelSize) 
 fn playback_speed() {
     let gpu = Arc::new(Gpu::new(AdapterChoice::Auto).unwrap());
     let fixture =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/clicks.dcproj");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/clicks.devcast");
     let source = ProjectDir::open(fixture).unwrap();
     let project = source.load().unwrap();
     let temp = tempfile::tempdir().unwrap();
     let dir = source
-        .save_as(&project, temp.path().join("clicks.dcproj"))
+        .save_as(&project, temp.path().join("clicks.devcast"))
         .unwrap();
     let hd = PixelSize {
         width: 1280,
         height: 720,
     };
     let fps = measure(&gpu, &dir, project, hd);
-    println!("clicks.dcproj 720p60 with cursor: {fps:.0} frames/s");
+    println!("clicks.devcast 720p60 with cursor: {fps:.0} frames/s");
     let (dir, project) = full_hd(temp.path());
     let full = PixelSize {
         width: 1920,

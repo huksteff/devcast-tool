@@ -47,7 +47,7 @@ fn every_format_of_scope_reads_from_its_first_sample_with_its_length() {
 #[test]
 fn a_file_without_sound_or_of_another_kind_is_refused() {
     let dir = tempfile::tempdir().unwrap();
-    let project = ProjectDir::create(dir.path().join("p.dcproj")).unwrap();
+    let project = ProjectDir::create(dir.path().join("p.devcast")).unwrap();
     let video = dir.path().join("кадр.mp4");
     ffmpeg(&[
         "-f",
@@ -68,7 +68,7 @@ fn a_file_without_sound_or_of_another_kind_is_refused() {
 #[test]
 fn import_copies_once_and_a_dry_run_copies_nothing() {
     let dir = tempfile::tempdir().unwrap();
-    let project = ProjectDir::create(dir.path().join("Урок.dcproj")).unwrap();
+    let project = ProjectDir::create(dir.path().join("Урок.devcast")).unwrap();
     let music = tone(dir.path(), "Музыка.MP3", "1");
     let dry = import_sound(&project, "assets/audio", &music, true).unwrap();
     assert_eq!(

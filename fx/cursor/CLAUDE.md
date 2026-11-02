@@ -18,7 +18,7 @@
 ## Как тестировать
 
 - `cargo nextest run -p dc-fx-cursor`: команды, undo/redo, файл проекта; пружина против таблицы v1 и без перелёта у Smooth; путь (точный, отставание, непрерывность); `evaluate_tests.rs` — insta-снимок 16 моментов через вырез, 2× и импорт (`src/snapshots/`), хотспот в точке, размер, кроп, скрытый курсор; `motion_tests.rs` — снимок 14 моментов с движением, bounce (и на 2×), sway вокруг хотспота, blur и рез, loop; `effects_tests.rs` — снимки ripple через наложение и 4 стилей, тайминг, скрытый курсор, кроп, 2×, изменённый клик; `click_tests.rs` — команды кликов, время через вырез и 2×, undo/redo. Общие данные — `src/test_util.rs`.
-- Эталоны кадров — `crates/ops/tests/golden/cursor.rs` (настоящие картинки и телеметрия `fixtures/recordings/clicks.dcproj`).
+- Эталоны кадров — `crates/ops/tests/golden/cursor.rs` (настоящие картинки и телеметрия `fixtures/recordings/clicks.devcast`).
 
 ## Куда не лезть
 

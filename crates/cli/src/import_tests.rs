@@ -38,10 +38,10 @@ fn new_makes_a_project_with_a_clip_per_video() {
         "b.mkv",
         "демо 1.mp4",
         "-o",
-        "Урок 3.dcproj",
+        "Урок 3.devcast",
     ]);
     assert_eq!(out.code, 0, "{}", out.stderr);
-    let dir = ProjectDir::open(v.tmp.path().join("Мои видео").join("Урок 3.dcproj")).unwrap();
+    let dir = ProjectDir::open(v.tmp.path().join("Мои видео").join("Урок 3.devcast")).unwrap();
     assert_eq!(
         out.stdout,
         format!(
@@ -64,15 +64,15 @@ fn new_makes_a_project_with_a_clip_per_video() {
         ]
     );
     assert!(dir.root().join("media/демо 1-2.mp4").is_file());
-    let out = v.run(&["undo", "--project", "Урок 3.dcproj"]);
+    let out = v.run(&["undo", "--project", "Урок 3.devcast"]);
     assert_eq!(out.code, 1, "a new project starts with empty history");
 }
 
 #[test]
 fn new_dry_run_and_mistakes_leave_no_folder() {
     let v = Videos::new();
-    let root = v.tmp.path().join("Мои видео").join("урок.dcproj");
-    let out = v.run(&["new", "b.mkv", "-o", "урок.dcproj", "--dry-run"]);
+    let root = v.tmp.path().join("Мои видео").join("урок.devcast");
+    let out = v.run(&["new", "b.mkv", "-o", "урок.devcast", "--dry-run"]);
     assert_eq!(
         out.stdout,
         format!(
@@ -80,18 +80,18 @@ fn new_dry_run_and_mistakes_leave_no_folder() {
             root.display()
         )
     );
-    let missing = v.run(&["new", "b.mkv", "нет.webm", "-o", "урок.dcproj"]);
+    let missing = v.run(&["new", "b.mkv", "нет.webm", "-o", "урок.devcast"]);
     assert_eq!(missing.code, 1);
     assert!(missing.stderr.contains("нет.webm"), "{}", missing.stderr);
     std::fs::write(v.tmp.path().join("Мои видео/битый.mov"), "не видео").unwrap();
-    let broken = v.run(&["new", "b.mkv", "битый.mov", "-o", "урок.dcproj"]);
+    let broken = v.run(&["new", "b.mkv", "битый.mov", "-o", "урок.devcast"]);
     assert_eq!(broken.code, 1);
     assert!(broken.stderr.contains("битый.mov"), "{}", broken.stderr);
     assert!(!root.exists());
     assert_eq!(v.run(&["new", "b.mkv", "-o", "урок"]).code, 2);
-    assert_eq!(v.run(&["new", "-o", "урок.dcproj"]).code, 2);
+    assert_eq!(v.run(&["new", "-o", "урок.devcast"]).code, 2);
     std::fs::create_dir(&root).unwrap();
-    let taken = v.run(&["new", "b.mkv", "-o", "урок.dcproj"]);
+    let taken = v.run(&["new", "b.mkv", "-o", "урок.devcast"]);
     assert_eq!(taken.code, 1);
     assert!(taken.stderr.contains("уже есть"), "{}", taken.stderr);
 }

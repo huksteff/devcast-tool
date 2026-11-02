@@ -45,7 +45,7 @@ fn red_then_blue(path: &Path) {
 }
 
 fn project(dir: &Path) -> ProjectDir {
-    let project = ProjectDir::create(dir.join("проект с пробелом.dcproj")).unwrap();
+    let project = ProjectDir::create(dir.join("проект с пробелом.devcast")).unwrap();
     red_then_blue(&project.media_dir().join("clip.mp4"));
     let green = [0, 255, 0, 255].repeat(8 * 8);
     let png = encode_png(

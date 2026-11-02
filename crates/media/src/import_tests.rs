@@ -15,7 +15,7 @@ struct Setup {
 
 fn setup() -> Setup {
     let tmp = tempfile::tempdir().unwrap();
-    let project = ProjectDir::create(tmp.path().join("Урок.dcproj")).unwrap();
+    let project = ProjectDir::create(tmp.path().join("Урок.devcast")).unwrap();
     let videos = tmp.path().join("Мои видео");
     std::fs::create_dir(&videos).unwrap();
     testsrc(&videos.join("демо 1.mp4"), "libx264", 30, 30, 2.0);

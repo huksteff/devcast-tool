@@ -133,7 +133,7 @@ pub mod editor {
     pub const UNDO: &str = "Отменить";
     pub const REDO: &str = "Повторить";
     pub const UNSAVED: &str = "Есть несохранённые изменения";
-    pub const EXTENSION: &str = ".dcproj";
+    pub const EXTENSION: &str = ".devcast";
     pub const HELP: &str = "Справка";
     pub const SETTINGS: &str = "Настройки";
     pub const EXPORT: &str = "Экспорт";

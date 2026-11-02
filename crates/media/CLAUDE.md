@@ -20,7 +20,7 @@
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-media`. Видео для тестов — `testsrc2` через `.deps/ffmpeg/bin/ffmpeg` во временных папках (`src/test_util.rs`): mp4/mov/mkv/webm, разный GOP, B-кадры, переменная частота. Эталон кадра — `reference_frames` (все кадры FFmpeg в NV12 по номеру) и `frame_times` (ffprobe). Картинки — из `color`/`geq` FFmpeg (`picture_tests.rs`, импорт — `picture_import_tests.rs`). Замер seek — `seek_timing` (`--run-ignored only seek_timing --no-capture`). Наша запись — `fixtures/recordings/speech.dcproj` (Git LFS).
+- `cargo nextest run -p dc-media`. Видео для тестов — `testsrc2` через `.deps/ffmpeg/bin/ffmpeg` во временных папках (`src/test_util.rs`): mp4/mov/mkv/webm, разный GOP, B-кадры, переменная частота. Эталон кадра — `reference_frames` (все кадры FFmpeg в NV12 по номеру) и `frame_times` (ffprobe). Картинки — из `color`/`geq` FFmpeg (`picture_tests.rs`, импорт — `picture_import_tests.rs`). Замер seek — `seek_timing` (`--run-ignored only seek_timing --no-capture`). Наша запись — `fixtures/recordings/speech.devcast` (Git LFS).
 
 ## Куда не лезть
 

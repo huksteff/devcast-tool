@@ -9,11 +9,11 @@ use super::view::{PreviewScale, Quality};
 use super::*;
 use timeline::{Row, Track};
 
-/// The editor of [`project`] saved in a temporary `Демо-запись.dcproj` with unsaved changes (a
+/// The editor of [`project`] saved in a temporary `Демо-запись.devcast` with unsaved changes (a
 /// `session.json`); the folder lives while the returned guard does.
 pub(super) fn editor() -> (tempfile::TempDir, EditorWindow) {
     let temp = tempfile::tempdir().unwrap();
-    let dir = ProjectDir::create(temp.path().join("Демо-запись.dcproj")).unwrap();
+    let dir = ProjectDir::create(temp.path().join("Демо-запись.devcast")).unwrap();
     dir.save(&project()).unwrap();
     dir.save_session(&project()).unwrap();
     let sound = vec!["system".to_owned(), "mic".to_owned()];

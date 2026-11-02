@@ -57,7 +57,7 @@ fn a_broken_request_is_an_error_line() {
 #[test]
 fn a_project_without_recordings_has_no_speech() {
     let temp = tempfile::tempdir().unwrap();
-    let dir = dc_project::ProjectDir::create(temp.path().join("пустой проект.dcproj")).unwrap();
+    let dir = dc_project::ProjectDir::create(temp.path().join("пустой проект.devcast")).unwrap();
     let messages = answer(&request(dir.root(), Project::default()));
     assert!(
         matches!(messages.as_slice(), [Message::Failed(text)] if text.contains("речи не найдено")),
@@ -71,12 +71,12 @@ fn a_project_without_recordings_has_no_speech() {
 #[ignore = "real Whisper and the fast model on disk"]
 fn the_worker_recognizes_the_speech_fixture() {
     let fixture =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.dcproj");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.devcast");
     let source = dc_project::ProjectDir::open(fixture).unwrap();
     let project = source.load().unwrap();
     let temp = tempfile::tempdir().unwrap();
     let dir = source
-        .save_as(&project, temp.path().join("речь для субтитров.dcproj"))
+        .save_as(&project, temp.path().join("речь для субтитров.devcast"))
         .unwrap();
     let messages = answer(&request(dir.root(), project.clone()));
     let Some(Message::Cues(cues)) = messages.last() else {

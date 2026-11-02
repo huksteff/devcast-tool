@@ -74,12 +74,12 @@ fn records_pauses_stops_and_cancels_through_the_cli() {
             "--duration",
             "3",
             "-o",
-            "a.dcproj",
+            "a.devcast",
         ],
     );
     assert!(out.status.success(), "{}", text(&out.stderr));
     println!("{}", text(&out.stdout));
-    let project = ProjectDir::open(cwd.join("a.dcproj"))
+    let project = ProjectDir::open(cwd.join("a.devcast"))
         .unwrap()
         .load()
         .unwrap();
@@ -87,7 +87,7 @@ fn records_pauses_stops_and_cancels_through_the_cli() {
     assert!((seconds - 3.0).abs() < 0.3, "{seconds}");
 
     let background = Command::new(env!("CARGO_BIN_EXE_devcast"))
-        .args(["record", "--source", &source, "-o", "b.dcproj", "--json"])
+        .args(["record", "--source", &source, "-o", "b.devcast", "--json"])
         .current_dir(cwd)
         .stdout(Stdio::piped())
         .spawn()
@@ -107,7 +107,7 @@ fn records_pauses_stops_and_cancels_through_the_cli() {
     assert!((seconds - 2.0).abs() < 0.5, "pause is cut out: {seconds}");
 
     let mut background = Command::new(env!("CARGO_BIN_EXE_devcast"))
-        .args(["record", "--source", &source, "-o", "c.dcproj"])
+        .args(["record", "--source", &source, "-o", "c.devcast"])
         .current_dir(cwd)
         .stdout(Stdio::null())
         .spawn()
@@ -115,7 +115,7 @@ fn records_pauses_stops_and_cancels_through_the_cli() {
     control(cwd, "pause");
     println!("{}", control(cwd, "cancel"));
     assert!(background.wait().unwrap().success());
-    assert!(!cwd.join("c.dcproj").exists());
+    assert!(!cwd.join("c.devcast").exists());
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn a_killed_recording_opens_with_its_clip() {
     let tmp = tempfile::tempdir().unwrap();
     let cwd = tmp.path();
     let mut background = Command::new(env!("CARGO_BIN_EXE_devcast"))
-        .args(["record", "--source", &source, "-o", "k.dcproj"])
+        .args(["record", "--source", &source, "-o", "k.devcast"])
         .current_dir(cwd)
         .stdout(Stdio::null())
         .spawn()
@@ -137,7 +137,7 @@ fn a_killed_recording_opens_with_its_clip() {
     background.kill().unwrap();
     background.wait().unwrap();
 
-    let out = devcast(cwd, &["info", "--project", "k.dcproj"]);
+    let out = devcast(cwd, &["info", "--project", "k.devcast"]);
     assert!(out.status.success(), "{}", text(&out.stderr));
     let warning = text(&out.stderr);
     println!("{warning}{}", text(&out.stdout));
@@ -145,7 +145,7 @@ fn a_killed_recording_opens_with_its_clip() {
         warning.contains("восстановлена прерванная запись media/recording-1"),
         "{warning}"
     );
-    let project = ProjectDir::open(cwd.join("k.dcproj"))
+    let project = ProjectDir::open(cwd.join("k.devcast"))
         .unwrap()
         .load()
         .unwrap();
@@ -154,6 +154,6 @@ fn a_killed_recording_opens_with_its_clip() {
         (2.0..=5.5).contains(&seconds),
         "complete segments only: {seconds}"
     );
-    let again = devcast(cwd, &["info", "--project", "k.dcproj"]);
+    let again = devcast(cwd, &["info", "--project", "k.devcast"]);
     assert!(text(&again.stderr).is_empty(), "{}", text(&again.stderr));
 }

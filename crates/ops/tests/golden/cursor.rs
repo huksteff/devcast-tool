@@ -1,4 +1,4 @@
-//! Tasks 5.20–5.23: the real cursor telemetry and pictures of the fixture `clicks.dcproj` over
+//! Tasks 5.20–5.23: the real cursor telemetry and pictures of the fixture `clicks.devcast` over
 //! bar videos.
 
 use std::error::Error;

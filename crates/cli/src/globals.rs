@@ -42,7 +42,7 @@ pub fn split(args: Vec<String>) -> (Globals, Result<Vec<String>, CliError>) {
             },
         };
         let problem = match path {
-            None => Some("--project: укажи путь к папке проекта, например --project урок.dcproj"),
+            None => Some("--project: укажи путь к папке проекта, например --project урок.devcast"),
             Some(path) => globals
                 .project
                 .replace(PathBuf::from(path))
@@ -71,14 +71,14 @@ mod tests {
             "add",
             "--at",
             "12",
-            "--project=Мой урок.dcproj",
+            "--project=Мой урок.devcast",
             "--dry-run",
         ]));
         assert_eq!(rest.unwrap(), args(&["zoom", "add", "--at", "12"]));
         assert_eq!(
             globals,
             Globals {
-                project: Some("Мой урок.dcproj".into()),
+                project: Some("Мой урок.devcast".into()),
                 json: true,
                 dry_run: true
             }

@@ -21,7 +21,7 @@ fn fit_keeps_the_aspect_and_never_scales_up() {
 /// A project with `media/запись 1.mp4` (1280×720, 1 s).
 fn project() -> (tempfile::TempDir, ProjectDir) {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = ProjectDir::create(tmp.path().join("Урок.dcproj")).unwrap();
+    let dir = ProjectDir::create(tmp.path().join("Урок.devcast")).unwrap();
     crate::test_util::ffmpeg(
         "-f lavfi -i testsrc2=size=1280x720:rate=30 -t 1 -c:v libx264 -g 30 -pix_fmt yuv420p",
         &dir.media_dir().join("запись 1.mp4"),

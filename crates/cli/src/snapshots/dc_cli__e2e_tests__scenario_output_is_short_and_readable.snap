@@ -3,7 +3,7 @@ source: crates/cli/src/e2e_tests.rs
 expression: log
 ---
 $ devcast info
-Урок 2.dcproj: длительность 0:30.000, всё сохранено
+Урок 2.devcast: длительность 0:30.000, всё сохранено
 списки: annots 0, audio 0, callouts 0, captions 0, clips 2, zooms 0; подробно: devcast ls <список>
 → 0
 
@@ -77,6 +77,6 @@ $ devcast history
 → 0
 
 $ devcast info
-Урок 2.dcproj: длительность 0:27.000, всё сохранено
+Урок 2.devcast: длительность 0:27.000, всё сохранено
 списки: annots 0, audio 0, callouts 0, captions 0, clips 3, zooms 2; подробно: devcast ls <список>
 → 0

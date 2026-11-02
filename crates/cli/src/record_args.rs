@@ -34,7 +34,7 @@ pub(crate) struct RecordArgs {
     #[arg(
         short = 'o',
         long,
-        help = "Папка нового проекта *.dcproj; по умолчанию recording-N.dcproj в текущей папке"
+        help = "Папка нового проекта *.devcast; по умолчанию recording-N.devcast в текущей папке"
     )]
     pub out: Option<PathBuf>,
 }
@@ -106,7 +106,7 @@ pub(crate) fn duration(args: &RecordArgs) -> Result<Option<Duration>, CliError> 
         .transpose()
 }
 
-/// The new project folder: `-o`, or the first free `recording-N.dcproj` in `cwd`.
+/// The new project folder: `-o`, or the first free `recording-N.devcast` in `cwd`.
 pub(crate) fn project_folder(cwd: &Path, out: Option<&Path>) -> Result<PathBuf, CliError> {
     match out {
         Some(out) => new_folder(cwd, out),

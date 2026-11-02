@@ -133,9 +133,9 @@ fn two_calls_share_the_queue_and_both_files_come_out() {
         "-shortest",
         video.to_str().unwrap(),
     ]);
-    let made = f.run("new клип.mp4 -o экспорт.dcproj");
+    let made = f.run("new клип.mp4 -o экспорт.devcast");
     assert_eq!(made.code, 0, "{made:?}");
-    let project = f.cwd.join("экспорт.dcproj");
+    let project = f.cwd.join("экспорт.devcast");
     let name = channel("two");
     let mp4 = ExportArgs {
         out: Some("готовое видео.mp4".into()),

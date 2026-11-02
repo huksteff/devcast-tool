@@ -1,6 +1,6 @@
 # dc-project (`crates/project`)
 
-Папка проекта `.dcproj` на диске: project.json, session.json, history.jsonl, lock, версии схемы, настройки по умолчанию приложения.
+Папка проекта `.devcast` на диске: project.json, session.json, history.jsonl, lock, версии схемы, настройки по умолчанию приложения.
 
 ## Инварианты
 

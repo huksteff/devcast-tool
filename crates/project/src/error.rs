@@ -11,7 +11,7 @@ pub enum ProjectError {
         source: std::io::Error,
     },
 
-    #[error("«{}» не похоже на проект DevCast: нет файла project.json. Открой папку *.dcproj или создай проект заново", path.display())]
+    #[error("«{}» не похоже на проект DevCast: нет файла project.json. Открой папку *.devcast или создай проект заново", path.display())]
     NotAProject { path: PathBuf },
 
     #[error("папка «{}» уже существует: выбери другое имя или открой её как проект", path.display())]

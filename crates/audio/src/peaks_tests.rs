@@ -77,7 +77,7 @@ fn every_level_gives_the_same_envelope() {
 #[test]
 fn cache_is_reused_and_rebuilt_when_broken() {
     let tmp = tempfile::tempdir().unwrap();
-    let project = ProjectDir::create(tmp.path().join("Волна проекта.dcproj")).unwrap();
+    let project = ProjectDir::create(tmp.path().join("Волна проекта.devcast")).unwrap();
     let path = make(&project.media_dir(), "звук.flac", HALF_LOUD);
     let built = cached_peaks(&project, &track(&path)).unwrap();
     let cache = cache_path(&project, &track(&path));

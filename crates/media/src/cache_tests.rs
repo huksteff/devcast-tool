@@ -5,7 +5,7 @@ use crate::test_util::testsrc;
 
 fn project_with_video() -> (tempfile::TempDir, ProjectDir) {
     let tmp = tempfile::tempdir().unwrap();
-    let project = ProjectDir::create(tmp.path().join("Мой урок.dcproj")).unwrap();
+    let project = ProjectDir::create(tmp.path().join("Мой урок.devcast")).unwrap();
     std::fs::create_dir(project.media_dir().join("import")).unwrap();
     testsrc(
         &project.root().join("media/import/клип 1.mp4"),

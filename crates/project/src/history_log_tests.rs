@@ -24,7 +24,7 @@ struct Fixture {
 impl Fixture {
     fn new() -> Self {
         let tmp = tempfile::tempdir().unwrap();
-        let dir = ProjectDir::create(tmp.path().join("История проекта.dcproj")).unwrap();
+        let dir = ProjectDir::create(tmp.path().join("История проекта.devcast")).unwrap();
         let log = HistoryLog::new(&dir);
         Self {
             _tmp: tmp,

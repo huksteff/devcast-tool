@@ -4,7 +4,7 @@
 
 ## Сценарий
 
-Проект из двух клипов (20 и 10 с) в папке «Урок 2.dcproj»; 17 команд: info, ls clips, cut с `--dry-run` и без, zoom add ×2, ls zooms, clip split, apply плана из 5 шагов с `--dry-run` и без, ls clips, опечатка в команде (код 2), ненайденный id (код 1), undo, redo, history, info.
+Проект из двух клипов (20 и 10 с) в папке «Урок 2.devcast»; 17 команд: info, ls clips, cut с `--dry-run` и без, zoom add ×2, ls zooms, clip split, apply плана из 5 шагов с `--dry-run` и без, ls clips, опечатка в команде (код 2), ненайденный id (код 1), undo, redo, history, info.
 
 ## Замер
 

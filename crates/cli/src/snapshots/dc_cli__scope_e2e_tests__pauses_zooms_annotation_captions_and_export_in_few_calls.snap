@@ -3,7 +3,7 @@ source: crates/cli/src/scope_e2e_tests.rs
 expression: log
 ---
 $ devcast info
-Урок 5.dcproj: длительность 0:12.533, всё сохранено
+Урок 5.devcast: длительность 0:12.533, всё сохранено
 списки: annots 0, audio 0, callouts 0, captions 0, clips 1, zooms 0; подробно: devcast ls <список>
 
 $ devcast silences
@@ -45,5 +45,5 @@ $ devcast export -o урок.mp4 --res 720p --fps 30
 e1 готово: <проект>\урок.mp4 — 1280×720, 30 fps, 11.0 с, <размер, кодек, время>
 
 $ devcast info
-Урок 5.dcproj: длительность 0:10.983, всё сохранено
+Урок 5.devcast: длительность 0:10.983, всё сохранено
 списки: annots 1, audio 0, callouts 0, captions 3, clips 1, zooms 1; подробно: devcast ls <список>

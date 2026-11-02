@@ -1,4 +1,4 @@
-//! Recording into a new project: the folder `name.dcproj` with the app defaults is created at
+//! Recording into a new project: the folder `name.devcast` with the app defaults is created at
 //! the start and the recording is written into its `media/recording-N/`, so after a crash it is
 //! already there (and [`crate::project::recover_recordings`] finishes it). At the stop the
 //! project gets the clip of the recording; a cancel deletes the whole project folder.

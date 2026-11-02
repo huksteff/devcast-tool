@@ -1,6 +1,6 @@
 //! `devcast batch <проекты…> -- <команда…>`: one command in several projects, each with its own
 //! lock and undo step, as if run with `--project`. A project that fails does not stop the others:
-//! its error goes to stderr and the exit code is 1. The projects are folders `*.dcproj`; a `*` or
+//! its error goes to stderr and the exit code is 1. The projects are folders `*.devcast`; a `*` or
 //! `?` in the last part of a path is expanded here, since Windows shells do not expand it.
 
 use std::path::{Path, PathBuf};
@@ -16,7 +16,7 @@ use crate::run::{self, Answer};
 pub(crate) struct Args {
     #[arg(
         required = true,
-        help = "Проекты: папки *.dcproj, можно со звёздочкой в имени (уроки/*.dcproj)"
+        help = "Проекты: папки *.devcast, можно со звёздочкой в имени (уроки/*.devcast)"
     )]
     projects: Vec<String>,
     #[arg(
@@ -123,7 +123,7 @@ pub(crate) fn projects(cwd: &Path, patterns: &[String]) -> Result<Vec<PathBuf>, 
                 let matched = expand(&cwd.join(parent), &mask)?;
                 if matched.is_empty() {
                     return Err(CliError::Failed(format!(
-                        "по «{pattern}» нет проектов *.dcproj: проверь папку и маску"
+                        "по «{pattern}» нет проектов *.devcast: проверь папку и маску"
                     )));
                 }
                 found.extend(matched);
@@ -140,7 +140,7 @@ pub(crate) fn projects(cwd: &Path, patterns: &[String]) -> Result<Vec<PathBuf>, 
     Ok(found)
 }
 
-/// Folders `*.dcproj` in `dir` whose names match `mask`.
+/// Folders `*.devcast` in `dir` whose names match `mask`.
 fn expand(dir: &Path, mask: &str) -> Result<Vec<PathBuf>, CliError> {
     let unreadable = |e: std::io::Error| {
         CliError::Failed(format!(
@@ -156,7 +156,7 @@ fn expand(dir: &Path, mask: &str) -> Result<Vec<PathBuf>, CliError> {
             continue;
         };
         if path.is_dir()
-            && name.ends_with(".dcproj")
+            && name.ends_with(".devcast")
             && matches(&mask, &name.chars().collect::<Vec<_>>())
         {
             found.push(path);
@@ -187,10 +187,10 @@ mod tests {
     #[test]
     fn masks_match_like_a_shell() {
         for (mask, name, expected) in [
-            ("*.dcproj", "урок 1.dcproj", true),
-            ("урок ?.dcproj", "урок 1.dcproj", true),
-            ("урок ?.dcproj", "урок 10.dcproj", false),
-            ("*1*", "урок 10.dcproj", true),
+            ("*.devcast", "урок 1.devcast", true),
+            ("урок ?.devcast", "урок 1.devcast", true),
+            ("урок ?.devcast", "урок 10.devcast", false),
+            ("*1*", "урок 10.devcast", true),
             ("a*b", "ab", true),
             ("a*b", "ac", false),
         ] {

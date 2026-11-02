@@ -1,4 +1,4 @@
-//! Task 5.26: the real shortcuts of the fixture `typing.dcproj` over bar videos.
+//! Task 5.26: the real shortcuts of the fixture `typing.devcast` over bar videos.
 
 use std::error::Error;
 use std::path::Path;
@@ -12,7 +12,7 @@ use crate::common::TestResult;
 
 fn fixture(settings: KeysSettings) -> Result<(Project, KeyTracks), Box<dyn Error>> {
     let root =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/typing.dcproj");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/typing.devcast");
     let mut project: Project =
         serde_json::from_str(&std::fs::read_to_string(root.join("project.json"))?)?;
     let media = project

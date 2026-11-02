@@ -74,7 +74,7 @@ fn devcast(dir: &ProjectDir, line: &str) -> Outcome {
 #[test]
 fn opening_the_project_finishes_the_recording_and_adds_its_clip() {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = killed_recording(&tmp.path().join("Запись 1.dcproj"), 200);
+    let dir = killed_recording(&tmp.path().join("Запись 1.devcast"), 200);
     let folder = dir.media_dir().join("recording-1");
 
     let out = devcast(&dir, "info");
@@ -108,7 +108,7 @@ fn opening_the_project_finishes_the_recording_and_adds_its_clip() {
 #[test]
 fn a_recovered_recording_gets_auto_zooms_and_dry_run_writes_none() {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = killed_recording(&tmp.path().join("Запись 5.dcproj"), 200);
+    let dir = killed_recording(&tmp.path().join("Запись 5.devcast"), 200);
     telemetry(&dir.media_dir().join("recording-1"), &[1.0, 2.0]);
     let out = devcast(&dir, "info --dry-run");
     assert!(!out.stderr.contains("автозумы"), "{}", out.stderr);
@@ -135,7 +135,7 @@ fn a_recovered_recording_gets_auto_zooms_and_dry_run_writes_none() {
 #[test]
 fn a_recording_without_a_complete_segment_is_deleted() {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = killed_recording(&tmp.path().join("Запись 2.dcproj"), 20);
+    let dir = killed_recording(&tmp.path().join("Запись 2.devcast"), 20);
     let out = devcast(&dir, "ls clips");
     assert_eq!(out.code, 0, "{}", out.stderr);
     assert!(
@@ -150,7 +150,7 @@ fn a_recording_without_a_complete_segment_is_deleted() {
 #[test]
 fn a_recording_still_held_by_its_process_is_left_alone() {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = killed_recording(&tmp.path().join("Запись 3.dcproj"), 200);
+    let dir = killed_recording(&tmp.path().join("Запись 3.devcast"), 200);
     let recording = ProjectLock::acquire(&dir, "devcast record").unwrap();
     let out = devcast(&dir, "info");
     assert_eq!((out.code, out.stderr.as_str()), (0, ""));
@@ -162,7 +162,7 @@ fn a_recording_still_held_by_its_process_is_left_alone() {
 #[test]
 fn dry_run_only_reports_the_recording() {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = killed_recording(&tmp.path().join("Запись 4.dcproj"), 200);
+    let dir = killed_recording(&tmp.path().join("Запись 4.devcast"), 200);
     let folder = dir.media_dir().join("recording-1");
     let before = std::fs::read(Manifest::path(&folder)).unwrap();
     let out = devcast(&dir, "info --dry-run");

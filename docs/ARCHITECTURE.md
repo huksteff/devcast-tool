@@ -30,7 +30,7 @@
 
 ## Главные решения
 
-1. **Проект — это папка `name.dcproj/`.**
+1. **Проект — это папка `name.devcast/`.**
    ```
    project.json      сохранённое состояние (Ctrl+S): маленький файл, читается глазами
    session.json      рабочее состояние: автосохранение и восстановление после вылета
@@ -154,9 +154,9 @@ third_party/     исправленные копии чужих крейтов (
 
 ```
 devcast help [cmd] [--json]
-devcast record --source <screen:1|window:<id>|area:x,y,w,h> [--fps 60] [--duration 10] [--audio on|off] [--mic имя] [-o x.dcproj] | record stop|pause|resume|cancel
+devcast record --source <screen:1|window:<id>|area:x,y,w,h> [--fps 60] [--duration 10] [--audio on|off] [--mic имя] [-o x.devcast] | record stop|pause|resume|cancel
 devcast ls sources                               # мониторы, окна, микрофоны для record
-devcast new <video...> -o name.dcproj | clip add <video...> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
+devcast new <video...> -o name.devcast | clip add <video...> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
 devcast info | save
 devcast ls <zooms|clips|annots|captions|audio|tracks|clicks> [--from --to] [--fields]
 devcast transcript [--from --to] [--words] [--model fast|accurate] [--language ru] [--track mic]   # реплики или слова с id
@@ -174,12 +174,12 @@ devcast audio add music.mp3 --at 5 [--track 1] [--duration 30] | audio set au1 -
 devcast crop c1 x,y,w,h | aspect <free|source|16:9|16:10|4:3>
 devcast set <настройка>.<аргумент>=<значение> ... # стиль проекта: cursor.size=1.5 clicks.style=ripple (через команду настроек эффекта)
 devcast defaults show | defaults set zoom.preset=smooth | defaults from-project | defaults reset
-devcast style copy --from a.dcproj --to *.dcproj       # настройки эффектов, без содержимого
+devcast style copy --from a.devcast --to *.devcast       # настройки эффектов, без содержимого
 devcast frame --at 12.5 [--grid] -o f.png        # кадр с сеткой координат для проверки
 devcast sheet --from 10 --to 20 -n 6 -o s.png    # раскадровка: начала n равных частей
 devcast apply plan.json [--dry-run]              # пачка команд = один шаг undo
 devcast undo [n] | redo | history
 devcast export [--format mp4|gif] [--res 1080p] [--fps 60] [--quality high] -o out.mp4 | export status
-devcast batch <проекты|*.dcproj...> -- <команда...>   # своя запись истории в каждом проекте
+devcast batch <проекты|*.devcast...> -- <команда...>   # своя запись истории в каждом проекте
 devcast skill install
 ```

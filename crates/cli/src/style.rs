@@ -30,12 +30,12 @@ pub(crate) struct CopyArgs {
         long,
         required = true,
         num_args = 1..,
-        help = "Проекты, куда копировать: папки *.dcproj, можно со звёздочкой в имени (*.dcproj)"
+        help = "Проекты, куда копировать: папки *.devcast, можно со звёздочкой в имени (*.devcast)"
     )]
     to: Vec<String>,
 }
 
-/// `devcast style copy --from a.dcproj --to *.dcproj`.
+/// `devcast style copy --from a.devcast --to *.devcast`.
 pub(crate) fn copy(ctx: &Ctx<'_>, args: &CopyArgs) -> Result<Answer, CliError> {
     if ctx.globals.project.is_some() {
         return Err(CliError::Usage(

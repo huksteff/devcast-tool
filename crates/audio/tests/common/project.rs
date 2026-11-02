@@ -11,7 +11,7 @@ use dc_core::{Project, Range, Rect, SourceTime, TimeDelta};
 use dc_project::ProjectDir;
 
 pub fn speech_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.dcproj")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.devcast")
 }
 
 /// The project folder `dir`; a folder of test files becomes one with an empty `project.json`.

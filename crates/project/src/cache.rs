@@ -67,7 +67,7 @@ mod tests {
     #[test]
     fn cache_file_mirrors_the_path_in_the_project() {
         let tmp = tempfile::tempdir().unwrap();
-        let project = ProjectDir::create(tmp.path().join("Кэш проекта.dcproj")).unwrap();
+        let project = ProjectDir::create(tmp.path().join("Кэш проекта.devcast")).unwrap();
         let expected = project
             .cache_dir()
             .join("media")

@@ -53,12 +53,12 @@ impl Speech {
             .concat(),
         );
         let out = run_line(
-            "new речь.mp4 -o Речь.dcproj",
+            "new речь.mp4 -o Речь.devcast",
             tmp.path(),
             &dc_ops::Registry::devcast().unwrap(),
         );
         assert_eq!(out.code, 0, "{}", out.stderr);
-        let root = tmp.path().join("Речь.dcproj");
+        let root = tmp.path().join("Речь.devcast");
         let dir = ProjectDir::open(&root).unwrap();
         let project = dir.load().unwrap();
         let track = dc_audio::tracks(&dir, &project.clips[0].media)

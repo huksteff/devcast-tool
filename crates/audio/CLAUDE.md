@@ -21,7 +21,7 @@
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-audio`. Воспроизведение: `tests/play.rs` (микс через линию в поддельное устройство, громкость, часы; колонки не звучат). Доп. звук: `tests/extra.rs` (место по выходу при вырезе, `offset`, уровни, mute, мягкий край, −16 LUFS), `src/file_tests.rs` (все форматы SCOPE с первого сэмпла, длина, отказы, импорт). Звук для тестов делает ffmpeg из `.deps` (`tests/common`, в юнит-тестах `src/test_util.rs`: `sine`, `aevalsrc`, `anoisesrc`) во временной папке; запись с речью — `fixtures/recordings/speech.dcproj`. Ничего не проигрывать через колонки.
+- `cargo nextest run -p dc-audio`. Воспроизведение: `tests/play.rs` (микс через линию в поддельное устройство, громкость, часы; колонки не звучат). Доп. звук: `tests/extra.rs` (место по выходу при вырезе, `offset`, уровни, mute, мягкий край, −16 LUFS), `src/file_tests.rs` (все форматы SCOPE с первого сэмпла, длина, отказы, импорт). Звук для тестов делает ffmpeg из `.deps` (`tests/common`, в юнит-тестах `src/test_util.rs`: `sine`, `aevalsrc`, `anoisesrc`) во временной папке; запись с речью — `fixtures/recordings/speech.devcast`. Ничего не проигрывать через колонки.
 
 ## Куда не лезть
 

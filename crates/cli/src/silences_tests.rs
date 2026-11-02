@@ -14,9 +14,9 @@ struct Speech {
 impl Speech {
     fn new() -> Self {
         let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path().join("Речь с паузами.dcproj");
+        let root = tmp.path().join("Речь с паузами.devcast");
         let fixture =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.dcproj");
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.devcast");
         crate::test_util::copy_dir(&fixture, &root);
         Self { _tmp: tmp, root }
     }

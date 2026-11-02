@@ -93,7 +93,7 @@ fn defaults_are_set_shown_taken_from_a_project_and_reset() {
     f.ok("cursor --size 3");
     assert_eq!(
         f.ok("defaults from-project"),
-        "по умолчанию — настройки «Урок 2.dcproj»: cursor, остальные заводские"
+        "по умолчанию — настройки «Урок 2.devcast»: cursor, остальные заводские"
     );
     assert_eq!(
         f.ok("defaults show"),
@@ -138,19 +138,19 @@ fn defaults_show_lines_go_into_set() {
 fn style_copy_replaces_settings_and_keeps_content() {
     let f = Recordings::new();
     f.ok("set captions.size=40");
-    let target = sibling(&f, "Другой.dcproj");
+    let target = sibling(&f, "Другой.devcast");
     let mut project = Project::default();
     let mut cursor = project.state::<Cursor>().unwrap();
     cursor.settings.size = 3.0;
     project.set_state::<Cursor>(&cursor).unwrap();
     target.save(&project).unwrap();
 
-    let line = "style copy --from . --to ../Другой*.dcproj";
+    let line = "style copy --from . --to ../Другой*.devcast";
     assert!(f.ok(&format!("{line} --dry-run")).contains("dry-run"));
     assert_eq!(target.load().unwrap(), project);
     assert_eq!(
         f.ok(line),
-        "Другой.dcproj: стиль из «Урок 2.dcproj»: captions, cursor\nготово в 1 из 1"
+        "Другой.devcast: стиль из «Урок 2.devcast»: captions, cursor\nготово в 1 из 1"
     );
     let copied = target.load().unwrap();
     assert_eq!(
@@ -159,44 +159,44 @@ fn style_copy_replaces_settings_and_keeps_content() {
     );
     assert_eq!(copied.state::<Cursor>().unwrap().settings.size, 2.5);
     assert_eq!(
-        f.ok("style copy --from . --to ../*.dcproj"),
-        "Другой.dcproj: без изменений\nУрок 2.dcproj: без изменений\nготово в 2 из 2"
+        f.ok("style copy --from . --to ../*.devcast"),
+        "Другой.devcast: без изменений\nУрок 2.devcast: без изменений\nготово в 2 из 2"
     );
-    let history = f.ok("history --project ../Другой.dcproj");
+    let history = f.ok("history --project ../Другой.devcast");
     assert!(history.contains("style copy"), "{history}");
 }
 
 #[test]
 fn batch_runs_one_command_in_every_project() {
     let f = Recordings::new();
-    let other = sibling(&f, "Второй.dcproj");
+    let other = sibling(&f, "Второй.devcast");
     assert_eq!(
-        f.ok("batch ../*.dcproj -- set cursor.size=3"),
-        "Второй.dcproj: курсор: размер 2.50→3.00\nУрок 2.dcproj: курсор: размер 2.50→3.00\nготово в 2 из 2"
+        f.ok("batch ../*.devcast -- set cursor.size=3"),
+        "Второй.devcast: курсор: размер 2.50→3.00\nУрок 2.devcast: курсор: размер 2.50→3.00\nготово в 2 из 2"
     );
     for dir in [&f.dir, &other] {
         let project = dir.load().unwrap();
         assert_eq!(project.state::<Cursor>().unwrap().settings.size, 3.0);
     }
-    let out = f.run("batch ../*.dcproj -- clip rm c2");
+    let out = f.run("batch ../*.devcast -- clip rm c2");
     assert_eq!(out.code, 1, "the empty project has no c2");
     assert!(
-        out.stdout.contains("Урок 2.dcproj: клипы -1 c2"),
+        out.stdout.contains("Урок 2.devcast: клипы -1 c2"),
         "{}",
         out.stdout
     );
     assert!(
-        out.stderr.contains("Второй.dcproj: не получилось"),
+        out.stderr.contains("Второй.devcast: не получилось"),
         "{}",
         out.stderr
     );
     for (line, code) in [
-        ("batch ../*.dcproj -- batch . -- info", 2),
-        ("batch ../*.dcproj -- export -o a.mp4", 2),
-        ("batch ../*.dcproj -- nope", 2),
-        ("batch ../*.dcproj -- info --project .", 2),
-        ("batch ../*/x.dcproj -- info", 2),
-        ("batch ../нет*.dcproj -- info", 1),
+        ("batch ../*.devcast -- batch . -- info", 2),
+        ("batch ../*.devcast -- export -o a.mp4", 2),
+        ("batch ../*.devcast -- nope", 2),
+        ("batch ../*.devcast -- info --project .", 2),
+        ("batch ../*/x.devcast -- info", 2),
+        ("batch ../нет*.devcast -- info", 1),
     ] {
         assert_eq!(f.run(line).code, code, "{line}");
     }

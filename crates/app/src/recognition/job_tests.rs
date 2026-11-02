@@ -66,7 +66,7 @@ pub(crate) fn endless() -> Spawn {
 
 fn request() -> Request {
     Request {
-        dir: "Демо-запись.dcproj".into(),
+        dir: "Демо-запись.devcast".into(),
         project: Project::default(),
         speech: Speech {
             model: SpeechModel::Fast.model(),

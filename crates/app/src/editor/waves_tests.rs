@@ -107,7 +107,7 @@ fn an_unreadable_source_stays_plain() {
 #[test]
 fn the_real_reading_keeps_the_peaks_in_the_project_cache() {
     let temp = tempfile::tempdir().unwrap();
-    let dir = ProjectDir::create(temp.path().join("Звук проекта.dcproj")).unwrap();
+    let dir = ProjectDir::create(temp.path().join("Звук проекта.devcast")).unwrap();
     tone(&dir.root().join("assets/audio/тон.wav"), 3.0);
     let source = Source::File("assets/audio/тон.wav".to_owned());
     let peaks = load(&dir, &source).unwrap();

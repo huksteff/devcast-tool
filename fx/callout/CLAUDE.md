@@ -16,7 +16,7 @@
 ## Как тестировать
 
 - `cargo nextest run -p dc-fx-callout`: команды (`tests.rs`: ошибки аргументов, перевод времени через вырез и 2×, undo/redo, файл проекта, `ls`), события (`resolve_tests.rs`: insta-снимок текста в 19 моментах через вырез, 2× и вторую запись; печать, стирание, эмодзи, пустой текст `on`), отрисовка (`evaluate_tests.rs`: размеры от стрелки и минимумы в ref-px, заливка, фаза градиента, свечение, видимая часть кадра под камерой).
-- Эталоны кадров — `crates/ops/tests/golden/callout.rs` (`callout/plain`, `typing`, `gradient`, `edge`: настоящий курсор `clicks.dcproj`).
+- Эталоны кадров — `crates/ops/tests/golden/callout.rs` (`callout/plain`, `typing`, `gradient`, `edge`: настоящий курсор `clicks.devcast`).
 
 ## Куда не лезть
 

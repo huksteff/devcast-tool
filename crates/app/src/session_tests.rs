@@ -27,7 +27,7 @@ fn a_second_stop_keeps_the_recording_being_prepared() {
     let dir = tempfile::tempdir().unwrap();
     let store = crate::settings::Store::load(&dir.path().join("settings.json")).unwrap();
     let mut shared = crate::app::Shared::new(eframe::egui::Context::default(), store);
-    let (recorder, _events, _requests) = Recorder::fake(dir.path().join("запись.dcproj"));
+    let (recorder, _events, _requests) = Recorder::fake(dir.path().join("запись.devcast"));
     shared.session = Session::Preparing(recorder);
     shared.stop();
     assert!(
@@ -44,7 +44,7 @@ fn stop_while_starting_stops_right_after_the_start() {
     let dir = tempfile::tempdir().unwrap();
     let store = crate::settings::Store::load(&dir.path().join("settings.json")).unwrap();
     let mut shared = crate::app::Shared::new(eframe::egui::Context::default(), store);
-    let (recorder, events, requests) = Recorder::fake(dir.path().join("запись.dcproj"));
+    let (recorder, events, requests) = Recorder::fake(dir.path().join("запись.devcast"));
     shared.session = Session::Starting {
         recorder,
         stop: false,

@@ -53,9 +53,9 @@ fn wrong_arguments_exit_with_2_and_a_hint() {
         ("record --source screen:1 --fps 25", "30, 60 или 120"),
         ("record --source screen:1 --duration 0", "больше 0"),
         ("record --source screen:1 --audio maybe", "devcast help"),
-        ("record --source screen:1 -o урок", "*.dcproj"),
+        ("record --source screen:1 -o урок", "*.devcast"),
         ("record stop --source screen:1", "devcast record stop"),
-        ("record --source screen:1 --project a.dcproj", "-o"),
+        ("record --source screen:1 --project a.devcast", "-o"),
         ("ls sources --from 1", "devcast ls sources"),
     ] {
         let out = f.run(line);
@@ -71,7 +71,7 @@ fn dry_run_records_nothing_and_names_the_project() {
     let cwd = f.dir.root().parent().unwrap();
     let out = f.run("record --source screen:1 --fps 30 --audio off --dry-run");
     assert_eq!(out.code, 0, "{}", out.stderr);
-    let root = cwd.join("recording-1.dcproj");
+    let root = cwd.join("recording-1.devcast");
     assert_eq!(
         out.stdout,
         format!(
@@ -83,9 +83,9 @@ fn dry_run_records_nothing_and_names_the_project() {
     std::fs::create_dir(&root).unwrap();
     assert_eq!(
         project_folder(cwd, None).unwrap(),
-        cwd.join("recording-2.dcproj")
+        cwd.join("recording-2.devcast")
     );
-    let error = project_folder(cwd, Some("recording-1.dcproj".as_ref())).unwrap_err();
+    let error = project_folder(cwd, Some("recording-1.devcast".as_ref())).unwrap_err();
     assert_eq!(error.code(), 1, "{error}");
     let out = f.run("record pause --dry-run --json");
     let json: serde_json::Value = serde_json::from_str(&out.stdout).unwrap();
@@ -196,7 +196,7 @@ fn real_sources_list_has_the_monitors() {
 #[test]
 fn stop_prints_one_line_about_the_project() {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = ProjectDir::create(tmp.path().join("Урок 3.dcproj")).unwrap();
+    let dir = ProjectDir::create(tmp.path().join("Урок 3.devcast")).unwrap();
     let start = HostTime::from_micros(1_000_000);
     let mut manifest = Manifest::new(vec![
         Track::new("video", 60, start),

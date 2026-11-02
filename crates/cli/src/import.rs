@@ -1,4 +1,4 @@
-//! `devcast new <video...> -o name.dcproj` and `devcast clip add <video...>`: videos are copied
+//! `devcast new <video...> -o name.devcast` and `devcast clip add <video...>`: videos are copied
 //! into the project's `media/` (`dc_media::import`) and become clips at the end of the main track
 //! through the command `clip add` (`dc_fx_cut::ClipAdd`).
 
@@ -29,7 +29,7 @@ pub(crate) fn clip_add(ctx: &Ctx<'_>, videos: &[PathBuf]) -> Result<Answer, CliE
     edit::apply_commands(ctx, &mut workspace, ClipAdd::NAME, &as_commands(&commands))
 }
 
-/// `devcast new <video...> -o name.dcproj`: a project with the app defaults and a clip per video.
+/// `devcast new <video...> -o name.devcast`: a project with the app defaults and a clip per video.
 /// If an import fails, the new folder is deleted.
 pub(crate) fn new(ctx: &Ctx<'_>, videos: &[PathBuf], out: &Path) -> Result<Answer, CliError> {
     let root = new_folder(ctx.cwd, out)?;

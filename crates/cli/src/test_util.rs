@@ -117,7 +117,7 @@ impl Op for ClipRm {
     const POSITIONAL: &'static [&'static str] = &["id"];
 }
 
-/// An empty project `Мои видео/Урок 1.dcproj` with the test commands `test add` and `test rm`.
+/// An empty project `Мои видео/Урок 1.devcast` with the test commands `test add` and `test rm`.
 pub(crate) struct Fixture {
     pub(crate) _tmp: tempfile::TempDir,
     pub(crate) cwd: PathBuf,
@@ -130,7 +130,7 @@ impl Fixture {
         let tmp = tempfile::tempdir().unwrap();
         let cwd = tmp.path().join("Мои видео");
         std::fs::create_dir(&cwd).unwrap();
-        let dir = ProjectDir::create(cwd.join("Урок 1.dcproj")).unwrap();
+        let dir = ProjectDir::create(cwd.join("Урок 1.devcast")).unwrap();
         let ops = vec![OpInfo::of::<ClipAdd>(), OpInfo::of::<ClipRm>()];
         Self {
             _tmp: tmp,
@@ -158,7 +158,7 @@ impl Fixture {
     }
 }
 
-/// `Урок 2.dcproj` with two recordings, 20 s and 10 s, and the real command registry.
+/// `Урок 2.devcast` with two recordings, 20 s and 10 s, and the real command registry.
 pub(crate) struct Recordings {
     _tmp: tempfile::TempDir,
     pub(crate) dir: ProjectDir,
@@ -171,7 +171,7 @@ impl Recordings {
 
     fn of(clips: &[(&str, f64)]) -> Self {
         let tmp = tempfile::tempdir().unwrap();
-        let dir = ProjectDir::create(tmp.path().join("Урок 2.dcproj")).unwrap();
+        let dir = ProjectDir::create(tmp.path().join("Урок 2.devcast")).unwrap();
         let mut project = Project::default();
         for (path, secs) in clips {
             let id = project.clip_ids.allocate();

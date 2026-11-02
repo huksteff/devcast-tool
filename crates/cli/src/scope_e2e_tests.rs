@@ -22,7 +22,7 @@ use crate::transcript_tests::seed_words;
 const MARGIN: f64 = 0.15;
 const RATE: usize = 48_000;
 
-/// A copy of `clicks.dcproj` whose recording has a `mic` track with the synthesized speech.
+/// A copy of `clicks.devcast` whose recording has a `mic` track with the synthesized speech.
 struct Lesson {
     tmp: tempfile::TempDir,
     root: PathBuf,
@@ -32,8 +32,8 @@ struct Lesson {
 impl Lesson {
     fn new() -> Self {
         let tmp = tempfile::tempdir().unwrap();
-        let root = tmp.path().join("Урок 5.dcproj");
-        fixture_copy("clicks.dcproj", &root);
+        let root = tmp.path().join("Урок 5.devcast");
+        fixture_copy("clicks.devcast", &root);
         let folder = root.join("media").join("recording-1");
         let mut manifest = Manifest::read(&folder).unwrap();
         let system = manifest.tracks.iter().find(|t| t.name == "system").unwrap();

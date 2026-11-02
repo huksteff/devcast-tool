@@ -63,7 +63,7 @@ pub fn clip_frame(project: &Project, map: &TimeMap, t: OutputTime) -> Scene {
 
 /// A project of one moving `testsrc2` clip, 640×360 at 30 fps, 3 s, with a cut at 1–1.5 s.
 pub fn synthetic(dir: &Path) -> (ProjectDir, Project) {
-    let project_dir = ProjectDir::create(dir.join("экспорт проекта.dcproj")).unwrap();
+    let project_dir = ProjectDir::create(dir.join("экспорт проекта.devcast")).unwrap();
     let video = project_dir.media_dir().join("clip.mp4");
     run(
         "ffmpeg",
@@ -116,8 +116,8 @@ pub fn synthetic(dir: &Path) -> (ProjectDir, Project) {
 /// The speech recording, copied: the export writes probe caches into the project.
 pub fn speech(dir: &Path) -> (ProjectDir, Project) {
     let fixture =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.dcproj");
-    let root = dir.join("speech.dcproj");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.devcast");
+    let root = dir.join("speech.devcast");
     let media = root.join("media").join("recording-1");
     std::fs::create_dir_all(&media).unwrap();
     std::fs::create_dir_all(root.join("assets")).unwrap();

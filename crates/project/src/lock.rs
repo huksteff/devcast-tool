@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn second_writer_is_refused_with_the_holder_named() {
         let tmp = tempfile::tempdir().unwrap();
-        let dir = ProjectDir::create(tmp.path().join("Проект.dcproj")).unwrap();
+        let dir = ProjectDir::create(tmp.path().join("Проект.devcast")).unwrap();
         let _held = ProjectLock::acquire(&dir, "редактор DevCast").unwrap();
         let error = ProjectLock::acquire(&dir, "devcast apply")
             .unwrap_err()
@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn lock_of_a_finished_writer_is_free() {
         let tmp = tempfile::tempdir().unwrap();
-        let dir = ProjectDir::create(tmp.path().join("Проект.dcproj")).unwrap();
+        let dir = ProjectDir::create(tmp.path().join("Проект.devcast")).unwrap();
         drop(ProjectLock::acquire(&dir, "первый").unwrap());
         assert!(
             dir.file(OWNER_FILE).is_file(),

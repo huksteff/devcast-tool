@@ -1,6 +1,6 @@
 //! The zoom panels (7.14): the rail tab edits `zoom motion`, a picked zoom `zoom set` — each edit
 //! one undo step, the same project as `devcast`; «Подобрать зумы» adds the zooms of
-//! `devcast zoom add --at clicks` on the fixture recording `clicks.dcproj`.
+//! `devcast zoom add --at clicks` on the fixture recording `clicks.devcast`.
 
 use std::path::Path;
 
@@ -146,15 +146,15 @@ fn a_picked_zoom_edits_are_zoom_set() {
     );
 }
 
-/// The editor of a copy of `clicks.dcproj` in a folder with Cyrillic and a space.
+/// The editor of a copy of `clicks.devcast` in a folder with Cyrillic and a space.
 fn clicks() -> H {
     let fixture =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/clicks.dcproj");
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/clicks.devcast");
     let source = ProjectDir::open(fixture).unwrap();
     let project = source.load().unwrap();
     let temp = tempfile::tempdir().unwrap();
     let dir = source
-        .save_as(&project, temp.path().join("подбор зумов.dcproj"))
+        .save_as(&project, temp.path().join("подбор зумов.devcast"))
         .unwrap();
     let (editor, problems) = EditorWindow::open(dir, Vec::new()).unwrap();
     assert!(problems.is_empty(), "{problems:?}");

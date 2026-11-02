@@ -102,7 +102,7 @@ fn noise_goes_and_speech_stays() {
 
 #[test]
 fn hiss_of_the_owners_microphone_goes() {
-    let dir = ProjectDir::open(fixture("recordings/speech.dcproj")).unwrap();
+    let dir = ProjectDir::open(fixture("recordings/speech.devcast")).unwrap();
     let project = dir.load().unwrap();
     let mic = tracks(&dir, &project.clips[0].media)
         .unwrap()

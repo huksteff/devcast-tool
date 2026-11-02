@@ -123,7 +123,7 @@ pub(crate) enum DefaultsCommand {
 pub(crate) enum StyleCommand {
     #[command(
         about = "Скопировать стиль (настройки эффектов, без содержимого) из проекта в другие: у каждого одна запись истории",
-        after_help = "style copy --from урок.dcproj --to *.dcproj"
+        after_help = "style copy --from урок.devcast --to *.devcast"
     )]
     Copy(style::CopyArgs),
 }

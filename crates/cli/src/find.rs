@@ -1,5 +1,5 @@
-//! Which project a command works on: `--project`, else the `*.dcproj` folder the current folder is
-//! in, else the only `*.dcproj` folder inside the current folder. And the folder of a new project.
+//! Which project a command works on: `--project`, else the `*.devcast` folder the current folder is
+//! in, else the only `*.devcast` folder inside the current folder. And the folder of a new project.
 
 use std::path::{Path, PathBuf};
 
@@ -8,11 +8,11 @@ use dc_project::ProjectDir;
 use crate::error::CliError;
 
 /// The folder `out` (relative to `cwd`) of a project that is about to be created: named
-/// `*.dcproj` and not there yet.
+/// `*.devcast` and not there yet.
 pub fn new_folder(cwd: &Path, out: &Path) -> Result<PathBuf, CliError> {
-    if out.extension().is_none_or(|e| e != "dcproj") {
+    if out.extension().is_none_or(|e| e != "devcast") {
         return Err(CliError::Usage(format!(
-            "-o {}: папка проекта должна называться *.dcproj, например -o урок.dcproj",
+            "-o {}: папка проекта должна называться *.devcast, например -o урок.devcast",
             out.display()
         )));
     }
@@ -50,7 +50,7 @@ pub fn find_project(explicit: Option<&Path>, cwd: &Path) -> Result<ProjectDir, C
     match found.as_slice() {
         [one] => Ok(ProjectDir::open(one)?),
         [] => Err(CliError::Failed(format!(
-            "в «{}» нет проекта *.dcproj: перейди в папку проекта или укажи --project <путь>",
+            "в «{}» нет проекта *.devcast: перейди в папку проекта или укажи --project <путь>",
             cwd.display()
         ))),
         many => Err(CliError::Failed(format!(
@@ -65,7 +65,7 @@ fn is_project(path: &Path) -> bool {
     path.is_dir()
         && path
             .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("dcproj"))
+            .is_some_and(|e| e.eq_ignore_ascii_case("devcast"))
 }
 
 fn names(paths: &[PathBuf]) -> String {
@@ -92,7 +92,7 @@ mod tests {
             "{error}"
         );
 
-        let one = ProjectDir::create(cwd.join("Первый урок.dcproj")).unwrap();
+        let one = ProjectDir::create(cwd.join("Первый урок.devcast")).unwrap();
         assert_eq!(find_project(None, &cwd).unwrap(), one);
         assert_eq!(
             find_project(None, &one.media_dir()).unwrap(),
@@ -100,15 +100,15 @@ mod tests {
             "from inside"
         );
 
-        let two = ProjectDir::create(cwd.join("второй.dcproj")).unwrap();
+        let two = ProjectDir::create(cwd.join("второй.devcast")).unwrap();
         let error = find_project(None, &cwd).unwrap_err().to_string();
         assert!(
-            error.contains("Первый урок.dcproj, второй.dcproj"),
+            error.contains("Первый урок.devcast, второй.devcast"),
             "{error}"
         );
-        let relative = Path::new("второй.dcproj");
+        let relative = Path::new("второй.devcast");
         assert_eq!(find_project(Some(relative), &cwd).unwrap(), two);
-        let error = find_project(Some(Path::new("нет.dcproj")), &cwd).unwrap_err();
+        let error = find_project(Some(Path::new("нет.devcast")), &cwd).unwrap_err();
         assert!(error.to_string().contains("не похоже на проект"), "{error}");
     }
 }

@@ -91,7 +91,7 @@ fn flashes_and_beeps_stay_together_after_ten_cuts_a_join_and_speed() {
     flashes(&cwd.join("flashes.mp4"));
     let registry = dc_ops::Registry::devcast().unwrap();
     for line in [
-        "new flashes.mp4 -o cuts.dcproj",
+        "new flashes.mp4 -o cuts.devcast",
         "clip add flashes.mp4",
         // Source 2.2–3.8 of the second clip, which starts at output 12.
         "speed 14.2-15.8 2",
@@ -100,7 +100,7 @@ fn flashes_and_beeps_stay_together_after_ten_cuts_a_join_and_speed() {
         let out = run_line(line, cwd, &registry);
         assert_eq!(out.code, 0, "{line}: {}", out.stderr);
     }
-    let dir = ProjectDir::open(cwd.join("cuts.dcproj")).unwrap();
+    let dir = ProjectDir::open(cwd.join("cuts.devcast")).unwrap();
     let project = dir.load().unwrap();
     let map = TimeMap::build(&project);
     assert!((map.duration().as_secs_f64() - 20.2).abs() < 1e-6);

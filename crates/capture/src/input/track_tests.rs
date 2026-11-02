@@ -7,7 +7,7 @@ use super::*;
 
 fn fixture() -> (PathBuf, Media) {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../fixtures/recordings/clicks.dcproj/media/recording-1");
+        .join("../../fixtures/recordings/clicks.devcast/media/recording-1");
     let media = Media {
         path: "media/recording-1/video.mp4".to_owned(),
         kind: MediaKind::Recording,
@@ -90,7 +90,7 @@ fn a_file_that_is_not_png_is_an_error() {
 #[test]
 fn key_presses_of_the_fixture_read_like_on_the_keyboard() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../fixtures/recordings/typing.dcproj/media/recording-1");
+        .join("../../fixtures/recordings/typing.devcast/media/recording-1");
     let presses = Telemetry::read(&dir).unwrap().key_presses();
     let names: Vec<&str> = presses.iter().map(|p| p.name.as_str()).collect();
     assert_eq!(

@@ -12,7 +12,7 @@
 ## Как тестировать
 
 - `cargo nextest run -p dc-fx-keys`: `tests.rs` — команда, диапазоны, undo/redo, файл проекта; `evaluate_tests.rs` — insta-снимок 20 моментов через 2× и вырез до импортированного клипа (`src/snapshots/`), выключено, счётчик повторов, замена и затухание, конец видео, чужие записи, позиции, размер от короткой стороны. Данные — `src/test_util.rs`.
-- Эталоны кадров — `crates/ops/tests/golden/keys.rs` (настоящие сочетания `fixtures/recordings/typing.dcproj`, шрифты `.deps/fonts`).
+- Эталоны кадров — `crates/ops/tests/golden/keys.rs` (настоящие сочетания `fixtures/recordings/typing.devcast`, шрифты `.deps/fonts`).
 
 ## Куда не лезть
 

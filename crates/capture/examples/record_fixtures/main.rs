@@ -1,4 +1,4 @@
-//! Records the v2 fixtures (task 3.16) into `fixtures/recordings/<name>.dcproj` (Git LFS):
+//! Records the v2 fixtures (task 3.16) into `fixtures/recordings/<name>.devcast` (Git LFS):
 //! `clicks`, `typing`, `system_sound`, `fast_cursor`, `window`. Each is a project made by the
 //! recorder (`ProjectRecording`, as `devcast record` does) of the fixtures' own window on monitor
 //! `DEVCAST_TEST_MONITOR`; synthetic input goes only into that window. What each one holds:
@@ -96,10 +96,10 @@ fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings")
 }
 
-/// Records `source` into `fixtures/recordings/<name>.dcproj` while `actions` run, with a
+/// Records `source` into `fixtures/recordings/<name>.devcast` while `actions` run, with a
 /// second of stillness before and after.
 fn record(name: &str, source: Source, actions: impl FnOnce()) -> (RecordedProject, PathBuf) {
-    let root = fixtures().join(format!("{name}.dcproj"));
+    let root = fixtures().join(format!("{name}.devcast"));
     if root.exists() {
         std::fs::remove_dir_all(&root).unwrap();
     }

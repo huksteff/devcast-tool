@@ -123,7 +123,7 @@ enum Builtin {
     },
     #[command(
         about = "Новый проект из видео mp4/mov/mkv/webm: копии в media/, по клипу на файл",
-        after_help = "new демо.mp4 вступление.mov -o урок.dcproj"
+        after_help = "new демо.mp4 вступление.mov -o урок.devcast"
     )]
     New {
         #[arg(
@@ -131,7 +131,7 @@ enum Builtin {
             help = "Видео mp4, mov, mkv или webm; клипы идут в этом порядке"
         )]
         videos: Vec<PathBuf>,
-        #[arg(short = 'o', long, help = "Папка нового проекта *.dcproj")]
+        #[arg(short = 'o', long, help = "Папка нового проекта *.devcast")]
         out: PathBuf,
     },
     /// `clip add`; the other `clip …` commands are ops of the registry.
@@ -189,7 +189,7 @@ enum Builtin {
     },
     #[command(
         about = "Одна команда в нескольких проектах: у каждого своя запись истории; ошибка в одном не останавливает другие",
-        after_help = "batch *.dcproj -- set captions.size=36"
+        after_help = "batch *.devcast -- set captions.size=36"
     )]
     Batch(batch::Args),
     #[command(
@@ -204,7 +204,7 @@ enum Builtin {
     Sheet(SheetArgs),
     #[command(
         about = "Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
-        after_help = "record --source screen:1 --duration 10 -o урок.dcproj"
+        after_help = "record --source screen:1 --duration 10 -o урок.devcast"
     )]
     Record {
         #[arg(

@@ -27,7 +27,7 @@ fn with_clip(mut project: Project) -> Project {
 
 fn temp_project() -> (tempfile::TempDir, ProjectDir) {
     let tmp = tempfile::tempdir().unwrap();
-    let dir = ProjectDir::create(tmp.path().join("Мой проект с пробелами.dcproj")).unwrap();
+    let dir = ProjectDir::create(tmp.path().join("Мой проект с пробелами.devcast")).unwrap();
     (tmp, dir)
 }
 
@@ -40,7 +40,7 @@ fn create_then_open_and_load() {
     let reopened = ProjectDir::open(dir.root()).unwrap();
     assert_eq!(reopened.load().unwrap(), Project::default());
     let from_inside = ProjectDir::open(dir.media_dir().join("..")).unwrap();
-    assert_eq!(from_inside.name(), "Мой проект с пробелами.dcproj");
+    assert_eq!(from_inside.name(), "Мой проект с пробелами.devcast");
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn save_as_copies_media_and_assets() {
     std::fs::write(dir.assets_dir().join("fonts").join("Шрифт.ttf"), b"font").unwrap();
     let project = with_clip(Project::default());
     let copy = dir
-        .save_as(&project, tmp.path().join("Копия.dcproj"))
+        .save_as(&project, tmp.path().join("Копия.devcast"))
         .unwrap();
     assert_eq!(
         std::fs::read(copy.media_dir().join("screen.mp4")).unwrap(),
@@ -109,7 +109,7 @@ fn save_as_works_without_an_assets_folder() {
     let copy = dir
         .save_as(
             &Project::default(),
-            tmp.path().join("Копия без assets.dcproj"),
+            tmp.path().join("Копия без assets.devcast"),
         )
         .unwrap();
     assert!(copy.assets_dir().is_dir());

@@ -71,7 +71,7 @@ impl Workspace {
         &self.dir
     }
 
-    /// Folder name, e.g. `Урок 1.dcproj`.
+    /// Folder name, e.g. `Урок 1.devcast`.
     pub fn name(&self) -> &str {
         self.dir.name()
     }

@@ -51,7 +51,7 @@ fn ls_clips_and_info_summarise_the_project() {
     );
     assert_eq!(
         f.ok("info"),
-        "Урок 2.dcproj: длительность 0:29.000, всё сохранено\nсписки: annots 0, audio 0, callouts 0, captions 0, clips 2, zooms 1; подробно: devcast ls <список>"
+        "Урок 2.devcast: длительность 0:29.000, всё сохранено\nсписки: annots 0, audio 0, callouts 0, captions 0, clips 2, zooms 1; подробно: devcast ls <список>"
     );
     let json: serde_json::Value = serde_json::from_str(&f.ok("ls zooms --json")).unwrap();
     assert_eq!(json["total"], 1);
