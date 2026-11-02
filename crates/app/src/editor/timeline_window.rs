@@ -19,7 +19,7 @@ use eframe::egui::{self, Frame, Ui, Vec2, pos2, vec2};
 
 use super::timeline::{self, Place};
 use super::{EditorWindow, View, actions, keys};
-use crate::app::{Shared, lock, on_hud_monitor, other_window};
+use crate::app::{Shared, lock, other_window};
 use crate::settings::{EditorLayout, WindowPlace};
 
 pub const ID: &str = "editor-timeline";
@@ -142,7 +142,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, repaint: bool) {
         let saved = shared.store.get().editor.timeline_place;
         let (size, corner) = match on_screen(saved, &shared.sources.monitors, ppp) {
             Some(p) => (vec2(p.width, p.height), Some(pos2(p.x, p.y))),
-            None => (SIZE, on_hud_monitor(ctx, &shared, SIZE)),
+            None => (SIZE, crate::monitor::for_timeline(ctx, &shared, SIZE)),
         };
         (text::window_title(&editor.name), size, corner)
     };
