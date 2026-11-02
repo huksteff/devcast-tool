@@ -1,22 +1,21 @@
 //! Atomic file replacement: write a temporary file next to the target, flush it to disk, then
 //! rename over the target. A crash leaves either the old file or the new one, never a mix. The
-//! temporary file is named after the process and a number of this write, so two writers of the
-//! same file (the app and the CLI, or the preview and sound threads filling one probe cache) do
-//! not open each other's.
+//! temporary file is named after the process, so the app and the CLI do not open each other's.
+//! Writes of one process go one at a time: threads of the app fill one probe cache, and on
+//! Windows two renames over the same file at once fail with «access denied».
 
 use std::io::Write;
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, PoisonError};
 
 use crate::error::{ProjectError, Result};
 
-/// Number of the next write of this process.
-static WRITES: AtomicU64 = AtomicU64::new(0);
+static WRITING: Mutex<()> = Mutex::new(());
 
 pub fn write(path: &Path, bytes: &[u8]) -> Result<()> {
-    let write = WRITES.fetch_add(1, Ordering::Relaxed);
+    let _one_at_a_time = WRITING.lock().unwrap_or_else(PoisonError::into_inner);
     let mut tmp = path.as_os_str().to_owned();
-    tmp.push(format!(".{}-{write}.tmp", std::process::id()));
+    tmp.push(format!(".{}.tmp", std::process::id()));
     let tmp = std::path::PathBuf::from(tmp);
     {
         let mut file = std::fs::File::create(&tmp).map_err(ProjectError::io("создать", &tmp))?;
