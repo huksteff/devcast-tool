@@ -11,14 +11,15 @@ use dc_ui_kit::strings::{captions as text, editor, settings, timeline};
 use dc_ui_kit::tokens::{
     ACCENT_HI, BORDER, FS_M, FS_S, HUE_CAPTIONS, R2, S1, S2, S3, SURFACE_3, TEXT, TEXT_2, TEXT_3,
 };
-use dc_ui_kit::widgets::{Button, Kind, Toggle, dropdown};
+use dc_ui_kit::widgets::{Button, Kind, Toggle, dropdown, dropdown_some};
 use eframe::egui::{Frame, Margin, RichText, Sense, Stroke, Ui, vec2};
 use serde_json::json;
 
 use super::{Cx, Group, Header, captions_style, cue, header, padded, rows};
 use crate::editor::Action;
-use crate::editor::generation::{Generation, Language, Listen, Phase};
-use crate::settings::SpeechModel;
+use crate::editor::generation::{Generation, Phase};
+use crate::settings::{Listen, SpeechModel};
+use crate::settings_captions::{LANGUAGES, TRACKS};
 
 /// Id of the panel in the remembered groups.
 pub const ID: &str = "captions";
@@ -35,12 +36,6 @@ pub struct Captioning<'a> {
     /// The cue picked alone: its line of the list opens its editor.
     pub picked: Option<CueId>,
 }
-
-const LANGUAGES: [(Language, &str); 3] = [
-    (Language::Auto, text::AUTO),
-    (Language::Russian, text::RUSSIAN),
-    (Language::English, text::ENGLISH),
-];
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
     let read = cx
@@ -99,13 +94,14 @@ fn recognition(ui: &mut Ui, cx: &mut Cx<'_>, state: &CaptionsState) {
             width,
         )
     });
-    let mut tracks = vec![(Listen::Mic, text::MIC)];
-    if cx.captioning.sound.iter().any(|s| s == "system") {
-        tracks.extend([(Listen::System, text::SYSTEM), (Listen::Both, text::BOTH)]);
-    }
+    let system = cx.captioning.sound.iter().any(|s| s == "system");
+    let tracks: Vec<_> = TRACKS
+        .iter()
+        .map(|&(listen, title)| (listen, title, system || listen == Listen::Mic))
+        .collect();
     rows::row(ui, text::TRACKS, |ui| {
         let width = ui.available_width();
-        dropdown(ui, text::TRACKS, &mut generation.listen, &tracks, width)
+        dropdown_some(ui, text::TRACKS, &mut generation.listen, &tracks, width)
     });
     let phase = generation.phase();
     if !state.cues.is_empty() {

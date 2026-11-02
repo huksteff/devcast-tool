@@ -267,11 +267,25 @@ pub mod settings {
     pub const BETA: &str = "Бета-версии";
     pub const CHECK_UPDATES: &str = "Проверить обновления";
     pub const MANUAL_UPDATES: &str = "Обновления пока ставятся вручную";
-    pub const DEFAULTS_HINT: &str = "Настройки эффектов для новых проектов меняются в редакторе: «Сохранить текущие как по умолчанию».";
+    pub const DEFAULTS_HINT: &str =
+        "С этими настройками эффектов открываются новые проекты и записи.";
+    pub const SAVE_DEFAULTS: &str = "Сохранить текущие как по умолчанию";
+    pub const SAVE: &str = "Сохранить";
+    pub const NO_PROJECT: &str = "откройте проект в редакторе";
+    pub const RESET_DEFAULTS: &str = "Сбросить к заводским";
+    pub const RESET: &str = "Сбросить";
+    pub const FACTORY_NOW: &str = "сейчас заводские";
+    pub const OWN_NOW: &str = "сейчас сохранённые из проекта";
+    pub const ABOUT_TEXT: &str = "Запись и монтаж видео с экрана";
 
     /// «Скачивается… 42 %».
     pub fn downloading(percent: u32) -> String {
         format!("{DOWNLOADING} {percent} %")
+    }
+
+    /// «настройки эффектов проекта «Демо-запись»».
+    pub fn of_project(name: &str) -> String {
+        format!("настройки эффектов проекта «{name}»")
     }
 
     /// «Версия 2.0.0».

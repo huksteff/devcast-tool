@@ -7,7 +7,6 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use dc_capture::SourceList;
 use dc_capture::audio::AudioSource;
-use dc_ui_kit::strings::settings as settings_text;
 use dc_ui_kit::widgets::{ToastKind, Toasts};
 use eframe::egui;
 
@@ -19,6 +18,7 @@ pub use crate::monitor::on_hud_monitor;
 use crate::session::Session;
 use crate::settings::Hotkeys;
 use crate::settings::Store;
+use crate::settings_defaults::DefaultsFile;
 use crate::settings_window::{self, SettingsWindow};
 use crate::tray::{Tray, TrayAction};
 
@@ -141,9 +141,14 @@ impl Shared {
     /// Opens the settings window on `page`.
     pub fn open_settings_at(&mut self, page: crate::settings_window::Page) {
         self.refresh_microphones();
+        let defaults = match DefaultsFile::of_app() {
+            Ok(file) => file,
+            Err(error) => return self.report(Err(error)),
+        };
         let mut window = SettingsWindow::new(
             self.microphones.clone(),
             crate::models::Models::of_app(self.downloads.clone()),
+            defaults,
         );
         window.page = page;
         self.settings = Some(window);
@@ -171,9 +176,6 @@ impl Shared {
         }
     }
 }
-
-/// The settings window.
-const SETTINGS_ID: &str = "settings";
 
 pub struct App {
     /// A second start of the app asked to show this one.
@@ -337,53 +339,8 @@ pub fn show_windows(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, bar: Optio
         ctx.request_repaint_of(egui::ViewportId::from_hash_of(popover::ID));
     }
     if settings {
-        show_settings(ctx, Arc::clone(shared));
-        ctx.request_repaint_of(egui::ViewportId::from_hash_of(SETTINGS_ID));
-    }
-}
-
-fn show_settings(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
-    let mut builder = egui::ViewportBuilder::default()
-        .with_icon(crate::logo::window_icon())
-        .with_title(settings_text::TITLE)
-        .with_inner_size(settings_window::SIZE)
-        .with_min_inner_size(settings_window::MIN_SIZE)
-        .with_maximize_button(false);
-    if let Some(corner) = on_hud_monitor(ctx, &lock(&shared), settings_window::SIZE) {
-        builder = builder.with_position(corner);
-    }
-    ctx.show_viewport_deferred(
-        egui::ViewportId::from_hash_of(SETTINGS_ID),
-        builder,
-        move |ui, _| other_window(ui, &shared, settings_frame),
-    );
-}
-
-/// One frame of the settings window.
-fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
-    crate::borderless::opaque(ui);
-    let Shared {
-        ctx,
-        store,
-        settings,
-        meters,
-        toasts,
-        taken_hotkeys,
-        ..
-    } = shared;
-    let Some(window) = settings else {
-        return;
-    };
-    let level = match &store.get().recording.microphone {
-        Some(mic) => meters.level(ctx, &AudioSource::Microphone(mic.clone())),
-        None => 0.0,
-    };
-    if let Err(error) = window.ui(ui, store, level, taken_hotkeys) {
-        toasts.push(ui.ctx(), ToastKind::Error, error.to_string());
-    }
-    toasts.show(ui.ctx());
-    if ui.input(|i| i.viewport().close_requested()) {
-        *settings = None;
+        settings_window::show(ctx, Arc::clone(shared));
+        ctx.request_repaint_of(egui::ViewportId::from_hash_of(settings_window::ID));
     }
 }
 

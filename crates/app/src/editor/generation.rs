@@ -16,48 +16,7 @@ use crate::downloads::Downloads;
 use crate::models::{ModelState, Models};
 use crate::recognition::job::{Job, Spawn, cli_worker};
 use crate::recognition::{Message, Request, Speech};
-use crate::settings::SpeechModel;
-
-/// The language Whisper listens for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Language {
-    /// Detected by Whisper.
-    #[default]
-    Auto,
-    Russian,
-    English,
-}
-
-impl Language {
-    pub fn code(self) -> Option<String> {
-        match self {
-            Self::Auto => None,
-            Self::Russian => Some("ru".to_owned()),
-            Self::English => Some("en".to_owned()),
-        }
-    }
-}
-
-/// The tracks of the recordings to listen to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Listen {
-    /// The microphone (a recording without it — its first track), as `devcast captions gen`.
-    #[default]
-    Mic,
-    System,
-    /// Both; the microphone wins where they overlap.
-    Both,
-}
-
-impl Listen {
-    pub fn tracks(self) -> Vec<String> {
-        match self {
-            Self::Mic => Vec::new(),
-            Self::System => vec!["system".to_owned()],
-            Self::Both => vec!["mic".to_owned(), "system".to_owned()],
-        }
-    }
-}
+use crate::settings::{Language, Listen, SpeechModel};
 
 /// What the captions panel shows of the generation.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -82,7 +41,8 @@ enum Running {
 pub struct Generation {
     /// The model files and their downloads.
     pub models: Models,
-    /// The model of the settings, taken each frame.
+    /// The model, language and tracks of the settings, taken each frame; the captions panel
+    /// changes the language and tracks, the frame writes them back.
     pub model: SpeechModel,
     pub language: Language,
     pub listen: Listen,

@@ -1,13 +1,15 @@
 //! «Субтитры» of the settings window (mockup 5c): the Whisper model as two cards side by side.
 //! The chosen card has a blue border, a soft blue fill and a filled radio; each card says
-//! whether its model is downloaded, offers «Скачать» or shows the download progress.
+//! whether its model is downloaded, offers «Скачать» or shows the download progress. Under the
+//! cards the language and the tracks of «Создать субтитры», the same values as in the captions
+//! panel of the editor.
 
 use dc_ui_kit::fonts::{self, Weight};
-use dc_ui_kit::strings::settings as text;
+use dc_ui_kit::strings::{captions, settings as text};
 use dc_ui_kit::tokens::{
-    ACCENT_HI, ACCENT_SOFT, BORDER, FS_M, OK, R2, S1, S2, SURFACE_3, TEXT, TEXT_2, TEXT_3,
+    ACCENT_HI, ACCENT_SOFT, BORDER, FS_M, OK, R2, S1, S2, S3, SURFACE_3, TEXT, TEXT_2, TEXT_3,
 };
-use dc_ui_kit::widgets::Button;
+use dc_ui_kit::widgets::{Button, dropdown};
 use eframe::egui::{
     self, Color32, Galley, Rect, Sense, Stroke, StrokeKind, Ui, WidgetInfo, pos2, vec2,
 };
@@ -15,8 +17,22 @@ use std::sync::Arc;
 
 use crate::error::AppError;
 use crate::models::{ModelState, Models};
-use crate::settings::{AppSettings, SpeechModel};
-use crate::settings_rows::heading;
+use crate::settings::{AppSettings, Language, Listen, SpeechModel};
+use crate::settings_rows::{field, heading};
+
+/// Choices of the language, here and in the captions panel.
+pub const LANGUAGES: [(Language, &str); 3] = [
+    (Language::Auto, captions::AUTO),
+    (Language::Russian, captions::RUSSIAN),
+    (Language::English, captions::ENGLISH),
+];
+
+/// Choices of the tracks, here and in the captions panel.
+pub const TRACKS: [(Listen, &str); 3] = [
+    (Listen::Mic, captions::MIC),
+    (Listen::System, captions::SYSTEM),
+    (Listen::Both, captions::BOTH),
+];
 
 /// Inner padding of a card, points (mockup: 8 px × 10 px).
 const PAD: egui::Vec2 = vec2(10.0, 8.0);
@@ -65,6 +81,22 @@ pub fn captions(ui: &mut Ui, next: &mut AppSettings, models: &mut Models) -> Res
                 None => {}
             }
         }
+    });
+    ui.add_space(S3);
+    field(ui, captions::LANGUAGE, None, |ui| {
+        let width = ui.available_width();
+        let language = &mut next.speech_language;
+        dropdown(ui, captions::LANGUAGE, language, &LANGUAGES, width);
+    });
+    field(ui, captions::TRACKS, None, |ui| {
+        let width = ui.available_width();
+        dropdown(
+            ui,
+            captions::TRACKS,
+            &mut next.speech_tracks,
+            &TRACKS,
+            width,
+        );
     });
     result
 }

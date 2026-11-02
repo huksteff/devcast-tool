@@ -2,9 +2,10 @@ use std::sync::{Arc, Mutex};
 
 use eframe::egui;
 
-use super::{SETTINGS_ID, Shared, lock, show_windows};
+use super::{Shared, lock, show_windows};
 use crate::hud::popover::{self, Kind, Open};
 use crate::settings::Store;
+use crate::settings_window::ID as SETTINGS_ID;
 
 const KINDS: [Kind; 7] = [
     Kind::Source,

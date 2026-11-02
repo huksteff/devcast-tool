@@ -78,6 +78,49 @@ impl SpeechModel {
     }
 }
 
+/// The language Whisper listens for (the CLI's `--language`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Language {
+    /// Detected by Whisper.
+    #[default]
+    Auto,
+    Russian,
+    English,
+}
+
+impl Language {
+    pub fn code(self) -> Option<String> {
+        match self {
+            Self::Auto => None,
+            Self::Russian => Some("ru".to_owned()),
+            Self::English => Some("en".to_owned()),
+        }
+    }
+}
+
+/// The tracks of the recordings to listen to (the CLI's `--tracks`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Listen {
+    /// The microphone (a recording without it — its first track), as `devcast captions gen`.
+    #[default]
+    Mic,
+    System,
+    /// Both; the microphone wins where they overlap.
+    Both,
+}
+
+impl Listen {
+    pub fn tracks(self) -> Vec<String> {
+        match self {
+            Self::Mic => Vec::new(),
+            Self::System => vec!["system".to_owned()],
+            Self::Both => vec!["mic".to_owned(), "system".to_owned()],
+        }
+    }
+}
+
 /// Global shortcuts as text (`Ctrl+Shift+R`); `None` — not assigned.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -167,6 +210,9 @@ pub struct AppSettings {
     pub hide_hud: bool,
     pub hotkeys: Hotkeys,
     pub speech_model: SpeechModel,
+    /// Language and tracks of «Создать субтитры»: the settings window and the captions panel.
+    pub speech_language: Language,
+    pub speech_tracks: Listen,
     pub updates: Updates,
     /// Where the HUD stood on each monitor.
     pub hud: HudPlacement,
@@ -191,6 +237,8 @@ impl Default for AppSettings {
             hide_hud: true,
             hotkeys: Hotkeys::default(),
             speech_model: SpeechModel::default(),
+            speech_language: Language::default(),
+            speech_tracks: Listen::default(),
             updates: Updates::default(),
             hud: HudPlacement::default(),
             last_area: None,

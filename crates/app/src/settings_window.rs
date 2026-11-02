@@ -1,19 +1,27 @@
 //! The settings window (mockup 5): sections on the left, changes apply at once, no «Save».
-//! Hotkeys get their section with the global hotkeys (6.14) and the editor shortcuts (7.3); effect
-//! defaults are changed in the editor (stage 7).
+//! Hotkeys get their section with the global hotkeys (6.14) and the editor shortcuts (7.3); the
+//! effect defaults come from the project open in the editor (`settings_defaults.rs`, 7.30).
 
 use dc_capture::Fps;
 use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::{hud, settings as text};
-use dc_ui_kit::tokens::{BG, BORDER, CONTROL, FS_S, R1, S2, S4, S5, SURFACE_2, TEXT, TEXT_2};
+use dc_ui_kit::tokens::{BG, BORDER, CONTROL, FS_M, FS_S, R1, S2, S4, S5, SURFACE_2, TEXT, TEXT_2};
 use dc_ui_kit::widgets::{Button, LevelBar, Toggle, dropdown, segmented};
 use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Stroke, StrokeKind, Ui, vec2};
 
+use std::sync::{Arc, Mutex};
+
+use dc_capture::audio::AudioSource;
+use dc_ui_kit::widgets::ToastKind;
+
+use crate::app::{Shared, lock, other_window};
 use crate::error::AppError;
 use crate::hotkeys::Command;
 use crate::models::Models;
+use crate::monitor::on_hud_monitor;
 use crate::settings::{AppSettings, Countdown, Store};
+use crate::settings_defaults::{DefaultsFile, OpenProject};
 use crate::settings_hotkeys::HotkeyPage;
 use crate::settings_rows::{field, heading, wide_field};
 
@@ -30,6 +38,7 @@ const PATH_PAD: f32 = 10.0;
 pub enum Page {
     #[default]
     Recording,
+    Defaults,
     Hotkeys,
     Captions,
     Updates,
@@ -37,8 +46,9 @@ pub enum Page {
 }
 
 impl Page {
-    const ALL: [(Self, &'static str); 5] = [
+    const ALL: [(Self, &'static str); 6] = [
         (Self::Recording, text::RECORDING),
+        (Self::Defaults, text::DEFAULTS),
         (Self::Hotkeys, text::HOTKEYS),
         (Self::Captions, text::CAPTIONS),
         (Self::Updates, text::UPDATES),
@@ -54,30 +64,33 @@ pub struct SettingsWindow {
     pub hotkeys: HotkeyPage,
     /// Whisper models on disk and their downloads (cancelled when the window closes).
     pub models: Models,
+    /// The effect defaults, read when the window opens.
+    pub defaults: DefaultsFile,
     /// «Проверить обновления» was pressed.
     updates_checked: bool,
 }
 
 impl SettingsWindow {
-    pub fn new(microphones: Vec<String>, models: Models) -> Self {
+    pub fn new(microphones: Vec<String>, models: Models, defaults: DefaultsFile) -> Self {
         Self {
             page: Page::default(),
             microphones,
             hotkeys: HotkeyPage::default(),
             models,
+            defaults,
             updates_checked: false,
         }
     }
 
     /// The whole window; a failed save or model download is returned (the change is not
     /// kept). `mic_level` fills the indicator of the selected microphone, 0..1; `taken` are
-    /// hotkeys the system holds.
+    /// hotkeys the system holds; `open` is the project of the editor, if one is open.
     pub fn ui(
         &mut self,
         ui: &mut Ui,
         store: &mut Store,
-        mic_level: f32,
-        taken: &[Command],
+        (mic_level, taken): (f32, &[Command]),
+        open: Option<OpenProject<'_>>,
     ) -> Result<(), AppError> {
         let downloads = self.models.poll();
         let mut next = store.get().clone();
@@ -93,6 +106,7 @@ impl SettingsWindow {
                     self.recording(ui, &mut next, mic_level);
                     Ok(())
                 }
+                Page::Defaults => crate::settings_defaults::defaults(ui, &mut self.defaults, open),
                 Page::Hotkeys => {
                     self.hotkeys.ui(ui, &mut next, taken);
                     Ok(())
@@ -267,7 +281,66 @@ pub fn countdown(ui: &mut Ui, countdown: &mut Countdown) {
 
 fn about(ui: &mut Ui) {
     heading(ui, text::ABOUT);
+    ui.label(
+        RichText::new(crate::APP_NAME)
+            .font(fonts::text(FS_M, Weight::Semibold))
+            .color(TEXT),
+    );
+    ui.label(RichText::new(text::ABOUT_TEXT).color(TEXT_2));
     ui.label(RichText::new(text::version(env!("CARGO_PKG_VERSION"))).color(TEXT_2));
+}
+
+/// Viewport of the settings window.
+pub const ID: &str = "settings";
+
+/// The settings window, from the main window's pass.
+pub fn show(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
+    let mut builder = egui::ViewportBuilder::default()
+        .with_icon(crate::logo::window_icon())
+        .with_title(text::TITLE)
+        .with_inner_size(SIZE)
+        .with_min_inner_size(MIN_SIZE)
+        .with_maximize_button(false);
+    if let Some(corner) = on_hud_monitor(ctx, &lock(&shared), SIZE) {
+        builder = builder.with_position(corner);
+    }
+    ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
+        other_window(ui, &shared, settings_frame)
+    });
+}
+
+/// One frame of the settings window.
+fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
+    crate::borderless::opaque(ui);
+    let Shared {
+        ctx,
+        store,
+        settings,
+        meters,
+        toasts,
+        taken_hotkeys,
+        editor,
+        ..
+    } = shared;
+    let Some(window) = settings else {
+        return;
+    };
+    let level = match &store.get().recording.microphone {
+        Some(mic) => meters.level(ctx, &AudioSource::Microphone(mic.clone())),
+        None => 0.0,
+    };
+    let open = editor.as_mut().map(|editor| OpenProject {
+        name: &editor.name,
+        project: editor.doc.project(),
+        defaults: &mut editor.defaults,
+    });
+    if let Err(error) = window.ui(ui, store, (level, taken_hotkeys.as_slice()), open) {
+        toasts.push(ui.ctx(), ToastKind::Error, error.to_string());
+    }
+    toasts.show(ui.ctx());
+    if ui.input(|i| i.viewport().close_requested()) {
+        *settings = None;
+    }
 }
 
 #[cfg(test)]
