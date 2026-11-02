@@ -142,10 +142,12 @@ fn frame_is_the_frame_of_the_export() {
 fn mean_difference(picture: &Picture, luma: &[u8]) -> f64 {
     let rgba = &picture.frames[0].rgba;
     let total: f64 = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .zip(luma)
-        .map(|(p, &y)| {
-            let [r, g, b] = [p[0], p[1], p[2]].map(f64::from);
+        .map(|(&[r, g, b, _], &y)| {
+            let [r, g, b] = [r, g, b].map(f64::from);
             let expected = 16.0 + 219.0 * (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
             (expected - f64::from(y)).abs()
         })
