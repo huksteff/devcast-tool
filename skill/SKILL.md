@@ -7,7 +7,7 @@ description: Запись экрана и монтаж видеопроекто�
 
 ## Главное
 
-- Перед любой правкой — `--dry-run`: команда покажет diff и ничего не изменит. Потом та же команда без него.
+- Перед вырезами (`cut`), пачками (`apply`, `batch`, `style copy`) и автозумами (`zoom add --at clicks`) — `--dry-run`: команда покажет diff и ничего не изменит. Потом та же команда без него. Остальные правки — сразу: ответ покажет diff, ошибку исправит `devcast undo`.
 - Все времена в аргументах и в выводе — по **готовому видео** (после вырезов и скорости). После выреза времена дальше сдвигаются: смотри `devcast ls` заново, не считай в уме.
 - Время: `12.5` или `1:02.5`. Участки: `10.2-12.5,20-21`.
 - Id короткие: клипы `c1`, зумы `z1`. Бери их из `devcast ls`.
@@ -197,7 +197,7 @@ devcast apply plan.json
 
 `set` меняет настройки эффектов всего проекта одной записью истории: `настройка.параметр=значение`, параметр — аргумент команды этих настроек без `--` (`help set` покажет, какие команды: `zoom` — `zoom motion`, `captions` — `captions style`, `cursor`, `clicks`, `callout` — `callout style`, `keys`, `crop` — `aspect`). Значения проверяет та же команда.
 ```
-devcast set zoom.preset=smooth captions.size=36 cursor.size=3 --dry-run
+devcast set zoom.preset=smooth captions.size=36 cursor.size=3
 devcast set captions.rows=2 clicks.style=ripple crop.aspect=16:9
 devcast defaults show                       # с чем начинаются новые проекты и записи: что не заводское
 devcast defaults set captions.size=36       # как set, но для новых проектов
