@@ -12,7 +12,7 @@ use serde_json::json;
 
 use super::tests::{H, cli, pick, project_json, undo};
 use super::zoom_tests::{click, tall, type_in};
-use crate::editor::editing_tests::json;
+use crate::editor::editing_tests::{json, undone};
 use crate::editor::selection::{Item, Selected};
 use crate::editor::tests::project;
 use crate::editor::view::Panel;
@@ -111,11 +111,8 @@ fn cue_edits_are_captions_commands_one_step_each() {
     assert_eq!(project_json(&harness), json(&after(&steps)));
     for done in (1..steps.len()).rev() {
         undo(&mut harness);
-        assert_eq!(
-            project_json(&harness),
-            json(&after(&steps[..done])),
-            "one step"
-        );
+        let now = harness.state().editor.doc.project();
+        assert_eq!(json(now), undone(&after(&steps[..done]), now), "one step");
     }
 }
 

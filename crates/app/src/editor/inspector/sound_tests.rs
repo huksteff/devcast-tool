@@ -226,5 +226,7 @@ fn duplicate_puts_a_copy_of_the_sound_on_a_free_row_and_picks_it() {
     let picked = Selected::Region(Item::Sound(copy.id));
     assert_eq!(harness.state().editor.view.selection.single(), Some(picked));
     undo(&mut harness);
-    assert_eq!(project_json(&harness), json(&cli(&[])), "one step");
+    let now = harness.state().editor.doc.project();
+    let expected = crate::editor::editing_tests::undone(&cli(&[]), now);
+    assert_eq!(json(now), expected, "one step");
 }

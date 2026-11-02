@@ -217,7 +217,17 @@ fn undo_redo_returns_the_same_state() {
     }
     let last = p.clone();
     while history.undo(&mut p).is_some() {}
-    assert_eq!(p, project(&[10.0]));
+    let ids = last.state::<Annotations>().unwrap().ids;
+    let kept = AnnotationsState {
+        ids,
+        ..AnnotationsState::default()
+    };
+    assert_eq!(p.clips, project(&[10.0]).clips);
+    assert_eq!(
+        p.state::<Annotations>().unwrap(),
+        kept,
+        "undo keeps the id counter"
+    );
     history.redo(&mut p);
     assert_eq!(p, after_add);
     while history.redo(&mut p).is_some() {}

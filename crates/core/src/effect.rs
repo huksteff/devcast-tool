@@ -18,6 +18,10 @@ use crate::project::{ClipKind, Project};
 /// effect with settings declares `#[serde(default)] settings: …Settings` in its state.
 pub const SETTINGS_FIELD: &str = "settings";
 
+/// Field of an effect state that holds its `IdCounter`, the only place a state may keep one: undo
+/// and redo never lower it (`History`), so an id is never handed out twice.
+pub const IDS_FIELD: &str = "ids";
+
 /// An effect (zoom, cursor, captions, …). Implemented by a unit type in the effect's crate.
 pub trait Effect: 'static {
     /// Key in `project.effects` and in CLI commands, e.g. `"zoom"`.
@@ -193,6 +197,12 @@ impl EffectRegistry {
             if !ids.insert(effect.id) {
                 problems.push(format!("эффект «{}» зарегистрирован дважды", effect.id));
             }
+            if stray_counter(&(effect.schema)()) {
+                problems.push(format!(
+                    "{}: счётчик id в состоянии может быть только в поле «{IDS_FIELD}»",
+                    effect.id
+                ));
+            }
             for prefix in &effect.id_prefixes {
                 if !is_valid_prefix(prefix) {
                     problems.push(format!(
@@ -218,6 +228,15 @@ impl EffectRegistry {
     pub fn iter(&self) -> impl Iterator<Item = &EffectInfo> {
         self.effects.iter()
     }
+}
+
+/// True if the state `schema` refers to an `IdCounter` anywhere but its top-level [`IDS_FIELD`].
+fn stray_counter(schema: &schemars::Schema) -> bool {
+    let mut value = schema.as_value().clone();
+    if let Some(properties) = value.get_mut("properties").and_then(|p| p.as_object_mut()) {
+        properties.remove(IDS_FIELD);
+    }
+    value.to_string().contains("\"#/$defs/IdCounter_")
 }
 
 #[cfg(test)]
@@ -268,6 +287,25 @@ mod tests {
         assert!(error.contains("«c» уже занят"), "{error}");
         assert!(error.contains("«Z» должен состоять"), "{error}");
         assert!(EffectRegistry::new(vec![a]).is_ok());
+    }
+
+    #[derive(Debug, Clone, PartialEq, Default, Serialize, serde::Deserialize, JsonSchema)]
+    struct Counted {
+        /// Next id.
+        next: crate::IdCounter<ClipKind>,
+    }
+
+    struct Stray;
+    impl Effect for Stray {
+        const ID: &'static str = "stray";
+        const TITLE: &'static str = "Тест";
+        type State = Counted;
+    }
+
+    #[test]
+    fn registry_rejects_a_counter_outside_ids() {
+        let error = EffectRegistry::new(vec![EffectInfo::of::<Stray>(vec![])]).unwrap_err();
+        assert!(error.contains("только в поле «ids»"), "{error}");
     }
 
     #[test]

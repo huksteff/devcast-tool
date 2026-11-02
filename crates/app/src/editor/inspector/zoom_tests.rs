@@ -186,7 +186,7 @@ fn zooms(harness: &H) -> usize {
 #[test]
 fn suggest_zooms_adds_the_zooms_of_the_clicks_in_one_step() {
     let mut harness = clicks();
-    let before = project_json(&harness);
+    let before = harness.state().editor.doc.project().clone();
     let expected = json(&by_clicks(&harness));
     click(&mut harness, egui::Role::Button, rows_text::SUGGEST_ZOOMS);
     assert_eq!(project_json(&harness), expected);
@@ -199,8 +199,11 @@ fn suggest_zooms_adds_the_zooms_of_the_clicks_in_one_step() {
     assert_eq!(errors.len(), 1, "{errors:?}");
     assert!(errors[0].starts_with("автозумов нет"), "{errors:?}");
     undo(&mut harness);
-    assert_eq!(project_json(&harness), before, "one step");
+    let now = harness.state().editor.doc.project();
+    let undone = crate::editor::editing_tests::undone(&before, now);
+    assert_eq!(json(now), undone, "one step");
     // The panel's button does the same.
+    let expected = json(&by_clicks(&harness));
     zoom_tab(&mut harness);
     click(&mut harness, egui::Role::Button, names::ZOOM_SUGGEST);
     assert_eq!(project_json(&harness), expected);

@@ -231,7 +231,9 @@ fn duplicate_adds_a_copy_right_after_and_picks_it() {
     let picked = Selected::Region(Item::Annotation(copy));
     assert_eq!(harness.state().editor.view.selection.single(), Some(picked));
     undo(&mut harness);
-    assert_eq!(project_json(&harness), json(&cli(&[])), "one step");
+    let now = harness.state().editor.doc.project();
+    let expected = crate::editor::editing_tests::undone(&cli(&[]), now);
+    assert_eq!(json(now), expected, "one step");
 }
 
 #[test]

@@ -205,3 +205,67 @@ fn changes_survive_json() {
     restored.undo(&mut p);
     assert!(p.effects.is_empty());
 }
+
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(default)]
+struct Counted {
+    /// Ids of the stored objects.
+    items: Vec<ClipId>,
+    /// Next free id.
+    ids: IdCounter<ClipKind>,
+}
+
+struct CountedEffect;
+impl Effect for CountedEffect {
+    const ID: &'static str = "counted";
+    const TITLE: &'static str = "Тест";
+    type State = Counted;
+}
+
+#[derive(Debug)]
+struct AddCounted;
+impl Command for AddCounted {
+    fn name(&self) -> &'static str {
+        "counted add"
+    }
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+        let mut state = project.state::<CountedEffect>()?;
+        let id = state.ids.allocate();
+        state.items.push(id);
+        project.set_state::<CountedEffect>(&state)?;
+        Ok(Diff::added(id))
+    }
+}
+
+#[derive(Debug)]
+struct AddClip;
+impl Command for AddClip {
+    fn name(&self) -> &'static str {
+        "clip add"
+    }
+    fn apply(&self, project: &mut Project) -> Result<Diff, CommandError> {
+        Ok(Diff::added(clip(project, 1.0)))
+    }
+}
+
+#[test]
+fn undo_and_redo_never_lower_id_counters() {
+    let mut p = Project::default();
+    let mut h = History::default();
+    h.apply(&mut p, &AddCounted).unwrap();
+    h.apply(&mut p, &AddCounted).unwrap();
+    h.undo(&mut p);
+    h.undo(&mut p);
+    h.apply(&mut p, &AddCounted).unwrap();
+    let items = p.state::<CountedEffect>().unwrap().items;
+    assert_eq!(items, [ClipId::from_number(3)]);
+    h.undo(&mut p);
+    assert_eq!(p.state::<CountedEffect>().unwrap().ids.next_number(), 4);
+    h.apply(&mut p, &AddClip).unwrap();
+    h.undo(&mut p);
+    h.apply(&mut p, &AddClip).unwrap();
+    assert_eq!(p.clips[0].id, ClipId::from_number(2));
+    h.undo(&mut p);
+    h.redo(&mut p);
+    assert_eq!(p.clip_ids.next_number(), 3);
+}

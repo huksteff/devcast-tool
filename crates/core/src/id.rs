@@ -159,6 +159,11 @@ impl<K: IdKind> IdCounter<K> {
         id
     }
 
+    /// The counter that is further on, so neither hands out an id the other already did.
+    pub fn max(self, other: Self) -> Self {
+        if other.next > self.next { other } else { self }
+    }
+
     /// The number the next [`Self::allocate`] will return.
     pub fn next_number(&self) -> u32 {
         self.next.max(1)

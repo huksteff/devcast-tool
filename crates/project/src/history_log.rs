@@ -5,7 +5,7 @@
 //! state on disk. Every [`Change`] stores absolute snapshots, which gives two recovery rules:
 //! - a corrupt line in the middle: events before it are dropped, the rest still replays correctly;
 //! - after replay the stacks must fit the loaded project (top undo `after` and top redo `before`
-//!   equal the project); otherwise (crash between the two writes, «Не сохранять») history resets.
+//!   `Parts::fits` the project); otherwise (crash between the two writes, «Не сохранять») history resets.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -97,9 +97,8 @@ impl HistoryLog {
                 }
             }
         }
-        if !fits(undo.last().map(|c| &c.after), project)
-            || !fits(redo.last().map(|c| &c.before), project)
-        {
+        let fits = |parts: Option<&Parts>| parts.is_none_or(|p| p.fits(project));
+        if !fits(undo.last().map(|c| &c.after)) || !fits(redo.last().map(|c| &c.before)) {
             warnings.push("история не совпадает с проектом на диске и начата заново".to_owned());
             undo.clear();
             redo.clear();
@@ -165,20 +164,6 @@ fn replay(undo: &mut Vec<Change>, redo: &mut Vec<Change>, event: Event) {
         Event::Undo => redo.extend(undo.pop()),
         Event::Redo => undo.extend(redo.pop()),
     }
-}
-
-/// Whether the project currently holds these parts (`None` = nothing to check).
-fn fits(parts: Option<&Parts>, project: &Project) -> bool {
-    let Some(parts) = parts else { return true };
-    let clips_fit = parts
-        .clips
-        .as_ref()
-        .is_none_or(|(clips, counter)| *clips == project.clips && *counter == project.clip_ids);
-    clips_fit
-        && parts
-            .effects
-            .iter()
-            .all(|(id, state)| project.effects.get(id) == state.as_ref())
 }
 
 #[cfg(test)]

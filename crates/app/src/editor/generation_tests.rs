@@ -71,7 +71,8 @@ fn the_cues_found_replace_all_cues_in_one_step() {
     assert_eq!(harness.state().errors, Some(Vec::new()));
     let doc = &mut harness.state_mut().editor.doc;
     doc.travel(super::Way::Undo, std::time::Instant::now());
-    assert_eq!(json(doc.project()), json(&project()), "one step");
+    history.undo(&mut expected);
+    assert_eq!(json(doc.project()), json(&expected), "one step");
 }
 
 #[test]

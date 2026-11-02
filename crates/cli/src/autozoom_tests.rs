@@ -86,14 +86,14 @@ fn add_at_clicks_is_one_undo_step() {
     f.ok("zoom add --at 11 --duration 2");
     assert_eq!(
         f.ok("zoom add --at clicks --scale 2 --mode fixed"),
-        "зумы +2 z2,z3",
+        "зумы +2 z5,z6",
         "the cut click is hidden, the taken cluster is skipped"
     );
     assert_eq!(
         f.ok("ls zooms --fields scale,mode,focus"),
-        "z2  0:01.500–0:03.500  focus.x=0.1  focus.y=0.1  mode=fixed  scale=2.0\n\
-         z1  0:11.000–0:13.000  focus.x=0.5  focus.y=0.5  mode=follow  scale=1.5\n\
-         z3  0:19.500–0:20.500  focus.x=0.25  focus.y=0.25  mode=fixed  scale=2.0"
+        "z5  0:01.500–0:03.500  focus.x=0.1  focus.y=0.1  mode=fixed  scale=2.0\n\
+         z4  0:11.000–0:13.000  focus.x=0.5  focus.y=0.5  mode=follow  scale=1.5\n\
+         z6  0:19.500–0:20.500  focus.x=0.25  focus.y=0.25  mode=fixed  scale=2.0"
     );
 }
 

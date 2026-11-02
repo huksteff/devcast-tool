@@ -11,7 +11,7 @@ use egui_kittest::kittest::Queryable;
 
 use super::clips::slot;
 use super::viewport::Lanes;
-use crate::editor::editing_tests::{by_cli, json};
+use crate::editor::editing_tests::{by_cli, json, undone};
 use crate::editor::montage::range_arg;
 use crate::editor::selection::Selected;
 use crate::editor::tests::{State, harness, project};
@@ -93,7 +93,8 @@ pub(super) fn undo_is_one_step(harness: &mut H) {
         .editor
         .doc
         .travel(Way::Undo, std::time::Instant::now());
-    assert_eq!(json(harness.state().editor.doc.project()), json(&project()));
+    let now = harness.state().editor.doc.project();
+    assert_eq!(json(now), undone(&project(), now));
 }
 
 /// Shift+drag on the ruler from second `from` to `to`; the range picked.

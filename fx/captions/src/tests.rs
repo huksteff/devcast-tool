@@ -299,7 +299,11 @@ fn undo_redo_and_json_round_trip() {
     assert_eq!(serde_json::from_str::<Project>(&json).unwrap(), p);
     history.undo(&mut p);
     history.undo(&mut p);
-    assert_eq!(p, start);
+    let mut kept = start.state::<CaptionsEffect>().unwrap();
+    kept.ids = end.state::<CaptionsEffect>().unwrap().ids;
+    let mut start = start;
+    start.set_state::<CaptionsEffect>(&kept).unwrap();
+    assert_eq!(p, start, "undo keeps the id counter");
     history.redo(&mut p);
     history.redo(&mut p);
     assert_eq!(p, end);

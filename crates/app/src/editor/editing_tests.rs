@@ -38,6 +38,23 @@ pub(crate) fn json(project: &Project) -> serde_json::Value {
     serde_json::to_value(project).unwrap()
 }
 
+/// `original` as undo brings it back from `now`: id counters never go down.
+pub(crate) fn undone(original: &Project, now: &Project) -> serde_json::Value {
+    let mut expected = original.clone();
+    expected.clip_ids = now.clip_ids;
+    for (effect, state) in &now.effects {
+        let ids = state.get(dc_core::effect::IDS_FIELD);
+        if let Some(ids) = ids.filter(|n| n.as_u64() > Some(1)) {
+            let kept = expected
+                .effects
+                .entry(effect.clone())
+                .or_insert_with(|| serde_json::json!({}));
+            kept[dc_core::effect::IDS_FIELD] = ids.clone();
+        }
+    }
+    json(&expected)
+}
+
 fn keys_shown(harness: &egui_kittest::Harness<'_, State>) -> bool {
     let project = harness.state().editor.doc.project();
     project.state::<Keys>().unwrap().settings.show

@@ -5,9 +5,11 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 use crate::command::{Command, CommandError};
 use crate::diff::Diff;
+use crate::effect::IDS_FIELD;
 use crate::id::IdCounter;
 use crate::project::{Clip, ClipKind, Project};
 
@@ -34,16 +36,35 @@ pub struct Change {
 }
 
 impl Parts {
+    /// Whether `project` holds these parts: restoring them would change nothing.
+    pub fn fits(&self, project: &Project) -> bool {
+        let mut restored = project.clone();
+        self.restore(&mut restored);
+        restored == *project
+    }
+
+    /// Puts these parts back; id counters keep the higher of now and the snapshot, so an id is
+    /// never handed out twice.
     fn restore(&self, project: &mut Project) {
         if let Some((clips, counter)) = &self.clips {
             project.clips.clone_from(clips);
-            project.clip_ids = *counter;
+            project.clip_ids = project.clip_ids.max(*counter);
         }
         for (id, state) in &self.effects {
-            match state {
-                Some(value) => project.effects.insert(id.clone(), value.clone()),
-                None => project.effects.remove(id),
-            };
+            let mut restored = state.clone().unwrap_or_else(|| Value::Object(Map::new()));
+            let now = project.effects.get(id).and_then(|s| s.get(IDS_FIELD));
+            if let (Some(now), Value::Object(fields)) = (now, &mut restored) {
+                // A missing counter is a fresh one, at 1.
+                let then = fields.get(IDS_FIELD).and_then(Value::as_u64).unwrap_or(1);
+                if now.as_u64().is_some_and(|n| n > then) {
+                    fields.insert(IDS_FIELD.to_owned(), now.clone());
+                }
+            }
+            if restored.as_object().is_some_and(Map::is_empty) {
+                project.effects.remove(id);
+            } else {
+                project.effects.insert(id.clone(), restored);
+            }
         }
     }
 }

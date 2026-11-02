@@ -42,7 +42,13 @@ fn plan_is_one_step_and_undo_redo_restore_it() {
         f.run("redo"),
         done("возвращено: клипы +2 c1,c2; клипы -1 c1; длительность 0:00.000→0:01.000")
     );
-    assert_eq!(f.dir.load().unwrap(), saved, "redo gives the same project");
+    let redone = f.dir.load().unwrap();
+    assert_eq!(redone.clips, saved.clips, "redo gives the same clips");
+    assert_eq!(
+        redone.clip_ids.next_number(),
+        4,
+        "c3 is not handed out again"
+    );
     assert_eq!(
         f.run("history"),
         done(
