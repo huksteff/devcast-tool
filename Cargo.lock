@@ -1302,7 +1302,6 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
- "trash",
  "tray-icon",
 ]
 
@@ -1643,6 +1642,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
+ "trash",
 ]
 
 [[package]]

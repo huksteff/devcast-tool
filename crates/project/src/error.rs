@@ -42,6 +42,17 @@ pub enum ProjectError {
         "не найдена папка настроек приложения: переменная окружения APPDATA не задана. Запусти devcast из обычного сеанса Windows"
     )]
     NoSettingsDir,
+
+    #[error(
+        "не удалось переместить в корзину Windows: {reason}. Закрой программы, которые держат файлы проекта, и повтори"
+    )]
+    Trash { reason: String },
+
+    #[error("не удалось вернуть из корзины Windows: {reason}. Восстанови папку из корзины вручную")]
+    Restore { reason: String },
+
+    #[error("«{}» нет в корзине Windows: её уже очистили или восстановили. Укажи путь, где папка была до корзины", path.display())]
+    NotInBin { path: PathBuf },
 }
 
 impl ProjectError {

@@ -161,12 +161,8 @@ impl Document {
     /// «Не сохранять» and «Отбросить»: back to `project.json`; the working state goes away, and
     /// so does the history, whose steps lead to it.
     pub fn discard(&mut self) -> Result<(), ProjectError> {
-        let project = self.dir.load()?;
-        let history = History::default();
-        self.log.rewrite(&history)?;
-        self.dir.discard_session()?;
-        self.project = project;
-        self.history = history;
+        self.project = Working::discard(&self.dir, &self._lock)?;
+        self.history = History::default();
         self.pending.clear();
         self.autosave.saved();
         self.revision += 1;

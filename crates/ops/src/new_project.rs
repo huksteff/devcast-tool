@@ -75,3 +75,70 @@ pub fn add_clips(project: &mut Project, media: Vec<Media>) -> Result<Applied, Op
         false,
     )
 }
+
+/// The folders of a project per video in `folder` (`devcast new --each`, «Импорт…» of the
+/// library): `<video name>.devcast`, then `-2`, `-3` … when the folder is there or another video
+/// of `videos` took the name.
+pub fn project_roots(folder: &Path, videos: &[PathBuf]) -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    for video in videos {
+        let stem = video.file_stem().unwrap_or_default().to_string_lossy();
+        let root = (1..)
+            .map(|n| match n {
+                1 => folder.join(format!("{stem}.devcast")),
+                n => folder.join(format!("{stem}-{n}.devcast")),
+            })
+            .find(|root| !root.exists() && !roots.contains(root))
+            .unwrap_or_default();
+        roots.push(root);
+    }
+    roots
+}
+
+/// A project of each of `videos` in `folder` (created when missing) at [`project_roots`], with
+/// what each got. A video that fails stops the rest; the projects made before it stay.
+pub fn new_projects(
+    folder: &Path,
+    videos: &[PathBuf],
+    defaults: &Defaults,
+    app: &str,
+) -> Result<Vec<(PathBuf, Applied)>, NewProjectError> {
+    std::fs::create_dir_all(folder).map_err(|source| ProjectError::Io {
+        action: "создать папку",
+        path: folder.to_path_buf(),
+        source,
+    })?;
+    let roots = project_roots(folder, videos);
+    let mut made = Vec::new();
+    for (root, video) in roots.into_iter().zip(videos) {
+        let applied = new_project(&root, std::slice::from_ref(video), defaults, app)?;
+        made.push((root, applied));
+    }
+    Ok(made)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_video_name_taken_on_disk_or_by_another_video_gets_a_number() {
+        let tmp = tempfile::tempdir().unwrap();
+        let folder = tmp.path().join("Мои записи");
+        std::fs::create_dir_all(folder.join("демо урок.devcast")).unwrap();
+        let videos = [
+            PathBuf::from("a/демо урок.mp4"),
+            PathBuf::from("b/демо урок.mov"),
+            PathBuf::from("вступление.mkv"),
+        ];
+        let roots = project_roots(&folder, &videos);
+        assert_eq!(
+            roots,
+            [
+                folder.join("демо урок-2.devcast"),
+                folder.join("демо урок-3.devcast"),
+                folder.join("вступление.devcast"),
+            ]
+        );
+    }
+}

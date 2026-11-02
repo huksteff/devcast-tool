@@ -2,6 +2,7 @@
 
 pub mod atomic;
 pub mod autosave;
+pub mod bin;
 pub mod cache;
 pub mod copy_in;
 pub mod defaults;

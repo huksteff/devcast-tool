@@ -21,7 +21,7 @@ use crate::record_args::RecordArgs;
 use crate::record_control::Control;
 use crate::run::Answer;
 use crate::still::{FrameArgs, SheetArgs};
-use crate::{batch, events, rename, silences, skill, sources, still, style, transcript};
+use crate::{batch, events, silences, skill, sources, still, style, transcript};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -67,17 +67,27 @@ enum Builtin {
     )]
     History,
     #[command(
-        about = "Сохранить несохранённые изменения редактора в project.json",
-        after_help = "save"
+        about = "Сохранить несохранённые изменения редактора в project.json; --as <имя> — копия проекта с записями рядом",
+        after_help = "save --as Урок 2 копия --open"
     )]
-    Save,
+    Save(project::SaveArgs),
+    #[command(
+        about = "Отбросить несохранённые изменения: проект вернётся к project.json, история отмен очистится",
+        after_help = "discard"
+    )]
+    Discard,
     #[command(
         about = "Открыть проект в редакторе запущенной программы DevCast; несохранённое другого проекта редактор спросит в окне",
         after_help = "open --project \"Урок 2.devcast\""
     )]
     Open,
     #[command(
-        about = "Переименовать проект: папка станет <имя>.devcast там же; отмены нет, в открытом редакторе — нельзя",
+        about = "Закрыть окно редактора с этим проектом, вернётся HUD; несохранённое — только с --save или --discard",
+        after_help = "close --save"
+    )]
+    Close(project::CloseArgs),
+    #[command(
+        about = "Переименовать проект: папка станет <имя>.devcast там же; отмены нет; в редакторе — через него, не во время экспорта",
         after_help = "rename Урок 2"
     )]
     Rename {
@@ -87,6 +97,11 @@ enum Builtin {
         )]
         name: Vec<String>,
     },
+    #[command(
+        about = "Переместить папки проектов в корзину Windows (не удаляет); --restore — вернуть их оттуда на место",
+        after_help = "trash \"Урок 1.devcast\" черновик.devcast"
+    )]
+    Trash(project::TrashArgs),
     #[command(
         about = "Сводка проекта: длительность, сохранён ли, сколько объектов в каждом списке",
         after_help = "info"
@@ -138,18 +153,10 @@ enum Builtin {
         to: Option<String>,
     },
     #[command(
-        about = "Новый проект из видео mp4/mov/mkv/webm: копии в media/, по клипу на файл",
+        about = "Новый проект из видео mp4/mov/mkv/webm: копии в media/, по клипу на файл; --each — проект на каждое видео",
         after_help = "new демо.mp4 вступление.mov -o урок.devcast"
     )]
-    New {
-        #[arg(
-            required = true,
-            help = "Видео mp4, mov, mkv или webm; клипы идут в этом порядке"
-        )]
-        videos: Vec<PathBuf>,
-        #[arg(short = 'o', long, help = "Папка нового проекта *.devcast")]
-        out: PathBuf,
-    },
+    New(project::NewArgs),
     /// `clip add`; the other `clip …` commands are ops of the registry.
     #[command(disable_help_subcommand = true)]
     Clip {
@@ -276,9 +283,13 @@ impl Cli {
             Builtin::Undo { steps } => edit::travel(ctx, Way::Undo, steps),
             Builtin::Redo => edit::travel(ctx, Way::Redo, 1),
             Builtin::History => edit::history(ctx),
-            Builtin::Save => edit::save(ctx),
-            Builtin::Open => crate::open::open(ctx),
-            Builtin::Rename { name } => rename::rename(ctx, &name),
+            command @ (Builtin::Save(_)
+            | Builtin::Discard
+            | Builtin::Open
+            | Builtin::Close(_)
+            | Builtin::Rename { .. }
+            | Builtin::Trash(_)
+            | Builtin::New(_)) => project::execute(command, ctx),
             Builtin::Info => ls::info(ctx),
             Builtin::Ls {
                 list,
@@ -315,7 +326,6 @@ impl Cli {
             Builtin::Events { kind, from, to } => {
                 events::events(ctx, kind, from.as_ref(), to.as_ref())
             }
-            Builtin::New { videos, out } => crate::import::new(ctx, &videos, &out),
             Builtin::Clip { command } => command.execute(ctx),
             Builtin::Zoom { command } => command.execute(ctx),
             Builtin::Captions { command } => command.execute(ctx),
@@ -342,51 +352,10 @@ impl Cli {
             Builtin::Op(words) => edit::op(ctx, &words),
         }
     }
-
-    /// Why this command cannot run inside `batch` (it works on one project there): `None` when
-    /// it can.
-    pub(crate) fn not_for_batch(&self) -> Option<&'static str> {
-        match &self.command {
-            Builtin::Help { .. } | Builtin::Skill { .. } | Builtin::Defaults { .. } => {
-                Some("не работает с проектом")
-            }
-            Builtin::Ls { list, .. } if list == sources::SOURCES => Some("не работает с проектом"),
-            Builtin::New { .. } | Builtin::Record { .. } => Some("создаёт новый проект"),
-            Builtin::Rename { .. } => {
-                Some("даёт всем проектам одно имя; переименуй каждый с --project")
-            }
-            Builtin::Batch(_) | Builtin::Style { .. } => Some("сама перечисляет проекты"),
-            Builtin::Export { .. } | Builtin::Frame(_) | Builtin::Sheet(_) => Some(
-                "пишет один файл -o на все проекты; запусти её для каждого проекта с --project",
-            ),
-            Builtin::Captions {
-                command: CaptionsCommand::Export { .. },
-            } => Some(
-                "пишет один файл -o на все проекты; запусти её для каждого проекта с --project",
-            ),
-            _ => None,
-        }
-    }
-
-    /// The words of the registry op this command line names (`clip move c2 --to 1`), so `batch`
-    /// can check the name and the arguments once before the projects.
-    pub(crate) fn op_words(&self) -> Option<Vec<String>> {
-        let (group, words) = match &self.command {
-            Builtin::Op(words) => return Some(words.clone()),
-            Builtin::Clip {
-                command: ClipCommand::Op(words),
-            } => ("clip", words),
-            Builtin::Zoom {
-                command: ZoomCommand::Op(words),
-            } => ("zoom", words),
-            Builtin::Captions {
-                command: CaptionsCommand::Op(words),
-            } => ("captions", words),
-            Builtin::Audio {
-                command: AudioCommand::Op(words),
-            } => ("audio", words),
-            _ => return None,
-        };
-        Some([vec![group.to_owned()], words.clone()].concat())
-    }
 }
+
+#[path = "builtin_batch.rs"]
+mod batch_rules;
+
+#[path = "builtin_project.rs"]
+mod project;

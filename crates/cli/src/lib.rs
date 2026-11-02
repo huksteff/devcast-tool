@@ -7,6 +7,7 @@ mod builtin;
 mod builtin_groups;
 mod captions;
 mod defaults;
+mod discard;
 mod edit;
 pub mod error;
 mod events;
@@ -30,6 +31,7 @@ mod record_control;
 mod rename;
 mod round;
 pub mod run;
+mod save_as;
 mod scene;
 mod silences;
 mod skill;
@@ -39,6 +41,7 @@ mod still;
 mod style;
 mod telemetry;
 mod transcript;
+mod trash;
 pub mod worker;
 pub mod workspace;
 
@@ -59,6 +62,8 @@ mod events_tests;
 #[cfg(test)]
 mod export_tests;
 #[cfg(test)]
+mod fake_editor;
+#[cfg(test)]
 mod font_tests;
 #[cfg(test)]
 mod image_tests;
@@ -70,6 +75,8 @@ mod live_tests;
 mod ls_tests;
 #[cfg(test)]
 mod pauses_e2e_tests;
+#[cfg(test)]
+mod project_tests;
 #[cfg(test)]
 mod record_tests;
 #[cfg(test)]

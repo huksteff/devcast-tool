@@ -3,7 +3,7 @@
 //! editor that gives way writes its edits not on disk yet to its session and is dropped with its
 //! threads, which end before the drop returns: Windows renames no folder with a file open in it.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use dc_core::project::MediaKind;
 use dc_project::ProjectDir;
@@ -25,7 +25,7 @@ impl Shared {
     }
 
     /// [`Self::open_project`] telling why the project did not open instead of a toast.
-    fn try_open(&mut self, root: &Path, recover: bool) -> Result<(), String> {
+    pub(super) fn try_open(&mut self, root: &Path, recover: bool) -> Result<(), String> {
         let opened = ProjectDir::open(root)
             .map_err(super::DocumentError::from)
             .and_then(|dir| EditorWindow::open(dir, Vec::new()));
@@ -86,14 +86,25 @@ impl Shared {
                 self.open_project(&root, true);
             }
             Leave::Copied(root) => {
-                if let Some(editor) = self.editor.as_mut() {
-                    let discarded = editor.doc.discard();
-                    self.report(discarded);
-                }
-                self.open_project(&root, false);
+                let taken = self.take_copy(&root);
+                self.report(taken);
             }
-            Leave::Rename(name) => self.rename_project(&name),
+            Leave::Rename(name) => {
+                let renamed = self.try_rename(&name);
+                self.report(renamed.map(drop));
+            }
         }
+    }
+
+    /// The copy of «Сохранить как…» or `devcast save --as` in `root` is made: this project drops
+    /// its working state (it keeps what was saved) and the copy opens.
+    pub(super) fn take_copy(&mut self, root: &Path) -> Result<(), String> {
+        let discarded = match self.editor.as_mut() {
+            Some(editor) => editor.doc.discard().map_err(|e| e.to_string()),
+            None => Ok(()),
+        };
+        self.try_open(root, false)?;
+        discarded
     }
 
     /// The editor gives way: its edits not on disk go to its session, its threads end.
@@ -129,45 +140,40 @@ impl Shared {
         }
     }
 
-    /// Renames the project folder and opens it again with its working state and history. Waits
-    /// for no export: one running reads the project, so renaming is refused meanwhile.
-    fn rename_project(&mut self, name: &str) {
+    /// Renames the project folder and opens it again with its working state and history; the
+    /// new folder, or why not. Waits for no export: one running reads the project, so renaming is
+    /// refused meanwhile. A failed rename opens the project again from where it was.
+    pub(super) fn try_rename(&mut self, name: &str) -> Result<PathBuf, String> {
         let Some(editor) = self.editor.as_mut() else {
-            return;
+            return Err(text::NOTHING_OPEN.to_owned());
         };
         if self
             .exports
             .as_ref()
             .is_some_and(crate::exports::Exports::busy)
         {
-            self.report(Err(text::RENAME_EXPORTING));
-            return;
+            return Err(text::RENAME_EXPORTING.to_owned());
         }
         let old = editor.doc.dir().root().to_path_buf();
         let checked = editor.doc.dir().renamed_root(name).map(drop);
-        let flushed = checked.and_then(|()| editor.doc.flush());
-        if let Err(error) = flushed {
-            self.report(Err(error));
-            return;
-        }
+        checked
+            .and_then(|()| editor.doc.flush())
+            .map_err(|e| e.to_string())?;
         timeline_window::remember(self);
         let Some(editor) = self.editor.take() else {
-            return;
+            return Err(text::NOTHING_OPEN.to_owned());
         };
         let (dir, lock) = editor.doc_only().into_parts();
-        let renamed = dir
-            .rename(lock, name)
-            .map(|renamed| renamed.root().to_path_buf());
-        let root = match renamed {
-            Ok(root) => root,
+        let root = match dir.rename(lock, name) {
+            Ok(renamed) => renamed.root().to_path_buf(),
             Err(error) => {
-                self.report(Err(error));
-                old.clone()
+                self.open_project(&old, false);
+                return Err(error.to_string());
             }
         };
-        if self.open_project(&root, false) {
-            self.remember_project(&root, Some(&old));
-        }
+        self.try_open(&root, false)?;
+        self.remember_project(&root, Some(&old));
+        Ok(root)
     }
 
     /// Puts `root` first in the recent projects, without `replaced` (the old folder of a renamed

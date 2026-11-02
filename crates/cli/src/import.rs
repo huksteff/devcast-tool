@@ -1,4 +1,5 @@
-//! `devcast new <video...> -o name.devcast` (`dc_ops::new_project`) and `devcast clip add
+//! `devcast new <video...> -o name.devcast` (`dc_ops::new_project`, with `--each` a project per
+//! video: `dc_ops::new_projects`) and `devcast clip add
 //! <video|project...>` (`dc_ops::import_clips`: videos and the recordings of DevCast projects are
 //! copied into `media/`), then clips at the end of the main track through the command `clip add`
 //! (`dc_fx_cut::ClipAdd`).
@@ -68,4 +69,44 @@ fn created(root: &Path, applied: &Applied, dry_run: bool) -> Answer {
     json["project"] = root.display().to_string().into();
     json["dry_run"] = dry_run.into();
     Answer::new(format!("{prefix}{}: {applied}", root.display()), json)
+}
+
+/// `devcast new --each <video...> [-o folder]`: a project per video in `folder` (the current
+/// folder without it), named as «Импорт…» of the library names them (`dc_ops::project_roots`).
+pub(crate) fn new_each(
+    ctx: &Ctx<'_>,
+    videos: &[PathBuf],
+    folder: Option<&Path>,
+) -> Result<Answer, CliError> {
+    let folder = folder.map_or_else(|| ctx.cwd.to_path_buf(), |f| ctx.cwd.join(f));
+    let sources = paths(ctx.cwd, videos);
+    let defaults = Defaults::load(&ctx.defaults_file()?)?;
+    let made = match ctx.globals.dry_run {
+        true => {
+            let roots = dc_ops::project_roots(&folder, &sources);
+            let mut made = Vec::new();
+            for (root, video) in roots.into_iter().zip(&sources) {
+                let mut project = Project::default();
+                defaults.apply(&mut project);
+                let media =
+                    dc_media::import_dry_run(&root.join(MEDIA_DIR), std::slice::from_ref(video))
+                        .map_err(|e| CliError::Failed(e.to_string()))?;
+                made.push((root, dc_ops::add_clips(&mut project, media)?));
+            }
+            made
+        }
+        false => dc_ops::new_projects(&folder, &sources, &defaults, "devcast new")
+            .map_err(|e| CliError::Failed(e.to_string()))?,
+    };
+    let answers: Vec<Answer> = made
+        .iter()
+        .map(|(root, applied)| created(root, applied, ctx.globals.dry_run))
+        .collect();
+    let text = answers
+        .iter()
+        .map(|a| a.text.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    let json = serde_json::Value::Array(answers.into_iter().map(|a| a.json).collect());
+    Ok(Answer::new(text, json))
 }

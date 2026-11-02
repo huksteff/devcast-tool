@@ -188,3 +188,32 @@ fn clip_add_of_a_project_copies_its_recordings_with_telemetry() {
     );
     assert!(!f.dir.media_dir().join("recording-4").exists());
 }
+
+#[test]
+fn new_each_makes_a_project_per_video_named_as_the_library_does() {
+    let v = Videos::new();
+    let folder = v.tmp.path().join("Мои видео");
+    let out = v.run(&["new", "--each", "демо 1.mp4", "b.mkv", "--dry-run"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(!folder.join("b.devcast").exists());
+    std::fs::create_dir(folder.join("Проекты")).unwrap();
+    std::fs::create_dir(folder.join("Проекты").join("b.devcast")).unwrap();
+    let out = v.run(&[
+        "new",
+        "--each",
+        "демо 1.mp4",
+        "b.mkv",
+        "-o",
+        "Проекты",
+        "--json",
+    ]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let json: serde_json::Value = serde_json::from_str(&out.stdout).unwrap();
+    assert_eq!(json.as_array().unwrap().len(), 2);
+    for name in ["демо 1.devcast", "b-2.devcast"] {
+        let dir = ProjectDir::open(folder.join("Проекты").join(name)).unwrap();
+        assert_eq!(dir.load().unwrap().clips.len(), 1, "{name}");
+    }
+    let out = v.run(&["new", "демо 1.mp4"]);
+    assert_eq!(out.code, 2, "{}", out.stderr);
+}

@@ -85,7 +85,8 @@ impl Editor {
 
 const CLOSED: &str = "редактор закрыл проект, пока шла команда: запусти её ещё раз";
 
-fn refused(answer: Answer) -> CliError {
+/// An answer other than the one the request expects, as an error.
+pub(crate) fn refused(answer: Answer) -> CliError {
     CliError::Failed(match answer {
         Answer::Refused(text) => text,
         Answer::NotOpen => CLOSED.to_owned(),
@@ -100,3 +101,55 @@ fn lost(error: IpcError) -> CliError {
         "проект открыт в редакторе, но связаться с ним не удалось ({error}): закрой проект в редакторе или перезапусти DevCast"
     ))
 }
+
+impl Editor {
+    /// `devcast save --as`: the run copied the state it read to `copy`; the editor drops its
+    /// working state and opens the copy, as after «Сохранить как…».
+    pub(crate) fn copied(&self, copy: PathBuf) -> Result<(), CliError> {
+        let request = Request::Copied {
+            root: self.root.clone(),
+            revision: self.revision,
+            copy,
+        };
+        match self.ask(&request)? {
+            Answer::Opened => Ok(()),
+            answer => Err(refused(answer)),
+        }
+    }
+}
+
+/// The channel of the running app: `channel` of the tests, else the real `devcast-app-<user>`.
+pub(crate) fn app_channel(channel: Option<&str>) -> Result<String, CliError> {
+    match channel {
+        Some(channel) => Ok(channel.to_owned()),
+        None => dc_ipc::socket_name(SERVICE).map_err(|error| {
+            CliError::Failed(format!(
+                "связаться с программой DevCast не удалось ({error}): перезапусти её и повтори команду"
+            ))
+        }),
+    }
+}
+
+/// The channel of the app when `lock-owner.json` says it holds `dir` (a stale name is checked
+/// by the app's answer).
+pub(crate) fn held_by_app(
+    dir: &ProjectDir,
+    channel: Option<&str>,
+) -> Result<Option<String>, CliError> {
+    match LockOwner::of(dir).is_some_and(|owner| owner.app == LOCK_OWNER) {
+        true => app_channel(channel).map(Some),
+        false => Ok(None),
+    }
+}
+
+/// Asks the app on `channel`; `None` when it is not running.
+pub(crate) fn ask_app(channel: &str, request: &Request) -> Result<Option<Answer>, CliError> {
+    match dc_ipc::request(channel, request) {
+        Ok(answer) => Ok(Some(answer)),
+        Err(IpcError::NotRunning(_)) => Ok(None),
+        Err(error) => Err(lost(error)),
+    }
+}
+
+/// The app is not running.
+pub(crate) const NOT_RUNNING: &str = "DevCast не запущен: запусти программу и повтори команду";

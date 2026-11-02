@@ -4,8 +4,9 @@
 //! +, a double click, «На таймлайн» or a drag onto the timeline: `dc_ops::import_clips`, the path
 //! of `devcast clip add <project>` (its recording folders are copied with cursor, keys and sound),
 //! one undo step. «Импорт…» makes a project of each video in the recordings folder, the path of
-//! `devcast new` (`dc_ops::new_project`). The bin moves projects to the Recycle Bin (`bin.rs`);
-//! «Отменить» or Ctrl+Z while the panel is open brings back the last batch.
+//! `devcast new --each` (`dc_ops::new_projects`). The bin moves projects to the Recycle Bin
+//! (`bin.rs`, the path of `devcast trash`); «Отменить» or Ctrl+Z while the panel is open brings
+//! back the last batch.
 
 mod bin;
 mod panel;
@@ -183,28 +184,16 @@ fn add(editor: &mut EditorWindow, roots: &[PathBuf], now: Instant) -> Result<boo
     }
 }
 
-/// A project `<video name>.devcast` (`-2`, `-3` … when taken) of each of `videos` in `folder`.
+/// A project `<video name>.devcast` (`-2`, `-3` … when taken) of each of `videos` in `folder`,
+/// the path of `devcast new --each`.
 fn import(
     folder: &Path,
     videos: &[PathBuf],
     defaults: &dc_project::Defaults,
 ) -> Result<Vec<PathBuf>, String> {
-    std::fs::create_dir_all(folder).map_err(|e| e.to_string())?;
-    let mut made = Vec::new();
-    for video in videos {
-        let stem = video.file_stem().unwrap_or_default().to_string_lossy();
-        let root = (1..)
-            .map(|n| match n {
-                1 => folder.join(format!("{stem}.devcast")),
-                n => folder.join(format!("{stem}-{n}.devcast")),
-            })
-            .find(|root| !root.exists())
-            .unwrap_or_default();
-        dc_ops::new_project(&root, std::slice::from_ref(video), defaults, LOCK_OWNER)
-            .map_err(|e| e.to_string())?;
-        made.push(root);
-    }
-    Ok(made)
+    let made = dc_ops::new_projects(folder, videos, defaults, LOCK_OWNER);
+    let made = made.map_err(|e| e.to_string())?;
+    Ok(made.into_iter().map(|(root, _)| root).collect())
 }
 
 /// Recordings dragged from the library and let go over the timeline `rect` go onto it.

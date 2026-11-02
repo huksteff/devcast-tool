@@ -96,6 +96,14 @@ impl Workspace {
         self.unsaved
     }
 
+    /// The editor that holds the project, when the run goes through it.
+    pub(crate) fn editor(&self) -> Option<&Editor> {
+        match &self.writer {
+            Writer::Editor(editor) => Some(editor),
+            Writer::Files { .. } => None,
+        }
+    }
+
     /// Writes `events`, which have just happened to `history`, and the project after them; or
     /// sends the events to the editor, which takes them as one step of its history.
     pub fn record(&mut self, events: &[Event]) -> Result<(), CliError> {

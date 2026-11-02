@@ -1,105 +1,22 @@
-//! `devcast` on a project the editor holds (7.32): a fake editor on its own channel holds the
-//! lock as the app does and keeps the project in memory the way `Document` does (writes the
-//! working state on `Open`, takes events with `dc_ops::live::replay`).
+//! `devcast` on a project the editor holds (7.32): a fake editor (`fake_editor.rs`) holds the
+//! lock as the app does and keeps the project in memory the way `Document` does.
 
-use std::thread::JoinHandle;
-
-use dc_core::{History, Project};
-use dc_ipc::Listener;
+use dc_core::Project;
 use dc_ops::live::{Answer, CHANGED, LOCK_OWNER, Request};
 use dc_project::history_log::Event;
-use dc_project::{HistoryLog, ProjectLock, Working};
+use dc_project::{ProjectLock, Working};
 
+use crate::CliError;
+use crate::fake_editor::{FakeEditor, channel, run};
 use crate::live::Editor;
-use crate::test_util::{Fixture, defaults_file};
-use crate::{CliError, Local, Outcome, run_with};
+use crate::test_util::Fixture;
 
-fn channel(case: &str) -> String {
-    dc_ipc::socket_name(&format!("test-live-{case}-{}", std::process::id())).unwrap()
-}
-
-/// The editor holding `f`'s project until it gets `Show`; then it gives back its state.
-struct FakeEditor {
-    channel: String,
-    server: JoinHandle<(Project, History)>,
-}
-
-impl FakeEditor {
-    fn start(f: &Fixture, case: &str) -> Self {
-        let channel = channel(case);
-        let listener = Listener::bind(&channel).unwrap();
-        let lock = ProjectLock::acquire(&f.dir, LOCK_OWNER).unwrap();
-        let dir = f.dir.clone();
-        let server = std::thread::spawn(move || {
-            let _lock = lock;
-            let working = Working::load(&dir, true).unwrap();
-            let (mut project, mut history) = (working.project, working.history);
-            let log = HistoryLog::new(&dir);
-            let (mut revision, mut pending) = (0, Vec::<Event>::new());
-            loop {
-                let mut connection = listener.accept().unwrap();
-                let answer = match connection.receive().unwrap() {
-                    Request::Show => {
-                        connection.send(&Answer::Shown).unwrap();
-                        return (project, history);
-                    }
-                    Request::Open { root } => {
-                        assert_eq!(root, dir.root());
-                        log.append(&pending).unwrap();
-                        pending.clear();
-                        dir.save_session(&project).unwrap();
-                        Answer::Open { revision }
-                    }
-                    Request::Write {
-                        revision: base,
-                        events,
-                        ..
-                    } if base == revision => {
-                        pending.extend(events.iter().cloned());
-                        dc_ops::live::replay(&mut project, &mut history, events);
-                        revision += 1;
-                        Answer::Written { revision }
-                    }
-                    Request::Write { .. } => Answer::Refused(CHANGED.to_owned()),
-                    Request::Edit { root } if root == dir.root() => Answer::Opened,
-                    Request::Edit { .. } => Answer::Asking,
-                    Request::Save { .. } => {
-                        log.append(&pending).unwrap();
-                        pending.clear();
-                        dir.save(&project).unwrap();
-                        Answer::Saved
-                    }
-                };
-                connection.send(&answer).unwrap();
-            }
-        });
-        Self { channel, server }
-    }
-
-    fn stop(self) -> (Project, History) {
-        let shown: Answer = dc_ipc::request(&self.channel, &Request::Show).unwrap();
-        assert_eq!(shown, Answer::Shown);
-        self.server.join().unwrap()
-    }
-}
-
-fn run(f: &Fixture, line: &str, channel: &str) -> Outcome {
-    let defaults = defaults_file(f._tmp.path());
-    let local = Local {
-        defaults: Some(&defaults),
-        app_channel: Some(channel),
-        ..Local::default()
-    };
-    let args = line.split(' ').map(str::to_owned).collect();
-    run_with(args, &f.cwd, &f.registry, local)
-}
-
-fn working(f: &Fixture) -> Project {
+pub(crate) fn working(f: &Fixture) -> Project {
     Working::load(&f.dir, false).unwrap().project
 }
 
 /// Two projects with the same history: the editor holds the first, the second is unlocked.
-fn pair(case: &str) -> (Fixture, FakeEditor, Fixture) {
+pub(crate) fn pair(case: &str) -> (Fixture, FakeEditor, Fixture) {
     let (held, unlocked) = (Fixture::new(), Fixture::new());
     for f in [&held, &unlocked] {
         assert_eq!(f.run("test add --secs 2").code, 0);

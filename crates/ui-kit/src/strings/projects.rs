@@ -28,6 +28,8 @@ pub const RENAME: &str = "Переименовать";
 pub const RENAME_EXPORTING: &str =
     "Проект нельзя переименовать, пока идёт экспорт: дождитесь его конца или отмените его.";
 pub const NOT_A_PROJECT: &str = "Это не папка проекта: выберите папку с расширением .devcast.";
+/// A request about the open project came when the editor had none.
+pub const NOTHING_OPEN: &str = "В редакторе нет открытого проекта: откройте его и повторите.";
 
 /// «Сохранить изменения в «Урок»?».
 pub fn save_title(name: &str) -> String {

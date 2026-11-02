@@ -40,6 +40,33 @@ pub enum Request {
     /// `devcast open`: the editor opens the project in folder `root`; an editor with unsaved
     /// changes of another project asks about them first.
     Edit { root: PathBuf },
+    /// `devcast discard`: the editor drops its working state and history, back to
+    /// `project.json` (`Document::discard`).
+    Discard { root: PathBuf },
+    /// `devcast close`: the editor window closes and the HUD comes back. Unsaved changes are
+    /// saved or dropped as `changes` says; without it they refuse the close ([`Answer::Unsaved`]).
+    Close {
+        root: PathBuf,
+        changes: Option<Changes>,
+    },
+    /// `devcast save --as`: the run has copied the working state of `revision` (it read it after
+    /// `Open`) to the project `copy`; the editor does what it does after «Сохранить как…»: drops
+    /// its working state and opens the copy. Refused when the state changed since.
+    Copied {
+        root: PathBuf,
+        revision: u64,
+        copy: PathBuf,
+    },
+    /// `devcast rename`: the editor renames the project folder to `name` (the header's rename).
+    Rename { root: PathBuf, name: String },
+}
+
+/// What `devcast close` does with unsaved changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Changes {
+    Save,
+    Discard,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -62,6 +89,22 @@ pub enum Answer {
     /// The editor asks in its window whether to save the changes of the project it had; the
     /// project of `Request::Edit` opens after the answer.
     Asking,
+    /// The working state is dropped; `changed`: there were unsaved changes.
+    Discarded {
+        changed: bool,
+    },
+    /// The editor window is closed.
+    Closed,
+    /// `Request::Close` without `changes` while there are unsaved changes: nothing closed.
+    Unsaved,
+    /// `Request::Close` of a project the editor does not hold: it holds `open`, or nothing.
+    Elsewhere {
+        open: Option<PathBuf>,
+    },
+    /// The project is renamed and open again from this folder.
+    Renamed {
+        root: PathBuf,
+    },
     /// Not done; the text says why and what to do.
     Refused(String),
 }

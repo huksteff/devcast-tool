@@ -170,3 +170,98 @@ fn not_a_project_folder_is_refused() {
     assert_eq!(open_root(&shared), a);
     assert!(!shared.toasts.is_empty());
 }
+
+/// The requests of `devcast discard`, `close`, `save --as` and `rename` (`dc_ops::live`).
+mod live {
+    use dc_ops::live::{Answer, CHANGED, Changes, Request};
+
+    use super::*;
+
+    #[test]
+    fn discard_drops_the_working_state() {
+        let (_temp, mut shared, a, _b) = two();
+        shared.open_project(&a, true);
+        let request = || Request::Discard { root: a.clone() };
+        assert_eq!(shared.live(request()), Answer::Discarded { changed: true });
+        let editor = shared.editor.as_ref().unwrap();
+        assert!(!editor.doc.unsaved() && !editor.recovery);
+        assert!(!a.join(SESSION_FILE).exists());
+        assert_eq!(shared.live(request()), Answer::Discarded { changed: false });
+    }
+
+    #[test]
+    fn close_asks_what_to_do_with_unsaved_changes() {
+        let (_temp, mut shared, a, b) = two();
+        let close = |root: &PathBuf, changes| Request::Close {
+            root: root.clone(),
+            changes,
+        };
+        assert_eq!(
+            shared.live(close(&b, None)),
+            Answer::Elsewhere { open: None }
+        );
+        shared.open_project(&b, false);
+        edit(&mut shared);
+        let project = shared.editor.as_ref().unwrap().doc.project().clone();
+        assert_eq!(shared.live(close(&b, None)), Answer::Unsaved);
+        assert_eq!(
+            shared.live(close(&a, None)),
+            Answer::Elsewhere {
+                open: Some(b.clone())
+            }
+        );
+        assert_eq!(shared.live(close(&b, Some(Changes::Save))), Answer::Closed);
+        assert!(shared.editor.is_none());
+        assert!(!b.join(SESSION_FILE).exists());
+        let saved = ProjectDir::open(&b).unwrap().load().unwrap();
+        assert_eq!(saved, project, "saved before closing");
+    }
+
+    #[test]
+    fn the_copy_of_save_as_opens_as_after_the_dialog() {
+        let (temp, mut shared, _a, b) = two();
+        shared.open_project(&b, false);
+        edit(&mut shared);
+        let editor = shared.editor.as_ref().unwrap();
+        let (dir, project) = (editor.doc.dir().clone(), editor.doc.project().clone());
+        let revision = editor.doc.revision();
+        let copy = dir
+            .save_as(&project, temp.path().join("В.devcast"))
+            .unwrap();
+        let copied = |revision| Request::Copied {
+            root: b.clone(),
+            revision,
+            copy: copy.root().to_path_buf(),
+        };
+        let refused = shared.live(copied(revision + 1));
+        assert_eq!(refused, Answer::Refused(CHANGED.to_owned()));
+        assert_eq!(shared.live(copied(revision)), Answer::Opened);
+        assert_eq!(open_root(&shared), copy.root());
+        assert!(
+            !b.join(SESSION_FILE).exists(),
+            "Б dropped its working state"
+        );
+    }
+
+    #[test]
+    fn rename_answers_the_new_folder() {
+        let (_temp, mut shared, a, b) = two();
+        shared.open_project(&a, false);
+        let rename = |root: &PathBuf, name: &str| Request::Rename {
+            root: root.clone(),
+            name: name.to_owned(),
+        };
+        assert_eq!(shared.live(rename(&b, "Урок 3")), Answer::NotOpen);
+        let renamed = a.with_file_name("Урок 3.devcast");
+        let answer = shared.live(rename(&a, "Урок 3"));
+        assert_eq!(
+            answer,
+            Answer::Renamed {
+                root: renamed.clone()
+            }
+        );
+        assert_eq!(open_root(&shared), renamed);
+        let taken = shared.live(rename(&renamed, "Б"));
+        assert!(matches!(taken, Answer::Refused(_)), "{taken:?}");
+    }
+}

@@ -1,20 +1,29 @@
 //! `devcast` on the project of the editor (7.32, `dc_ops::live`): the main window answers the
 //! requests of the app channel; the run's events become a step of the editor's history, the view
-//! is rebuilt and the editor window repaints.
+//! is rebuilt and the editor window repaints. The requests about the project as a whole (open,
+//! close, the copy of `save --as`, rename) go the way of the window's own buttons (`switch.rs`).
 
 use std::path::Path;
 use std::time::Instant;
 
-use dc_ops::live::{Answer, CHANGED, Request};
+use dc_ops::live::{Answer, CHANGED, Changes, Request};
 
-use super::EditorWindow;
+use super::{EditorWindow, Leave};
 use crate::app::Shared;
 
 impl Shared {
     /// Answers a `devcast` run: the editor's project, or «not open»; `devcast open` opens one.
     pub fn live(&mut self, request: Request) -> Answer {
-        if let Request::Edit { root } = request {
-            return self.open_asked(&root);
+        match request {
+            Request::Edit { root } => return self.open_asked(&root),
+            Request::Close { root, changes } => return self.close_asked(&root, changes),
+            Request::Rename { root, name } => return self.rename_asked(&root, &name),
+            Request::Copied {
+                root,
+                revision,
+                copy,
+            } => return self.copied_asked(&root, revision, &copy),
+            _ => {}
         }
         let Some(editor) = self.editor.as_mut() else {
             return Answer::NotOpen;
@@ -25,6 +34,61 @@ impl Shared {
         }
         answer
     }
+
+    /// The editor of the project in `root`, if it is the open one.
+    fn editor_of(&mut self, root: &Path) -> Option<&mut EditorWindow> {
+        self.editor
+            .as_mut()
+            .filter(|e| same_folder(e.doc.dir().root(), root))
+    }
+
+    /// `devcast close`: unsaved changes are saved or dropped as asked, then the window closes.
+    fn close_asked(&mut self, root: &Path, changes: Option<Changes>) -> Answer {
+        let Some(editor) = self.editor_of(root) else {
+            let open = self
+                .editor
+                .as_ref()
+                .map(|e| e.doc.dir().root().to_path_buf());
+            return Answer::Elsewhere { open };
+        };
+        if editor.doc.unsaved() {
+            let done = match changes {
+                None => return Answer::Unsaved,
+                Some(Changes::Save) => editor.doc.save(),
+                Some(Changes::Discard) => editor.doc.discard(),
+            };
+            if let Err(error) = done {
+                return Answer::Refused(error.to_string());
+            }
+        }
+        self.leave_project(Leave::Close);
+        Answer::Closed
+    }
+
+    /// `devcast save --as` made the copy of the state of `revision`: as after «Сохранить как…».
+    fn copied_asked(&mut self, root: &Path, revision: u64, copy: &Path) -> Answer {
+        let Some(editor) = self.editor_of(root) else {
+            return Answer::NotOpen;
+        };
+        if editor.doc.revision() != revision {
+            return Answer::Refused(CHANGED.to_owned());
+        }
+        match self.take_copy(copy) {
+            Ok(()) => Answer::Opened,
+            Err(error) => Answer::Refused(error),
+        }
+    }
+
+    /// `devcast rename`: as renaming by the header's name.
+    fn rename_asked(&mut self, root: &Path, name: &str) -> Answer {
+        if self.editor_of(root).is_none() {
+            return Answer::NotOpen;
+        }
+        match self.try_rename(name) {
+            Ok(root) => Answer::Renamed { root },
+            Err(error) => Answer::Refused(error),
+        }
+    }
 }
 
 impl EditorWindow {
@@ -32,14 +96,16 @@ impl EditorWindow {
     /// answer and why the view could not follow (the sound of playback), for a toast.
     pub fn live(&mut self, request: Request, now: Instant) -> (Answer, Option<String>) {
         let root = match &request {
-            Request::Show | Request::Edit { .. } => return (Answer::NotOpen, None),
-            Request::Open { root } | Request::Write { root, .. } | Request::Save { root } => root,
+            Request::Open { root }
+            | Request::Write { root, .. }
+            | Request::Save { root }
+            | Request::Discard { root } => root,
+            _ => return (Answer::NotOpen, None),
         };
         if !same_folder(root, self.doc.dir().root()) {
             return (Answer::NotOpen, None);
         }
         match request {
-            Request::Show | Request::Edit { .. } => (Answer::NotOpen, None),
             Request::Open { .. } => match self.doc.flush() {
                 Ok(()) => (
                     Answer::Open {
@@ -67,7 +133,24 @@ impl EditorWindow {
                 }
                 Err(error) => (Answer::Refused(error.to_string()), None),
             },
+            Request::Discard { .. } => self.discard_asked(now),
+            _ => (Answer::NotOpen, None),
         }
+    }
+
+    /// `devcast discard`: as «Отбросить» of the recovery question.
+    fn discard_asked(&mut self, now: Instant) -> (Answer, Option<String>) {
+        if !self.doc.unsaved() {
+            return (Answer::Discarded { changed: false }, None);
+        }
+        if let Err(error) = self.doc.discard() {
+            return (Answer::Refused(error.to_string()), None);
+        }
+        self.recovery = false;
+        let problem = self.refresh(now);
+        self.detached.wake_editor = true;
+        self.detached.wake_timeline = true;
+        (Answer::Discarded { changed: true }, problem)
     }
 }
 

@@ -48,8 +48,6 @@ minidumper = "0.8"
 eframe = { version = "0.37", default-features = false, features = ["wgpu", "accesskit", "inspection"] }
 raw-window-handle = "0.6"
 rfd = "0.15"
-# The Recycle Bin of the library: delete and restore (owner decision 2026-11-02).
-trash = "5"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
