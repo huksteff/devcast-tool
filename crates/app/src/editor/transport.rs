@@ -35,7 +35,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) {
             .show(ui);
         ui.add(IconButton::new(Icon::Speaker, text::VOLUME));
     });
-    playback(ui, rect, editor);
+    playback(ui, rect, editor, true);
 }
 
 fn row(ui: &mut Ui, rect: Rect, layout: Layout, add: impl FnOnce(&mut Ui)) {
@@ -45,39 +45,52 @@ fn row(ui: &mut Ui, rect: Rect, layout: Layout, add: impl FnOnce(&mut Ui)) {
 }
 
 fn tools(ui: &mut Ui, editor: &mut EditorWindow) {
-    let view = &mut editor.view;
-    for (tool, icon, label, key) in [
-        (Tool::Select, Icon::Pointer, text::SELECT, EditorKey::Select),
-        (Tool::Blade, Icon::Blade, text::BLADE, EditorKey::Blade),
-    ] {
-        let button = IconButton::new(icon, label).held(view.tool == tool);
-        let hint = keys::hint(label, key, &editor.keys);
-        if ui.add(button).on_hover_text(hint).clicked() {
-            view.tool = tool;
-        }
-    }
+    tool_buttons(ui, editor);
     let (rect, _) = ui.allocate_exact_size(vec2(9.0, 24.0), Sense::hover());
     ui.painter()
         .vline(rect.center().x, rect.y_range(), Stroke::new(1.0, BORDER));
-    let keys = IconButton::new(Icon::Diamond, text::AUTO_KEYS).on(view.auto_keys);
-    if ui.add(keys).on_hover_text(text::AUTO_KEYS).clicked() {
-        view.auto_keys = !view.auto_keys;
-    }
+    auto_keys(ui, editor);
+    let view = &mut editor.view;
     let markers = IconButton::new(Icon::Eye, text::MARKERS).on(view.markers);
     if ui.add(markers).on_hover_text(text::MARKERS).clicked() {
         view.markers = !view.markers;
     }
 }
 
-/// Time, jumps, play and the end time, centred in the row.
-fn playback(ui: &mut Ui, rect: Rect, editor: &mut EditorWindow) {
+/// «Выбор» and «Лезвие».
+pub(super) fn tool_buttons(ui: &mut Ui, editor: &mut EditorWindow) {
+    for (tool, icon, label, key) in [
+        (Tool::Select, Icon::Pointer, text::SELECT, EditorKey::Select),
+        (Tool::Blade, Icon::Blade, text::BLADE, EditorKey::Blade),
+    ] {
+        let button = IconButton::new(icon, label).held(editor.view.tool == tool);
+        let hint = keys::hint(label, key, &editor.keys);
+        if ui.add(button).on_hover_text(hint).clicked() {
+            editor.view.tool = tool;
+        }
+    }
+}
+
+/// ◆ «Авто-ключи».
+pub(super) fn auto_keys(ui: &mut Ui, editor: &mut EditorWindow) {
+    let view = &mut editor.view;
+    let keys = IconButton::new(Icon::Diamond, text::AUTO_KEYS).on(view.auto_keys);
+    if ui.add(keys).on_hover_text(text::AUTO_KEYS).clicked() {
+        view.auto_keys = !view.auto_keys;
+    }
+}
+
+/// Time, jumps, play and the end time, centred in `rect`; `steps` adds the frame steps (the
+/// timeline window has room only for the jumps, mockup 7).
+pub(super) fn playback(ui: &mut Ui, rect: Rect, editor: &mut EditorWindow, steps: bool) {
     let font = fonts::mono(FS_M);
     let now = timecode(editor.view.playhead);
     let end = timecode(dc_core::OutputTime::ZERO + editor.tracks.duration);
     let painter = ui.painter();
     let now = painter.layout_no_wrap(now, font.clone(), TEXT);
     let end = painter.layout_no_wrap(end, font, TEXT_3);
-    let buttons = 4.0 * (CONTROL + 2.0) + PLAY + 2.0;
+    let jumps = if steps { 4.0 } else { 2.0 };
+    let buttons = jumps * (CONTROL + 2.0) + PLAY + 2.0;
     let width = now.size().x + end.size().x + 2.0 * S2 * 2.0 + buttons;
     let inner = Rect::from_center_size(rect.center(), vec2(width, rect.height()));
     ui.scope_builder(
@@ -104,7 +117,10 @@ fn playback(ui: &mut Ui, rect: Rect, editor: &mut EditorWindow) {
                     EditorKey::PrevFrame,
                     Transport::Step(-1),
                 ),
-            ] {
+            ]
+            .into_iter()
+            .filter(|b| steps || !matches!(b.3, Transport::Step(_)))
+            {
                 asked = asked.or(jump_button(ui, editor, icon, label, key, transport));
             }
             let playing = editor.playback.is_playing();
@@ -129,7 +145,10 @@ fn playback(ui: &mut Ui, rect: Rect, editor: &mut EditorWindow) {
                     EditorKey::NextKey,
                     Transport::Jump(true),
                 ),
-            ] {
+            ]
+            .into_iter()
+            .filter(|b| steps || !matches!(b.3, Transport::Step(_)))
+            {
                 asked = asked.or(jump_button(ui, editor, icon, label, key, transport));
             }
             if let Some(transport) = asked {

@@ -66,7 +66,8 @@ impl HudPlacement {
     }
 }
 
-fn contains(b: &Area, (x, y): (i32, i32)) -> bool {
+/// The desktop point (physical pixels) lies on `b`.
+pub fn contains(b: &Area, (x, y): (i32, i32)) -> bool {
     x >= b.x() && y >= b.y() && x < b.x() + b.width() as i32 && y < b.y() + b.height() as i32
 }
 

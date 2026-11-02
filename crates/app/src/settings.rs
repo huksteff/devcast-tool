@@ -122,6 +122,10 @@ pub struct EditorLayout {
     pub timeline_height: f32,
     /// Height factor of the timeline rows, 0.5..3 (Shift+wheel).
     pub rows: f32,
+    /// The timeline is in its own window (7.26): the editor opens with it.
+    pub timeline_window: bool,
+    /// Where the timeline window was when it closed last; `None` — centred on the HUD monitor.
+    pub timeline_place: Option<WindowPlace>,
 }
 
 impl Default for EditorLayout {
@@ -129,8 +133,19 @@ impl Default for EditorLayout {
         Self {
             timeline_height: 300.0,
             rows: 1.0,
+            timeline_window: false,
+            timeline_place: None,
         }
     }
+}
+
+/// A window on the desktop, points of the main window: its outer corner and its inner size.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct WindowPlace {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
 }
 
 /// Groups of the inspector panels the user opened or closed: `panel.group` (`keys.fine`) → open.

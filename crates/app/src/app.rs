@@ -295,6 +295,7 @@ impl eframe::App for App {
         if let Some(Err(error)) = shared.editor.as_mut().map(|e| e.doc.flush()) {
             tracing::error!("рабочее состояние проекта не записано при выходе: {error}");
         }
+        crate::editor::timeline_window::remember(&mut shared);
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

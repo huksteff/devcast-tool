@@ -29,6 +29,7 @@ mod selection;
 mod stage;
 mod streams;
 mod timeline;
+pub mod timeline_window;
 mod transport;
 mod view;
 mod waves;
@@ -47,6 +48,8 @@ mod test_project;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod timeline_window_tests;
+#[cfg(test)]
 mod waves_tests;
 
 use std::time::Instant;
@@ -64,7 +67,7 @@ pub use actions::{Action, Transport};
 pub use document::{Document, DocumentError, LOCK_OWNER, Way};
 pub use keys::wired;
 use playback::seek::{FALLBACK_FPS, frame_rate};
-pub use timeline::Tracks;
+pub use timeline::{Place, Tracks};
 pub use view::View;
 pub use window::show;
 
@@ -121,6 +124,8 @@ pub struct EditorWindow {
     pub captions: generation::Generation,
     /// Families of the font pickers: built-in and the project's own.
     pub fonts: Vec<String>,
+    /// The timeline window: open or not, its place, which window should repaint.
+    pub detached: timeline_window::Detached,
     /// Actions the controls asked for in this frame.
     actions: Vec<Action>,
 }
@@ -178,6 +183,7 @@ impl EditorWindow {
             closing: closing::Closing::default(),
             defaults: dc_project::Defaults::factory(),
             groups: InspectorGroups::default(),
+            detached: timeline_window::Detached::default(),
             actions: Vec::new(),
         };
         problems.extend(editor.refresh(Instant::now()));
@@ -329,11 +335,7 @@ pub fn editor_ui(
     if editor.groups != *groups {
         editor.groups = groups.clone();
     }
-    editor.waves.receive();
-    editor.streams.receive();
-    if editor.presses.receive() {
-        editor.retrack();
-    }
+    editor.receive();
     keys::run(ui, editor);
     let volume = (editor.view.volume / 100.0) as f32;
     let tick = editor.playback.tick(now, editor.end(), volume);
@@ -350,12 +352,16 @@ pub fn editor_ui(
             }
         });
     let most = (ui.available_height() * TIMELINE_MAX_SHARE).max(TIMELINE_MIN);
-    let timeline = egui::Panel::bottom("editor-timeline")
-        .resizable(true)
-        .default_size(layout.timeline_height.clamp(TIMELINE_MIN, most))
-        .size_range(TIMELINE_MIN..=most)
-        .frame(Frame::new().fill(SURFACE))
-        .show(ui, |ui| timeline::ui(ui, editor, layout.rows));
+    let timeline = (!editor.detached.open).then(|| {
+        egui::Panel::bottom("editor-timeline")
+            .resizable(true)
+            .default_size(layout.timeline_height.clamp(TIMELINE_MIN, most))
+            .size_range(TIMELINE_MIN..=most)
+            .frame(Frame::new().fill(SURFACE))
+            .show(ui, |ui| {
+                timeline::ui(ui, editor, layout.rows, Place::Docked)
+            })
+    });
     let toggled = egui::Panel::right("editor-inspector")
         .exact_size(INSPECTOR)
         .frame(Frame::new().fill(SURFACE))
@@ -383,10 +389,11 @@ pub fn editor_ui(
     }
     Outcome {
         open_settings,
-        layout: EditorLayout {
-            timeline_height: timeline.response.rect.height(),
-            rows: timeline.inner,
-        },
+        layout: timeline.map_or(layout, |t| EditorLayout {
+            timeline_height: t.response.rect.height(),
+            rows: t.inner,
+            ..layout
+        }),
         errors,
         groups: toggled.then(|| editor.groups.clone()),
     }

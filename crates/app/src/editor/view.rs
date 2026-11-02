@@ -83,6 +83,9 @@ pub struct View {
     pub playhead: OutputTime,
     /// What the timeline shows: scale, scroll, row heights, the playhead drag (7.6, 7.7).
     pub timeline: Viewport,
+    /// What the hidden timeline showed: the docked one while the timeline window is open, the
+    /// window's while it is closed (each keeps its own scale, mockup 7).
+    pub parked: Viewport,
     /// Picked clips (7.8; regions 7.9).
     pub selection: Selection,
     /// A span of the output picked by Shift+drag on the ruler: Shift+Delete cuts it, R sets its speed.
@@ -122,6 +125,7 @@ impl Default for View {
             followed: None,
             playhead: OutputTime::ZERO,
             timeline: Viewport::default(),
+            parked: Viewport::default(),
             selection: Selection::default(),
             range: None,
             ranging: None,

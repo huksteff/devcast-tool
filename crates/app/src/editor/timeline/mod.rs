@@ -7,8 +7,8 @@
 //! ×0.5–3 (kept in the settings). The ruler and the playhead move the playhead (`pointer.rs`).
 //! «+ Дорожка ▾» adds an empty annotation or extra sound row; «Подобрать зумы» adds the zooms of the
 //! clicks (`devcast zoom add --at clicks`), «Создать субтитры» recognizes the speech (7.17,
-//! greyed while it runs); the other commands are disabled until their tasks
-//! (own window 7.26); the magnet makes the blade and the
+//! greyed while it runs); «↗» moves the timeline into its own window (`window_bar.rs` is its
+//! toolbar, `editor/timeline_window.rs` the window); the magnet makes the blade and the
 //! regions stick. The clips row is `clips.rs` (pick, drag to another place, the blade), the
 //! picked range of the ruler `range.rs` (Shift+drag, its menu and speed popover), the effect
 //! regions `regions.rs` with the ghost of quick adding `ghost.rs`, the track headers `heads.rs`
@@ -33,6 +33,7 @@ mod snap;
 mod tracks;
 mod viewport;
 mod wave;
+mod window_bar;
 
 #[cfg(test)]
 mod clips_tests;
@@ -84,8 +85,16 @@ const SCALE_SLIDER: f32 = 120.0;
 /// Half the width of the grip of the playhead line, points.
 const GRIP: f32 = 4.0;
 
-/// The timeline; `saved_rows` is the row height factor of the settings. Returns the factor now.
-pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32) -> f32 {
+/// Where the timeline is drawn: under the preview or in its own window (7.26).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Place {
+    Docked,
+    Window,
+}
+
+/// The timeline at `place`; `saved_rows` is the row height factor of the settings. Returns the
+/// factor now.
+pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32, place: Place) -> f32 {
     let full = ui.available_rect_before_wrap();
     let area = full.with_min_y(full.top() + TOOLBAR);
     let lanes = Lanes {
@@ -109,7 +118,10 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32) -> f32 {
     egui::Panel::top("timeline-bar")
         .exact_size(TOOLBAR)
         .frame(Frame::new().inner_margin(Margin::symmetric(S2 as i8, 0)))
-        .show(ui, |ui| toolbar(ui, editor, &lanes));
+        .show(ui, |ui| match place {
+            Place::Docked => toolbar(ui, editor, &lanes),
+            Place::Window => window_bar::ui(ui, editor, &lanes),
+        });
     ui.spacing_mut().item_spacing.y = 0.0;
     let rows = editor.view.timeline.rows(saved_rows);
     let scale = editor.view.timeline.scale(&lanes);
@@ -232,10 +244,18 @@ fn toolbar(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes) {
             editor.actions.push(Action::Generate);
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            ui.add_enabled(false, IconButton::new(Icon::Detach, text::DETACH));
+            let detach = IconButton::new(Icon::Detach, text::DETACH);
+            if ui.add(detach).on_hover_text(text::DETACH).clicked() {
+                editor.actions.push(Action::Detach(true));
+            }
             zoom(ui, editor, lanes);
         });
     });
+    underline(ui);
+}
+
+/// The border under a toolbar.
+fn underline(ui: &Ui) {
     let rect = ui.max_rect();
     ui.painter()
         .hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, BORDER));

@@ -44,6 +44,11 @@ pub const TIMES: &str = "×";
 /// Sped up or slowed down sound keeps its pitch (dc-audio tempo).
 pub const PITCH_KEPT: &str = "Высота голоса сохраняется.";
 
+/// Title of the timeline window: «Таймлайн — Демо-запись».
+pub fn window_title(project: &str) -> String {
+    format!("Таймлайн — {project}")
+}
+
 /// «Участок 0:13.200 – 0:22.800 · 9,6 с».
 pub fn range(start: &str, end: &str, secs: f64) -> String {
     format!("Участок {start} – {end} · {}", seconds(secs))

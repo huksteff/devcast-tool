@@ -47,6 +47,8 @@ pub enum Action {
     ListPick(Selected),
     /// «Кроп и формат»: playback pauses, the crop dialog opens for the picked clip (`crop`).
     OpenCrop,
+    /// «↗»: the timeline moves into its own window (`true`) or back under the preview.
+    Detach(bool),
 }
 
 /// Playback and the playhead.
@@ -129,16 +131,14 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
             }
             Action::Generate => errors.extend(generation::start(ui.ctx(), editor).err()),
             Action::StopGenerating => editor.captions.cancel(),
+            Action::Detach(open) => editor.detach(open),
             Action::ListPick(picked) => {
                 editor.view.selection.only(picked);
                 editor.view.followed = Some(picked);
                 moved = true;
             }
             Action::OpenCrop => {
-                if editor.playback.is_playing() {
-                    editor.view.playhead = editor.playback.pause(now);
-                }
-                editor.crop = crop::CropDialog::open(editor);
+                open_crop(editor, now);
                 moved = true;
             }
             Action::Transport(transport) => {
@@ -158,6 +158,14 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
         ui.ctx().request_repaint();
     }
     errors
+}
+
+/// Playback pauses and the crop dialog opens for the picked clip.
+fn open_crop(editor: &mut EditorWindow, now: Instant) {
+    if editor.playback.is_playing() {
+        editor.view.playhead = editor.playback.pause(now);
+    }
+    editor.crop = crop::CropDialog::open(editor);
 }
 
 /// Does `transport` at `now`; the message of a sound that cannot start.

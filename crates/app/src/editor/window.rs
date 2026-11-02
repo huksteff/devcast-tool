@@ -1,6 +1,6 @@
 //! The editor as a window of the app: opening it after a recording (the HUD hides), its frames
-//! as a deferred viewport, the toasts of a frame, the timeline sizes kept in the settings, and
-//! closing it (the HUD comes back).
+//! as a deferred viewport (and the timeline window, `timeline_window.rs`), the toasts of a
+//! frame, the timeline sizes kept in the settings, and closing it (the HUD comes back).
 
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -8,6 +8,7 @@ use std::time::Instant;
 use dc_ui_kit::strings::editor as text;
 use eframe::egui::{self, Ui};
 
+use super::timeline_window::{self, Side};
 use super::{EditorWindow, MIN_SIZE, SIZE, editor_ui};
 use crate::app::{Shared, lock, on_hud_monitor, other_window};
 use crate::settings::EditorLayout;
@@ -43,6 +44,7 @@ impl Shared {
                 for problem in problems {
                     self.report(Err(problem));
                 }
+                super::timeline_window::restore(&mut editor, &self.store.get().editor);
                 self.editor = Some(editor);
                 self.hide_hud();
             }
@@ -74,26 +76,34 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     let id = egui::ViewportId::from_hash_of("editor");
     let window = Arc::clone(shared);
     ctx.show_viewport_deferred(id, builder, move |ui, _| other_window(ui, &window, frame));
-    let news = lock(shared)
-        .editor
-        .as_ref()
+    let (news, wake_editor, wake_timeline) = {
+        let mut shared = lock(shared);
+        let Some(e) = shared.editor.as_mut() else {
+            return;
+        };
         // All are asked: each clears its own news.
-        .is_some_and(|e| {
-            e.preview.take_news()
-                | e.waves.take_news()
-                | e.presses.take_news()
-                | e.streams.take_news()
-                | e.captions.take_news()
-        });
-    if news {
+        let news = e.preview.take_news()
+            | e.waves.take_news()
+            | e.presses.take_news()
+            | e.streams.take_news()
+            | e.captions.take_news();
+        let wake = &mut e.detached;
+        (
+            news,
+            std::mem::take(&mut wake.wake_editor),
+            std::mem::take(&mut wake.wake_timeline),
+        )
+    };
+    if news || wake_editor {
         ctx.request_repaint_of(id);
     }
+    super::timeline_window::show(ctx, shared, news || wake_timeline);
 }
 
 /// One frame of the editor window; closing it writes what is unsaved to the session and shows
 /// the HUD again. If that fails, the window stays open with the error; closing again asks
 /// whether to close without the edits (`closing.rs`).
-fn frame(ui: &mut Ui, shared: &mut Shared) {
+pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     crate::borderless::opaque(ui);
     let layout = shared.store.get().editor;
     let keys = shared.store.get().editor_keys.clone();
@@ -104,7 +114,11 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
     };
     editor.captions.model = model;
     let now = Instant::now();
+    let before = editor.mark();
+    let was_open = editor.detached.open;
     let outcome = editor_ui(ui, editor, layout, (&keys, &groups), now);
+    editor.touched(ui.ctx(), Side::Editor, &before);
+    let toggled = editor.detached.open != was_open;
     let saved = editor.doc.autosave(now);
     if let Ok(Some(wait)) = saved {
         ui.ctx().request_repaint_after(wait);
@@ -120,6 +134,9 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
         shared.open_settings_at(page);
     }
     save_layout(shared, ui, layout, outcome.layout);
+    if toggled {
+        timeline_window::remember(shared);
+    }
     if let Some(groups) = outcome.groups {
         let saved = shared.store.update(|s| s.inspector = groups);
         shared.report(saved);
@@ -140,12 +157,13 @@ fn frame(ui: &mut Ui, shared: &mut Shared) {
 }
 
 fn close_editor(shared: &mut Shared) {
+    timeline_window::remember(shared);
     shared.editor = None;
     shared.show_hud();
 }
 
 /// Keeps a dragged timeline height (once the pointer is let go) and a new row factor.
-fn save_layout(shared: &mut Shared, ui: &Ui, was: EditorLayout, now: EditorLayout) {
+pub(super) fn save_layout(shared: &mut Shared, ui: &Ui, was: EditorLayout, now: EditorLayout) {
     let released = ui.input(|i| !i.pointer.any_down());
     let height = released && (now.timeline_height - was.timeline_height).abs() >= 1.0;
     let rows = (now.rows - was.rows).abs() > 1e-3;
