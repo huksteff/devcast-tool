@@ -38,6 +38,8 @@ impl Shared {
                 self.report(waves);
                 let presses = editor.start_presses(self.ctx.clone());
                 self.report(presses);
+                let streams = editor.start_streams(self.ctx.clone());
+                self.report(streams);
                 for problem in problems {
                     self.report(Err(problem));
                 }
@@ -80,6 +82,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
             e.preview.take_news()
                 | e.waves.take_news()
                 | e.presses.take_news()
+                | e.streams.take_news()
                 | e.captions.take_news()
         });
     if news {

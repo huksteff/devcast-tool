@@ -25,6 +25,7 @@ mod regions;
 mod rows;
 mod selection;
 mod stage;
+mod streams;
 mod timeline;
 mod transport;
 mod view;
@@ -98,6 +99,8 @@ pub struct EditorWindow {
     /// Presses of the recordings: the dots of the «Курсор» row and the shortcuts of the
     /// «Клавиши» row, as they come.
     pub presses: presses::Presses,
+    /// Sound tracks of the imported videos: the rows of the sound panel of their clips.
+    pub streams: streams::Streams,
     /// Frames per second of a frame step: the highest of the clips' videos (v1), 30 without.
     pub fps: f64,
     /// Shortcuts of the settings, taken each frame.
@@ -158,6 +161,7 @@ impl EditorWindow {
             preview,
             waves: waves::Waves::default(),
             presses: presses::Presses::default(),
+            streams: streams::Streams::default(),
             captions: generation::Generation::default(),
             keys: EditorKeys::default(),
             help: None,
@@ -198,6 +202,7 @@ impl EditorWindow {
         self.waves.want(self.tracks.sources());
         let project = self.doc.project();
         self.presses.want(presses::recordings(project).iter());
+        self.streams.want(streams::imported(project).iter());
         self.tracks.clicks =
             timeline::click_dots(project, |media| self.presses.get(media).map(|p| &p.clicks));
         self.tracks
@@ -260,6 +265,18 @@ impl EditorWindow {
             })
     }
 
+    /// Starts reading the sound tracks of the imported videos; without it their clips' sound
+    /// panel shows no tracks.
+    pub fn start_streams(&mut self, ctx: egui::Context) -> Result<(), crate::AppError> {
+        let dir = self.doc.dir().clone();
+        self.streams
+            .start(dir, ctx)
+            .map_err(|source| crate::AppError::Thread {
+                name: "devcast-streams",
+                source,
+            })
+    }
+
     /// Queues `action` to run after this frame's layout.
     pub fn ask(&mut self, action: Action) {
         self.actions.push(action);
@@ -304,6 +321,7 @@ pub fn editor_ui(
         editor.groups = groups.clone();
     }
     editor.waves.receive();
+    editor.streams.receive();
     if editor.presses.receive() {
         editor.retrack();
     }

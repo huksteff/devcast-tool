@@ -1,5 +1,6 @@
 //! The sound panels (7.19): the «Звук» tab edits `audio channel <track>`, the sound of a clip —
-//! picked on its stretch of «Микрофон» — `audio mute` and `audio channel --clip`, an extra sound
+//! picked on its stretch of «Микрофон», or an imported video with its `audio-N` tracks — `audio
+//! mute` and `audio channel --clip`, an extra sound
 //! clip `audio set`; each edit is one undo step and the same project as `devcast`.
 
 use dc_core::ClipId;
@@ -12,6 +13,7 @@ use super::tests::{H, cli, pick, project_json, undo};
 use super::zoom_tests::{click, tall};
 use crate::editor::editing_tests::json;
 use crate::editor::selection::{Item, Selected};
+use crate::editor::streams::Imported;
 use crate::editor::timeline::Row;
 use crate::editor::view::Panel;
 
@@ -188,6 +190,53 @@ fn a_picked_clip_normalizes_and_denoises_its_own_tracks() {
     assert_eq!(project_json(&harness), json(&cli(&lines)));
     undo(&mut harness);
     assert_eq!(project_json(&harness), json(&cli(&lines[..1])));
+}
+
+/// The imported video (clip c3) picked; its sound tracks `names` read, or not yet with `None`.
+fn video(names: Option<&[&str]>) -> H {
+    let mut harness = tall();
+    if let Some(names) = names {
+        let editor = &mut harness.state_mut().editor;
+        let media = editor.doc.project().clips[2].media.clone();
+        let names = names.iter().map(|n| (*n).to_owned()).collect();
+        editor.streams.arrive(Imported(media), Ok(names));
+    }
+    pick(&mut harness, Some(Selected::Clip(ClipId::from_number(3))));
+    harness
+}
+
+#[test]
+fn an_imported_video_shows_each_sound_track_with_its_levels() {
+    let mut harness = video(Some(&["audio-1", "audio-2"]));
+    for name in ["audio-1", "audio-2"] {
+        let caption = text::follows(&text::video_track(name));
+        assert!(harness.query_by_label(&caption).is_some(), "{caption}");
+    }
+    assert!(
+        harness
+            .query_by_role_and_label(egui::Role::Switch, text::DENOISE)
+            .is_none(),
+        "only the microphone is denoised"
+    );
+    type_nth(&mut harness, text::VOLUME, 1, 30.0);
+    switch_nth(&mut harness, text::NORMALIZE, 0);
+    switch_nth(&mut harness, text::SILENT, 1);
+    harness.snapshot("inspector_clip_video_sound");
+    let lines = [
+        "audio channel audio-2 --clip c3 --volume 30",
+        "audio channel audio-1 --clip c3 --normalize true",
+        "audio channel audio-2 --clip c3 --mute true",
+    ];
+    assert_eq!(project_json(&harness), json(&cli(&lines)));
+}
+
+#[test]
+fn an_imported_video_without_sound_says_so_once_read() {
+    let harness = video(None);
+    assert!(harness.query_by_label(text::NO_VIDEO_SOUND).is_none());
+    assert!(harness.query_by_label(text::VOLUME).is_none());
+    let harness = video(Some(&[]));
+    assert!(harness.query_by_label(text::NO_VIDEO_SOUND).is_some());
 }
 
 fn extra(harness: &mut H) {

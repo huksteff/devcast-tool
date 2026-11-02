@@ -34,7 +34,13 @@ pub const SOUND_OFF: &str = "Без звука";
 /// The switch that silences one track of the clip.
 pub const SILENT: &str = "Без звука";
 pub const FOLLOWS_NOTE: &str = "Пока параметр не менялся, клип берёт значение дорожки.";
-pub const IMPORTED_NOTE: &str = "Дорожки импортированного видео (audio-1, audio-2 …) настраиваются командой devcast audio channel.";
+pub const NO_VIDEO_SOUND: &str = "У видео нет звуковых дорожек.";
+
+/// «Звук видео 1»: the track `audio-1` of an imported video.
+pub fn video_track(name: &str) -> String {
+    let number = name.rsplit('-').next().unwrap_or(name);
+    format!("Звук видео {number}")
+}
 
 /// «Микрофон · как у дорожки»: a track of the clip that follows the defaults.
 pub fn follows(track: &str) -> String {

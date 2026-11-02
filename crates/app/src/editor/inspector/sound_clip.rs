@@ -1,7 +1,8 @@
 //! The sound of a picked clip (mockup 3d, «Клип»), picked on the clips row or on its stretch of
 //! «Микрофон» / «Системный звук»: «Весь клип» — sound or silence (`audio mute`), then per track
-//! of the recording its own volume, gain, mute, normalization and, for the microphone, noise
-//! suppression (`audio channel <track> --clip`). A level the
+//! of the clip its own volume, gain, mute, normalization and, for the microphone, noise
+//! suppression (`audio channel <track> --clip`). A recording's tracks are `mic` and `system`, an
+//! imported video's `audio-1`, `audio-2` … (`editor/streams.rs`). A level the
 //! clip never set follows the track's default (decision 000); the caption of the track names
 //! the levels of its own. «Сбросить» — `audio reset` (every level back to the defaults) and
 //! sound on, one undo step.
@@ -16,6 +17,7 @@ use serde_json::{Map, json};
 use super::sound::{self, Levels};
 use super::{Cx, Group, rows};
 use crate::editor::Action;
+use crate::editor::streams::Imported;
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: ClipId) {
     let Some(clip) = cx.project.clips.iter().find(|c| c.id == id).cloned() else {
@@ -40,20 +42,43 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: ClipId) {
         if let Some(on) = rows::choice(ui, text::WHOLE_CLIP, Some(sounding), &options) {
             cx.actions.push(mute(id, !on));
         }
-        if clip.media.kind == MediaKind::Imported {
-            rows::note(ui, text::IMPORTED_NOTE);
+        let Some(tracks) = tracks(cx, &clip) else {
+            return;
+        };
+        if clip.media.kind == MediaKind::Imported && tracks.is_empty() {
+            rows::note(ui, text::NO_VIDEO_SOUND);
             return;
         }
-        let tracks: Vec<_> = sound::recorded(cx.sound).collect();
         for (name, title) in tracks {
-            let own = clip.audio.channels.get(name).cloned().unwrap_or_default();
-            let default = defaults.get(name).cloned().unwrap_or_default();
-            ui.push_id(name, |ui| {
-                track(ui, cx, (&clip, name, title), &own, &default)
+            let own = clip.audio.channels.get(&name).cloned().unwrap_or_default();
+            let default = defaults.get(&name).cloned().unwrap_or_default();
+            ui.push_id(&name, |ui| {
+                track(ui, cx, (&clip, &name, &title), &own, &default)
             });
         }
         rows::note(ui, text::FOLLOWS_NOTE);
     });
+}
+
+/// The tracks of `clip`, (name, title): the recording's microphone and system sound, an imported
+/// video's `audio-N` once read (`None` until then).
+fn tracks(cx: &Cx<'_>, clip: &Clip) -> Option<Vec<(String, String)>> {
+    match clip.media.kind {
+        MediaKind::Recording => Some(
+            sound::recorded(cx.sound)
+                .map(|(name, title)| (name.to_owned(), title.to_owned()))
+                .collect(),
+        ),
+        MediaKind::Imported => {
+            let names = cx.streams.get(&Imported(clip.media.clone()))?;
+            Some(
+                names
+                    .iter()
+                    .map(|name| (name.clone(), text::video_track(name)))
+                    .collect(),
+            )
+        }
+    }
 }
 
 /// The caption of track `name` of the clip and its rows.

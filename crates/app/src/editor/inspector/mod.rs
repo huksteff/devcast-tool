@@ -135,6 +135,8 @@ pub struct Cx<'a> {
     pub captioning: captions::Captioning<'a>,
     /// Sound tracks the recordings have (`mic`, `system`): the groups of the sound panels.
     pub sound: &'a [String],
+    /// Sound tracks of the imported videos, as they come: the groups of their clips' panel.
+    pub streams: &'a crate::editor::streams::Streams,
     /// The settings new projects start with: «Сбросить» brings a group back to them.
     defaults: &'a Defaults,
     /// Groups the user opened or closed; `toggled` when one changed this frame.
@@ -254,6 +256,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
             },
         },
         sound: &editor.sound,
+        streams: &editor.streams,
         defaults: &editor.defaults,
         groups: &mut editor.groups,
         toggled: false,
