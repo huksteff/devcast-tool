@@ -1,5 +1,5 @@
 //! The tray icon (mockup 6): the system menu of Windows with the status line, «Остановить»,
-//! «Показать панель», «Настройки», «Выход». A left click shows the HUD, the right one the menu
+//! «Показать панель», «Настройки» (inactive while recording), «Выход». A left click shows the HUD, the right one the menu
 //! (a stray click must not end a recording). The icon is the logo at rest and a red dot while
 //! recording. Its events come through the tray-icon handlers and wake the UI.
 
@@ -33,12 +33,20 @@ pub struct TrayView {
     pub can_stop: bool,
 }
 
+impl TrayView {
+    /// «Настройки» works only at rest: not while a recording runs (owner, 2026-11-02).
+    pub fn can_open_settings(&self) -> bool {
+        !self.recording
+    }
+}
+
 pub struct Tray {
     icon: TrayIcon,
     menu: Menu,
     status: MenuItem,
     stop: MenuItem,
     show: MenuItem,
+    settings: MenuItem,
     actions: Receiver<TrayAction>,
     shown: Option<TrayView>,
 }
@@ -101,6 +109,7 @@ impl Tray {
             status,
             stop,
             show,
+            settings,
             actions,
             shown: None,
         })
@@ -118,6 +127,7 @@ impl Tray {
         let was_recording = self.shown.as_ref().map(|v| v.recording);
         self.status.set_text(&view.status);
         self.stop.set_enabled(view.can_stop);
+        self.settings.set_enabled(view.can_open_settings());
         if was_recording != Some(view.recording) {
             self.icon
                 .set_icon(Some(
@@ -144,3 +154,7 @@ impl Tray {
 fn picture(recording: bool) -> Result<Icon, tray_icon::BadIcon> {
     Icon::from_rgba(logo::pixels(recording), logo::SIDE, logo::SIDE)
 }
+
+#[cfg(test)]
+#[path = "tray_tests.rs"]
+mod tests;
