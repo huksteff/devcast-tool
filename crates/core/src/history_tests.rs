@@ -89,6 +89,23 @@ fn new_change_clears_redo() {
 }
 
 #[test]
+fn a_change_made_elsewhere_is_pushed_as_if_applied_here() {
+    let (mut here, mut elsewhere) = (Project::default(), Project::default());
+    let (mut mine, mut theirs) = (History::default(), History::default());
+    mine.apply(&mut here, &Push(1)).unwrap();
+    theirs.apply(&mut elsewhere, &Push(1)).unwrap();
+    mine.apply(&mut here, &Push(7)).unwrap();
+    mine.undo(&mut here);
+    theirs.apply(&mut elsewhere, &Push(2)).unwrap();
+    let change = theirs.changes().last().unwrap().clone();
+    mine.push(&mut here, change);
+    assert_eq!(here, elsewhere);
+    assert!(!mine.can_redo(), "a new step clears redo");
+    mine.undo(&mut here);
+    assert_eq!(items(&here), vec![1]);
+}
+
+#[test]
 fn batch_is_one_step_and_all_or_nothing() {
     let mut p = Project::default();
     let mut h = History::default();

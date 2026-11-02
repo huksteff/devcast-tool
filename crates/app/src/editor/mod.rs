@@ -20,6 +20,7 @@ mod inspector;
 mod keyframes;
 mod keys;
 mod library;
+mod live;
 mod montage;
 mod playback;
 mod presses;
@@ -46,6 +47,8 @@ mod export_tests;
 mod generation_tests;
 #[cfg(test)]
 mod keys_tests;
+#[cfg(test)]
+mod live_tests;
 #[cfg(test)]
 mod playback_tests;
 #[cfg(test)]

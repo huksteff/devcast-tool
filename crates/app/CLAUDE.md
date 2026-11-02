@@ -4,7 +4,7 @@
 
 ## Инварианты
 
-- Один экземпляр на пользователя (`instance.rs`, канал dc-ipc `devcast-app-<пользователь>`). Журнал — `logging.rs` (`%APPDATA%\DevCast\logs`, `RUST_LOG`). Дампы падений — `crash.rs`, единственный `unsafe` dc-app (процесс `--crash-server` живёт, пока открыт его stdin).
+- Один экземпляр на пользователя (`instance.rs`, канал dc-ipc `devcast-app-<пользователь>`, `dc_ops::live`); правка из CLI — `editor/live.rs` (7.32, `Document::take`). Журнал — `logging.rs` (`%APPDATA%\DevCast\logs`, `RUST_LOG`). Дампы падений — `crash.rs`, единственный `unsafe` dc-app (процесс `--crash-server` живёт, пока открыт его stdin).
 - Распознавание речи — процесс `devcast --captions-worker` рядом с exe (решение 018): dc-app не линкует whisper и Vulkan (dc-transcribe запрещён `xtask verify`), отмена — убийство процесса (`recognition/job.rs`), протокол — `dc_ops::recognition`.
 - GPU одно: `dc_render::Gpu` (`gpu.rs`) создаётся до eframe, eframe получает его клоны (`WgpuSetup::Existing`); бэкенд — `dc_render::BACKEND` (DX12, решение 004).
 - Перерисовка только по событию (решение 002): безусловный `request_repaint()` запрещён, анимации — `request_repaint_after`. Потоки будят только главное окно (`request_repaint_of(ROOT)`), оно передаёт перерисовку открытым окнам (`app::show_windows`): `request_repaint_of` несуществующего окна открывает пустое окно egui. Кадр другого окна идёт через `app::other_window`.

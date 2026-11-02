@@ -71,7 +71,8 @@ fn start(ctx: &Ctx<'_>, args: &ExportArgs, channel: &str) -> Result<Answer, CliE
         )));
     }
     let dir = find_project(ctx.globals.project.as_deref(), ctx.cwd)?;
-    let workspace = Workspace::open(dir, false, ctx.globals.dry_run)?;
+    let app = ctx.local.app_channel;
+    let workspace = Workspace::open(dir, false, ctx.globals.dry_run, app)?;
     let spec = Spec {
         root: workspace.dir().root().to_path_buf(),
         project: workspace.project.clone(),

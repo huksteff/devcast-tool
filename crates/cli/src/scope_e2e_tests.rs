@@ -73,6 +73,7 @@ impl Lesson {
         let local = Local {
             defaults: Some(&defaults),
             export_channel: Some(&self.channel),
+            ..Local::default()
         };
         run_with(
             words(line),

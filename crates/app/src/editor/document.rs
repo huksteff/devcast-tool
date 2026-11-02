@@ -14,7 +14,7 @@ use dc_project::history_log::Event;
 use dc_project::{Autosave, HistoryLog, ProjectDir, ProjectError, ProjectLock, Working};
 
 /// Owner name in `lock-owner.json` while the app holds a project.
-pub const LOCK_OWNER: &str = "devcast-app";
+pub use dc_ops::live::LOCK_OWNER;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DocumentError {
@@ -35,6 +35,8 @@ pub struct Document {
     autosave: Autosave,
     /// History events not in `history.jsonl` yet: written with the next `session.json`.
     pending: Vec<Event>,
+    /// Grows with every change: a `devcast` run writes only over the state it read (7.32).
+    revision: u64,
 }
 
 /// Which way undo and redo move through history.
@@ -59,6 +61,7 @@ impl Document {
             history: working.history,
             autosave: Autosave::default().restored(working.unsaved),
             pending: Vec::new(),
+            revision: 0,
         };
         Ok((document, working.warnings))
     }
@@ -117,8 +120,37 @@ impl Document {
         {
             self.pending.push(Event::Do(change.clone()));
             self.autosave.changed(now);
+            self.revision += 1;
         }
         applied
+    }
+
+    /// The working state as a revision: what a `devcast` run reads after [`Self::flush`].
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// Takes the history events a `devcast` run made of the state of `revision`, as one more
+    /// step of this history (`dc_ops::live`); refused when the state has changed since. Returns
+    /// the new revision.
+    pub fn take(&mut self, revision: u64, events: Vec<Event>, now: Instant) -> Option<u64> {
+        if revision != self.revision {
+            return None;
+        }
+        self.pending.extend(events.iter().cloned());
+        dc_ops::live::replay(&mut self.project, &mut self.history, events);
+        self.autosave.changed(now);
+        self.revision += 1;
+        Some(self.revision)
+    }
+
+    /// Ctrl+S: the history events, then `project.json`; `session.json` goes away.
+    pub fn save(&mut self) -> Result<(), ProjectError> {
+        self.log.append(&self.pending)?;
+        self.pending.clear();
+        self.dir.save(&self.project)?;
+        self.autosave.saved();
+        Ok(())
     }
 
     /// One step back or forward; the step taken, `None` when there is none.
@@ -130,6 +162,7 @@ impl Document {
         if change.is_some() {
             self.pending.push(event);
             self.autosave.changed(now);
+            self.revision += 1;
         }
         change
     }

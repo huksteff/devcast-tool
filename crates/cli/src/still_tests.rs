@@ -32,6 +32,7 @@ impl Clicks {
         let local = Local {
             defaults: Some(&defaults),
             export_channel: Some(&channel),
+            ..Local::default()
         };
         let args = line.split(' ').map(str::to_owned).collect();
         let out = run_with(
