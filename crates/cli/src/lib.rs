@@ -22,6 +22,7 @@ mod help;
 mod help_args;
 mod image;
 mod import;
+mod live;
 mod ls;
 mod record;
 mod record_args;
@@ -62,6 +63,8 @@ mod font_tests;
 mod image_tests;
 #[cfg(test)]
 mod import_tests;
+#[cfg(test)]
+mod live_tests;
 #[cfg(test)]
 mod ls_tests;
 #[cfg(test)]

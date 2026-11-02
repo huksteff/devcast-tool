@@ -80,7 +80,7 @@ pub fn run() -> Result<(), AppError> {
         Box::new(move |cc| {
             dc_ui_kit::install(&cc.egui_ctx)?;
             let hwnd = window_handle(cc)?;
-            let shown = instance::serve(listener, cc.egui_ctx.clone());
+            let calls = instance::serve(listener, cc.egui_ctx.clone());
             let mut shared = app::Shared::new(cc.egui_ctx.clone(), store);
             let state = cc
                 .wgpu_render_state
@@ -89,7 +89,7 @@ pub fn run() -> Result<(), AppError> {
             shared.gpu = Some(gpu::PreviewGpu::new(gpu, state));
             let tray = tray::Tray::new(&cc.egui_ctx)?;
             let keys = hotkeys::GlobalKeys::new(&cc.egui_ctx)?;
-            Ok(Box::new(app::App::new(shown, shared, hwnd, tray, keys)))
+            Ok(Box::new(app::App::new(calls, shared, hwnd, tray, keys)))
         }),
     )
     .map_err(|e| AppError::Window(e.to_string()))

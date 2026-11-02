@@ -14,6 +14,7 @@ use eframe::egui;
 use crate::editor::EditorWindow;
 use crate::hotkeys::{Command, GlobalKeys};
 use crate::hud::{HudWindow, picker, popover};
+use crate::instance::Call;
 use crate::meters::Meters;
 pub use crate::monitor::on_hud_monitor;
 use crate::session::Session;
@@ -173,8 +174,8 @@ impl Shared {
 const SETTINGS_ID: &str = "settings";
 
 pub struct App {
-    /// A second start of the app asked to show this one.
-    shown: Receiver<()>,
+    /// Requests of the app channel: a second start, `devcast` on the editor's project.
+    calls: Receiver<Call>,
     shared: Arc<Mutex<Shared>>,
     hud: HudWindow,
     tray: Tray,
@@ -183,7 +184,7 @@ pub struct App {
 
 impl App {
     pub fn new(
-        shown: Receiver<()>,
+        calls: Receiver<Call>,
         shared: Shared,
         hwnd: isize,
         tray: Tray,
@@ -192,7 +193,7 @@ impl App {
         let mut shared = shared;
         let hud = HudWindow::new(hwnd, &mut shared);
         Self {
-            shown,
+            calls,
             shared: Arc::new(Mutex::new(shared)),
             hud,
             tray,
@@ -279,9 +280,17 @@ impl eframe::App for App {
     }
 
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if self.shown.try_iter().count() > 0 {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
-            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        for call in self.calls.try_iter() {
+            let answer = match call.request {
+                dc_ops::live::Request::Show => {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                    dc_ops::live::Answer::Shown
+                }
+                request => lock(&self.shared).live(request),
+            };
+            // The run that asked may have given up waiting; nothing to answer then.
+            let _ = call.reply.send(answer);
         }
         lock(&self.shared).tick();
         self.hotkeys();

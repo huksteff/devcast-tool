@@ -1,6 +1,8 @@
 //! A project opened by one CLI run. Without the editor the CLI is the only writer and edits the
 //! working state: `session.json` when the editor left unsaved changes (they stay unsaved until
-//! `devcast save`), otherwise `project.json`, so the change is saved right away.
+//! `devcast save`), otherwise `project.json`, so the change is saved right away. While the editor
+//! holds the project, the run reads the working state the editor puts on disk for it and sends
+//! its changes to the editor (`live.rs`, 7.32).
 //!
 //! A recording whose process died (killed, crashed) is finished and added to the project the
 //! first time the project is opened without a writer holding it (a running recording holds it).
@@ -11,12 +13,12 @@ use dc_project::history_log::Event;
 use dc_project::{HistoryLog, ProjectDir, ProjectError, ProjectLock, Working};
 
 use crate::error::CliError;
+use crate::live::Editor;
 
 #[derive(Debug)]
 pub struct Workspace {
     dir: ProjectDir,
-    log: HistoryLog,
-    _lock: Option<ProjectLock>,
+    writer: Writer,
     unsaved: bool,
     pub project: Project,
     pub history: History,
@@ -24,10 +26,39 @@ pub struct Workspace {
     pub warnings: Vec<String>,
 }
 
+/// Where the changes of the run go.
+#[derive(Debug)]
+enum Writer {
+    /// To the files, under the lock this run holds (none when it only reads).
+    Files {
+        log: HistoryLog,
+        _lock: Option<ProjectLock>,
+    },
+    /// To the editor that holds the project.
+    Editor(Editor),
+}
+
 impl Workspace {
     /// With `write`, holds the project lock until the workspace is dropped. Under `dry_run`
-    /// nothing is written, killed recordings are only reported.
-    pub fn open(dir: ProjectDir, write: bool, dry_run: bool) -> Result<Self, CliError> {
+    /// nothing is written, killed recordings are only reported. A project the editor holds is
+    /// edited through it, asked on `channel` (`None` — the real app channel).
+    pub fn open(
+        dir: ProjectDir,
+        write: bool,
+        dry_run: bool,
+        channel: Option<&str>,
+    ) -> Result<Self, CliError> {
+        if let Some(editor) = Editor::open(&dir, channel)? {
+            let working = Working::load(&dir, false)?;
+            return Ok(Self {
+                dir,
+                writer: Writer::Editor(editor),
+                unsaved: working.unsaved,
+                project: working.project,
+                history: working.history,
+                warnings: working.warnings,
+            });
+        }
         let lock = match write {
             true => Some(ProjectLock::acquire(&dir, "devcast")?),
             false => None,
@@ -43,8 +74,7 @@ impl Workspace {
         warnings.extend(working.warnings);
         Ok(Self {
             dir,
-            log,
-            _lock: lock,
+            writer: Writer::Files { log, _lock: lock },
             unsaved: working.unsaved,
             project: working.project,
             history: working.history,
@@ -66,19 +96,28 @@ impl Workspace {
         self.unsaved
     }
 
-    /// Writes `events`, which have just happened to `history`, and the project after them.
-    pub fn record(&self, events: &[Event]) -> Result<(), CliError> {
-        self.log.append(events)?;
-        match self.unsaved {
-            true => self.dir.save_session(&self.project)?,
-            false => self.dir.save(&self.project)?,
+    /// Writes `events`, which have just happened to `history`, and the project after them; or
+    /// sends the events to the editor, which takes them as one step of its history.
+    pub fn record(&mut self, events: &[Event]) -> Result<(), CliError> {
+        match &mut self.writer {
+            Writer::Files { log, .. } => {
+                log.append(events)?;
+                match self.unsaved {
+                    true => self.dir.save_session(&self.project)?,
+                    false => self.dir.save(&self.project)?,
+                }
+            }
+            Writer::Editor(editor) => editor.write(events)?,
         }
         Ok(())
     }
 
     /// `devcast save`: the working state becomes `project.json`, `session.json` goes away.
     pub fn save(&mut self) -> Result<(), CliError> {
-        self.dir.save(&self.project)?;
+        match &self.writer {
+            Writer::Files { .. } => self.dir.save(&self.project)?,
+            Writer::Editor(editor) => editor.save()?,
+        }
         self.unsaved = false;
         Ok(())
     }

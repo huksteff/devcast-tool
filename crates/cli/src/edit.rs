@@ -26,7 +26,8 @@ pub(crate) struct Ctx<'a> {
 impl Ctx<'_> {
     pub(crate) fn open(&self, write: bool) -> Result<Workspace, CliError> {
         let dir = find_project(self.globals.project.as_deref(), self.cwd)?;
-        Workspace::open(dir, write && !self.globals.dry_run, self.globals.dry_run)
+        let write = write && !self.globals.dry_run;
+        Workspace::open(dir, write, self.globals.dry_run, self.local.app_channel)
     }
 
     pub(crate) fn defaults_file(&self) -> Result<PathBuf, CliError> {
@@ -116,7 +117,7 @@ fn finish(workspace: &mut Workspace, applied: &Applied) -> Result<Answer, CliErr
 }
 
 /// Writes an applied change: its history event, then the project. A dry run writes nothing.
-pub(crate) fn write(workspace: &Workspace, applied: &Applied) -> Result<(), CliError> {
+pub(crate) fn write(workspace: &mut Workspace, applied: &Applied) -> Result<(), CliError> {
     if applied.changed && !applied.dry_run {
         let change = workspace.history.changes().last().cloned();
         let change = change.ok_or_else(|| {

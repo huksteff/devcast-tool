@@ -55,15 +55,21 @@ impl ProjectLock {
     }
 }
 
+impl LockOwner {
+    /// The last writer `lock-owner.json` names: a hint, the lock may be free by now.
+    pub fn of(dir: &ProjectDir) -> Option<Self> {
+        std::fs::read_to_string(dir.file(OWNER_FILE))
+            .ok()
+            .and_then(|text| serde_json::from_str(&text).ok())
+    }
+}
+
 /// Who holds the lock, for the error message.
 fn holder(dir: &ProjectDir) -> String {
-    std::fs::read_to_string(dir.file(OWNER_FILE))
-        .ok()
-        .and_then(|text| serde_json::from_str::<LockOwner>(&text).ok())
-        .map_or_else(
-            || "другой процесс".to_owned(),
-            |o| format!("{} (pid {})", o.app, o.pid),
-        )
+    LockOwner::of(dir).map_or_else(
+        || "другой процесс".to_owned(),
+        |o| format!("{} (pid {})", o.app, o.pid),
+    )
 }
 
 #[cfg(test)]
@@ -85,9 +91,12 @@ mod tests {
     fn lock_of_a_finished_writer_is_free() {
         let tmp = tempfile::tempdir().unwrap();
         let dir = ProjectDir::create(tmp.path().join("Проект.devcast")).unwrap();
+        assert_eq!(LockOwner::of(&dir), None);
         drop(ProjectLock::acquire(&dir, "первый").unwrap());
-        assert!(
-            dir.file(OWNER_FILE).is_file(),
+        let owner = LockOwner::of(&dir).map(|o| o.app);
+        assert_eq!(
+            owner.as_deref(),
+            Some("первый"),
             "owner info of a finished writer stays behind"
         );
         ProjectLock::acquire(&dir, "второй").unwrap();

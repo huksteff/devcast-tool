@@ -192,6 +192,16 @@ impl History {
         Ok(summary)
     }
 
+    /// Takes a step another writer made on this same state (a `devcast` run while the editor
+    /// holds the project): `project` gets its "after" parts, it becomes the step to undo, and
+    /// redo is cleared, as if [`Self::apply_batch`] had made it here.
+    pub fn push(&mut self, project: &mut Project, change: Change) {
+        change.after.restore(project);
+        self.undo.push(change);
+        self.redo.clear();
+        self.trim();
+    }
+
     pub fn undo(&mut self, project: &mut Project) -> Option<&Change> {
         let change = self.undo.pop()?;
         change.before.restore(project);

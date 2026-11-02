@@ -44,7 +44,8 @@ pub(crate) fn copy(ctx: &Ctx<'_>, args: &CopyArgs) -> Result<Answer, CliError> {
     }
     let source = find_project(Some(&args.from), ctx.cwd)?;
     let name = source.name().to_owned();
-    let style = Defaults::from_project(&Workspace::open(source, false, true)?.project);
+    let source = Workspace::open(source, false, true, ctx.local.app_channel)?;
+    let style = Defaults::from_project(&source.project);
     let targets = batch::projects(ctx.cwd, &args.to)?;
     Ok(batch::each(ctx, &targets, |ctx| {
         let restyle = Restyle {

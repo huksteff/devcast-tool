@@ -39,6 +39,7 @@ impl Lesson {
         let local = Local {
             defaults: Some(&defaults),
             export_channel: Some(&channel),
+            ..Local::default()
         };
         run_with(
             args,

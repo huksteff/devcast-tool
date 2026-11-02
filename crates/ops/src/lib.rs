@@ -10,6 +10,7 @@ mod devcast;
 pub mod error;
 pub mod evaluate;
 pub mod fonts;
+pub mod live;
 pub mod new_project;
 pub mod picture_file;
 pub mod plan;
