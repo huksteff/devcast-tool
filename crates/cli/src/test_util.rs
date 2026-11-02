@@ -169,7 +169,7 @@ impl Recordings {
         Self::of(&[("media/a.mp4", 20.0), ("media/b.mp4", 10.0)])
     }
 
-    fn of(clips: &[(&str, f64)]) -> Self {
+    pub(crate) fn of(clips: &[(&str, f64)]) -> Self {
         let tmp = tempfile::tempdir().unwrap();
         let dir = ProjectDir::create(tmp.path().join("Урок 2.devcast")).unwrap();
         let mut project = Project::default();

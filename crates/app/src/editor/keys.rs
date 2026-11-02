@@ -71,7 +71,10 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow) {
     }
     // Esc is not in the table: it always steps back (mockup 2b, 2c).
     if editor.help.is_none() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-        montage::escape(editor);
+        match editor.library.open {
+            true => editor.library.open = false,
+            false => montage::escape(editor),
+        }
     }
     let pressed: Vec<(Shortcut, bool)> = ui.input(|i| {
         i.events

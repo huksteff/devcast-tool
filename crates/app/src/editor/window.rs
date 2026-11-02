@@ -41,6 +41,8 @@ impl Shared {
                 self.report(presses);
                 let streams = editor.start_streams(self.ctx.clone());
                 self.report(streams);
+                let thumbs = editor.library.start(self.ctx.clone());
+                self.report(thumbs);
                 for problem in problems {
                     self.report(Err(problem));
                 }
@@ -86,7 +88,8 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
             | e.waves.take_news()
             | e.presses.take_news()
             | e.streams.take_news()
-            | e.captions.take_news();
+            | e.captions.take_news()
+            | e.library.thumbs.take_news();
         let wake = &mut e.detached;
         (
             news,
@@ -109,10 +112,13 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     let keys = shared.store.get().editor_keys.clone();
     let groups = shared.store.get().inspector.clone();
     let model = shared.store.get().speech_model;
+    let recordings = shared.store.get().recordings_dir.clone();
     let Some(editor) = shared.editor.as_mut() else {
         return;
     };
     editor.captions.model = model;
+    let open = editor.doc.dir().root().to_path_buf();
+    editor.library.folder(&recordings, &open);
     let now = Instant::now();
     let before = editor.mark();
     let was_open = editor.detached.open;

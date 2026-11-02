@@ -2,7 +2,8 @@
 //! the blue dot of unsaved changes, help, settings and export.
 //!
 //! Undo and redo name their step and shortcut in the tooltip, help opens the shortcut help
-//! (`help.rs`). Disabled until their task: «Записи» (7.27), «Проекты» (7.28), export (7.31).
+//! (`help.rs`). «Записи» opens and closes the library (`library/`). Disabled until their task: «Проекты»
+//! (7.28), export (7.31).
 //! Renaming by a click on the name waits for 7.28: the name is the project folder's and no
 //! registry command renames it (docs/QUESTIONS.md).
 
@@ -24,13 +25,14 @@ const DOT_GAP: f32 = 6.0;
 pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
     let rect = ui.max_rect().shrink2(vec2(S2, 0.0));
     side(ui, rect, Layout::left_to_right(Align::Center), |ui| {
-        ui.add_enabled(
-            false,
-            Button::new(text::LIBRARY)
-                .kind(Kind::Ghost)
-                .small()
-                .icon(Icon::Library),
-        );
+        let library = Button::new(text::LIBRARY)
+            .kind(Kind::Ghost)
+            .small()
+            .icon(Icon::Library);
+        if ui.add(library).clicked() {
+            let open = editor.doc.dir().root().to_path_buf();
+            editor.library.toggle(&open);
+        }
         ui.add_enabled(
             false,
             Button::new(text::PROJECTS)

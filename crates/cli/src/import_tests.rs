@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use dc_core::project::MediaKind;
 use dc_project::ProjectDir;
 
@@ -136,9 +138,53 @@ fn help_shows_clip_add_like_an_op() {
     let f = Recordings::new();
     let help = f.ok("help clip add");
     assert!(
-        help.starts_with("clip add — Добавить видео mp4/mov/mkv/webm клипами в конец главной дорожки (копия в media/)\nпример: devcast clip add демо.mp4"),
+        help.starts_with("clip add — Добавить видео mp4/mov/mkv/webm или записи (папки *.devcast) клипами в конец главной дорожки (копия в media/)\nпример: devcast clip add демо.mp4 ../recording-2.devcast"),
         "{help}"
     );
     let out = f.run("clip add");
     assert_eq!(out.code, 2, "{}", out.stderr);
+}
+
+#[test]
+fn clip_add_of_a_project_copies_its_recordings_with_telemetry() {
+    let source = Recordings::with_telemetry(&[2.0, 1.0]);
+    let f = Recordings::with_telemetry(&[3.0]);
+    let add = |project: &Path, extra: &[&str]| {
+        let mut args = vec!["clip".to_owned(), "add".to_owned()];
+        args.push(project.to_str().unwrap().to_owned());
+        args.extend(extra.iter().map(|a| (*a).to_owned()));
+        run(args, f.dir.root(), &dc_ops::Registry::devcast().unwrap())
+    };
+    let dry = add(source.dir.root(), &["--dry-run"]);
+    assert!(dry.stdout.starts_with("dry-run"), "{}", dry.stderr);
+    assert!(!f.dir.media_dir().join("recording-2").exists());
+    assert_eq!(
+        add(source.dir.root(), &[]).stdout,
+        "клипы +2 c2,c3; длительность 0:03.000→0:06.000\n"
+    );
+    let clips = f.ok("ls clips --fields kind,media");
+    assert_eq!(
+        clips,
+        "c1  0:00.000–0:03.000  kind=recording  media=media/recording-1/video.mp4\n\
+         c2  0:03.000–0:05.000  kind=recording  media=media/recording-2/video.mp4\n\
+         c3  0:05.000–0:06.000  kind=recording  media=media/recording-3/video.mp4"
+    );
+    for file in ["manifest.json", "cursor.bin", "keys.bin"] {
+        assert!(
+            f.dir.media_dir().join("recording-3").join(file).is_file(),
+            "{file}"
+        );
+    }
+    let empty = Recordings::of(&[]);
+    let out = add(empty.dir.root(), &[]);
+    assert_eq!(out.code, 1);
+    assert!(out.stderr.contains("нет клипов"), "{}", out.stderr);
+    let not_a_project = add(&f.dir.media_dir(), &[]);
+    assert_eq!(not_a_project.code, 1);
+    assert!(
+        not_a_project.stderr.contains("project.json"),
+        "{}",
+        not_a_project.stderr
+    );
+    assert!(!f.dir.media_dir().join("recording-4").exists());
 }

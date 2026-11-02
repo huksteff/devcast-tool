@@ -13,13 +13,13 @@ use crate::{audio, autozoom, captions, defaults, font, image, import, style};
 #[derive(Debug, Subcommand)]
 pub(crate) enum ClipCommand {
     #[command(
-        about = "Добавить видео mp4/mov/mkv/webm клипами в конец главной дорожки (копия в media/)",
-        after_help = "clip add демо.mp4"
+        about = "Добавить видео mp4/mov/mkv/webm или записи (папки *.devcast) клипами в конец главной дорожки (копия в media/)",
+        after_help = "clip add демо.mp4 ../recording-2.devcast"
     )]
     Add {
         #[arg(
             required = true,
-            help = "Видео mp4, mov, mkv или webm; клипы идут в этом порядке"
+            help = "Видео mp4, mov, mkv или webm либо папка проекта *.devcast: его записи копируются с курсором, клавишами и звуком; клипы идут в этом порядке"
         )]
         videos: Vec<PathBuf>,
     },

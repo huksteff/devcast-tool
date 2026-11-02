@@ -13,7 +13,7 @@ use super::playback::seek;
 use super::selection::{Item, Selected, same_moment};
 use super::timeline::Least;
 use super::{EditorWindow, Way};
-use super::{adding, crop, fonts, generation};
+use super::{adding, crop, fonts, generation, library};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
@@ -49,6 +49,8 @@ pub enum Action {
     OpenCrop,
     /// «↗»: the timeline moves into its own window (`true`) or back under the preview.
     Detach(bool),
+    /// What the recordings library asks (`library/`).
+    Library(library::Ask),
 }
 
 /// Playback and the playhead.
@@ -92,6 +94,10 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
     for action in std::mem::take(&mut editor.actions) {
         match action {
             Action::Travel(way) => changed |= editor.doc.travel(way, now).is_some(),
+            Action::Library(ask) => match library::run(editor, ask, now) {
+                Ok(applied) => (changed, moved) = (changed | applied, true),
+                Err(error) => errors.push(error),
+            },
             Action::Apply(steps) => match editor.doc.apply(&steps, now) {
                 Ok(applied) => changed |= applied.changed,
                 Err(error) => errors.push(error.to_string()),
@@ -102,14 +108,7 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                     add(e).map_err(|e| e.to_string())
                 });
             }
-            Action::Keyed(steps, id) => match editor.doc.apply(&steps, now) {
-                Ok(_) => {
-                    errors.extend(editor.refresh(now));
-                    pick_key(editor, id);
-                    moved = true;
-                }
-                Err(error) => errors.push(error.to_string()),
-            },
+            Action::Keyed(steps, id) => moved |= keyed(editor, &steps, id, now, &mut errors),
             Action::Rows(least) => {
                 editor.view.least = least;
                 rows = true;
@@ -158,6 +157,28 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
         ui.ctx().request_repaint();
     }
     errors
+}
+
+/// Applies `steps`, which put a key of annotation `id` at the playhead, and picks that key;
+/// true when it did.
+fn keyed(
+    editor: &mut EditorWindow,
+    steps: &[Step],
+    id: AnnotId,
+    now: Instant,
+    errors: &mut Vec<String>,
+) -> bool {
+    match editor.doc.apply(steps, now) {
+        Ok(_) => {
+            errors.extend(editor.refresh(now));
+            pick_key(editor, id);
+            true
+        }
+        Err(error) => {
+            errors.push(error.to_string());
+            false
+        }
+    }
 }
 
 /// Playback pauses and the crop dialog opens for the picked clip.

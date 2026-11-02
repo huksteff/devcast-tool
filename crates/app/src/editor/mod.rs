@@ -18,6 +18,7 @@ mod help;
 mod inspector;
 mod keyframes;
 mod keys;
+mod library;
 mod montage;
 mod playback;
 mod presses;
@@ -28,6 +29,7 @@ mod rows;
 mod selection;
 mod stage;
 mod streams;
+mod threads;
 mod timeline;
 pub mod timeline_window;
 mod transport;
@@ -126,6 +128,8 @@ pub struct EditorWindow {
     pub fonts: Vec<String>,
     /// The timeline window: open or not, its place, which window should repaint.
     pub detached: timeline_window::Detached,
+    /// The recordings library panel (7.27).
+    pub library: library::Library,
     /// Actions the controls asked for in this frame.
     actions: Vec<Action>,
 }
@@ -184,6 +188,7 @@ impl EditorWindow {
             defaults: dc_project::Defaults::factory(),
             groups: InspectorGroups::default(),
             detached: timeline_window::Detached::default(),
+            library: library::Library::default(),
             actions: Vec::new(),
         };
         problems.extend(editor.refresh(Instant::now()));
@@ -231,69 +236,15 @@ impl EditorWindow {
         dc_core::OutputTime::ZERO + self.tracks.duration
     }
 
-    /// Starts rendering the preview on the shared device; the thread wakes the main window.
-    pub fn start_preview(
-        &mut self,
-        gpu: crate::gpu::PreviewGpu,
-        ctx: egui::Context,
-    ) -> Result<(), crate::AppError> {
-        let dir = self.doc.dir().clone();
-        self.preview
-            .start(gpu, dir, ctx)
-            .map_err(|source| crate::AppError::Thread {
-                name: "devcast-preview",
-                source,
-            })
-    }
-
-    /// Starts the sound thread of playback; without it playback goes by the wall clock.
-    pub fn start_sound(&mut self) -> Result<(), crate::AppError> {
-        let dir = self.doc.dir().clone();
-        self.playback
-            .start(dir)
-            .map_err(|source| crate::AppError::Thread {
-                name: "devcast-sound",
-                source,
-            })
-    }
-
-    /// Starts reading the peaks of the sound rows; without it the rows stay plain.
-    pub fn start_waves(&mut self, ctx: egui::Context) -> Result<(), crate::AppError> {
-        let dir = self.doc.dir().clone();
-        self.waves
-            .start(dir, ctx)
-            .map_err(|source| crate::AppError::Thread {
-                name: "devcast-peaks",
-                source,
-            })
-    }
-
-    /// Starts reading the presses of the recordings; without it the «Курсор» row has no dots
-    /// and the «Клавиши» row no shortcuts.
-    pub fn start_presses(&mut self, ctx: egui::Context) -> Result<(), crate::AppError> {
-        let dir = self.doc.dir().clone();
-        self.presses
-            .start(dir, ctx)
-            .map_err(|source| crate::AppError::Thread {
-                name: "devcast-presses",
-                source,
-            })
-    }
-
-    /// Starts reading the sound tracks of the imported videos; without it their clips' sound
-    /// panel shows no tracks.
-    pub fn start_streams(&mut self, ctx: egui::Context) -> Result<(), crate::AppError> {
-        let dir = self.doc.dir().clone();
-        self.streams
-            .start(dir, ctx)
-            .map_err(|source| crate::AppError::Thread {
-                name: "devcast-streams",
-                source,
-            })
-    }
-
-    /// Queues `action` to run after this frame's layout.
+    /// Queues `action` to run after this frame's layout. Undo brings back the library's last
+    /// batch from the Recycle Bin first while the library is open (mockup 6).
     pub fn ask(&mut self, action: Action) {
+        let action = match action {
+            Action::Travel(Way::Undo) if self.library.takes_undo() => {
+                Action::Library(library::Ask::Restore)
+            }
+            action => action,
+        };
         self.actions.push(action);
     }
 
@@ -362,14 +313,18 @@ pub fn editor_ui(
                 timeline::ui(ui, editor, layout.rows, Place::Docked)
             })
     });
+    if let Some(timeline) = &timeline {
+        library::drop_on(ui, editor, timeline.response.rect);
+    }
     let toggled = egui::Panel::right("editor-inspector")
         .exact_size(INSPECTOR)
         .frame(Frame::new().fill(SURFACE))
         .show(ui, |ui| inspector::ui(ui, editor))
         .inner;
-    egui::CentralPanel::no_frame()
+    let preview = egui::CentralPanel::no_frame()
         .frame(Frame::new().fill(BG))
         .show(ui, |ui| preview::ui(ui, editor));
+    library::show(ui, editor, preview.response.rect);
     if let Some(help) = editor.help.as_mut() {
         let answer = help::show(ui, help, &editor.keys);
         if answer.close {

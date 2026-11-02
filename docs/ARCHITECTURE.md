@@ -22,6 +22,7 @@
 | Связь CLI и редактора | interprocess 2.4: local socket (named pipe / unix socket), сообщения JSON с длиной в начале | Имя сокета своё для каждого пользователя. |
 | Горячие клавиши и трей | global-hotkey 0.9, tray-icon 0.26 | Создаются на потоке цикла событий (в `CreationContext`). События передаются через обработчик и `request_repaint()`. |
 | Установщик и обновления | Velopack (Rust SDK) | Windows, macOS и Linux, дельта-обновления, источник — GitHub Releases. `vpk` в CI требует .NET 8 SDK. |
+| Корзина | trash 5 | Библиотека записей отправляет проекты в корзину Windows и возвращает последнюю пачку (`os_limited::restore_all`); решение владельца 2026-11-02. |
 | Логи и падения | tracing + tracing-appender (держать `WorkerGuard`), panic hook; crash-handler + minidumper для падений в нативном коде | |
 | Схема проекта | serde + schemars | JSON Schema служит документацией для агента и для `devcast help`. |
 | Тесты | cargo-nextest, insta (снимки), proptest; egui_kittest 0.37 (UI и снимки PNG); эталонные кадры рендера (nv-flip: ꟻLIP, им же сверяет кадры wgpu; dify отклонён — тянет `image` и это CLI); egui_inspection + egui_mcp (агент сам кликает по живому приложению и делает скриншоты) | Детали в [PROCESS.md](PROCESS.md). |
@@ -156,7 +157,7 @@ third_party/     исправленные копии чужих крейтов (
 devcast help [cmd] [--json]
 devcast record --source <screen:1|window:<id>|area:x,y,w,h> [--fps 60] [--duration 10] [--audio on|off] [--mic имя] [-o x.devcast] | record stop|pause|resume|cancel
 devcast ls sources                               # мониторы, окна, микрофоны для record
-devcast new <video...> -o name.devcast | clip add <video...> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
+devcast new <video...> -o name.devcast | clip add <video|project.devcast...> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
 devcast info | save
 devcast ls <zooms|clips|annots|captions|audio|tracks|clicks> [--from --to] [--fields]
 devcast transcript [--from --to] [--words] [--model fast|accurate] [--language ru] [--track mic]   # реплики или слова с id

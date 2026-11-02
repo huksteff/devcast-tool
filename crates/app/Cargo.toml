@@ -27,6 +27,7 @@ dc-fx-callout = { path = "../../fx/callout" }
 dc-fx-captions = { path = "../../fx/captions" }
 dc-fx-crop = { path = "../../fx/crop" }
 dc-fx-cursor = { path = "../../fx/cursor" }
+dc-fx-cut = { path = "../../fx/cut" }
 dc-fx-drawing = { path = "../../fx/drawing" }
 dc-fx-image = { path = "../../fx/image" }
 dc-fx-keys = { path = "../../fx/keys" }
@@ -47,6 +48,8 @@ minidumper = "0.8"
 eframe = { version = "0.37", default-features = false, features = ["wgpu", "accesskit", "inspection"] }
 raw-window-handle = "0.6"
 rfd = "0.15"
+# The Recycle Bin of the library: delete and restore (owner decision 2026-11-02).
+trash = "5"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
