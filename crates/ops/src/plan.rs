@@ -52,21 +52,43 @@ pub fn parse_plan(text: &str) -> Result<Vec<Step>, OpsError> {
         .collect()
 }
 
+/// Commands of a step, as [`build_with`] takes them from its caller.
+pub type Commands = Vec<Box<dyn dc_core::Command>>;
+
 /// Builds the commands of all steps, failing on the first bad one with its number.
-pub(crate) fn build(
+pub(crate) fn build(registry: &Registry, steps: &[Step]) -> Result<Commands, OpsError> {
+    build_with(registry, steps, |_| Ok::<_, OpsError>(None))
+}
+
+/// Like [`build`], but `expand` builds a step first when it is a shorthand only the caller can
+/// resolve (`cut w12-w20`, `zoom add --at clicks` of the CLI); `None` leaves it to the registry.
+pub fn build_with<E: From<OpsError> + std::fmt::Display>(
     registry: &Registry,
     steps: &[Step],
-) -> Result<Vec<Box<dyn dc_core::Command>>, OpsError> {
-    steps
-        .iter()
-        .enumerate()
-        .map(|(index, step)| {
-            registry
+    mut expand: impl FnMut(&Step) -> Result<Option<Commands>, E>,
+) -> Result<Commands, E> {
+    let mut commands = Commands::new();
+    for (index, step) in steps.iter().enumerate() {
+        let built = match expand(step) {
+            Ok(Some(built)) => Ok(built),
+            Ok(None) => registry
                 .command(&step.op, step.args.clone())
-                .map_err(|e| match steps.len() {
-                    1 => e,
-                    _ => OpsError::Usage(format!("шаг {}: {e}", index + 1)),
-                })
-        })
-        .collect()
+                .map(|command| vec![command])
+                .map_err(E::from),
+            Err(e) => Err(e),
+        };
+        commands.extend(built.map_err(|e| match steps.len() {
+            1 => e,
+            _ => E::from(OpsError::Usage(format!("шаг {}: {e}", index + 1))),
+        })?);
+    }
+    Ok(commands)
+}
+
+/// History name of `steps`: the op of a single step, `apply` for a plan.
+pub fn step_name(steps: &[Step]) -> &str {
+    match steps {
+        [single] => single.op.as_str(),
+        _ => "apply",
+    }
 }

@@ -22,7 +22,7 @@ pub use autozoom::{click_commands, click_zooms, no_click_zooms};
 pub use error::OpsError;
 pub use evaluate::{EvaluateError, Evaluator};
 pub use picture_file::{PictureImport, import_picture};
-pub use plan::{Step, parse_plan};
+pub use plan::{Commands, Step, build_with, parse_plan, step_name};
 pub use registry::{RESERVED_FIELDS, Registry};
 pub use settings::{settings_commands, settings_steps};
 pub use sound_file::{DiscardError, SoundImport, SoundPlace, import_sound};

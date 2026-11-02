@@ -1,12 +1,12 @@
 //! Auto zooms from the clicks of the recordings (`dc_ops::autozoom`): `devcast zoom suggest`
-//! shows them, `devcast zoom add --at clicks` adds them as one undo step, and a recording added
+//! shows them, `zoom add --at clicks` (an op or a step of a plan) adds them in its undo step, and a recording added
 //! to a project (`devcast record` stop, a killed one recovered on open) gets them when the
 //! project's zoom setting `auto` is on.
 
-use dc_core::Op;
+use dc_core::{Command, Op};
 use dc_fx_zoom::{DEFAULT_SCALE, Mode, Suggestions, ZoomAdd, ZoomEffect};
 use dc_ops::autozoom::CLICKS;
-use dc_ops::{Applied, Step, as_commands, click_commands, no_click_zooms};
+use dc_ops::{Applied, Commands, Step, as_commands, click_commands, no_click_zooms};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -74,27 +74,32 @@ pub(crate) fn suggest(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
     Ok(answer(&mut workspace, lines.join("\n"), json))
 }
 
-/// `devcast zoom …` from the registry; `zoom add --at clicks` adds the suggested zooms.
-pub(crate) fn op(ctx: &Ctx<'_>, words: &[String]) -> Result<Answer, CliError> {
-    let (info, taken) = ctx.registry.resolve(words)?;
-    let mut fields = dc_ops::parse_args(info, &words[taken..])?;
-    if info.name != ZoomAdd::NAME || fields.get("at") != Some(&Value::from(CLICKS)) {
-        return edit::apply_steps(ctx, &[Step::new(info.name, fields)]);
+/// `zoom add --at clicks` (one op or a step of `apply plan.json`): the suggested zooms, their
+/// reason under `warnings` when there are none; `None` for any other step.
+pub(crate) fn clicks(
+    workspace: &Workspace,
+    step: &Step,
+    warnings: &mut Vec<String>,
+) -> Result<Option<Commands>, CliError> {
+    if step.op != ZoomAdd::NAME || step.args.get("at") != Some(&Value::from(CLICKS)) {
+        return Ok(None);
     }
+    let mut fields = step.args.clone();
     fields.remove("at");
     let args: ClickArgs = serde_json::from_value(Value::Object(fields)).map_err(|e| {
         CliError::Usage(format!(
-            "zoom add --at clicks: {e}. С --at clicks задаются только --scale и --mode: \
-             длительность и фокус берутся из кликов"
+            "zoom add --at clicks: {e}. С --at clicks задаются только --scale и --mode:              длительность и фокус берутся из кликов"
         ))
     })?;
-    let mut workspace = ctx.open(true)?;
-    let found = suggestions(&workspace)?;
+    let found = suggestions(workspace)?;
+    warnings.extend(no_click_zooms(&found));
     let commands = click_commands(&found, args.scale, args.mode);
-    let mut answer =
-        edit::apply_commands(ctx, &mut workspace, ZoomAdd::NAME, &as_commands(&commands))?;
-    answer.warnings.extend(no_click_zooms(&found));
-    Ok(answer)
+    Ok(Some(
+        commands
+            .into_iter()
+            .map(|c| Box::new(c) as Box<dyn Command>)
+            .collect(),
+    ))
 }
 
 /// A recording was just added to the project of `workspace` (the stop of `devcast record`, or a

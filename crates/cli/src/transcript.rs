@@ -8,9 +8,12 @@
 use std::rc::Rc;
 
 use dc_audio::silence;
+use dc_core::Op;
 use dc_core::{OutputTime, SourceTime, TimeMap};
+use dc_fx_cut::Cut;
+use dc_ops::Step;
 use dc_transcribe::{Model, Word};
-use serde_json::json;
+use serde_json::{Map, Value, json};
 
 use crate::edit::{Ctx, answer};
 use crate::error::CliError;
@@ -18,6 +21,7 @@ use crate::ls::time;
 use crate::round::thousandths;
 use crate::run::Answer;
 use crate::speech::{MediaWords, OnProgress, media_cues, project_words};
+use crate::workspace::Workspace;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum Quality {
@@ -153,15 +157,20 @@ fn secs(t: OutputTime) -> f64 {
 /// How far a cut at a word boundary may move to the quietest moment (decision 010).
 const SNAP: dc_core::TimeDelta = dc_core::TimeDelta::from_millis(150);
 
-/// `cut w12-w20,w31`: word ids in the arguments of `cut` become output time ranges, from the
-/// start of the first word to the end of the last one, each boundary moved to the quietest
-/// moment within [`SNAP`]. Other arguments stay as they are. Uses the words recognized by
-/// `devcast transcript` with the default model.
-pub(crate) fn word_ranges(ctx: &Ctx<'_>, args: &[String]) -> Result<Vec<String>, CliError> {
-    if !args.iter().any(|a| is_word_list(a)) {
-        return Ok(args.to_vec());
+/// `cut w12-w20,w31` (one op or a step of `apply plan.json`): the arguments of the step with
+/// word ids in `ranges` replaced by output time ranges, from the start of the first word to the
+/// end of the last one, each boundary moved to the quietest moment within [`SNAP`]; `None` for
+/// any other step. Uses the words recognized by `devcast transcript` with the default model.
+pub(crate) fn word_args(
+    workspace: &Workspace,
+    step: &Step,
+) -> Result<Option<Map<String, Value>>, CliError> {
+    let Some(Value::String(list)) = step.args.get(RANGES) else {
+        return Ok(None);
+    };
+    if step.op != Cut::NAME || !is_word_list(list) {
+        return Ok(None);
     }
-    let workspace = ctx.open(false)?;
     let all = project_words(
         workspace.dir(),
         &workspace.project,
@@ -170,19 +179,17 @@ pub(crate) fn word_ranges(ctx: &Ctx<'_>, args: &[String]) -> Result<Vec<String>,
         None,
     )?;
     let map = TimeMap::build(&workspace.project);
-    args.iter()
-        .map(|arg| {
-            if !is_word_list(arg) {
-                return Ok(arg.clone());
-            }
-            let ranges: Result<Vec<String>, CliError> = arg
-                .split(',')
-                .map(|item| word_range(&all, &map, item))
-                .collect();
-            Ok(ranges?.join(","))
-        })
-        .collect()
+    let ranges = list
+        .split(',')
+        .map(|item| word_range(&all, &map, item))
+        .collect::<Result<Vec<String>, CliError>>()?;
+    let mut args = step.args.clone();
+    args.insert(RANGES.to_owned(), ranges.join(",").into());
+    Ok(Some(args))
 }
+
+/// The field of `cut` with its ranges.
+const RANGES: &str = "ranges";
 
 fn is_word_list(arg: &str) -> bool {
     !arg.is_empty()

@@ -141,7 +141,7 @@ impl ZoomCommand {
     pub(crate) fn execute(self, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         match self {
             Self::Suggest => autozoom::suggest(ctx),
-            Self::Op(words) => autozoom::op(ctx, &[vec!["zoom".to_owned()], words].concat()),
+            Self::Op(words) => edit::op(ctx, &[vec!["zoom".to_owned()], words].concat()),
         }
     }
 }

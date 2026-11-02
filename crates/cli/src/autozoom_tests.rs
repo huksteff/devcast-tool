@@ -166,3 +166,16 @@ fn clicks_of_the_fixture_are_the_zooms_of_dc_ops() {
         serde_json::to_value(&expected).unwrap()
     );
 }
+
+#[test]
+fn clicks_in_a_plan_add_the_same_zooms_as_the_op() {
+    let (by_op, by_plan) = (project(), project());
+    assert_eq!(by_op.ok("zoom add --at clicks --scale 2"), "зумы +3 z1..z3");
+    let plan = by_plan.dir.root().join("клики.json");
+    let steps = r#"[{"op": "zoom add", "at": "clicks", "scale": 2}, {"op": "zoom add", "at": 25}]"#;
+    std::fs::write(&plan, steps).unwrap();
+    assert_eq!(by_plan.ok("apply клики.json"), "зумы +4 z1..z4");
+    by_op.ok("zoom add --at 25");
+    let zooms = |f: &Recordings| f.dir.load().unwrap().state::<ZoomEffect>().unwrap();
+    assert_eq!(zooms(&by_plan), zooms(&by_op));
+}

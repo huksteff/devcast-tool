@@ -53,12 +53,7 @@ pub(crate) fn answer(workspace: &mut Workspace, text: String, json: Value) -> An
 /// `devcast <op> [args]`: one op as one undo step.
 pub(crate) fn op(ctx: &Ctx<'_>, words: &[String]) -> Result<Answer, CliError> {
     let (info, taken) = ctx.registry.resolve(words)?;
-    let args = if info.name == "cut" {
-        crate::transcript::word_ranges(ctx, &words[taken..])?
-    } else {
-        words[taken..].to_vec()
-    };
-    let fields = dc_ops::parse_args(info, &args)?;
+    let fields = dc_ops::parse_args(info, &words[taken..])?;
     apply_steps(ctx, &[Step::new(info.name, fields)])
 }
 
@@ -74,16 +69,25 @@ pub(crate) fn plan(ctx: &Ctx<'_>, path: &Path) -> Result<Answer, CliError> {
     apply_steps(ctx, &dc_ops::parse_plan(&text)?)
 }
 
+/// Applies `steps` as one undo step; shorthands only the command line resolves (`cut w12-w20`,
+/// `zoom add --at clicks`) work the same in one op and in a plan.
 pub(crate) fn apply_steps(ctx: &Ctx<'_>, steps: &[Step]) -> Result<Answer, CliError> {
     let mut workspace = ctx.open(true)?;
-    let applied = dc_ops::apply(
-        ctx.registry,
-        &mut workspace.project,
-        &mut workspace.history,
-        steps,
-        ctx.globals.dry_run,
-    )?;
-    finish(&mut workspace, &applied)
+    let mut warnings = Vec::new();
+    let commands = dc_ops::build_with(ctx.registry, steps, |step| -> Result<_, CliError> {
+        if let Some(commands) = crate::autozoom::clicks(&workspace, step, &mut warnings)? {
+            return Ok(Some(commands));
+        }
+        match crate::transcript::word_args(&workspace, step)? {
+            Some(args) => Ok(Some(vec![ctx.registry.command(&step.op, args)?])),
+            None => Ok(None),
+        }
+    })?;
+    let commands: Vec<&dyn Command> = commands.iter().map(AsRef::as_ref).collect();
+    let name = dc_ops::step_name(steps);
+    let mut answer = apply_commands(ctx, &mut workspace, name, &commands)?;
+    answer.warnings.extend(warnings);
+    Ok(answer)
 }
 
 /// Applies `commands` built by the caller (after it prepared files in `workspace`) as one undo

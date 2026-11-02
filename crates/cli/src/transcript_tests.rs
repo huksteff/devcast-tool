@@ -141,6 +141,17 @@ fn cutting_words_keeps_their_ids_and_snaps_to_quiet() {
 }
 
 #[test]
+fn word_ids_work_in_a_plan_as_in_the_op() {
+    let (by_op, by_plan) = (Speech::new(), Speech::new());
+    by_op.ok("cut w2-w12");
+    let plan = by_plan.root.join("слова.json");
+    std::fs::write(&plan, r#"[{"op": "cut", "ranges": "w2-w12"}]"#).unwrap();
+    by_plan.ok("apply слова.json");
+    let clips = |s: &Speech| ProjectDir::open(&s.root).unwrap().load().unwrap().clips;
+    assert_eq!(clips(&by_plan), clips(&by_op));
+}
+
+#[test]
 fn word_ids_must_exist_and_be_recognized_first() {
     let speech = Speech::new();
     let out = speech.run("cut w20-w21");

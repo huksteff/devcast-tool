@@ -5,7 +5,7 @@ use std::fmt;
 use dc_core::{Command, Diff, History, OutputTime, Project, TimeDelta, TimeMap};
 
 use crate::error::OpsError;
-use crate::plan::{Step, build};
+use crate::plan::{Step, build, step_name};
 use crate::registry::Registry;
 
 /// What a change did. Shown as one line: `зумы +3 z12..z14; длительность 3:12.000→2:58.000`.
@@ -31,11 +31,7 @@ pub fn apply(
 ) -> Result<Applied, OpsError> {
     let commands = build(registry, steps)?;
     let commands: Vec<&dyn Command> = commands.iter().map(AsRef::as_ref).collect();
-    let name = match steps {
-        [single] => single.op.as_str(),
-        _ => "apply",
-    };
-    apply_commands(project, history, name, &commands, dry_run)
+    apply_commands(project, history, step_name(steps), &commands, dry_run)
 }
 
 /// Applies ready `commands` as one step of history named `name`, like [`apply`]: for commands
