@@ -7,8 +7,9 @@ use eframe::egui::{self, Ui};
 use super::view::Tool;
 use super::{Action, EditorWindow, Transport, Way};
 use super::{adding, clipboard, keyframes, montage, projects};
-use crate::keymap::{EditorKey, EditorKeys};
-use crate::shortcut::Shortcut;
+use crate::keymap::{EditorKey, EditorKeys, Label};
+use crate::shortcut::Caps;
+use dc_settings::Shortcut;
 
 /// What a working shortcut does.
 #[derive(Debug, Clone, Copy)]

@@ -6,25 +6,26 @@ use std::rc::Rc;
 
 use dc_core::CommandError;
 use dc_fx_captions::{CaptionsGen, CaptionsImport, export_text, parse_text};
-use dc_ops::recognition::Speech;
 use serde_json::json;
 
 use crate::edit::{self, Ctx, answer};
 use crate::error::CliError;
 use crate::run::Answer;
 use crate::speech::OnProgress;
-use crate::transcript::Quality;
 
 #[derive(Debug, Clone, clap::Args)]
 pub(crate) struct GenArgs {
-    #[arg(long, value_enum, default_value_t = Quality::Fast, help = "fast — small на процессоре; accurate — large-v3-turbo, нужна видеокарта")]
-    model: Quality,
-    #[arg(long, help = "Язык речи: ru, en …; без флага определяется сам")]
+    #[arg(long, value_parser = crate::config::parse_model, help = "fast — small на процессоре; accurate — large-v3-turbo, нужна видеокарта; без флага — captions.model из devcast config")]
+    model: Option<dc_settings::SpeechModel>,
+    #[arg(
+        long,
+        help = "Язык речи: ru, en …, auto — определить; без флага — captions.language из devcast config"
+    )]
     language: Option<String>,
     #[arg(
         long,
         value_delimiter = ',',
-        help = "Дорожки через запятую, где речь перекрывается — главнее первая: mic (по умолчанию; у импортированного видео — первая), system"
+        help = "Дорожки через запятую, где речь перекрывается — главнее первая: mic (у импортированного видео — первая), system; без флага — captions.tracks из devcast config"
     )]
     tracks: Vec<String>,
 }
@@ -36,11 +37,7 @@ fn failed(error: CommandError) -> CliError {
 /// `captions gen`: recognizes the chosen tracks of every recording (cached like `transcript`)
 /// and replaces all cues, one undo step; the same path as the editor's «Создать субтитры».
 pub(crate) fn generate(ctx: &Ctx<'_>, args: &GenArgs) -> Result<Answer, CliError> {
-    let speech = Speech {
-        model: args.model.model(),
-        language: args.language.clone(),
-        tracks: args.tracks.clone(),
-    };
+    let speech = crate::speech::chosen(ctx, args.model, args.language.as_deref(), &args.tracks)?;
     let silent: OnProgress = Rc::new(|_| {});
     let command = {
         let workspace = ctx.open(false)?;

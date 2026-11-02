@@ -11,6 +11,7 @@ use dc_ipc::Listener;
 use dc_ops::live::{Answer, CHANGED, Changes, LOCK_OWNER, Request};
 use dc_project::history_log::Event;
 use dc_project::{HistoryLog, ProjectDir, ProjectLock, Working};
+use dc_settings::Store;
 
 use crate::test_util::{Fixture, defaults_file};
 use crate::{Local, Outcome, run_with};
@@ -32,8 +33,10 @@ impl FakeEditor {
         let listener = Listener::bind(&channel).unwrap();
         let lock = ProjectLock::acquire(&f.dir, LOCK_OWNER).unwrap();
         let dir = f.dir.clone();
+        let settings = defaults_file(f._tmp.path()).with_file_name(dc_settings::FILE);
+        let store = Store::load(&settings).unwrap();
         let server = std::thread::spawn(move || {
-            let mut state = State::new(dir, lock);
+            let mut state = State::new(dir, lock, store);
             loop {
                 let mut connection = listener.accept().unwrap();
                 let (answer, done) = state.answer(connection.receive().unwrap());
@@ -68,10 +71,12 @@ struct State {
     revision: u64,
     pending: Vec<Event>,
     unsaved: bool,
+    /// The app settings, in the settings folder of the runs (`run`).
+    store: Store,
 }
 
 impl State {
-    fn new(dir: ProjectDir, lock: ProjectLock) -> Self {
+    fn new(dir: ProjectDir, lock: ProjectLock, store: Store) -> Self {
         let working = Working::load(&dir, true).unwrap();
         Self {
             log: HistoryLog::new(&dir),
@@ -82,6 +87,7 @@ impl State {
             revision: 0,
             pending: Vec::new(),
             unsaved: working.unsaved,
+            store,
         }
     }
 
@@ -128,7 +134,8 @@ impl State {
         (answer, false)
     }
 
-    /// The requests about the project as a whole: closing, the copy, renaming.
+    /// The requests about the project as a whole (closing, the copy, renaming) and about the app
+    /// (its settings, the open project).
     fn whole(&mut self, request: Request) -> (Answer, bool) {
         match request {
             Request::Close { root, .. } if !self.ours(&root) => {
@@ -158,6 +165,21 @@ impl State {
                 let lock = ProjectLock::acquire(&self.dir, LOCK_OWNER).unwrap();
                 let root = self.dir.rename(lock, &name).unwrap().root().to_path_buf();
                 (Answer::Renamed { root }, true)
+            }
+            Request::Settings { edit } => {
+                let answer = match dc_settings::apply(self.store.get(), edit) {
+                    Ok(applied) => {
+                        let settings = applied.settings.clone();
+                        self.store.update(|s| *s = settings).unwrap();
+                        Answer::Configured(Box::new(applied))
+                    }
+                    Err(error) => Answer::NotConfigured(error),
+                };
+                (answer, false)
+            }
+            Request::Current => {
+                let root = Some(self.dir.root().to_path_buf());
+                (Answer::Current { root }, false)
             }
             _ => (Answer::NotOpen, false),
         }
@@ -189,7 +211,7 @@ impl State {
 pub(crate) fn run(f: &Fixture, line: &str, channel: &str) -> Outcome {
     let defaults = defaults_file(f._tmp.path());
     let local = Local {
-        defaults: Some(&defaults),
+        settings: defaults.parent(),
         app_channel: Some(channel),
         ..Local::default()
     };

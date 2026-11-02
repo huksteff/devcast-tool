@@ -15,13 +15,14 @@ enum Layer {
 }
 
 /// Crates of the base layer; they may also depend on each other.
-const BASE: [&str; 11] = [
+const BASE: [&str; 12] = [
     "dc-project",
     "dc-media",
     "dc-audio",
     "dc-render",
     "dc-encode",
     "dc-models",
+    "dc-settings",
     "dc-transcribe",
     "dc-capture",
     "dc-ipc",

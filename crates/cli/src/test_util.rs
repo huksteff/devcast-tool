@@ -14,7 +14,7 @@ use dc_project::ProjectDir;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::{Local, Outcome, run, run_with};
+use crate::{Local, Outcome, run_with};
 
 /// A clip of the whole recording `path`, `secs` long.
 fn recording(id: ClipId, path: String, secs: f64) -> Clip {
@@ -38,12 +38,15 @@ fn recording(id: ClipId, path: String, secs: f64) -> Clip {
     }
 }
 
+/// `devcast <line>` in `cwd` with app settings in a folder that does not exist: all defaults, and
+/// the real `%APPDATA%\DevCast` is never read.
 pub(crate) fn run_line(line: &str, cwd: &Path, registry: &Registry) -> Outcome {
-    let args = line.split(' ').map(str::to_owned).collect();
-    run(args, cwd, registry)
+    let nowhere = cwd.join("нет настроек");
+    run_line_with(line, cwd, registry, &nowhere.join("defaults.json"))
 }
 
-/// [`run_line`] with the app defaults file `defaults` (a test never touches the real one).
+/// [`run_line`] with the app defaults file `defaults`: its folder is the app settings folder of
+/// the run (a test never touches the real one).
 pub(crate) fn run_line_with(
     line: &str,
     cwd: &Path,
@@ -52,7 +55,7 @@ pub(crate) fn run_line_with(
 ) -> Outcome {
     let args = line.split(' ').map(str::to_owned).collect();
     let local = Local {
-        defaults: Some(defaults),
+        settings: defaults.parent(),
         ..Local::default()
     };
     run_with(args, cwd, registry, local)
@@ -341,4 +344,16 @@ pub(crate) fn seconds(text: &str) -> f64 {
 pub(crate) fn info_duration(info: &str) -> f64 {
     let rest = info.split("длительность ").nth(1).unwrap();
     seconds(rest.split(',').next().unwrap())
+}
+
+/// A saved project in `root` with one recording clip `secs` long.
+pub(crate) fn project_with_clip(root: &Path, secs: f64) -> ProjectDir {
+    let dir = ProjectDir::create(root).unwrap();
+    let mut project = Project::default();
+    let id = project.clip_ids.allocate();
+    project
+        .clips
+        .push(recording(id, "media/a.mp4".to_owned(), secs));
+    dir.save(&project).unwrap();
+    dir
 }

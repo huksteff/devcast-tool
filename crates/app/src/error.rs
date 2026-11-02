@@ -35,11 +35,8 @@ pub enum AppError {
     Model(std::sync::Arc<dc_models::ModelsError>),
     #[error("не удалось открыть окно: {0}. Обнови драйвер видеокарты")]
     Window(String),
-    #[error("файл настроек {path} испорчен ({message}): удали его, DevCast создаст новый")]
-    BadSettings {
-        path: std::path::PathBuf,
-        message: String,
-    },
+    #[error(transparent)]
+    Store(#[from] dc_settings::StoreError),
     #[error("не удалось записать или прочитать {path}: {source}. Проверь права на папку")]
     SettingsFile {
         path: std::path::PathBuf,

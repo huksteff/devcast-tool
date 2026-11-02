@@ -120,20 +120,14 @@ impl Shared {
     /// «Новый проект»: an empty project in the recordings folder, with the defaults.
     fn new_project(&mut self) {
         let folder = self.store.get().recordings_dir.clone();
-        let root = (1..)
-            .map(|n| folder.join(format!("{}.devcast", text::new_name(n))))
-            .find(|root| !root.exists())
-            .unwrap_or_else(|| folder.join(text::NEW));
-        let made = std::fs::create_dir_all(&folder)
+        let made = dc_project::settings::defaults_file()
+            .and_then(|file| dc_project::Defaults::load(&file))
             .map_err(|e| e.to_string())
-            .and_then(|()| {
-                let defaults = dc_project::settings::defaults_file()
-                    .and_then(|file| dc_project::Defaults::load(&file))
-                    .map_err(|e| e.to_string())?;
-                dc_ops::new_project(&root, &[], &defaults, LOCK_OWNER).map_err(|e| e.to_string())
+            .and_then(|defaults| {
+                dc_ops::new_empty(&folder, &defaults, LOCK_OWNER).map_err(|e| e.to_string())
             });
         match made {
-            Ok(_) => {
+            Ok((root, _)) => {
                 self.open_project(&root, false);
             }
             Err(error) => self.report(Err(error)),

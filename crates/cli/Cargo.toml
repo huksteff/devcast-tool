@@ -30,6 +30,7 @@ dc-models = { path = "../models" }
 dc-ops = { path = "../ops" }
 dc-project = { path = "../project" }
 dc-render = { path = "../render" }
+dc-settings = { path = "../settings" }
 dc-transcribe = { path = "../transcribe" }
 schemars.workspace = true
 serde.workspace = true

@@ -16,7 +16,7 @@ use serde_json::Value;
 use super::paint;
 use super::tracks::{Least, Row, Track};
 use crate::editor::{Action, EditorWindow, rows};
-use crate::keymap::EditorKey;
+use crate::keymap::{EditorKey, Label};
 
 /// Width of the remove question, points (mockup).
 const QUESTION: f32 = 280.0;

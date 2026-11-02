@@ -7,7 +7,7 @@ pub mod bar;
 pub mod live;
 pub mod menus;
 pub mod picker;
-pub mod placement;
+pub use dc_settings::placement;
 pub mod popover;
 
 use dc_capture::audio::AudioSource;

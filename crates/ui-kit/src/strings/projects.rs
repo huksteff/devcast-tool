@@ -43,14 +43,6 @@ pub fn recovery_text(name: &str) -> String {
     )
 }
 
-/// The name of a new project: «Новый проект», then «Новый проект 2» …
-pub fn new_name(number: usize) -> String {
-    match number {
-        0 | 1 => NEW.to_owned(),
-        n => format!("{NEW} {n}"),
-    }
-}
-
 /// The name a copy is offered under: «Урок — копия».
 pub fn copy_name(name: &str) -> String {
     format!("{name} — копия")

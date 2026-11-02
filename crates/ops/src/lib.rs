@@ -29,7 +29,10 @@ pub use clip_file::{ClipImport, ClipImportError, import_clips};
 pub use error::OpsError;
 pub use evaluate::{EvaluateError, Evaluator};
 pub use fonts::{FontError, FontImport, import_font};
-pub use new_project::{NewProjectError, add_clips, new_project, new_projects, project_roots};
+pub use new_project::{
+    EMPTY_NAME, NewProjectError, add_clips, empty_root, new_empty, new_project, new_projects,
+    project_roots,
+};
 pub use picture_file::{PictureImport, import_picture};
 pub use plan::{Commands, Step, build_with, parse_plan, step_name};
 pub use registry::{RESERVED_FIELDS, Registry};

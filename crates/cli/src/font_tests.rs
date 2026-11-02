@@ -37,7 +37,7 @@ impl Lesson {
         let defaults = defaults_file(self.tmp.path());
         let channel = format!("test-export-font-{}", std::process::id());
         let local = Local {
-            defaults: Some(&defaults),
+            settings: defaults.parent(),
             export_channel: Some(&channel),
             ..Local::default()
         };

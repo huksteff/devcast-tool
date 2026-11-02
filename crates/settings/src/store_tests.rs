@@ -1,6 +1,7 @@
-use dc_capture::{Area, Fps};
+use dc_capture::{Area, Fps, Source};
 
 use super::*;
+use crate::model::{Countdown, SpeechModel, Updates};
 
 fn path_in(dir: &tempfile::TempDir) -> PathBuf {
     dir.path().join("Настройки DevCast").join(FILE)

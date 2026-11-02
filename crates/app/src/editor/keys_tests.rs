@@ -7,7 +7,7 @@ use egui_kittest::kittest::Queryable;
 use super::tests::{State, harness};
 use super::view::Tool;
 use super::*;
-use crate::keymap::{EditorKey, EditorKeys};
+use crate::keymap::{EditorKey, EditorKeys, Label, Title};
 
 /// A press of the key at the place of `physical` that the layout calls `key`.
 fn press(

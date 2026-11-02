@@ -91,7 +91,7 @@ fn new_dry_run_and_mistakes_leave_no_folder() {
     assert!(broken.stderr.contains("битый.mov"), "{}", broken.stderr);
     assert!(!root.exists());
     assert_eq!(v.run(&["new", "b.mkv", "-o", "урок"]).code, 2);
-    assert_eq!(v.run(&["new", "-o", "урок.devcast"]).code, 2);
+    assert_eq!(v.run(&["new", "--each", "-o", "Папка"]).code, 2);
     std::fs::create_dir(&root).unwrap();
     let taken = v.run(&["new", "b.mkv", "-o", "урок.devcast"]);
     assert_eq!(taken.code, 1);

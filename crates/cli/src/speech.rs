@@ -244,3 +244,39 @@ fn new_cue(media: &MediaWords, cue: &Cue) -> Result<NewCue, CommandError> {
         words,
     })
 }
+
+/// What `captions gen`, `transcript` and `cut w…` recognize with: the flags given, the rest
+/// from the captions settings of the app (`devcast config`: `captions.model`,
+/// `captions.language`, `captions.tracks`) — the choices of the editor's captions panel.
+/// `--language auto` asks Whisper to detect it.
+pub(crate) fn chosen(
+    ctx: &crate::edit::Ctx<'_>,
+    model: Option<dc_settings::SpeechModel>,
+    language: Option<&str>,
+    tracks: &[String],
+) -> Result<Speech, crate::error::CliError> {
+    let settings = ctx.app_settings()?;
+    let language = match language {
+        Some("auto") => None,
+        Some(code) => Some(code.to_owned()),
+        None => settings.speech_language.code(),
+    };
+    let tracks = match tracks.is_empty() {
+        true => settings.speech_tracks.tracks(),
+        false => tracks.to_vec(),
+    };
+    Ok(Speech {
+        model: model.unwrap_or(settings.speech_model).model(),
+        language,
+        tracks,
+    })
+}
+
+/// The one track `transcript` and `cut w…` read words of: the only chosen one; none or two — the
+/// microphone, or the first track of an imported video.
+pub(crate) fn word_track(speech: &Speech) -> Option<&String> {
+    match speech.tracks.as_slice() {
+        [only] => Some(only),
+        _ => None,
+    }
+}

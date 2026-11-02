@@ -200,10 +200,13 @@ fn start(shared: &mut Shared, index: u32) {
         rect.h.unsigned_abs(),
     );
     let result = area.map_err(crate::error::AppError::from).and_then(|area| {
-        shared.store.update(|s| {
-            s.recording.source = Source::Area(area);
-            s.last_area = Some(Source::Area(area));
-        })
+        shared
+            .store
+            .update(|s| {
+                s.recording.source = Source::Area(area);
+                s.last_area = Some(Source::Area(area));
+            })
+            .map_err(crate::error::AppError::from)
     });
     let kept = result.is_ok();
     shared.report(result);

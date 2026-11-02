@@ -264,4 +264,51 @@ mod live {
         let taken = shared.live(rename(&renamed, "Б"));
         assert!(matches!(taken, Answer::Refused(_)), "{taken:?}");
     }
+
+    /// `devcast config` and `devcast hotkeys` while the app runs: the edit goes through the one
+    /// store (written at once), a refused one changes nothing.
+    #[test]
+    fn settings_edits_go_through_the_store() {
+        use dc_settings::{Binding, Command, Edit, EditorKey, Setting, Shortcut};
+        let (temp, mut shared, _a, _b) = two();
+        let set = Edit::Set(vec![Setting::Fps(dc_capture::Fps::Fps30)]);
+        let Answer::Configured(applied) = shared.live(Request::Settings { edit: set }) else {
+            panic!("not configured");
+        };
+        assert_eq!(applied.keys, [dc_settings::Key::Fps]);
+        assert_eq!(shared.store.get().recording.fps, dc_capture::Fps::Fps30);
+        let file = Store::load(&temp.path().join("settings.json")).unwrap();
+        assert_eq!(file.get(), shared.store.get());
+        let taken = Edit::Bind {
+            binding: Binding::Global(Command::StartStop),
+            keys: Shortcut::parse("Ctrl+S"),
+            swap: false,
+        };
+        let before = shared.store.get().clone();
+        let refused = shared.live(Request::Settings { edit: taken });
+        assert!(matches!(refused, Answer::NotConfigured(_)), "{refused:?}");
+        assert_eq!(shared.store.get(), &before);
+        let swapped = Edit::Bind {
+            binding: Binding::Global(Command::StartStop),
+            keys: Shortcut::parse("Ctrl+S"),
+            swap: true,
+        };
+        shared.live(Request::Settings { edit: swapped });
+        let keys = &shared.store.get().editor_keys;
+        assert_eq!(keys.keys(EditorKey::Save).as_deref(), Some("Ctrl+Shift+R"));
+    }
+
+    #[test]
+    fn current_names_the_project_of_the_editor() {
+        let (_temp, mut shared, a, _b) = two();
+        assert_eq!(
+            shared.live(Request::Current),
+            Answer::Current { root: None }
+        );
+        shared.open_project(&a, false);
+        assert_eq!(
+            shared.live(Request::Current),
+            Answer::Current { root: Some(a) }
+        );
+    }
 }

@@ -1287,6 +1287,7 @@ dependencies = [
  "dc-ops",
  "dc-project",
  "dc-render",
+ "dc-settings",
  "dc-ui-kit",
  "dirs 6.0.0",
  "eframe",
@@ -1362,6 +1363,7 @@ dependencies = [
  "dc-ops",
  "dc-project",
  "dc-render",
+ "dc-settings",
  "dc-transcribe",
  "insta",
  "schemars",
@@ -1625,6 +1627,7 @@ dependencies = [
  "dc-models",
  "dc-project",
  "dc-render",
+ "dc-settings",
  "insta",
  "schemars",
  "serde",
@@ -1662,6 +1665,21 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "wgpu",
+]
+
+[[package]]
+name = "dc-settings"
+version = "0.1.0"
+dependencies = [
+ "dc-capture",
+ "dc-models",
+ "dc-project",
+ "dirs 6.0.0",
+ "egui",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

@@ -30,11 +30,35 @@ impl Ctx<'_> {
         Workspace::open(dir, write, self.globals.dry_run, self.local.app_channel)
     }
 
-    pub(crate) fn defaults_file(&self) -> Result<PathBuf, CliError> {
-        match self.local.defaults {
+    /// The app settings folder: `Local::settings` of the tests, else `%APPDATA%\DevCast`.
+    pub(crate) fn settings_dir(&self) -> Result<PathBuf, CliError> {
+        match self.local.settings {
             Some(path) => Ok(path.to_path_buf()),
-            None => Ok(dc_project::settings::defaults_file()?),
+            None => Ok(dc_project::settings::dir()?),
         }
+    }
+
+    pub(crate) fn defaults_file(&self) -> Result<PathBuf, CliError> {
+        Ok(self
+            .settings_dir()?
+            .join(dc_project::settings::DEFAULTS_FILE))
+    }
+
+    /// `settings.json` of the app (dc-settings).
+    pub(crate) fn app_settings_file(&self) -> Result<PathBuf, CliError> {
+        Ok(self.settings_dir()?.join(dc_settings::FILE))
+    }
+
+    /// The app settings as the file has them (the running app writes each change at once).
+    pub(crate) fn app_settings(&self) -> Result<dc_settings::AppSettings, CliError> {
+        Ok(dc_settings::Store::load(&self.app_settings_file()?)?
+            .get()
+            .clone())
+    }
+
+    /// The Whisper models: `models` in the settings folder, as `dc_models::models_dir`.
+    pub(crate) fn models_dir(&self) -> Result<PathBuf, CliError> {
+        Ok(self.settings_dir()?.join(dc_models::model::FOLDER))
     }
 
     pub(crate) fn prefix(&self) -> &'static str {
@@ -79,7 +103,7 @@ pub(crate) fn apply_steps(ctx: &Ctx<'_>, steps: &[Step]) -> Result<Answer, CliEr
         if let Some(commands) = crate::autozoom::clicks(&workspace, step, &mut warnings)? {
             return Ok(Some(commands));
         }
-        match crate::transcript::word_args(&workspace, step)? {
+        match crate::transcript::word_args(ctx, &workspace, step)? {
             Some(args) => Ok(Some(vec![ctx.registry.command(&step.op, args)?])),
             None => Ok(None),
         }

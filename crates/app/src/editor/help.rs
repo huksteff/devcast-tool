@@ -10,7 +10,8 @@ use dc_ui_kit::tokens::{FS_L, FS_S, S1, S2, S3, S4, TEXT, TEXT_2, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind, panel_frame, search_field};
 use eframe::egui::{self, Align, Layout, RichText, Sense, Ui, WidgetInfo, vec2};
 
-use crate::keymap::{EditorKey, EditorKeys, Group};
+use crate::keymap::{EditorKey, EditorKeys, Group, Label, Title};
+use crate::shortcut::Caps;
 
 /// Width of the window, height of a row, most height of the list and the height of the rest of
 /// the window with a margin to the editor's edges, points (mockup: 560 wide).

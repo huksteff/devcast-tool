@@ -169,7 +169,7 @@ fn trash_and_restore_through_the_recycle_bin() {
     assert!(!f.dir.root().exists());
     let defaults = crate::test_util::defaults_file(f._tmp.path());
     let local = crate::Local {
-        defaults: Some(&defaults),
+        settings: defaults.parent(),
         ..crate::Local::default()
     };
     let args = ["trash", "--restore", "Урок 1.devcast"]

@@ -23,6 +23,14 @@ impl Shared {
                 revision,
                 copy,
             } => return self.copied_asked(&root, revision, &copy),
+            Request::Settings { edit } => return self.configure(edit),
+            Request::Current => {
+                let root = self
+                    .editor
+                    .as_ref()
+                    .map(|e| e.doc.dir().root().to_path_buf());
+                return Answer::Current { root };
+            }
             _ => {}
         }
         let Some(editor) = self.editor.as_mut() else {
@@ -33,6 +41,26 @@ impl Shared {
             self.report(Err(problem));
         }
         answer
+    }
+
+    /// `devcast config` and `devcast hotkeys`: the edit goes through the one store, so the
+    /// windows read it on their next frame and the global hotkeys are registered again in this
+    /// pass of the main window (`App::hotkeys` runs after the calls).
+    fn configure(&mut self, edit: dc_settings::Edit) -> Answer {
+        let applied = match dc_settings::apply(self.store.get(), edit) {
+            Ok(applied) => applied,
+            Err(error) => return Answer::NotConfigured(error),
+        };
+        let settings = applied.settings.clone();
+        if let Err(error) = self.store.update(|s| *s = settings) {
+            return Answer::Refused(error.to_string());
+        }
+        if let Some(editor) = self.editor.as_mut() {
+            editor.detached.wake_editor = true;
+            editor.detached.wake_timeline = true;
+        }
+        self.ctx.request_repaint_of(eframe::egui::ViewportId::ROOT);
+        Answer::Configured(Box::new(applied))
     }
 
     /// The editor of the project in `root`, if it is the open one.

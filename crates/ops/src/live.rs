@@ -59,6 +59,11 @@ pub enum Request {
     },
     /// `devcast rename`: the editor renames the project folder to `name` (the header's rename).
     Rename { root: PathBuf, name: String },
+    /// `devcast config` and `devcast hotkeys`: the app applies the edit to its settings store,
+    /// so its windows and global hotkeys follow at once ([`Answer::Configured`]).
+    Settings { edit: dc_settings::Edit },
+    /// `devcast ls projects`: which project the editor holds ([`Answer::Current`]).
+    Current,
 }
 
 /// What `devcast close` does with unsaved changes.
@@ -104,6 +109,14 @@ pub enum Answer {
     /// The project is renamed and open again from this folder.
     Renamed {
         root: PathBuf,
+    },
+    /// `Request::Settings` is applied and written: the settings after it and what changed.
+    Configured(Box<dc_settings::Applied>),
+    /// `Request::Settings` is refused; nothing changed.
+    NotConfigured(dc_settings::EditError),
+    /// The project open in the editor, if any.
+    Current {
+        root: Option<PathBuf>,
     },
     /// Not done; the text says why and what to do.
     Refused(String),

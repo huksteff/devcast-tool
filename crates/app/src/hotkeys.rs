@@ -7,49 +7,13 @@ use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use dc_ui_kit::strings::hotkeys as text;
 use eframe::egui;
 use global_hotkey::hotkey::HotKey;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 
 use crate::error::AppError;
+pub use crate::keymap::Command;
 use crate::settings::Hotkeys;
-
-/// What a global hotkey does.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Command {
-    StartStop,
-    Pause,
-    Cancel,
-}
-
-impl Command {
-    pub const ALL: [Self; 3] = [Self::StartStop, Self::Pause, Self::Cancel];
-
-    pub fn title(self) -> &'static str {
-        match self {
-            Self::StartStop => text::START_STOP,
-            Self::Pause => text::PAUSE,
-            Self::Cancel => text::CANCEL,
-        }
-    }
-
-    pub fn keys(self, hotkeys: &Hotkeys) -> &Option<String> {
-        match self {
-            Self::StartStop => &hotkeys.start_stop,
-            Self::Pause => &hotkeys.pause,
-            Self::Cancel => &hotkeys.cancel,
-        }
-    }
-
-    pub fn keys_mut(self, hotkeys: &mut Hotkeys) -> &mut Option<String> {
-        match self {
-            Self::StartStop => &mut hotkeys.start_stop,
-            Self::Pause => &mut hotkeys.pause,
-            Self::Cancel => &mut hotkeys.cancel,
-        }
-    }
-}
 
 type Bound = Arc<Mutex<Vec<(u32, Command)>>>;
 

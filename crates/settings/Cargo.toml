@@ -1,0 +1,25 @@
+[package]
+name = "dc-settings"
+description = "DevCast app settings: settings.json, its model, the shortcut table, edits shared by the app and devcast."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+dc-capture = { path = "../capture" }
+dc-models = { path = "../models" }
+dc-project = { path = "../project" }
+dirs = "6"
+# Only `egui::Key`: shortcuts are stored by egui's names of physical keys.
+egui = "0.37"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -12,7 +12,7 @@ use dc_core::Op;
 use dc_core::{OutputTime, SourceTime, TimeMap};
 use dc_fx_cut::Cut;
 use dc_ops::Step;
-use dc_transcribe::{Model, Word};
+use dc_transcribe::Word;
 use serde_json::{Map, Value, json};
 
 use crate::edit::{Ctx, answer};
@@ -20,25 +20,8 @@ use crate::error::CliError;
 use crate::ls::time;
 use crate::round::thousandths;
 use crate::run::Answer;
-use crate::speech::{MediaWords, OnProgress, media_cues, project_words};
+use crate::speech::{MediaWords, OnProgress, chosen, media_cues, project_words, word_track};
 use crate::workspace::Workspace;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub(crate) enum Quality {
-    /// «Быстрая»: small, works on the CPU.
-    Fast,
-    /// «Точная»: large-v3-turbo, needs a GPU.
-    Accurate,
-}
-
-impl Quality {
-    pub(crate) fn model(self) -> Model {
-        match self {
-            Self::Fast => Model::Small,
-            Self::Accurate => Model::LargeV3Turbo,
-        }
-    }
-}
 
 #[derive(Debug, Clone, clap::Args)]
 pub(crate) struct Args {
@@ -48,13 +31,16 @@ pub(crate) struct Args {
     from: Option<String>,
     #[arg(long, help = "Только то, что начинается раньше этого момента")]
     to: Option<String>,
-    #[arg(long, value_enum, default_value_t = Quality::Fast, help = "fast — small на процессоре; accurate — large-v3-turbo, нужна видеокарта")]
-    model: Quality,
-    #[arg(long, help = "Язык речи: ru, en …; без флага определяется сам")]
+    #[arg(long, value_parser = crate::config::parse_model, help = "fast — small на процессоре; accurate — large-v3-turbo, нужна видеокарта; без флага — captions.model из devcast config")]
+    model: Option<dc_settings::SpeechModel>,
+    #[arg(
+        long,
+        help = "Язык речи: ru, en …, auto — определить; без флага — captions.language из devcast config"
+    )]
     language: Option<String>,
     #[arg(
         long,
-        help = "Дорожка: mic (по умолчанию; у импортированного видео — первая), system …"
+        help = "Дорожка: mic (у импортированного видео — первая), system …; без флага — captions.tracks из devcast config (одна дорожка, иначе mic)"
     )]
     track: Option<String>,
 }
@@ -87,13 +73,14 @@ pub(crate) fn transcript(ctx: &Ctx<'_>, args: &Args) -> Result<Answer, CliError>
         time(args.to.as_ref(), "--to")?,
     );
     let mut workspace = ctx.open(false)?;
-    let model = args.model.model();
+    let tracks: Vec<String> = args.track.iter().cloned().collect();
+    let speech = chosen(ctx, args.model, args.language.as_deref(), &tracks)?;
     let silent: OnProgress = Rc::new(|_| {});
     let all = project_words(
         workspace.dir(),
         &workspace.project,
-        (model, args.language.as_deref()),
-        args.track.as_ref(),
+        (speech.model, speech.language.as_deref()),
+        word_track(&speech),
         Some(&silent),
     )?;
     let map = TimeMap::build(&workspace.project);
@@ -160,8 +147,10 @@ const SNAP: dc_core::TimeDelta = dc_core::TimeDelta::from_millis(150);
 /// `cut w12-w20,w31` (one op or a step of `apply plan.json`): the arguments of the step with
 /// word ids in `ranges` replaced by output time ranges, from the start of the first word to the
 /// end of the last one, each boundary moved to the quietest moment within [`SNAP`]; `None` for
-/// any other step. Uses the words recognized by `devcast transcript` with the default model.
+/// any other step. Uses the words `devcast transcript` recognized without flags (the captions
+/// settings of the app).
 pub(crate) fn word_args(
+    ctx: &Ctx<'_>,
     workspace: &Workspace,
     step: &Step,
 ) -> Result<Option<Map<String, Value>>, CliError> {
@@ -171,11 +160,12 @@ pub(crate) fn word_args(
     if step.op != Cut::NAME || !is_word_list(list) {
         return Ok(None);
     }
+    let speech = chosen(ctx, None, None, &[])?;
     let all = project_words(
         workspace.dir(),
         &workspace.project,
-        (Quality::Fast.model(), None),
-        None,
+        (speech.model, speech.language.as_deref()),
+        word_track(&speech),
         None,
     )?;
     let map = TimeMap::build(&workspace.project);

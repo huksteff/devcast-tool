@@ -1,11 +1,14 @@
 //! devcast command-line tool: edit, analyse, render and export projects.
 
+mod app_settings;
 mod audio;
 mod autozoom;
 mod batch;
 mod builtin;
+mod builtin_app;
 mod builtin_groups;
 mod captions;
+mod config;
 mod defaults;
 mod discard;
 mod edit;
@@ -20,11 +23,14 @@ pub mod globals;
 mod grid;
 mod help;
 mod help_args;
+mod hotkeys;
 mod image;
 mod import;
 mod live;
 mod ls;
+mod models;
 mod open;
+mod projects;
 mod record;
 mod record_args;
 mod record_control;
@@ -129,7 +135,21 @@ pub fn main_outcome(args: Vec<OsString>) -> Outcome {
             Ok((args, cwd, dc_ops::Registry::devcast()?))
         });
     match prepared {
-        Ok((args, cwd, registry)) => run(args, &cwd, &registry),
+        Ok((args, cwd, registry)) => {
+            let local = Local {
+                progress: Some(progress),
+                ..Local::default()
+            };
+            run_with(args, &cwd, &registry, local)
+        }
         Err(error) => Outcome::failure(&error, false),
     }
+}
+
+/// A progress line of a long command, to stderr at once: stdout keeps only the result.
+fn progress(line: &str) {
+    use std::io::Write;
+    let mut stderr = std::io::stderr().lock();
+    // A closed stderr loses only the progress; the result still goes to stdout.
+    let _ = writeln!(stderr, "{line}");
 }

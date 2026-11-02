@@ -58,17 +58,21 @@ pub(super) struct TrashArgs {
 #[derive(Debug, Args)]
 pub(super) struct NewArgs {
     #[arg(
-        required = true,
-        help = "Видео mp4, mov, mkv или webm; клипы идут в этом порядке"
+        help = "Видео mp4, mov, mkv или webm; клипы идут в этом порядке; без них — пустой проект, как «Новый проект»"
     )]
     videos: Vec<PathBuf>,
     #[arg(
         short = 'o',
         long,
-        required_unless_present = "each",
-        help = "Папка нового проекта *.devcast; с --each — папка, где появятся проекты (без -o — текущая)"
+        help = "Папка нового проекта *.devcast; без видео и -o — «Новый проект» в папке записей (devcast config show); с --each — папка, где появятся проекты (без -o — текущая)"
     )]
     out: Option<PathBuf>,
+    #[arg(
+        long,
+        conflicts_with = "each",
+        help = "Открыть новый проект в редакторе запущенной программы"
+    )]
+    open: bool,
     #[arg(
         long,
         help = "Проект на каждое видео: <имя видео>.devcast, занято — -2, -3 …"
@@ -94,11 +98,15 @@ pub(super) fn execute(command: Builtin, ctx: &Ctx<'_>) -> Result<Answer, CliErro
         }
         Builtin::Rename { name } => rename::rename(ctx, &name),
         Builtin::Trash(args) => trash::trash(ctx, &args.projects, args.restore),
-        Builtin::New(args) => match (args.each, args.out) {
-            (true, out) => import::new_each(ctx, &args.videos, out.as_deref()),
-            (false, Some(out)) => import::new(ctx, &args.videos, &out),
-            (false, None) => Err(CliError::Usage(
-                "у new нужен -o <папка>.devcast или --each: devcast help new".to_owned(),
+        Builtin::New(args) => match (args.each, args.out, args.videos.is_empty()) {
+            (true, _, true) => Err(CliError::Usage(
+                "у new --each нужны видео: devcast help new".to_owned(),
+            )),
+            (true, out, false) => import::new_each(ctx, &args.videos, out.as_deref()),
+            (false, out, true) => import::new_empty(ctx, out.as_deref(), args.open),
+            (false, Some(out), false) => import::new(ctx, &args.videos, &out, args.open),
+            (false, None, false) => Err(CliError::Usage(
+                "у new с видео нужен -o <папка>.devcast или --each: devcast help new".to_owned(),
             )),
         },
         _ => Err(CliError::Usage(

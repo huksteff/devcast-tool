@@ -9,6 +9,7 @@ pub mod defaults;
 pub mod dir;
 pub mod error;
 pub mod history_log;
+pub mod library;
 pub mod lock;
 pub mod migrate;
 mod rename;

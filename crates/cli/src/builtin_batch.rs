@@ -9,10 +9,15 @@ impl Cli {
     /// it can.
     pub(crate) fn not_for_batch(&self) -> Option<&'static str> {
         match &self.command {
-            Builtin::Help { .. } | Builtin::Skill { .. } | Builtin::Defaults { .. } => {
+            Builtin::Help { .. }
+            | Builtin::Skill { .. }
+            | Builtin::Defaults { .. }
+            | Builtin::Config { .. }
+            | Builtin::Hotkeys { .. }
+            | Builtin::Models { .. } => Some("не работает с проектом"),
+            Builtin::Ls { list, .. } if list == sources::SOURCES || list == super::PROJECTS => {
                 Some("не работает с проектом")
             }
-            Builtin::Ls { list, .. } if list == sources::SOURCES => Some("не работает с проектом"),
             Builtin::New(_) | Builtin::Record { .. } => Some("создаёт новый проект"),
             Builtin::Rename { .. } => {
                 Some("даёт всем проектам одно имя; переименуй каждый с --project")

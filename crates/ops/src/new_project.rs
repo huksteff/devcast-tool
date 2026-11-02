@@ -117,6 +117,38 @@ pub fn new_projects(
     Ok(made)
 }
 
+/// The folder name of a new empty project; the next ones get « 2», « 3» …
+pub const EMPTY_NAME: &str = "Новый проект";
+
+/// The free folder of a new empty project in `folder`: «Новый проект.devcast», then
+/// «Новый проект 2.devcast» …
+pub fn empty_root(folder: &Path) -> PathBuf {
+    (1..)
+        .map(|n| match n {
+            1 => folder.join(format!("{EMPTY_NAME}.devcast")),
+            n => folder.join(format!("{EMPTY_NAME} {n}.devcast")),
+        })
+        .find(|root| !root.exists())
+        .unwrap_or_default()
+}
+
+/// A new empty project in `folder` (created when missing) at [`empty_root`], with `defaults`:
+/// «Новый проект» of the editor and `devcast new` without videos.
+pub fn new_empty(
+    folder: &Path,
+    defaults: &Defaults,
+    app: &str,
+) -> Result<(PathBuf, Applied), NewProjectError> {
+    std::fs::create_dir_all(folder).map_err(|source| ProjectError::Io {
+        action: "создать папку",
+        path: folder.to_path_buf(),
+        source,
+    })?;
+    let root = empty_root(folder);
+    let applied = new_project(&root, &[], defaults, app)?;
+    Ok((root, applied))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,6 +171,26 @@ mod tests {
                 folder.join("демо урок-3.devcast"),
                 folder.join("вступление.devcast"),
             ]
+        );
+    }
+
+    #[test]
+    fn empty_projects_are_numbered() {
+        let tmp = tempfile::tempdir().unwrap();
+        let folder = tmp.path().join("Мои записи");
+        let defaults = Defaults::default();
+        let (first, _) = new_empty(&folder, &defaults, "test").unwrap();
+        let (second, applied) = new_empty(&folder, &defaults, "test").unwrap();
+        assert_eq!(first, folder.join("Новый проект.devcast"));
+        assert_eq!(second, folder.join("Новый проект 2.devcast"));
+        assert!(!applied.changed);
+        assert!(
+            ProjectDir::open(&second)
+                .unwrap()
+                .load()
+                .unwrap()
+                .clips
+                .is_empty()
         );
     }
 }

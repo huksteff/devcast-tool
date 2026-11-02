@@ -63,13 +63,16 @@ pub fn run(args: Vec<String>, cwd: &Path, registry: &Registry) -> Outcome {
 /// touched.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Local<'a> {
-    /// The app defaults file; `None` — the real one in the settings folder.
-    pub defaults: Option<&'a Path>,
+    /// The app settings folder (`defaults.json`, `settings.json`, `models/`); `None` — the real
+    /// `%APPDATA%\DevCast`.
+    pub settings: Option<&'a Path>,
     /// The channel of the export queue; `None` — the real `devcast-export-<user>`.
     pub export_channel: Option<&'a str>,
     /// The channel of the app whose editor may hold the project; `None` — the real
     /// `devcast-app-<user>`.
     pub app_channel: Option<&'a str>,
+    /// Where progress lines of a long command go (`models download`); `None` — nowhere.
+    pub progress: Option<fn(&str)>,
 }
 
 /// [`run`] with `local` instead of the real files and channels (tests).

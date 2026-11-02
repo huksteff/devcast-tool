@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
+use crate::builtin_app::{ConfigCommand, HotkeysCommand, ModelsCommand};
 use crate::builtin_groups::{
     AudioCommand, CaptionsCommand, ClipCommand, DefaultsCommand, FontCommand, ImageCommand,
     StyleCommand, ZoomCommand,
@@ -21,7 +22,10 @@ use crate::record_args::RecordArgs;
 use crate::record_control::Control;
 use crate::run::Answer;
 use crate::still::{FrameArgs, SheetArgs};
-use crate::{batch, events, silences, skill, sources, still, style, transcript};
+use crate::{batch, events, projects, silences, skill, sources, still, style, transcript};
+
+/// `ls projects`: the recent projects and those of the recordings folder.
+pub(crate) const PROJECTS: &str = "projects";
 
 #[derive(Debug, Parser)]
 #[command(
@@ -113,7 +117,7 @@ enum Builtin {
     )]
     Ls {
         #[arg(
-            help = "Список: clips, zooms …; sources — мониторы, окна и микрофоны для devcast record"
+            help = "Список: clips, zooms …; sources — мониторы, окна и микрофоны для devcast record; projects — последние проекты и проекты папки записей"
         )]
         list: String,
         #[arg(long, help = "Только объекты, которые идут после этого момента")]
@@ -153,7 +157,7 @@ enum Builtin {
         to: Option<String>,
     },
     #[command(
-        about = "Новый проект из видео mp4/mov/mkv/webm: копии в media/, по клипу на файл; --each — проект на каждое видео",
+        about = "Новый проект из видео mp4/mov/mkv/webm: копии в media/, по клипу на файл; --each — проект на каждое видео; без видео — пустой",
         after_help = "new демо.mp4 вступление.mov -o урок.devcast"
     )]
     New(project::NewArgs),
@@ -215,6 +219,24 @@ enum Builtin {
     Style {
         #[command(subcommand)]
         command: StyleCommand,
+    },
+    /// `config show|set|reset`: the settings of the app.
+    #[command(disable_help_subcommand = true)]
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommand,
+    },
+    /// `hotkeys ls|set|reset`: the global and the editor shortcuts.
+    #[command(disable_help_subcommand = true)]
+    Hotkeys {
+        #[command(subcommand)]
+        command: HotkeysCommand,
+    },
+    /// `models ls|download`: the speech recognition models.
+    #[command(disable_help_subcommand = true)]
+    Models {
+        #[command(subcommand)]
+        command: ModelsCommand,
     },
     #[command(
         about = "Одна команда в нескольких проектах: у каждого своя запись истории; ошибка в одном не останавливает другие",
@@ -296,23 +318,11 @@ impl Cli {
                 from,
                 to,
                 fields,
-                ..
-            } if list == sources::SOURCES => match (from, to, fields) {
-                (None, None, None) => sources::ls(),
-                _ => Err(CliError::Usage(
-                    "у ls sources нет --from, --to и --fields: devcast ls sources".to_owned(),
-                )),
-            },
-            Builtin::Ls {
-                list,
-                from,
-                to,
-                fields,
                 limit,
                 offset,
-            } => ls::ls(
+            } => listed(
                 ctx,
-                &Query {
+                Query {
                     list,
                     from,
                     to,
@@ -335,6 +345,9 @@ impl Cli {
             Builtin::Set { assignments } => style::set(ctx, &assignments),
             Builtin::Defaults { command } => command.execute(ctx),
             Builtin::Style { command } => command.execute(ctx),
+            Builtin::Config { command } => command.execute(ctx),
+            Builtin::Hotkeys { command } => command.execute(ctx),
+            Builtin::Models { command } => command.execute(ctx),
             Builtin::Batch(args) => batch::batch(ctx, &args),
             Builtin::Frame(args) => still::frame(ctx, &args),
             Builtin::Sheet(args) => still::sheet(ctx, &args),
@@ -359,3 +372,21 @@ mod batch_rules;
 
 #[path = "builtin_project.rs"]
 mod project;
+
+/// `ls <list>`: the lists of the project, or `sources` and `projects`, which have no time.
+fn listed(ctx: &Ctx<'_>, query: Query) -> Result<Answer, CliError> {
+    let special = [sources::SOURCES, PROJECTS];
+    if !special.contains(&query.list.as_str()) {
+        return ls::ls(ctx, &query);
+    }
+    if query.from.is_some() || query.to.is_some() || query.fields.is_some() {
+        return Err(CliError::Usage(format!(
+            "у ls {0} нет --from, --to и --fields: devcast ls {0}",
+            query.list
+        )));
+    }
+    match query.list.as_str() {
+        PROJECTS => projects::ls(ctx),
+        _ => sources::ls(),
+    }
+}

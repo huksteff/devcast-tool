@@ -23,7 +23,7 @@ use super::viewport::Lanes;
 use crate::editor::EditorWindow;
 use crate::editor::selection::{Item, Selected};
 use crate::editor::view::{Gesture, Target, Tool};
-use crate::keymap::EditorKey;
+use crate::keymap::{EditorKey, Label};
 
 /// The edge grab zone inside each end of a region, points, at most a third of its width so the
 /// middle still moves it (v1 had 28 for long regions).

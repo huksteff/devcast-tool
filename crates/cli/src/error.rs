@@ -36,3 +36,9 @@ impl From<ProjectError> for CliError {
         Self::Failed(error.to_string())
     }
 }
+
+impl From<dc_settings::StoreError> for CliError {
+    fn from(error: dc_settings::StoreError) -> Self {
+        Self::Failed(error.to_string())
+    }
+}

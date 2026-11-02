@@ -39,7 +39,7 @@ Stop-хук (`.claude/settings.json`) запускает `cargo xtask hook-stop`
 ## Где что лежит
 
 ```
-crates/   базовые крейты: core, project, media, audio, render, encode, transcribe, capture,
+crates/   базовые крейты: core, project, media, audio, render, encode, transcribe, capture, settings,
           ops, ipc, ui-kit, update, cli (бинарник devcast), app (бинарник devcast-app)
 fx/       эффекты, по крейту на эффект (пакеты dc-fx-*): cut, crop, zoom, cursor, callout,
           keys, captions, annotations, text, shape, image, drawing, blur, audio-tracks

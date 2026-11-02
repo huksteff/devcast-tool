@@ -15,10 +15,11 @@ use dc_ui_kit::widgets::{Button, IconButton, Kind, search_field};
 use eframe::egui::{self, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, vec2};
 
 use crate::hotkeys::Command;
-use crate::keymap::{Binding, EditorKey, taken_by};
+use crate::keymap::{Binding, EditorKey, Title, taken_by};
 use crate::settings::AppSettings;
 use crate::settings_rows::{row, row_height, separator};
-use crate::shortcut::Shortcut;
+use crate::shortcut::Caps;
+use dc_settings::Shortcut;
 
 /// A shortcut another command already has, waiting for «Заменить» or «Отмена».
 #[derive(Debug, Clone, PartialEq, Eq)]

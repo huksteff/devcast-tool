@@ -94,6 +94,8 @@ crates/
                  (frame, sheet); позже экспорт MP4 и GIF,
                  очередь
   models/        модели Whisper: список, пути, загрузка с докачкой и SHA-256 (без whisper, решение 018)
+  settings/      настройки программы settings.json: модель и умолчания, файл, таблица сочетаний, правки
+                 devcast config и hotkeys (одни для app и cli; место HUD на мониторах)
   transcribe/    whisper, слова с таймкодами, кэш слов, сегментация в реплики
   capture/       модель записи, видео, звук, ввод (cursor.bin, keys.bin), пауза, сегменты и manifest,
                  восстановление, проект из записи; win/, позже mac/ и linux/
@@ -157,7 +159,11 @@ third_party/     исправленные копии чужих крейтов (
 devcast help [cmd] [--json]
 devcast record --source <screen:1|window:<id>|area:x,y,w,h> [--fps 60] [--duration 10] [--audio on|off] [--mic имя] [-o x.devcast] | record stop|pause|resume|cancel
 devcast ls sources                               # мониторы, окна, микрофоны для record
-devcast new <video...> -o name.devcast | clip add <video|project.devcast...> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
+devcast ls projects                              # последние проекты редактора и проекты папки записей
+devcast config show | config set recording.fps=30 captions.language=ru | config reset [ключ...]   # настройки программы
+devcast hotkeys ls | hotkeys set start_stop Ctrl+Alt+R [--swap] | hotkeys set pause --clear | hotkeys reset save|--all
+devcast models ls | models download fast|accurate
+devcast new [video...] [-o name.devcast] [--open] | clip add <video|project.devcast...> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
 devcast info | save
 devcast ls <zooms|clips|annots|captions|audio|tracks|clicks> [--from --to] [--fields]
 devcast transcript [--from --to] [--words] [--model fast|accurate] [--language ru] [--track mic]   # реплики или слова с id

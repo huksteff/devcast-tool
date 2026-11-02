@@ -39,7 +39,12 @@ pub(crate) fn clip_add(ctx: &Ctx<'_>, sources: &[PathBuf]) -> Result<Answer, Cli
 }
 
 /// `devcast new <video...> -o name.devcast`: a project with the app defaults and a clip per video.
-pub(crate) fn new(ctx: &Ctx<'_>, videos: &[PathBuf], out: &Path) -> Result<Answer, CliError> {
+pub(crate) fn new(
+    ctx: &Ctx<'_>,
+    videos: &[PathBuf],
+    out: &Path,
+    open: bool,
+) -> Result<Answer, CliError> {
     let root = new_folder(ctx.cwd, out)?;
     let sources = paths(ctx.cwd, videos);
     let defaults = Defaults::load(&ctx.defaults_file()?)?;
@@ -51,9 +56,56 @@ pub(crate) fn new(ctx: &Ctx<'_>, videos: &[PathBuf], out: &Path) -> Result<Answe
         let applied = dc_ops::add_clips(&mut project, media)?;
         return Ok(created(&root, &applied, true));
     }
-    let applied = dc_ops::new_project(&root, &sources, &defaults, "devcast new")
+    let applied = dc_ops::new_project(&root, &sources, &defaults, APP)
         .map_err(|e| CliError::Failed(e.to_string()))?;
-    Ok(created(&root, &applied, false))
+    opened(ctx, created(&root, &applied, false), &root, open)
+}
+
+/// Who holds a new project while it is made.
+const APP: &str = "devcast new";
+
+/// `devcast new [-o name.devcast] [--open]` without videos: an empty project with the app
+/// defaults, as «Новый проект» of the editor; without `-o` in the recordings folder of the app
+/// settings, named as the editor names it (`dc_ops::empty_root`).
+pub(crate) fn new_empty(ctx: &Ctx<'_>, out: Option<&Path>, open: bool) -> Result<Answer, CliError> {
+    let defaults = Defaults::load(&ctx.defaults_file()?)?;
+    let folder = ctx.app_settings()?.recordings_dir;
+    let root = match out {
+        Some(out) => new_folder(ctx.cwd, out)?,
+        None => dc_ops::empty_root(&folder),
+    };
+    if ctx.globals.dry_run {
+        let mut project = Project::default();
+        defaults.apply(&mut project);
+        return Ok(created(
+            &root,
+            &dc_ops::add_clips(&mut project, Vec::new())?,
+            true,
+        ));
+    }
+    let (root, applied) = match out {
+        Some(_) => {
+            let applied = dc_ops::new_project(&root, &[], &defaults, APP);
+            (root, applied.map_err(|e| CliError::Failed(e.to_string()))?)
+        }
+        None => dc_ops::new_empty(&folder, &defaults, APP)
+            .map_err(|e| CliError::Failed(e.to_string()))?,
+    };
+    opened(ctx, created(&root, &applied, false), &root, open)
+}
+
+/// With `--open` the running app opens the new project in its editor.
+fn opened(ctx: &Ctx<'_>, mut answer: Answer, root: &Path, open: bool) -> Result<Answer, CliError> {
+    if !open || ctx.globals.dry_run {
+        return Ok(answer);
+    }
+    let asking = crate::open::open_in_app(ctx, &crate::open::absolute(root))?;
+    answer.text.push_str(match asking {
+        false => "; открыт в редакторе",
+        true => "; откроется в редакторе после ответа о несохранённом в его окне",
+    });
+    answer.json["opened"] = (!asking).into();
+    Ok(answer)
 }
 
 fn paths(cwd: &Path, sources: &[PathBuf]) -> Vec<PathBuf> {
@@ -95,7 +147,7 @@ pub(crate) fn new_each(
             }
             made
         }
-        false => dc_ops::new_projects(&folder, &sources, &defaults, "devcast new")
+        false => dc_ops::new_projects(&folder, &sources, &defaults, APP)
             .map_err(|e| CliError::Failed(e.to_string()))?,
     };
     let answers: Vec<Answer> = made

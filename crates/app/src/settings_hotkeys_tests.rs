@@ -4,7 +4,7 @@ use egui_kittest::kittest::Queryable;
 
 use super::HotkeyPage;
 use crate::hotkeys::Command;
-use crate::keymap::{Binding, EditorKey};
+use crate::keymap::{Binding, EditorKey, Title};
 use crate::settings::{AppSettings, Hotkeys};
 
 struct State {

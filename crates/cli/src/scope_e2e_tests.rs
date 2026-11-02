@@ -71,7 +71,7 @@ impl Lesson {
     fn run(&self, line: &str) -> Outcome {
         let defaults = defaults_file(self.tmp.path());
         let local = Local {
-            defaults: Some(&defaults),
+            settings: defaults.parent(),
             export_channel: Some(&self.channel),
             ..Local::default()
         };

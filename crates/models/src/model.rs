@@ -30,6 +30,14 @@ impl Model {
         format!("{SOURCE}{}", self.file_name())
     }
 
+    /// Approximate size of the download, MB (for the lists; the hash checks the file).
+    pub const fn megabytes(self) -> u32 {
+        match self {
+            Self::Small => 488,
+            Self::LargeV3Turbo => 1624,
+        }
+    }
+
     /// Lowercase hex SHA-256 of the model file.
     pub fn sha256(self) -> &'static str {
         match self {
@@ -41,7 +49,10 @@ impl Model {
     }
 }
 
+/// The folder of the models in the app settings folder.
+pub const FOLDER: &str = "models";
+
 /// Models live in the app settings folder: `%APPDATA%\DevCast\models`.
 pub fn models_dir() -> Result<PathBuf> {
-    Ok(dc_project::settings::dir()?.join("models"))
+    Ok(dc_project::settings::dir()?.join(FOLDER))
 }
