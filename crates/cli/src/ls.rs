@@ -7,6 +7,7 @@ use serde_json::{Map, Value, json};
 
 use crate::edit::{Ctx, answer};
 use crate::error::CliError;
+use crate::round::thousandths;
 use crate::run::Answer;
 
 const CLIPS: &str = "clips";
@@ -182,6 +183,7 @@ fn row_text(row: &Row) -> String {
 }
 
 /// `key=value`; an object becomes one `key.inner=value` per field, so no JSON in plain text.
+/// Fractions are cut to three decimals, as in other answers; `--json` keeps them whole.
 fn push_field(line: &mut String, key: &str, value: &Value) {
     match value {
         Value::String(text) => line.push_str(&format!("  {key}={text}")),
@@ -190,6 +192,13 @@ fn push_field(line: &mut String, key: &str, value: &Value) {
                 push_field(line, &format!("{key}.{inner}"), value);
             }
         }
+        Value::Number(n) => match n.as_f64().filter(|_| n.is_f64()) {
+            Some(fraction) => {
+                let rounded = Value::from(thousandths(fraction));
+                line.push_str(&format!("  {key}={rounded}"));
+            }
+            None => line.push_str(&format!("  {key}={n}")),
+        },
         other => line.push_str(&format!("  {key}={other}")),
     }
 }

@@ -29,6 +29,17 @@ fn ls_shows_objects_in_output_time_sorted_and_filtered() {
 }
 
 #[test]
+fn ls_text_cuts_fractions_to_three_decimals_and_json_keeps_them() {
+    let f = Recordings::new();
+    f.ok("zoom add --at 2 --duration 1 --x 0.123456 --y 0.6666667");
+    assert_eq!(
+        f.ok("ls zooms --fields focus"),
+        "z1  0:02.000–0:03.000  focus.x=0.123  focus.y=0.667"
+    );
+    assert!(f.ok("ls zooms --json").contains("0.123456"));
+}
+
+#[test]
 fn ls_clips_and_info_summarise_the_project() {
     let f = Recordings::new();
     f.ok("cut 0-1");
