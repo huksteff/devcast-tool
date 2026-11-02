@@ -23,6 +23,7 @@ mod image;
 mod import;
 mod live;
 mod ls;
+mod open;
 mod record;
 mod record_args;
 mod record_control;

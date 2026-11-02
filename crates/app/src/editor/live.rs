@@ -11,8 +11,11 @@ use super::EditorWindow;
 use crate::app::Shared;
 
 impl Shared {
-    /// Answers a `devcast` run: the editor's project, or «not open».
+    /// Answers a `devcast` run: the editor's project, or «not open»; `devcast open` opens one.
     pub fn live(&mut self, request: Request) -> Answer {
+        if let Request::Edit { root } = request {
+            return self.open_asked(&root);
+        }
         let Some(editor) = self.editor.as_mut() else {
             return Answer::NotOpen;
         };
@@ -29,14 +32,14 @@ impl EditorWindow {
     /// answer and why the view could not follow (the sound of playback), for a toast.
     pub fn live(&mut self, request: Request, now: Instant) -> (Answer, Option<String>) {
         let root = match &request {
-            Request::Show => return (Answer::NotOpen, None),
+            Request::Show | Request::Edit { .. } => return (Answer::NotOpen, None),
             Request::Open { root } | Request::Write { root, .. } | Request::Save { root } => root,
         };
         if !same_folder(root, self.doc.dir().root()) {
             return (Answer::NotOpen, None);
         }
         match request {
-            Request::Show => (Answer::NotOpen, None),
+            Request::Show | Request::Edit { .. } => (Answer::NotOpen, None),
             Request::Open { .. } => match self.doc.flush() {
                 Ok(()) => (
                     Answer::Open {

@@ -18,16 +18,18 @@ impl Shared {
     /// way. With `recover` a working state left on disk is asked about. A project that cannot be
     /// opened (another writer holds it) is a toast and the open editor stays.
     pub fn open_project(&mut self, root: &Path, recover: bool) -> bool {
+        let opened = self.try_open(root, recover);
+        let done = opened.is_ok();
+        self.report(opened);
+        done
+    }
+
+    /// [`Self::open_project`] telling why the project did not open instead of a toast.
+    fn try_open(&mut self, root: &Path, recover: bool) -> Result<(), String> {
         let opened = ProjectDir::open(root)
             .map_err(super::DocumentError::from)
             .and_then(|dir| EditorWindow::open(dir, Vec::new()));
-        let (mut editor, problems) = match opened {
-            Ok(opened) => opened,
-            Err(error) => {
-                self.report(Err(error));
-                return false;
-            }
-        };
+        let (mut editor, problems) = opened.map_err(|e| e.to_string())?;
         self.drop_editor();
         editor.sound = recorded_sound(&editor.doc);
         editor.retrack();
@@ -41,7 +43,27 @@ impl Shared {
         self.editor = Some(editor);
         self.remember_project(&root, None);
         self.hide_hud();
-        true
+        Ok(())
+    }
+
+    /// `devcast open`: the editor opens the project in `root`; with unsaved changes of another
+    /// project it asks in its window first (`Answer::Asking`).
+    pub fn open_asked(&mut self, root: &Path) -> dc_ops::live::Answer {
+        use dc_ops::live::Answer;
+        if let Some(editor) = self.editor.as_mut() {
+            if super::live::same_folder(editor.doc.dir().root(), root) {
+                return Answer::Opened;
+            }
+            if editor.doc.unsaved() {
+                editor.leave(Leave::Open(root.to_path_buf()));
+                editor.detached.wake_editor = true;
+                return Answer::Asking;
+            }
+        }
+        match self.try_open(root, true) {
+            Ok(()) => Answer::Opened,
+            Err(error) => Answer::Refused(error),
+        }
     }
 
     /// Does what the editor asked after its frame.

@@ -72,6 +72,11 @@ enum Builtin {
     )]
     Save,
     #[command(
+        about = "Открыть проект в редакторе запущенной программы DevCast; несохранённое другого проекта редактор спросит в окне",
+        after_help = "open --project \"Урок 2.devcast\""
+    )]
+    Open,
+    #[command(
         about = "Переименовать проект: папка станет <имя>.devcast там же; отмены нет, в открытом редакторе — нельзя",
         after_help = "rename Урок 2"
     )]
@@ -272,6 +277,7 @@ impl Cli {
             Builtin::Redo => edit::travel(ctx, Way::Redo, 1),
             Builtin::History => edit::history(ctx),
             Builtin::Save => edit::save(ctx),
+            Builtin::Open => crate::open::open(ctx),
             Builtin::Rename { name } => rename::rename(ctx, &name),
             Builtin::Info => ls::info(ctx),
             Builtin::Ls {

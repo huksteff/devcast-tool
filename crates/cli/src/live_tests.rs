@@ -61,6 +61,8 @@ impl FakeEditor {
                         Answer::Written { revision }
                     }
                     Request::Write { .. } => Answer::Refused(CHANGED.to_owned()),
+                    Request::Edit { root } if root == dir.root() => Answer::Opened,
+                    Request::Edit { .. } => Answer::Asking,
                     Request::Save { .. } => {
                         log.append(&pending).unwrap();
                         pending.clear();
@@ -199,4 +201,19 @@ fn without_a_running_app_the_cli_edits_the_files() {
     let out = run(&f, "test add --secs 2", &nobody);
     assert_eq!(out.code, 1);
     assert!(out.stderr.contains("проект уже открыт"), "{}", out.stderr);
+}
+
+#[test]
+fn open_asks_the_app_to_show_the_project_in_its_editor() {
+    let (held, editor, unlocked) = pair("open");
+    let out = run(&held, "open", &editor.channel);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(out.stdout.contains("открыт в редакторе"), "{}", out.stdout);
+    let out = run(&unlocked, "open", &editor.channel);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(out.stdout.contains("спрашивает"), "{}", out.stdout);
+    editor.stop();
+    let out = run(&held, "open", &channel("nobody-open"));
+    assert_eq!(out.code, 1);
+    assert!(out.stderr.contains("не запущен"), "{}", out.stderr);
 }

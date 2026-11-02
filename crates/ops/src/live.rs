@@ -37,6 +37,9 @@ pub enum Request {
     },
     /// `devcast save`: the working state becomes `project.json` (Ctrl+S).
     Save { root: PathBuf },
+    /// `devcast open`: the editor opens the project in folder `root`; an editor with unsaved
+    /// changes of another project asks about them first.
+    Edit { root: PathBuf },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -54,6 +57,11 @@ pub enum Answer {
         revision: u64,
     },
     Saved,
+    /// The editor has the project of `Request::Edit` open.
+    Opened,
+    /// The editor asks in its window whether to save the changes of the project it had; the
+    /// project of `Request::Edit` opens after the answer.
+    Asking,
     /// Not done; the text says why and what to do.
     Refused(String),
 }
