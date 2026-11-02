@@ -88,6 +88,7 @@ impl<'a> Slider<'a> {
                 info
             });
             if field.changed() {
+                *self.value = rounded(*self.value, self.step);
                 rail.mark_changed();
             }
             rail
@@ -103,7 +104,8 @@ impl<'a> Slider<'a> {
         let right = rect.right() - KNOB;
         if let Some(pointer) = response.interact_pointer_pos() {
             let t = f64::from(((pointer.x - left) / (right - left)).clamp(0.0, 1.0));
-            let value = ((min + t * (max - min)) / self.step).round() * self.step;
+            let steps = ((min + t * (max - min)) / self.step).round();
+            let value = rounded(steps * self.step, self.step);
             if value != *self.value {
                 *self.value = value;
                 response.mark_changed();
@@ -137,6 +139,13 @@ fn decimals(step: f64) -> usize {
     digits
 }
 
+/// `value` with only the digits after the point a step of `step` has, so the project gets 0.15
+/// and not 0.15000000000000002 (3 × 0.05), the same number the CLI writes.
+fn rounded(value: f64, step: f64) -> f64 {
+    let scale = 10f64.powi(decimals(step) as i32);
+    (value * scale).round() / scale
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -145,5 +154,13 @@ mod tests {
         assert_eq!(super::decimals(0.1), 1);
         assert_eq!(super::decimals(0.05), 2);
         assert_eq!(super::decimals(0.25), 2);
+    }
+
+    #[test]
+    fn values_keep_only_the_digits_of_the_step() {
+        assert_eq!(super::rounded(3.0 * 0.05, 0.05).to_string(), "0.15");
+        assert_eq!(super::rounded(7.0 * 0.1, 0.1).to_string(), "0.7");
+        assert_eq!(super::rounded(1.015049, 0.001).to_string(), "1.015");
+        assert_eq!(super::rounded(12.0, 1.0).to_string(), "12");
     }
 }
