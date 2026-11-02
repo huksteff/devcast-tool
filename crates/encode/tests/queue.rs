@@ -162,3 +162,30 @@ fn a_panicking_job_fails_and_the_next_one_runs() {
     queue.wait_idle();
     assert_eq!(states(&queue)[1], "b done");
 }
+
+#[test]
+fn a_watched_queue_hears_the_start_each_frame_and_the_end() {
+    let (told, heard_watch) = channel::<String>();
+    let told = std::sync::Mutex::new(told);
+    let queue = ExportQueue::watched(Box::new(move |status| {
+        let state = match &status.state {
+            JobState::Running { progress, .. } => {
+                format!("{}/{}", progress.done, progress.total)
+            }
+            JobState::Done { .. } => "done".to_owned(),
+            other => format!("{other:?}"),
+        };
+        let line = format!("{} {state}", status.label);
+        told.lock().unwrap().send(line).unwrap();
+    }))
+    .unwrap();
+    let (events, heard) = channel();
+    let (a, step_a) = stepped("a", 2, events);
+    queue.push("a".into(), a);
+    step_a.send(()).unwrap();
+    step_a.send(()).unwrap();
+    heard.recv().unwrap();
+    heard.recv().unwrap();
+    let seen: Vec<String> = heard_watch.iter().take(4).collect();
+    assert_eq!(seen, ["a 0/0", "a 1/2", "a 2/2", "a done"]);
+}

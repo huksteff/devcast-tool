@@ -3,13 +3,13 @@
 
 use dc_capture::win::on_console_stop;
 use dc_encode::export::{GIF_FPS, MP4_FPS};
+use dc_ops::export::{Format, Spec};
 use dc_render::{AdapterChoice, Gpu};
 use serde_json::json;
 
 use crate::edit::Ctx;
 use crate::error::CliError;
-use crate::export_args::{ExportArgs, Format, settings};
-use crate::export_job::Spec;
+use crate::export_args::{ExportArgs, settings};
 use crate::export_queue::{self, Finished, Job, Reply, Request, Server};
 use crate::find::find_project;
 use crate::run::Answer;

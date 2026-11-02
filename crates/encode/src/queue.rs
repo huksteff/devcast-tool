@@ -15,6 +15,10 @@ use crate::export::{Exported, Progress, ProgressFn};
 /// One export: runs on the worker, reports progress, stops when it returns `Break`.
 pub type Job = Box<dyn FnOnce(&mut ProgressFn<'_>) -> Result<Exported, EncodeError> + Send>;
 
+/// Hears every change the worker makes to a job (start, each frame, end), after the change: a
+/// window wakes on it instead of polling the queue.
+pub type Watch = Box<dyn Fn(&JobStatus) + Send + Sync>;
+
 /// Where a job is.
 #[derive(Debug, Clone, PartialEq)]
 pub enum JobState {
@@ -57,6 +61,7 @@ pub struct ExportQueue {
 struct Shared {
     state: Mutex<State>,
     changed: Condvar,
+    watch: Option<Watch>,
 }
 
 #[derive(Default)]
@@ -76,9 +81,19 @@ struct Entry {
 
 impl ExportQueue {
     pub fn new() -> Result<Self, EncodeError> {
+        Self::start(None)
+    }
+
+    /// [`ExportQueue::new`] whose `watch` hears every change the worker makes to a job.
+    pub fn watched(watch: Watch) -> Result<Self, EncodeError> {
+        Self::start(Some(watch))
+    }
+
+    fn start(watch: Option<Watch>) -> Result<Self, EncodeError> {
         let shared = Arc::new(Shared {
             state: Mutex::new(State::default()),
             changed: Condvar::new(),
+            watch,
         });
         let worker = std::thread::Builder::new()
             .name("devcast-export".to_owned())
@@ -197,11 +212,19 @@ impl Shared {
 
     fn set(&self, id: u32, change: impl FnOnce(&mut Entry)) {
         let mut state = self.lock();
-        if let Some(entry) = state.jobs.iter_mut().find(|e| e.status.id == id) {
-            change(entry);
-        }
+        let status = state
+            .jobs
+            .iter_mut()
+            .find(|e| e.status.id == id)
+            .and_then(|entry| {
+                change(entry);
+                self.watch.as_ref().map(|_| entry.status.clone())
+            });
         drop(state);
         self.changed.notify_all();
+        if let (Some(watch), Some(status)) = (&self.watch, status) {
+            watch(&status);
+        }
     }
 }
 

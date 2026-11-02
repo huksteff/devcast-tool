@@ -1607,6 +1607,7 @@ dependencies = [
  "dc-audio",
  "dc-capture",
  "dc-core",
+ "dc-encode",
  "dc-fx-annotations",
  "dc-fx-audio-tracks",
  "dc-fx-blur",
