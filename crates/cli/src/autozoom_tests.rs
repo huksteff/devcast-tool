@@ -1,9 +1,9 @@
 use dc_capture::input::{Button, CursorEvent};
 use dc_fx_zoom::ZoomEffect;
+use dc_ops::autozoom::after_recording;
+use dc_project::ProjectLock;
 
-use crate::autozoom::after_recording;
 use crate::test_util::Recordings;
-use crate::workspace::Workspace;
 
 fn click(secs: f64, x: i32, y: i32) -> [(f64, CursorEvent); 2] {
     [
@@ -120,18 +120,25 @@ fn without_clicks_nothing_is_suggested() {
 #[test]
 fn a_recording_gets_auto_zooms_unless_the_setting_is_off() {
     let f = project();
-    let mut workspace = Workspace::open(f.dir.clone(), true, false).unwrap();
-    let added = after_recording(&mut workspace).unwrap().unwrap();
+    let lock = ProjectLock::acquire(&f.dir, "devcast").unwrap();
+    let added = after_recording(&f.dir, &lock).unwrap().unwrap();
     assert_eq!(added.to_string(), "зумы +3 z1..z3");
-    let mut state = workspace.project.state::<ZoomEffect>().unwrap();
-    state.settings.auto = false;
-    workspace.project.set_state::<ZoomEffect>(&state).unwrap();
-    assert!(after_recording(&mut workspace).unwrap().is_none());
-    drop(workspace);
+    drop(lock);
+    f.ok("set zoom.auto=false");
+    let lock = ProjectLock::acquire(&f.dir, "devcast").unwrap();
+    assert!(after_recording(&f.dir, &lock).unwrap().is_none());
+    drop(lock);
+    let history = f.ok("history");
+    assert!(history.contains("  zoom add  зумы +3 z1..z3"), "{history}");
     assert_eq!(
-        f.ok("history"),
-        "отменить (devcast undo N):
-  1  zoom add  зумы +3 z1..z3"
+        f.dir
+            .load()
+            .unwrap()
+            .state::<ZoomEffect>()
+            .unwrap()
+            .zooms
+            .len(),
+        3
     );
 }
 

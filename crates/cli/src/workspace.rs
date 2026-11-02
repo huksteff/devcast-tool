@@ -10,7 +10,6 @@ use dc_core::{History, Project, SourceTime};
 use dc_project::history_log::Event;
 use dc_project::{HistoryLog, ProjectDir, ProjectError, ProjectLock, Working};
 
-use crate::autozoom;
 use crate::error::CliError;
 
 #[derive(Debug)]
@@ -34,37 +33,23 @@ impl Workspace {
             false => None,
         };
         let recovered = recover(&dir, lock.is_some(), dry_run)?;
-        let added = recovered.clips > 0;
+        let lock = lock.or(recovered.lock);
+        let mut warnings = recovered.lines;
+        if let (true, Some(held)) = (recovered.clips > 0, &lock) {
+            warnings.extend(auto_zooms(&dir, held));
+        }
         let working = Working::load(&dir, write)?;
         let log = HistoryLog::new(&dir);
-        let mut warnings = recovered.lines;
         warnings.extend(working.warnings);
-        let mut workspace = Self {
+        Ok(Self {
             dir,
             log,
-            _lock: lock.or(recovered.lock),
+            _lock: lock,
             unsaved: working.unsaved,
             project: working.project,
             history: working.history,
             warnings,
-        };
-        if added {
-            workspace.auto_zooms();
-        }
-        Ok(workspace)
-    }
-
-    /// Auto zooms for the recovered recordings, as after `devcast record`; a failure is a
-    /// warning: the recording itself is already in the project.
-    fn auto_zooms(&mut self) {
-        let line = match autozoom::after_recording(self) {
-            Ok(Some(applied)) if applied.changed => {
-                format!("автозумы восстановленной записи: {applied}")
-            }
-            Ok(_) => return,
-            Err(e) => format!("автозумы восстановленной записи не поставлены: {e}"),
-        };
-        self.warnings.push(line);
+        })
     }
 
     pub fn dir(&self) -> &ProjectDir {
@@ -159,6 +144,20 @@ fn recover(dir: &ProjectDir, locked: bool, dry_run: bool) -> Result<Recovery, Cl
             .count(),
         lock,
     })
+}
+
+/// Auto zooms for the recovered recordings, as after `devcast record`; a failure is a warning:
+/// the recording itself is already in the project.
+fn auto_zooms(dir: &ProjectDir, lock: &ProjectLock) -> Option<String> {
+    match dc_ops::autozoom::after_recording(dir, lock) {
+        Ok(Some(applied)) if applied.changed => {
+            Some(format!("автозумы восстановленной записи: {applied}"))
+        }
+        Ok(_) => None,
+        Err(e) => Some(format!(
+            "автозумы восстановленной записи не поставлены: {e}"
+        )),
+    }
 }
 
 fn line(recovered: &Recovered) -> String {

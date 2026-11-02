@@ -1,6 +1,6 @@
 //! Auto zooms from the clicks of the recordings (`dc_fx_zoom::suggest`), one path for
-//! `devcast zoom suggest`, `devcast zoom add --at clicks`, the zooms after a recording and the
-//! editor's «Подобрать зумы». The suggestion is not a registry command: a command is a pure
+//! `devcast zoom suggest`, `devcast zoom add --at clicks`, the zooms after a recording (of
+//! `devcast record` and of the app) and the editor's «Подобрать зумы». The suggestion is not a registry command: a command is a pure
 //! function of the project, and the clicks lie in the recordings' telemetry files, which the
 //! caller's project folder gives.
 
@@ -8,9 +8,14 @@ use std::path::Path;
 
 use dc_capture::input::{Button, CursorEvent};
 use dc_capture::project::{Recorded, fraction, recorded};
-use dc_core::Project;
-use dc_fx_zoom::{Action, Mode, Pointer, Recording, Suggestions, ZoomAdd};
+use dc_core::{Op, Project};
+use dc_fx_zoom::{
+    Action, DEFAULT_SCALE, Mode, Pointer, Recording, Suggestions, ZoomAdd, ZoomEffect,
+};
+use dc_project::history_log::Event;
+use dc_project::{HistoryLog, ProjectDir, ProjectLock, Working};
 
+use crate::apply::{Applied, apply_commands, as_commands};
 use crate::error::OpsError;
 
 /// The value of `zoom add --at` that places the suggested zooms.
@@ -47,6 +52,49 @@ pub fn no_click_zooms(found: &Suggestions) -> Option<String> {
             found.taken
         ),
     })
+}
+
+/// A recording was just added to the project `dir` (the stop of `devcast record` or of the
+/// app's recording, a killed recording recovered on open): if the zoom setting `auto` is on, the
+/// suggested zooms as one undo step, written as a `devcast` edit is (`history.jsonl`, then
+/// `session.json` when unsaved changes are left, otherwise `project.json`). `None` if the setting
+/// is off. The caller holds `_lock` of `dir`.
+pub fn after_recording(dir: &ProjectDir, _lock: &ProjectLock) -> Result<Option<Applied>, OpsError> {
+    let failed = |e: dc_project::ProjectError| OpsError::Failed(e.to_string());
+    let mut working = Working::load(dir, false).map_err(failed)?;
+    let settings = working
+        .project
+        .state::<ZoomEffect>()
+        .map_err(|e| OpsError::Failed(e.to_string()))?
+        .settings;
+    if !settings.auto {
+        return Ok(None);
+    }
+    let found = click_zooms(dir.root(), &working.project)?;
+    let commands = click_commands(&found, DEFAULT_SCALE, Mode::default());
+    let applied = apply_commands(
+        &mut working.project,
+        &mut working.history,
+        ZoomAdd::NAME,
+        &as_commands(&commands),
+        false,
+    )?;
+    if applied.changed {
+        let change = working.history.changes().last().cloned().ok_or_else(|| {
+            OpsError::Failed(
+                "внутренняя ошибка: автозумы не попали в историю. Это баг, сообщи о нём".to_owned(),
+            )
+        })?;
+        HistoryLog::new(dir)
+            .append(&[Event::Do(change)])
+            .map_err(failed)?;
+        match working.unsaved {
+            true => dir.save_session(&working.project),
+            false => dir.save(&working.project),
+        }
+        .map_err(failed)?;
+    }
+    Ok(Some(applied))
 }
 
 /// The moves, releases and left, right or middle presses of one recording, in time order.

@@ -1,16 +1,15 @@
 //! Auto zooms from the clicks of the recordings (`dc_ops::autozoom`): `devcast zoom suggest`
-//! shows them, `zoom add --at clicks` (an op or a step of a plan) adds them in its undo step, and a recording added
-//! to a project (`devcast record` stop, a killed one recovered on open) gets them when the
-//! project's zoom setting `auto` is on.
+//! shows them, `zoom add --at clicks` (an op or a step of a plan) adds them in its undo step. The
+//! zooms after a recording are `dc_ops::autozoom::after_recording`.
 
 use dc_core::{Command, Op};
-use dc_fx_zoom::{DEFAULT_SCALE, Mode, Suggestions, ZoomAdd, ZoomEffect};
+use dc_fx_zoom::{DEFAULT_SCALE, Mode, Suggestions, ZoomAdd};
 use dc_ops::autozoom::CLICKS;
-use dc_ops::{Applied, Commands, Step, as_commands, click_commands, no_click_zooms};
+use dc_ops::{Commands, Step, click_commands, no_click_zooms};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::edit::{self, Ctx, answer};
+use crate::edit::{Ctx, answer};
 use crate::error::CliError;
 use crate::round::thousandths;
 use crate::run::Answer;
@@ -100,29 +99,4 @@ pub(crate) fn clicks(
             .map(|c| Box::new(c) as Box<dyn Command>)
             .collect(),
     ))
-}
-
-/// A recording was just added to the project of `workspace` (the stop of `devcast record`, or a
-/// killed recording recovered on open): if the zoom setting `auto` is on, adds the suggested
-/// zooms as one undo step and writes them. `None` if the setting is off.
-pub(crate) fn after_recording(workspace: &mut Workspace) -> Result<Option<Applied>, CliError> {
-    let settings = workspace
-        .project
-        .state::<ZoomEffect>()
-        .map_err(|e| CliError::Failed(e.to_string()))?
-        .settings;
-    if !settings.auto {
-        return Ok(None);
-    }
-    let found = suggestions(workspace)?;
-    let commands = click_commands(&found, DEFAULT_SCALE, Mode::default());
-    let applied = dc_ops::apply_commands(
-        &mut workspace.project,
-        &mut workspace.history,
-        ZoomAdd::NAME,
-        &as_commands(&commands),
-        false,
-    )?;
-    edit::write(workspace, &applied)?;
-    Ok(Some(applied))
 }

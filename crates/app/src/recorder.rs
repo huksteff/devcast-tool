@@ -1,7 +1,8 @@
 //! The recording of the app on its own thread: the thread starts `ProjectRecording` (as
 //! `devcast record` does), then serves pause, resume, stop and cancel; the UI never waits for
-//! the recorder. Each event wakes the UI. When the app goes away without a stop, the recording
-//! is stopped and kept, as `devcast record` does when its channel closes.
+//! the recorder. Each event wakes the UI. After the stop the project gets its auto zooms, as after
+//! `devcast record`. When the app goes away without a stop, the recording is stopped and kept, as
+//! `devcast record` does when its channel closes.
 
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -9,7 +10,7 @@ use std::thread::JoinHandle;
 
 use dc_capture::win::{ProjectRecording, RecordedProject};
 use dc_capture::{HostTime, RecordingConfig};
-use dc_project::Defaults;
+use dc_project::{Defaults, ProjectDir, ProjectLock};
 use eframe::egui;
 
 use crate::editor::LOCK_OWNER;
@@ -31,8 +32,9 @@ pub enum Event {
     Resumed(HostTime),
     /// A pause or resume failed; the recording goes on.
     Error(String),
-    /// The recording is finished and its project saved; the thread has ended.
-    Stopped(Box<RecordedProject>),
+    /// The recording is finished and its project saved with its auto zooms; the thread has
+    /// ended. The second field is why the auto zooms were not added.
+    Stopped(Box<RecordedProject>, Option<String>),
     /// The recording and its project are deleted; the thread has ended.
     Cancelled,
     /// The recording did not start or did not finish; the thread has ended.
@@ -146,7 +148,10 @@ fn run(
             }),
             Request::Stop => {
                 return send(match recording.stop() {
-                    Ok(project) => Event::Stopped(Box::new(project)),
+                    Ok(project) => {
+                        let zooms = auto_zooms(&project.dir).err();
+                        Event::Stopped(Box::new(project), zooms)
+                    }
                     Err(error) => Event::Failed(error.to_string()),
                 });
             }
@@ -159,3 +164,18 @@ fn run(
         }
     }
 }
+
+/// The auto zooms of the recording just stopped into `dir` (`dc_ops::autozoom::after_recording`,
+/// the path of `devcast record`); the error says why they were not added.
+pub(crate) fn auto_zooms(dir: &ProjectDir) -> Result<(), String> {
+    let lock = ProjectLock::acquire(dir, LOCK_OWNER).map_err(|e| e.to_string())?;
+    let applied = dc_ops::autozoom::after_recording(dir, &lock).map_err(|e| e.to_string())?;
+    if let Some(applied) = applied {
+        tracing::info!("автозумы после записи: {applied}");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "recorder_tests.rs"]
+mod tests;

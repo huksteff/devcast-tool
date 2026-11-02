@@ -8,16 +8,14 @@ use std::time::{Duration, Instant};
 use dc_capture::VIDEO_TRACK;
 use dc_capture::win::{ProjectRecording, RecordedProject, on_console_stop};
 use dc_core::SourceTime;
-use dc_project::Defaults;
+use dc_project::{Defaults, ProjectLock};
 use serde_json::json;
 
-use crate::autozoom;
 use crate::edit::Ctx;
 use crate::error::CliError;
 use crate::record_args::{RecordArgs, config, duration, project_folder};
 use crate::record_control::{self, Control, Reply, Request, Server};
 use crate::run::Answer;
-use crate::workspace::Workspace;
 
 /// `devcast record [stop|pause|resume|cancel] …`.
 pub(crate) fn record(
@@ -191,8 +189,9 @@ fn stop(recording: ProjectRecording) -> Result<Answer, CliError> {
         .stop()
         .map_err(|e| CliError::Failed(e.to_string()))?;
     let mut answer = summary(&recorded)?;
-    let zooms = Workspace::open(recorded.dir.clone(), true, false)
-        .and_then(|mut workspace| autozoom::after_recording(&mut workspace));
+    let zooms = ProjectLock::acquire(&recorded.dir, "devcast")
+        .map_err(CliError::from)
+        .and_then(|lock| Ok(dc_ops::autozoom::after_recording(&recorded.dir, &lock)?));
     match zooms {
         Ok(Some(applied)) => {
             answer.text.push_str(&format!("; автозумы: {applied}"));

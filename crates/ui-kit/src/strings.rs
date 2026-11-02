@@ -67,6 +67,11 @@ pub mod hud {
         format!("{n} с")
     }
 
+    /// Toast after the stop: the recording is there, its auto zooms are not.
+    pub fn auto_zooms_failed(error: &str) -> String {
+        format!("Автозумы не поставлены: {error}. Добавь их в редакторе: «Подобрать зумы»")
+    }
+
     pub fn cancel_text(recorded: &str) -> String {
         format!("Запись на паузе. Записанные {recorded} будут удалены. Это нельзя вернуть.")
     }

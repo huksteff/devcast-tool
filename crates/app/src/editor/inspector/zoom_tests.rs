@@ -54,10 +54,6 @@ fn zoom_tab_edits_are_zoom_motion() {
     click(&mut harness, egui::Role::RadioButton, names::ZOOM_SMOOTH);
     click(&mut harness, egui::Role::Switch, names::ZOOM_CONNECT);
     click(&mut harness, egui::Role::Switch, names::ZOOM_AUTO);
-    assert!(
-        harness.query_by_label(names::ZOOM_AUTO_NOTE).is_some(),
-        "the switch says it is for devcast record only"
-    );
     harness.get_by_label(text::FINE).click();
     harness.run();
     type_in(&mut harness, names::ZOOM_BLUR, 1.0);
@@ -93,10 +89,6 @@ fn zoom_tab_reset_is_one_step_to_the_defaults() {
     assert!(harness.get_by_label(&basic).accesskit_node().is_disabled());
     click(&mut harness, egui::Role::RadioButton, names::ZOOM_SMOOTH);
     click(&mut harness, egui::Role::Switch, names::ZOOM_AUTO);
-    assert!(
-        harness.query_by_label(names::ZOOM_AUTO_NOTE).is_some(),
-        "the switch says it is for devcast record only"
-    );
     let edited = ["zoom motion --preset smooth", "zoom motion --auto false"];
     harness.get_by_label(&basic).click();
     harness.run();

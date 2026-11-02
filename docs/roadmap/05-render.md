@@ -129,7 +129,7 @@
 
   Решение владельца 2026-11-02: `defaults show` печатает строки в формате `set` — имена и единицы аргументов команд настроек (`Effect::settings_args`; `zoom.zoom_in=1.522575` — секунды), строку можно вставить в `set` или `defaults set`.
 
-  Решение владельца 2026-11-02: автозумы после записи задаются через `set`: `defaults set zoom.auto=false` — для следующих `devcast record`, `set zoom.auto=false` — в проекте.
+  Решение владельца 2026-11-02: автозумы после записи задаются через `set`: `defaults set zoom.auto=false` — для следующих записей (`devcast record` и программа), `set zoom.auto=false` — в проекте.
 
   Решение владельца 2026-11-02: тест «`frame` = кадр экспорта» — `still_tests::frame_is_the_frame_of_the_export`: кадр `devcast frame` и кадр MP4 `devcast export` в тот же момент (копия `clicks.devcast` с фигурой, зумом и вырезом) совпадают по яркости BT.709 с точностью до шума кодека (среднее < 1,5 из 255), кадр другого момента — нет.
 

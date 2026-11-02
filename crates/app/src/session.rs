@@ -15,7 +15,7 @@ use crate::hotkeys::Command;
 use crate::hud::popover;
 use crate::recorder::{Event, Recorder, Request};
 use crate::tray::TrayView;
-use dc_ui_kit::strings::tray;
+use dc_ui_kit::strings::{hud, tray};
 
 #[derive(Default)]
 pub enum Session {
@@ -199,9 +199,9 @@ impl Shared {
                 self.session = session;
                 self.report(Err(message));
             }
-            (Event::Stopped(project), session) => {
+            (Event::Stopped(project, zooms), session) => {
                 finished(session);
-                self.recorded(*project);
+                self.recorded(*project, zooms);
             }
             (Event::Cancelled, session) => finished(session),
             (Event::Failed(message), Session::Preparing(recorder)) => {
@@ -224,12 +224,15 @@ impl Shared {
     }
 
     /// The recording is saved in its project: the editor opens with it, the HUD hides until
-    /// the editor closes (v1). What went wrong on the way is reported.
-    fn recorded(&mut self, project: dc_capture::win::RecordedProject) {
+    /// the editor closes (v1). What went wrong on the way (`zooms`: the auto zooms) is reported.
+    fn recorded(&mut self, project: dc_capture::win::RecordedProject, zooms: Option<String>) {
         tracing::info!("запись сохранена: {}", project.dir.root().display());
         self.open_editor(&project);
         for problem in project.summary.problems() {
             self.report(Err(problem));
+        }
+        if let Some(problem) = zooms {
+            self.report(Err(hud::auto_zooms_failed(&problem)));
         }
     }
 
