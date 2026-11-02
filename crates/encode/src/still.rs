@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::num::NonZeroU32;
 
+use dc_core::PixelSize;
 use dc_media::{Decoder, FramePool, Picture, cached_probe, decode_picture, encode_png, nv12_len};
 use dc_project::ProjectDir;
 use dc_render::{Bitmap, Compositor, Gpu, Image, Layer, Nv12, Scene};
@@ -105,28 +106,30 @@ impl<'p> Sources<'p> {
     }
 }
 
-/// `scene` as a PNG of its size.
+/// `scene` scaled to `size` as a PNG.
 pub fn frame_png(
     gpu: &Gpu,
     compositor: &mut Compositor,
     sources: &mut Sources<'_>,
     scene: &Scene,
+    size: PixelSize,
 ) -> Result<Vec<u8>, EncodeError> {
-    let image = render(gpu, compositor, sources, scene)?;
+    let image = render(gpu, compositor, sources, scene, size)?;
     Ok(encode_png(image.size, &image.rgba)?)
 }
 
-/// `scenes` side by side, `columns` in a row (`Image::sheet`), as one PNG.
+/// `scenes` scaled to `cell` side by side, `columns` in a row (`Image::sheet`), as one PNG.
 pub fn sheet_png(
     gpu: &Gpu,
     compositor: &mut Compositor,
     sources: &mut Sources<'_>,
     scenes: &[Scene],
     columns: NonZeroU32,
+    cell: PixelSize,
 ) -> Result<Vec<u8>, EncodeError> {
     let frames = scenes
         .iter()
-        .map(|scene| render(gpu, compositor, sources, scene))
+        .map(|scene| render(gpu, compositor, sources, scene, cell))
         .collect::<Result<Vec<_>, _>>()?;
     let sheet = Image::sheet(&frames, columns)?;
     Ok(encode_png(sheet.size, &sheet.rgba)?)
@@ -137,7 +140,8 @@ fn render(
     compositor: &mut Compositor,
     sources: &mut Sources<'_>,
     scene: &Scene,
+    size: PixelSize,
 ) -> Result<Image, EncodeError> {
     sources.feed(gpu, compositor, scene)?;
-    Ok(compositor.render(gpu, scene)?)
+    Ok(compositor.render_at(gpu, scene, size)?)
 }

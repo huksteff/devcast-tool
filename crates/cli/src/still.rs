@@ -5,9 +5,9 @@
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 
-use dc_core::{OutputTime, TimeDelta};
+use dc_core::{OutputTime, PixelSize, TimeDelta};
 use dc_encode::{Sources, frame_png, sheet_png};
-use dc_render::{AdapterChoice, Gpu, Scene};
+use dc_render::{AdapterChoice, Gpu, SHEET_GAP, Scene};
 use serde_json::json;
 
 use crate::edit::Ctx;
@@ -17,6 +17,8 @@ use crate::workspace::Workspace;
 
 /// Most frames of a sheet: more would make each too small to read.
 const SHEET_MAX: u32 = 36;
+/// Narrowest frame of `--width`, px: smaller shows nothing.
+const WIDTH_MIN: u32 = 16;
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct FrameArgs {
@@ -27,6 +29,11 @@ pub(crate) struct FrameArgs {
         help = "Сетка через 0.1 кадра с подписями: доли кадра, как у --rect, --x/--y и точек рисунка (без зума)"
     )]
     grid: bool,
+    #[arg(
+        long,
+        help = "Ширина картинки, px: кадр уменьшается с теми же пропорциями; без неё — размер кадра проекта"
+    )]
+    width: Option<u32>,
     #[arg(short = 'o', long, help = "PNG-файл, куда писать")]
     out: PathBuf,
 }
@@ -43,6 +50,11 @@ pub(crate) struct SheetArgs {
         help = "Сколько кадров, 1–36: начала n равных частей отрезка"
     )]
     count: u32,
+    #[arg(
+        long,
+        help = "Ширина всей раскадровки, px: кадры уменьшаются с теми же пропорциями; без неё — размер кадра проекта"
+    )]
+    width: Option<u32>,
     #[arg(short = 'o', long, help = "PNG-файл, куда писать")]
     out: PathBuf,
 }
@@ -58,7 +70,11 @@ pub(crate) fn frame(ctx: &Ctx<'_>, args: &FrameArgs) -> Result<Answer, CliError>
             "--at {at}: такого момента нет, видео идёт от 0:00.000 до {end}"
         )));
     }
-    let size = evaluator.canvas();
+    let canvas = evaluator.canvas();
+    let size = match args.width {
+        Some(width) => scaled(canvas, width, "--width")?,
+        None => canvas,
+    };
     let text = format!("кадр {at} ({}×{})", size.width, size.height);
     let json = json!({"out": out, "at": at.as_secs_f64(), "size": [size.width, size.height]});
     let mut scene = evaluator.evaluate(at);
@@ -71,7 +87,7 @@ pub(crate) fn frame(ctx: &Ctx<'_>, args: &FrameArgs) -> Result<Answer, CliError>
         &out,
         text,
         json,
-        |gpu, compositor, sources| frame_png(gpu, compositor, sources, &scene),
+        |gpu, compositor, sources| frame_png(gpu, compositor, sources, &scene, size),
     )
 }
 
@@ -97,6 +113,15 @@ pub(crate) fn sheet(ctx: &Ctx<'_>, args: &SheetArgs) -> Result<Answer, CliError>
     let times = moments(from, to, args.count);
     let columns = columns(args.count);
     let rows = args.count.div_ceil(columns.get());
+    let canvas = evaluator.canvas();
+    let cell = match args.width {
+        Some(width) => {
+            let gaps = (columns.get() + 1) * SHEET_GAP;
+            let what = format!("--width {width} на {columns} столбца с полями по {SHEET_GAP} px");
+            scaled(canvas, width.saturating_sub(gaps) / columns.get(), &what)?
+        }
+        None => canvas,
+    };
     let list: Vec<String> = times.iter().map(ToString::to_string).collect();
     let text = format!(
         "раскадровка {} кадров ({}×{rows}): {}",
@@ -113,8 +138,23 @@ pub(crate) fn sheet(ctx: &Ctx<'_>, args: &SheetArgs) -> Result<Answer, CliError>
         &out,
         text,
         json,
-        |gpu, compositor, sources| sheet_png(gpu, compositor, sources, &scenes, columns),
+        |gpu, compositor, sources| sheet_png(gpu, compositor, sources, &scenes, columns, cell),
     )
+}
+
+/// `canvas` scaled to `width`, the same aspect; no wider than `canvas` and no narrower than
+/// [`WIDTH_MIN`].
+fn scaled(canvas: PixelSize, width: u32, what: &str) -> Result<PixelSize, CliError> {
+    if !(WIDTH_MIN..=canvas.width).contains(&width) {
+        return Err(CliError::Failed(format!(
+            "{what}: ширина кадра выходит {width} px, а можно от {WIDTH_MIN} до {} (ширина кадра проекта)",
+            canvas.width
+        )));
+    }
+    Ok(PixelSize {
+        width,
+        height: canvas.height * width / canvas.width,
+    })
 }
 
 /// Starts of `count` equal parts of `from..to`.

@@ -85,21 +85,21 @@ fn frame_draws_the_annotations_and_the_grid() {
         "between lines"
     );
 
+    let text = f.ok("frame --at 2 --width 640 -o ../малый.png");
+    assert!(text.starts_with("кадр 0:02.000 (640×360) → "), "{text}");
+    let small = f.png("малый.png");
+    assert_eq!((small.size.width, small.size.height), (640, 360));
+    assert_eq!(
+        pixel(&small, 480, 162),
+        [0xef, 0x44, 0x44, 0xff],
+        "the shape"
+    );
+
     let dry = f.ok("frame --at 2 -o ../нет.png --dry-run");
     assert!(dry.starts_with("dry-run, файл не записан"), "{dry}");
     assert!(!f.tmp.path().join("нет.png").exists());
 }
 
-#[test]
-fn sheet_puts_frames_of_equal_parts_in_rows() {
-    let f = Clicks::new();
-    let text = f.ok("sheet --from 1 --to 9 -n 4 -o ../лист.png");
-    assert!(
-        text.starts_with("раскадровка 4 кадров (2×2): 0:01.000, 0:03.000, 0:05.000, 0:07.000 → "),
-        "{text}"
-    );
-    let sheet = f.png("лист.png");
-    let size = |cell: u32| 2 * (cell + SHEET_GAP) + SHEET_GAP;
 /// `frame` shows what the export writes at the same moment (same evaluator, sources and
 /// compositor): the luma of the PNG and of the MP4 frame differ only by coding noise, while a frame
 /// of another moment differs much more.
@@ -155,10 +155,23 @@ fn mean_difference(picture: &Picture, luma: &[u8]) -> f64 {
     total / luma.len() as f64
 }
 
+#[test]
+fn sheet_puts_frames_of_equal_parts_in_rows() {
+    let f = Clicks::new();
+    let text = f.ok("sheet --from 1 --to 9 -n 4 -o ../лист.png");
+    assert!(
+        text.starts_with("раскадровка 4 кадров (2×2): 0:01.000, 0:03.000, 0:05.000, 0:07.000 → "),
+        "{text}"
+    );
+    let sheet = f.png("лист.png");
+    let size = |cell: u32| 2 * (cell + SHEET_GAP) + SHEET_GAP;
     assert_eq!(
         (sheet.size.width, sheet.size.height),
         (size(1280), size(720))
     );
+    f.ok("sheet --from 1 --to 9 -n 4 --width 664 -o ../малый.png");
+    let small = f.png("малый.png");
+    assert_eq!((small.size.width, small.size.height), (664, size(180)));
 }
 
 #[test]
@@ -173,6 +186,9 @@ fn wrong_moments_and_files_are_refused() {
         ("sheet --from 5 --to 5 -o ../a.png", 1),
         ("sheet -n 0 -o ../a.png", 2),
         ("sheet -n 37 -o ../a.png", 2),
+        ("frame --at 2 --width 1281 -o ../a.png", 1),
+        ("frame --at 2 --width 15 -o ../a.png", 1),
+        ("sheet -n 4 --width 40 -o ../a.png", 1),
     ] {
         let out = run_line_with(line, &f.root, &registry, &defaults);
         assert_eq!(out.code, code, "{line}: {}", out.stderr);

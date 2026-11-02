@@ -1,5 +1,5 @@
 //! Frames without a window (`devcast frame` and `sheet`, reference frames): a scene drawn into a
-//! texture of its own size and read back, and frames laid out on one sheet.
+//! texture of its own or a given size and read back, and frames laid out on one sheet.
 
 use std::num::NonZeroU32;
 
@@ -19,7 +19,17 @@ const GAP_RGBA: [u8; 4] = [128, 128, 128, 255];
 impl Compositor {
     /// `scene` drawn at its own size and read back.
     pub fn render(&mut self, gpu: &Gpu, scene: &Scene) -> Result<Image, RenderError> {
-        let target = gpu.target(scene.size);
+        self.render_at(gpu, scene, scene.size)
+    }
+
+    /// `scene` drawn scaled to `size`, as the export draws it at its resolution, and read back.
+    pub fn render_at(
+        &mut self,
+        gpu: &Gpu,
+        scene: &Scene,
+        size: PixelSize,
+    ) -> Result<Image, RenderError> {
+        let target = gpu.target(size);
         self.draw(gpu, scene, &target)?;
         Ok(gpu.read(&target)?)
     }

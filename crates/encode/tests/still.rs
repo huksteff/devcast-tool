@@ -112,7 +112,7 @@ fn frame_shows_the_clip_at_its_time_and_the_picture() {
     let mut compositor = Compositor::new(&gpu);
     let mut sources = Sources::new(&project);
     for (seconds, color) in [(0.2, [255, 0, 0, 255]), (0.7, [0, 0, 255, 255])] {
-        let png = frame_png(&gpu, &mut compositor, &mut sources, &scene(seconds)).unwrap();
+        let png = frame_png(&gpu, &mut compositor, &mut sources, &scene(seconds), SIZE).unwrap();
         let picture = read_png(dir.path(), &png);
         assert_eq!(picture.size, SIZE);
         near(
@@ -133,7 +133,7 @@ fn sheet_puts_moments_side_by_side() {
     let mut sources = Sources::new(&project);
     let scenes = [scene(0.2), scene(0.7)];
     let columns = NonZeroU32::new(2).unwrap();
-    let png = sheet_png(&gpu, &mut compositor, &mut sources, &scenes, columns).unwrap();
+    let png = sheet_png(&gpu, &mut compositor, &mut sources, &scenes, columns, SIZE).unwrap();
     let picture = read_png(dir.path(), &png);
     let cell = SIZE.width + SHEET_GAP;
     assert_eq!(picture.size.width, 2 * cell + SHEET_GAP);
@@ -169,6 +169,7 @@ fn a_missing_picture_frame_is_an_error() {
         &mut Compositor::new(&gpu),
         &mut Sources::new(&project),
         &scene,
+        SIZE,
     )
     .unwrap_err();
     assert!(error.to_string().contains("кадра 3 нет"), "{error}");
