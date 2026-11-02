@@ -3,15 +3,15 @@
 //!
 //! Undo and redo name their step and shortcut in the tooltip, help opens the shortcut help
 //! (`help.rs`). «Записи» opens and closes the library (`library/`). «Экспорт» opens the export
-//! dialog, the queue button its list while the queue has jobs (`export.rs`). Disabled until its
-//! task: «Проекты» (7.28).
-//! Renaming by a click on the name waits for 7.28: the name is the project folder's and no
-//! registry command renames it (docs/QUESTIONS.md).
+//! dialog, the queue button its list while the queue has jobs (`export.rs`). «Проекты» opens the
+//! menu of projects (`projects.rs`). A click on the name edits it: Enter renames the project
+//! folder (owner decision on 7.1, no undo), Esc or a click elsewhere leaves it as it was.
 
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::editor as text;
 use dc_ui_kit::strings::export as export_text;
+use dc_ui_kit::strings::projects as projects_text;
 use dc_ui_kit::tokens::{ACCENT_HI, BORDER, FS_L, FS_S, S1, S2, TEXT, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind};
 use eframe::egui::{self, Align, Layout, Rect, Sense, Ui, UiBuilder, pos2, vec2};
@@ -22,6 +22,8 @@ use crate::keymap::EditorKey;
 /// Side of the unsaved dot and the gap after it, points (mockup).
 const DOT: f32 = 7.0;
 const DOT_GAP: f32 = 6.0;
+/// Width of the name field while renaming, points.
+const RENAME_WIDTH: f32 = 280.0;
 
 /// The header; true when the settings button is pressed.
 pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
@@ -35,14 +37,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
             let open = editor.doc.dir().root().to_path_buf();
             editor.library.toggle(&open);
         }
-        ui.add_enabled(
-            false,
-            Button::new(text::PROJECTS)
-                .kind(Kind::Ghost)
-                .small()
-                .icon(Icon::Project)
-                .menu(),
-        );
+        super::projects::menu(ui, editor);
         separator(ui);
         travel(ui, editor, Way::Undo);
         travel(ui, editor, Way::Redo);
@@ -122,8 +117,13 @@ fn separator(ui: &mut Ui) {
     );
 }
 
-/// «● name .devcast» centred in the header; the dot only with unsaved changes.
-fn name(ui: &mut Ui, rect: Rect, editor: &EditorWindow) {
+/// «● name .devcast» centred in the header; the dot only with unsaved changes. A click edits the
+/// name.
+fn name(ui: &mut Ui, rect: Rect, editor: &mut EditorWindow) {
+    if editor.renaming.is_some() {
+        rename(ui, rect, editor);
+        return;
+    }
     let unsaved = editor.doc.unsaved();
     let painter = ui.painter();
     let title = painter.layout_no_wrap(
@@ -153,7 +153,41 @@ fn name(ui: &mut Ui, rect: Rect, editor: &EditorWindow) {
     let painter = ui.painter();
     painter.galley(pos2(extension_x, baseline), extension, TEXT_3);
     painter.galley(title_rect.min, title, TEXT);
-    let response = ui.interact(title_rect, ui.scope_id().with("name"), Sense::hover());
+    let response = ui
+        .interact(title_rect, ui.scope_id().with("name"), Sense::click())
+        .on_hover_cursor(egui::CursorIcon::Text)
+        .on_hover_text(projects_text::RENAME);
     let label = editor.name.clone();
     response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, true, &label));
+    if response.clicked() {
+        editor.renaming = Some(editor.name.clone());
+    }
+}
+
+/// The name being edited: Enter renames the project (unless empty or the same), Esc or a click
+/// elsewhere leaves it.
+fn rename(ui: &mut Ui, rect: Rect, editor: &mut EditorWindow) {
+    let Some(name) = editor.renaming.as_mut() else {
+        return;
+    };
+    let field = Rect::from_center_size(rect.center(), vec2(RENAME_WIDTH, 28.0));
+    let mut child = ui.new_child(UiBuilder::new().max_rect(field));
+    let edit = egui::TextEdit::singleline(name)
+        .desired_width(RENAME_WIDTH)
+        .font(fonts::text(FS_L, Weight::Semibold))
+        .align(egui::Align2::CENTER_CENTER)
+        .hint_text(projects_text::NAME);
+    let response = child.add(edit);
+    if !response.has_focus() && !response.lost_focus() {
+        response.request_focus();
+    }
+    if !response.lost_focus() {
+        return;
+    }
+    let entered = ui.input(|i| i.key_pressed(egui::Key::Enter));
+    let name = editor.renaming.take().unwrap_or_default();
+    let name = name.trim();
+    if entered && !name.is_empty() && name != editor.name {
+        editor.leave(super::Leave::Rename(name.to_owned()));
+    }
 }

@@ -69,7 +69,7 @@ impl EditorWindow {
 }
 
 /// Both paths name one folder (`..`, case and separators aside).
-fn same_folder(a: &Path, b: &Path) -> bool {
+pub(super) fn same_folder(a: &Path, b: &Path) -> bool {
     match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
         (Ok(a), Ok(b)) => a == b,
         _ => false,

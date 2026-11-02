@@ -68,3 +68,25 @@ impl EditorWindow {
             })
     }
 }
+
+/// A thread of the editor that is waited for on drop, so its files are closed when the editor is
+/// gone (renaming the project folder needs that). Its owner declares it after the channels the
+/// thread waits on: fields drop in order, the closed channels end the thread, then this joins it.
+#[derive(Debug)]
+pub struct Joined(Option<std::thread::JoinHandle<()>>);
+
+impl Joined {
+    pub fn new(handle: std::thread::JoinHandle<()>) -> Self {
+        Self(Some(handle))
+    }
+}
+
+impl Drop for Joined {
+    fn drop(&mut self) {
+        if let Some(handle) = self.0.take()
+            && handle.join().is_err()
+        {
+            tracing::warn!("поток редактора упал");
+        }
+    }
+}

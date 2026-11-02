@@ -25,12 +25,15 @@ mod montage;
 mod playback;
 mod presses;
 mod preview;
+mod projects;
 mod reader;
+mod recovery;
 mod regions;
 mod rows;
 mod selection;
 mod stage;
 mod streams;
+mod switch;
 mod threads;
 mod timeline;
 pub mod timeline_window;
@@ -72,8 +75,8 @@ use crate::keymap::EditorKeys;
 use crate::settings::{EditorLayout, InspectorGroups};
 use crate::settings_window::Page;
 pub use actions::{Action, Transport};
+pub use closing::Leave;
 pub use document::{Document, DocumentError, LOCK_OWNER, Way};
-pub use keys::wired;
 use playback::seek::{FALLBACK_FPS, frame_rate};
 pub use timeline::{Place, Tracks};
 pub use view::View;
@@ -122,8 +125,16 @@ pub struct EditorWindow {
     pub help: Option<help::Help>,
     /// The crop and format dialog while it is open.
     pub crop: Option<crop::CropDialog>,
-    /// Closing the window after a write that failed.
+    /// The question about unsaved changes before leaving the project.
     pub closing: closing::Closing,
+    /// Where the project is left for, once asked (and answered): the app does it after the frame.
+    pub leaving: Option<Leave>,
+    /// The project opened with a working state left on disk: «Восстановить или отбросить?».
+    pub recovery: bool,
+    /// The «Проекты» menu and «Сохранить как…».
+    pub projects: projects::Projects,
+    /// The name in the header is being edited (renaming the project).
+    pub renaming: Option<String>,
     /// The settings new projects start with: «Сбросить» of the inspector brings them back.
     pub defaults: dc_project::Defaults,
     /// Open and closed groups of the inspector, taken from the settings each frame.
@@ -147,19 +158,6 @@ pub struct EditorWindow {
 }
 
 impl EditorWindow {
-    /// The editor of the project a recording has just saved.
-    pub fn new(
-        recorded: &dc_capture::win::RecordedProject,
-    ) -> Result<(Self, Vec<String>), DocumentError> {
-        let sound = recorded
-            .summary
-            .audio
-            .iter()
-            .map(|a| a.track.to_owned())
-            .collect();
-        Self::open(recorded.dir.clone(), sound)
-    }
-
     /// Opens the project in `dir` for editing; also returns the problems to show (a broken
     /// history, a broken effect state).
     pub fn open(dir: ProjectDir, sound: Vec<String>) -> Result<(Self, Vec<String>), DocumentError> {
@@ -197,6 +195,10 @@ impl EditorWindow {
             help: None,
             crop: None,
             closing: closing::Closing::default(),
+            leaving: None,
+            recovery: false,
+            projects: projects::Projects::default(),
+            renaming: None,
             defaults: dc_project::Defaults::factory(),
             groups: InspectorGroups::default(),
             detached: timeline_window::Detached::default(),
@@ -285,6 +287,8 @@ pub struct Outcome {
     pub done: Vec<String>,
     /// The inspector groups after the user opened or closed one, for the settings.
     pub groups: Option<InspectorGroups>,
+    /// Leave the project (close the window, another project).
+    pub leave: Option<Leave>,
 }
 
 /// The whole window: header, timeline at the bottom (`layout`: its height until dragged, its row
@@ -356,6 +360,9 @@ pub fn editor_ui(
     let (done, failed) = export::ended(editor);
     let mut errors: Vec<String> = tick.error.into_iter().collect();
     errors.extend(failed);
+    errors.extend(closing::show(ui, editor));
+    errors.extend(recovery::show(ui, editor, now));
+    errors.extend(projects::save_as(ui, editor));
     errors.extend(actions::run(ui, editor, now));
     if editor.playback.is_playing() {
         // Decision 002: while playing, a repaint per frame step; paused, nothing runs.
@@ -372,5 +379,6 @@ pub fn editor_ui(
         errors,
         done,
         groups: toggled.then(|| editor.groups.clone()),
+        leave: editor.leaving.take(),
     }
 }

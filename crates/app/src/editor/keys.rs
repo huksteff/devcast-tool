@@ -1,14 +1,12 @@
 //! Editor shortcuts at work: the pressed shortcut is looked up in the user's table
-//! (`keymap::EditorKeys`, by physical key) and its action runs. An action whose feature has not
-//! landed yet has no handler here: the help and the settings show it grey, and its task adds
-//! the arm to [`act`].
+//! (`keymap::EditorKeys`, by physical key) and its action runs.
 
 use dc_ui_kit::strings::keys as text;
 use eframe::egui::{self, Ui};
 
 use super::view::Tool;
 use super::{Action, EditorWindow, Transport, Way};
-use super::{adding, clipboard, keyframes, montage};
+use super::{adding, clipboard, keyframes, montage, projects};
 use crate::keymap::{EditorKey, EditorKeys};
 use crate::shortcut::Shortcut;
 
@@ -21,11 +19,12 @@ enum Act {
     Help,
     Transport(Transport),
     Montage(fn(&mut EditorWindow)),
+    Projects(EditorKey),
 }
 
-/// The action of `key`, `None` until its task: projects 7.28.
-fn act(key: EditorKey) -> Option<Act> {
-    Some(match key {
+/// The action of `key`.
+fn act(key: EditorKey) -> Act {
+    match key {
         EditorKey::Undo => Act::Travel(Way::Undo),
         EditorKey::Redo | EditorKey::RedoAlt => Act::Travel(Way::Redo),
         EditorKey::Select => Act::Tool(Tool::Select),
@@ -50,22 +49,17 @@ fn act(key: EditorKey) -> Option<Act> {
         EditorKey::NextAnnotation => Act::Montage(adding::next_annotation),
         EditorKey::Keyframe => Act::Montage(keyframes::add),
         EditorKey::NewProject | EditorKey::OpenProject | EditorKey::Save | EditorKey::SaveAs => {
-            return None;
+            Act::Projects(key)
         }
-    })
-}
-
-/// The shortcut of `key` does something now.
-pub fn wired(key: EditorKey) -> bool {
-    act(key).is_some()
+    }
 }
 
 /// Runs the shortcuts pressed this frame. None while a text field takes the keys, the crop
-/// dialog or the question of closing is open; while the help is open only its own shortcut (it closes the help). A shortcut
+/// dialog or a question about the project is open; while the help is open only its own shortcut (it closes the help). A shortcut
 /// takes the keyboard focus from a widget: Tab (the next annotation) would otherwise move it to
 /// a button, and Space would press that button too.
 pub fn run(ui: &Ui, editor: &mut EditorWindow) {
-    let asking = editor.closing == super::closing::Closing::Asking;
+    let asking = editor.asking() || editor.recovery || editor.projects.busy();
     if ui.ctx().text_edit_focused() || editor.crop.is_some() || asking {
         return;
     }
@@ -102,13 +96,14 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow) {
             }
         });
         match act(key) {
-            Some(Act::Travel(way)) => editor.ask(Action::Travel(way)),
-            Some(Act::Tool(tool)) => editor.view.tool = tool,
-            Some(Act::Snap) => editor.view.magnet = !editor.view.magnet,
-            Some(Act::Help) => editor.toggle_help(),
-            Some(Act::Transport(t)) => editor.ask(Action::Transport(t)),
-            Some(Act::Montage(run)) => run(editor),
-            None => {}
+            Act::Travel(way) => editor.ask(Action::Travel(way)),
+            Act::Tool(tool) => editor.view.tool = tool,
+            Act::Snap => editor.view.magnet = !editor.view.magnet,
+            Act::Help => editor.toggle_help(),
+            Act::Transport(t) => editor.ask(Action::Transport(t)),
+            Act::Montage(run) => run(editor),
+            Act::Projects(key) if !repeat => projects::run(editor, key),
+            Act::Projects(_) => {}
         }
     }
 }

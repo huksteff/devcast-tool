@@ -2,8 +2,7 @@
 //! global hotkeys and the editor actions (`keymap.rs`) with their shortcut, capture «Нажмите
 //! сочетание…» (Esc cancels, Backspace clears, a global one needs Ctrl or Alt), a conflict with
 //! any other shortcut as a line under the command with «Заменить» (swaps the shortcuts) /
-//! «Отмена», a global shortcut the system holds as a yellow line with «Изменить». An editor
-//! action that does not work yet is grey, as in the editor help.
+//! «Отмена», a global shortcut the system holds as a yellow line with «Изменить».
 
 use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
@@ -119,21 +118,14 @@ impl HotkeyPage {
         row(ui, row_height(0.0), |ui| {
             let spacing = ui.spacing().item_spacing.x;
             let title = ui.available_width() - KEYS - CONTROL - 2.0 * spacing;
-            let (rect, hover) = ui.allocate_exact_size(vec2(title, 20.0), Sense::hover());
-            let ready = match binding {
-                Binding::Editor(key) => crate::editor::wired(key),
-                Binding::Global(_) => true,
-            };
+            let (rect, _) = ui.allocate_exact_size(vec2(title, 20.0), Sense::hover());
             ui.painter().text(
                 rect.left_center(),
                 egui::Align2::LEFT_CENTER,
                 binding.title(),
                 fonts::text(13.0, Weight::Regular),
-                if ready { TEXT } else { TEXT_3 },
+                TEXT,
             );
-            if !ready {
-                hover.on_hover_text(names::NOT_READY);
-            }
             let keys = binding.keys(settings);
             let warn = conflict.is_some() || taken;
             if keys_button(ui, binding, keys.as_deref(), capturing, warn).clicked() {

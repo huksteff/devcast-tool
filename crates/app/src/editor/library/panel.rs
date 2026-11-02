@@ -190,7 +190,7 @@ fn picked_in_order(library: &Library, shown: &[Entry]) -> Vec<PathBuf> {
 }
 
 fn paint(ui: &Ui, library: &mut Library, entry: &Entry, rect: Rect, picture: Rect, picked: bool) {
-    let texture = texture(ui, library, entry);
+    let texture = library.picture(ui.ctx(), &entry.root);
     let painter = ui.painter();
     painter.rect_filled(picture, R1, SURFACE_2);
     if let Some(texture) = texture {
@@ -226,25 +226,6 @@ fn paint(ui: &Ui, library: &mut Library, entry: &Entry, rect: Rect, picture: Rec
     let details = text::details(entry.imported, entry.size.width, entry.size.height);
     let details = painter.layout_no_wrap(details, fonts::text(FS_S, Weight::Regular), TEXT_2);
     painter.galley(pos2(rect.left(), top + 17.0), details, TEXT_2);
-}
-
-/// The texture of `entry`'s picture, made once it came.
-fn texture(ui: &Ui, library: &mut Library, entry: &Entry) -> Option<egui::TextureHandle> {
-    if let Some((_, texture)) = library.textures.0.iter().find(|(r, _)| *r == entry.root) {
-        return Some(texture.clone());
-    }
-    let image = library
-        .thumbs
-        .get(&super::thumbs::Thumb(entry.root.clone()))?;
-    let name = entry.root.display().to_string();
-    let texture = ui
-        .ctx()
-        .load_texture(name, image.clone(), egui::TextureOptions::LINEAR);
-    library
-        .textures
-        .0
-        .push((entry.root.clone(), texture.clone()));
-    Some(texture)
 }
 
 /// `size` fitted into `rect`, centred.

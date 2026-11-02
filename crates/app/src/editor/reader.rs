@@ -43,6 +43,8 @@ struct Worker<K, V> {
     requests: Sender<K>,
     answers: Receiver<(K, Result<V, String>)>,
     news: Arc<AtomicBool>,
+    /// Last: joined after the channels close (`Joined`).
+    _thread: super::threads::Joined,
 }
 
 impl<K: Wanted, V: Send + std::fmt::Debug + 'static> Reader<K, V> {
@@ -56,7 +58,7 @@ impl<K: Wanted, V: Send + std::fmt::Debug + 'static> Reader<K, V> {
         let (outbox, answers) = channel::<(K, Result<V, String>)>();
         let news = Arc::new(AtomicBool::new(false));
         let flag = Arc::clone(&news);
-        std::thread::Builder::new()
+        let thread = std::thread::Builder::new()
             .name(K::THREAD.to_owned())
             .spawn(move || {
                 for source in inbox {
@@ -72,6 +74,7 @@ impl<K: Wanted, V: Send + std::fmt::Debug + 'static> Reader<K, V> {
             requests,
             answers,
             news,
+            _thread: super::threads::Joined::new(thread),
         };
         for (source, _) in self
             .slots

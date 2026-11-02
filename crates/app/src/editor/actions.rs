@@ -51,6 +51,8 @@ pub enum Action {
     Detach(bool),
     /// What the recordings library asks (`library/`).
     Library(library::Ask),
+    /// Ctrl+S: the working state into `project.json`.
+    Save,
 }
 
 /// Playback and the playhead.
@@ -131,6 +133,7 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
             Action::Generate => errors.extend(generation::start(ui.ctx(), editor).err()),
             Action::StopGenerating => editor.captions.cancel(),
             Action::Detach(open) => editor.detach(open),
+            Action::Save => errors.extend(editor.doc.save().err().map(|e| e.to_string())),
             Action::ListPick(picked) => {
                 editor.view.selection.only(picked);
                 editor.view.followed = Some(picked);

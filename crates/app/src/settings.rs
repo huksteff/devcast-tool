@@ -224,6 +224,8 @@ pub struct AppSettings {
     pub editor_keys: crate::keymap::EditorKeys,
     /// Open and closed groups of the editor's inspector.
     pub inspector: InspectorGroups,
+    /// Folders of the projects opened in the editor, newest first, at most 16 (the «Проекты» menu).
+    pub recent_projects: Vec<PathBuf>,
 }
 
 impl Default for AppSettings {
@@ -245,6 +247,7 @@ impl Default for AppSettings {
             editor: EditorLayout::default(),
             editor_keys: crate::keymap::EditorKeys::default(),
             inspector: InspectorGroups::default(),
+            recent_projects: Vec::new(),
         }
     }
 }

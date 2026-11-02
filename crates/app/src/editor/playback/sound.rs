@@ -22,16 +22,22 @@ pub struct Start {
 #[derive(Debug)]
 pub struct Sound {
     starts: Sender<Start>,
+    /// Last: joined after the channel closes (`Joined`).
+    _thread: crate::editor::threads::Joined,
 }
 
 impl Sound {
-    /// Starts the thread of the project in `dir`; it ends when this is dropped.
+    /// Starts the thread of the project in `dir`; it ends when this is dropped (the line playing
+    /// is closed first by its owner).
     pub fn start(dir: ProjectDir) -> std::io::Result<Self> {
         let (starts, inbox) = channel();
-        std::thread::Builder::new()
+        let thread = std::thread::Builder::new()
             .name("devcast-sound".to_owned())
             .spawn(move || serve(&dir, &inbox))?;
-        Ok(Self { starts })
+        Ok(Self {
+            starts,
+            _thread: crate::editor::threads::Joined::new(thread),
+        })
     }
 
     /// Asks to play; `false` if the thread is gone.

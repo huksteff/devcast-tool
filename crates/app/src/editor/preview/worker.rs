@@ -45,6 +45,8 @@ pub type Answer = (u64, Result<Rendered, String>);
 pub struct Worker {
     requests: Sender<Request>,
     answers: Receiver<Answer>,
+    /// Last: joined after the channels close (`Joined`).
+    _thread: crate::editor::threads::Joined,
 }
 
 impl Worker {
@@ -56,7 +58,7 @@ impl Worker {
     ) -> std::io::Result<Self> {
         let (requests, inbox) = channel::<Request>();
         let (outbox, answers) = channel::<Answer>();
-        std::thread::Builder::new()
+        let thread = std::thread::Builder::new()
             .name("devcast-preview".to_owned())
             .spawn(move || {
                 let reply = |answer: Answer| {
@@ -66,7 +68,11 @@ impl Worker {
                 };
                 serve(&gpu, &dir, &inbox, &reply);
             })?;
-        Ok(Self { requests, answers })
+        Ok(Self {
+            requests,
+            answers,
+            _thread: crate::editor::threads::Joined::new(thread),
+        })
     }
 
     /// Asks for a frame; `false` if the thread is gone.

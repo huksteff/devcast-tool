@@ -61,6 +61,54 @@ impl Confirm<'_> {
     }
 }
 
+/// A question with a third answer before the safe one, like «Сохранить · Не сохранять · Отмена»:
+/// Enter is the confirm button, Esc the safe one.
+pub struct Choice<'a> {
+    pub title: &'a str,
+    pub text: &'a str,
+    pub cancel: &'a str,
+    pub other: &'a str,
+    pub confirm: &'a str,
+}
+
+/// What the user chose.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Chosen {
+    /// The safe button or Esc.
+    Cancel,
+    Other,
+    /// The blue button or Enter.
+    Confirm,
+}
+
+impl Choice<'_> {
+    pub fn show(&self, ui: &mut Ui) -> Option<Chosen> {
+        heading(ui, self.title, self.text);
+        let mut chosen = None;
+        buttons(ui, |ui| {
+            ui.spacing_mut().item_spacing.x = S2;
+            let all = [
+                (self.confirm, Kind::Primary, Chosen::Confirm),
+                (self.other, Kind::Secondary, Chosen::Other),
+                (self.cancel, Kind::Secondary, Chosen::Cancel),
+            ];
+            for (label, kind, answer) in all {
+                if ui.add(Button::new(label).kind(kind).small()).clicked() {
+                    chosen = Some(answer);
+                }
+            }
+        });
+        ui.input(|i| {
+            if i.key_pressed(Key::Escape) {
+                chosen = Some(Chosen::Cancel);
+            } else if i.key_pressed(Key::Enter) {
+                chosen = Some(Chosen::Confirm);
+            }
+        });
+        chosen
+    }
+}
+
 /// What the user did with an error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorAction {

@@ -19,7 +19,7 @@ mod toggle;
 pub use anchors::anchors;
 pub use button::{Button, Kind};
 pub use color::{GRADIENT_COLORS, color_button, gradient_editor, palette};
-pub use dialog::{Answer, Confirm, ErrorAction, ErrorPanel, panel_frame};
+pub use dialog::{Answer, Choice, Chosen, Confirm, ErrorAction, ErrorPanel, panel_frame};
 pub use dropdown::{dropdown, dropdown_some};
 pub use icon_button::IconButton;
 pub use meter::LevelBar;

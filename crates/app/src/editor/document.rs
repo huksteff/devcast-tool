@@ -66,6 +66,11 @@ impl Document {
         Ok((document, working.warnings))
     }
 
+    /// The folder and its lock, the rest of the document dropped (renaming the project).
+    pub fn into_parts(self) -> (ProjectDir, ProjectLock) {
+        (self.dir, self._lock)
+    }
+
     pub fn dir(&self) -> &ProjectDir {
         &self.dir
     }
@@ -150,6 +155,21 @@ impl Document {
         self.pending.clear();
         self.dir.save(&self.project)?;
         self.autosave.saved();
+        Ok(())
+    }
+
+    /// «Не сохранять» and «Отбросить»: back to `project.json`; the working state goes away, and
+    /// so does the history, whose steps lead to it.
+    pub fn discard(&mut self) -> Result<(), ProjectError> {
+        let project = self.dir.load()?;
+        let history = History::default();
+        self.log.rewrite(&history)?;
+        self.dir.discard_session()?;
+        self.project = project;
+        self.history = history;
+        self.pending.clear();
+        self.autosave.saved();
+        self.revision += 1;
         Ok(())
     }
 

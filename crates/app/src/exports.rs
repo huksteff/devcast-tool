@@ -80,6 +80,13 @@ impl Exports {
         self.0.queue.status()
     }
 
+    /// A job is waiting or running.
+    pub fn busy(&self) -> bool {
+        self.status()
+            .iter()
+            .any(|s| matches!(s.state, JobState::Queued | JobState::Running { .. }))
+    }
+
     pub fn cancel(&self, id: u32) {
         self.0.queue.cancel(Some(id));
     }

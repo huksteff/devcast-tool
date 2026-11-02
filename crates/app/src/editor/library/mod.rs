@@ -118,6 +118,24 @@ impl Library {
             .collect()
     }
 
+    /// Asks for the pictures of these projects (the menu of recent projects shows them too).
+    pub fn want_pictures<'a>(&mut self, roots: impl Iterator<Item = &'a PathBuf>) {
+        let wanted: Vec<thumbs::Thumb> = roots.map(|r| thumbs::Thumb(r.clone())).collect();
+        self.thumbs.want(wanted.iter());
+    }
+
+    /// The texture of the picture of the project in `root`, made once it came.
+    pub fn picture(&mut self, ctx: &egui::Context, root: &Path) -> Option<TextureHandle> {
+        if let Some((_, texture)) = self.textures.0.iter().find(|(r, _)| r == root) {
+            return Some(texture.clone());
+        }
+        let image = self.thumbs.get(&thumbs::Thumb(root.to_path_buf()))?;
+        let name = root.display().to_string();
+        let texture = ctx.load_texture(name, image.clone(), egui::TextureOptions::LINEAR);
+        self.textures.0.push((root.to_path_buf(), texture.clone()));
+        Some(texture)
+    }
+
     /// Ctrl+Z goes to the Recycle Bin first while the panel is open and has a batch there.
     pub fn takes_undo(&self) -> bool {
         self.open && !self.trashed.is_empty()

@@ -14,56 +14,49 @@ use crate::app::{Shared, lock, on_hud_monitor, other_window};
 use crate::settings::EditorLayout;
 
 impl Shared {
-    /// Opens the editor with the project a recording has just saved and hides the HUD; a
-    /// project that cannot be opened (another writer holds it) is a toast.
+    /// Opens the editor with the project a recording has just saved and hides the HUD.
     pub fn open_editor(&mut self, recorded: &dc_capture::win::RecordedProject) {
-        match EditorWindow::new(recorded) {
-            Ok((mut editor, problems)) => {
-                let defaults = dc_project::settings::defaults_file()
-                    .and_then(|file| dc_project::Defaults::load(&file));
-                match defaults {
-                    Ok(defaults) => editor.defaults = defaults,
-                    Err(error) => self.report(Err(error)),
-                }
-                editor.captions = super::generation::Generation::new(
-                    crate::models::Models::of_app(self.downloads.clone()),
-                    crate::recognition::job::cli_worker(),
-                );
-                if let Some(gpu) = self.gpu.clone() {
-                    if self.exports.is_none() {
-                        let ctx = self.ctx.clone();
-                        let wake = move || ctx.request_repaint_of(egui::ViewportId::ROOT);
-                        match crate::exports::Exports::of_gpu(gpu.gpu.clone(), wake) {
-                            Ok(exports) => self.exports = Some(exports),
-                            Err(error) => self.report(Err(error)),
-                        }
-                    }
-                    let started = editor.start_preview(gpu, self.ctx.clone());
-                    self.report(started);
-                }
-                if let Some(exports) = &self.exports {
-                    exports.untold();
-                    editor.exports = Some(exports.clone());
-                }
-                let sound = editor.start_sound();
-                self.report(sound);
-                let waves = editor.start_waves(self.ctx.clone());
-                self.report(waves);
-                let presses = editor.start_presses(self.ctx.clone());
-                self.report(presses);
-                let streams = editor.start_streams(self.ctx.clone());
-                self.report(streams);
-                let thumbs = editor.library.start(self.ctx.clone());
-                self.report(thumbs);
-                for problem in problems {
-                    self.report(Err(problem));
-                }
-                super::timeline_window::restore(&mut editor, &self.store.get().editor);
-                self.editor = Some(editor);
-                self.hide_hud();
-            }
+        self.open_project(recorded.dir.root(), true);
+    }
+
+    /// Gives a new editor the defaults, the speech model, the export queue and its threads.
+    pub(super) fn start_editor(&mut self, editor: &mut EditorWindow) {
+        let defaults = dc_project::settings::defaults_file()
+            .and_then(|file| dc_project::Defaults::load(&file));
+        match defaults {
+            Ok(defaults) => editor.defaults = defaults,
             Err(error) => self.report(Err(error)),
         }
+        editor.captions = super::generation::Generation::new(
+            crate::models::Models::of_app(self.downloads.clone()),
+            crate::recognition::job::cli_worker(),
+        );
+        if let Some(gpu) = self.gpu.clone() {
+            if self.exports.is_none() {
+                let ctx = self.ctx.clone();
+                let wake = move || ctx.request_repaint_of(egui::ViewportId::ROOT);
+                match crate::exports::Exports::of_gpu(gpu.gpu.clone(), wake) {
+                    Ok(exports) => self.exports = Some(exports),
+                    Err(error) => self.report(Err(error)),
+                }
+            }
+            let started = editor.start_preview(gpu, self.ctx.clone());
+            self.report(started);
+        }
+        if let Some(exports) = &self.exports {
+            exports.untold();
+            editor.exports = Some(exports.clone());
+        }
+        let sound = editor.start_sound();
+        self.report(sound);
+        let waves = editor.start_waves(self.ctx.clone());
+        self.report(waves);
+        let presses = editor.start_presses(self.ctx.clone());
+        self.report(presses);
+        let streams = editor.start_streams(self.ctx.clone());
+        self.report(streams);
+        let thumbs = editor.library.start(self.ctx.clone());
+        self.report(thumbs);
     }
 }
 
@@ -116,9 +109,9 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     super::timeline_window::show(ctx, shared, news || wake_timeline);
 }
 
-/// One frame of the editor window; closing it writes what is unsaved to the session and shows
-/// the HUD again. If that fails, the window stays open with the error; closing again asks
-/// whether to close without the edits (`closing.rs`).
+/// One frame of the editor window. Closing it with unsaved changes asks first (`closing.rs`);
+/// then the editor goes and the HUD comes back. Another project replaces it in the window
+/// (`switch.rs`).
 pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     crate::borderless::opaque(ui);
     let layout = shared.store.get().editor;
@@ -130,6 +123,7 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
         shared.store.get().speech_tracks,
     );
     let recordings = shared.store.get().recordings_dir.clone();
+    let recent = shared.store.get().recent_projects.clone();
     let Some(editor) = shared.editor.as_mut() else {
         return;
     };
@@ -137,6 +131,12 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     (editor.captions.language, editor.captions.listen) = speech;
     let open = editor.doc.dir().root().to_path_buf();
     editor.library.folder(&recordings, &open);
+    editor.projects.recent = recent;
+    if ui.input(|i| i.viewport().close_requested()) {
+        ui.ctx()
+            .send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        editor.leave(super::Leave::Close);
+    }
     let now = Instant::now();
     let before = editor.mark();
     let was_open = editor.detached.open;
@@ -148,9 +148,6 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     if let Ok(Some(wait)) = saved {
         ui.ctx().request_repaint_after(wait);
     }
-    let close = ui.input(|i| i.viewport().close_requested());
-    let flushed = close.then(|| editor.doc.flush());
-    let discard = editor.closing.ask(ui);
     for error in outcome.errors {
         shared.report(Err(error));
     }
@@ -180,25 +177,9 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
         let saved = shared.store.update(|s| s.inspector = groups);
         shared.report(saved);
     }
-    match flushed {
-        Some(Ok(())) => close_editor(shared),
-        Some(Err(error)) => {
-            ui.ctx()
-                .send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            let first = shared.editor.as_mut().is_some_and(|e| e.closing.failed());
-            if first {
-                shared.report(Err(error));
-            }
-        }
-        None if discard => close_editor(shared),
-        None => {}
+    if let Some(leave) = outcome.leave {
+        shared.leave_project(leave);
     }
-}
-
-fn close_editor(shared: &mut Shared) {
-    timeline_window::remember(shared);
-    shared.editor = None;
-    shared.show_hud();
 }
 
 /// Keeps a dragged timeline height (once the pointer is let go) and a new row factor.

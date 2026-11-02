@@ -1,6 +1,6 @@
 //! The shortcut help (mockup section 7): F1 or «?» in the header opens it over the editor. It
 //! is built from the shortcut table with the user's shortcuts, grouped, searchable by name or
-//! key; actions that do not work yet are grey. «Изменить в настройках» opens the settings on
+//! key. «Изменить в настройках» opens the settings on
 //! «Горячие клавиши».
 
 use dc_ui_kit::fonts::{self, Weight};
@@ -10,7 +10,6 @@ use dc_ui_kit::tokens::{FS_L, FS_S, S1, S2, S3, S4, TEXT, TEXT_2, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind, panel_frame, search_field};
 use eframe::egui::{self, Align, Layout, RichText, Sense, Ui, WidgetInfo, vec2};
 
-use super::keys::wired;
 use crate::keymap::{EditorKey, EditorKeys, Group};
 
 /// Width of the window, height of a row, most height of the list and the height of the rest of
@@ -128,7 +127,7 @@ fn section(ui: &mut Ui, group: Group, shown: &[EditorKey], keys: &EditorKeys) {
     ui.add_space(S4 - S2);
 }
 
-/// «Выбор ......... A»: the name left, the caps right; grey with a tooltip when not working.
+/// «Выбор ......... A»: the name left, the caps right.
 fn row(ui: &mut Ui, key: EditorKey, keys: &EditorKeys) {
     let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), ROW), Sense::hover());
     let shortcut = keys.shortcut(key);
@@ -137,7 +136,6 @@ fn row(ui: &mut Ui, key: EditorKey, keys: &EditorKeys) {
         None => format!("{}: {}", key.title(), hotkeys::NONE),
     };
     response.widget_info(|| WidgetInfo::labeled(egui::Role::Label, true, &label));
-    let ready = wired(key);
     let painter = ui.painter();
     let caps_left = match shortcut {
         Some(shortcut) => {
@@ -165,9 +163,6 @@ fn row(ui: &mut Ui, key: EditorKey, keys: &EditorKeys) {
         egui::Align2::LEFT_CENTER,
         key.title(),
         fonts::text(FS_S, Weight::Regular),
-        if ready { TEXT } else { TEXT_3 },
+        TEXT,
     );
-    if !ready {
-        response.on_hover_text(text::NOT_READY);
-    }
 }
