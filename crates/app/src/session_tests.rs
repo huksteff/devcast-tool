@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
-use super::{Countdown, clock};
+use super::{Countdown, Session, clock};
+use crate::recorder::Recorder;
 
 #[test]
 fn countdown_goes_down_once_a_second() {
@@ -19,4 +20,20 @@ fn timer_shows_hours_only_past_an_hour() {
     assert_eq!(clock(0), "00:00");
     assert_eq!(clock(767_400_000), "12:47");
     assert_eq!(clock(3_600_000_000 + 63_000_000), "1:01:03");
+}
+
+#[test]
+fn a_second_stop_keeps_the_recording_being_prepared() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = crate::settings::Store::load(&dir.path().join("settings.json")).unwrap();
+    let mut shared = crate::app::Shared::new(eframe::egui::Context::default(), store);
+    shared.session = Session::Preparing(Recorder::idle(dir.path().join("запись.dcproj")));
+    shared.stop();
+    assert!(
+        matches!(shared.session, Session::Preparing(_)),
+        "the recorder still saves the project"
+    );
+    shared.session = Session::Countdown(Countdown::new(3, Instant::now()));
+    shared.stop();
+    assert!(shared.session.is_idle(), "stop cancels the countdown");
 }

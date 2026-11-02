@@ -264,14 +264,17 @@ impl Shared {
     }
 
     /// Stop: the HUD shows «Подготовка записи» until the project is saved.
+    /// A countdown is cancelled; any other state stays as it is.
     pub fn stop(&mut self) {
-        if let Session::Live(live) = std::mem::take(&mut self.session) {
-            live.recorder.send(Request::Stop);
-            self.popover = None;
-            self.session = Session::Preparing(live.recorder);
-            self.show_hud();
-        } else if let Session::Countdown(_) = self.session {
-            self.session = Session::Idle;
+        match std::mem::take(&mut self.session) {
+            Session::Live(live) => {
+                live.recorder.send(Request::Stop);
+                self.popover = None;
+                self.session = Session::Preparing(live.recorder);
+                self.show_hud();
+            }
+            Session::Countdown(_) => {}
+            other => self.session = other,
         }
     }
 

@@ -80,6 +80,19 @@ impl Recorder {
         })
     }
 
+    /// A recorder of `root` without a thread, which takes no requests (tests).
+    #[cfg(test)]
+    pub(crate) fn idle(root: PathBuf) -> Self {
+        let (requests, _) = mpsc::channel();
+        let (_, events) = mpsc::channel();
+        Self {
+            root,
+            requests,
+            events,
+            thread: None,
+        }
+    }
+
     pub fn root(&self) -> &std::path::Path {
         &self.root
     }
