@@ -21,7 +21,7 @@ use crate::record_args::RecordArgs;
 use crate::record_control::Control;
 use crate::run::Answer;
 use crate::still::{FrameArgs, SheetArgs};
-use crate::{batch, events, silences, skill, sources, still, style, transcript};
+use crate::{batch, events, rename, silences, skill, sources, still, style, transcript};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -71,6 +71,17 @@ enum Builtin {
         after_help = "save"
     )]
     Save,
+    #[command(
+        about = "Переименовать проект: папка станет <имя>.devcast там же; отмены нет, в открытом редакторе — нельзя",
+        after_help = "rename Урок 2"
+    )]
+    Rename {
+        #[arg(
+            required = true,
+            help = "Новое имя без .devcast; слова через пробел — одно имя"
+        )]
+        name: Vec<String>,
+    },
     #[command(
         about = "Сводка проекта: длительность, сохранён ли, сколько объектов в каждом списке",
         after_help = "info"
@@ -261,6 +272,7 @@ impl Cli {
             Builtin::Redo => edit::travel(ctx, Way::Redo, 1),
             Builtin::History => edit::history(ctx),
             Builtin::Save => edit::save(ctx),
+            Builtin::Rename { name } => rename::rename(ctx, &name),
             Builtin::Info => ls::info(ctx),
             Builtin::Ls {
                 list,
@@ -334,6 +346,9 @@ impl Cli {
             }
             Builtin::Ls { list, .. } if list == sources::SOURCES => Some("не работает с проектом"),
             Builtin::New { .. } | Builtin::Record { .. } => Some("создаёт новый проект"),
+            Builtin::Rename { .. } => {
+                Some("даёт всем проектам одно имя; переименуй каждый с --project")
+            }
             Builtin::Batch(_) | Builtin::Style { .. } => Some("сама перечисляет проекты"),
             Builtin::Export { .. } | Builtin::Frame(_) | Builtin::Sheet(_) => Some(
                 "пишет один файл -o на все проекты; запусти её для каждого проекта с --project",

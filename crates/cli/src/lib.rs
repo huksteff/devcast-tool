@@ -26,6 +26,7 @@ mod ls;
 mod record;
 mod record_args;
 mod record_control;
+mod rename;
 mod round;
 pub mod run;
 mod scene;
@@ -70,6 +71,8 @@ mod pauses_e2e_tests;
 mod record_tests;
 #[cfg(test)]
 mod recover_tests;
+#[cfg(test)]
+mod rename_tests;
 #[cfg(test)]
 mod scope_e2e_frames;
 #[cfg(test)]

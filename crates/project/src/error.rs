@@ -17,6 +17,9 @@ pub enum ProjectError {
     #[error("папка «{}» уже существует: выбери другое имя или открой её как проект", path.display())]
     AlreadyExists { path: PathBuf },
 
+    #[error("имя «{name}» не подходит для папки проекта: {reason}. Выбери другое имя")]
+    BadName { name: String, reason: &'static str },
+
     #[error("файл «{}» повреждён: {message}. Восстанови его из session.json (последняя рабочая версия) или из резервной копии", path.display())]
     Corrupt { path: PathBuf, message: String },
 
