@@ -2,14 +2,16 @@
 //! the blue dot of unsaved changes, help, settings and export.
 //!
 //! Undo and redo name their step and shortcut in the tooltip, help opens the shortcut help
-//! (`help.rs`). «Записи» opens and closes the library (`library/`). Disabled until their task: «Проекты»
-//! (7.28), export (7.31).
+//! (`help.rs`). «Записи» opens and closes the library (`library/`). «Экспорт» opens the export
+//! dialog, the queue button its list while the queue has jobs (`export.rs`). Disabled until its
+//! task: «Проекты» (7.28).
 //! Renaming by a click on the name waits for 7.28: the name is the project folder's and no
 //! registry command renames it (docs/QUESTIONS.md).
 
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::editor as text;
+use dc_ui_kit::strings::export as export_text;
 use dc_ui_kit::tokens::{ACCENT_HI, BORDER, FS_L, FS_S, S1, S2, TEXT, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind};
 use eframe::egui::{self, Align, Layout, Rect, Sense, Ui, UiBuilder, pos2, vec2};
@@ -46,12 +48,23 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
         travel(ui, editor, Way::Redo);
     });
     let settings = side(ui, rect, Layout::right_to_left(Align::Center), |ui| {
-        ui.add_enabled(
-            false,
-            Button::new(text::EXPORT)
-                .kind(Kind::Primary)
-                .icon(Icon::Export),
-        );
+        let export = Button::new(text::EXPORT)
+            .kind(Kind::Primary)
+            .icon(Icon::Export);
+        let can = editor.exports.is_some() && editor.canvas.is_some();
+        if ui.add_enabled(can, export).clicked() {
+            editor.export = Some(super::export::ExportDialog::default());
+        }
+        let jobs = editor.exports.as_ref().is_some_and(|x| !x.status().is_empty());
+        if jobs {
+            let queue = ui
+                .add(IconButton::new(Icon::Export, export_text::QUEUE).on(editor.queue_open))
+                .on_hover_text(export_text::QUEUE);
+            if queue.clicked() {
+                editor.queue_open = !editor.queue_open;
+            }
+            super::export::queue_list(ui, editor, queue.rect);
+        }
         ui.add_space(S1);
         let settings = ui
             .add(IconButton::new(Icon::Gear, text::SETTINGS))

@@ -30,8 +30,20 @@ impl Shared {
                     crate::recognition::job::cli_worker(),
                 );
                 if let Some(gpu) = self.gpu.clone() {
+                    if self.exports.is_none() {
+                        let ctx = self.ctx.clone();
+                        let wake = move || ctx.request_repaint_of(egui::ViewportId::ROOT);
+                        match crate::exports::Exports::of_gpu(gpu.gpu.clone(), wake) {
+                            Ok(exports) => self.exports = Some(exports),
+                            Err(error) => self.report(Err(error)),
+                        }
+                    }
                     let started = editor.start_preview(gpu, self.ctx.clone());
                     self.report(started);
+                }
+                if let Some(exports) = &self.exports {
+                    exports.untold();
+                    editor.exports = Some(exports.clone());
                 }
                 let sound = editor.start_sound();
                 self.report(sound);
@@ -89,7 +101,8 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
             | e.presses.take_news()
             | e.streams.take_news()
             | e.captions.take_news()
-            | e.library.thumbs.take_news();
+            | e.library.thumbs.take_news()
+            | e.exports.as_ref().is_some_and(|x| x.take_news());
         let wake = &mut e.detached;
         (
             news,
@@ -134,6 +147,12 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     let discard = editor.closing.ask(ui);
     for error in outcome.errors {
         shared.report(Err(error));
+    }
+    for done in outcome.done {
+        let ctx = shared.ctx.clone();
+        shared
+            .toasts
+            .push(&ctx, dc_ui_kit::widgets::ToastKind::Done, done);
     }
     shared.report(saved.map(drop));
     if let Some(page) = outcome.open_settings {

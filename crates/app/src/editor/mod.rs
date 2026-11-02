@@ -11,6 +11,7 @@ mod clipboard;
 mod closing;
 mod crop;
 mod document;
+mod export;
 mod fonts;
 mod generation;
 mod header;
@@ -39,6 +40,8 @@ mod window;
 
 #[cfg(test)]
 mod editing_tests;
+#[cfg(test)]
+mod export_tests;
 #[cfg(test)]
 mod generation_tests;
 #[cfg(test)]
@@ -130,6 +133,12 @@ pub struct EditorWindow {
     pub detached: timeline_window::Detached,
     /// The recordings library panel (7.27).
     pub library: library::Library,
+    /// The app's export queue; none without a graphics device.
+    pub exports: Option<crate::exports::Exports>,
+    /// The export dialog while it is open.
+    pub export: Option<export::ExportDialog>,
+    /// The export queue list of the header is open.
+    pub queue_open: bool,
     /// Actions the controls asked for in this frame.
     actions: Vec<Action>,
 }
@@ -189,6 +198,9 @@ impl EditorWindow {
             groups: InspectorGroups::default(),
             detached: timeline_window::Detached::default(),
             library: library::Library::default(),
+            exports: None,
+            export: None,
+            queue_open: false,
             actions: Vec::new(),
         };
         problems.extend(editor.refresh(Instant::now()));
@@ -266,6 +278,8 @@ pub struct Outcome {
     pub layout: EditorLayout,
     /// Why an action failed, for a toast.
     pub errors: Vec<String>,
+    /// Exports that finished, for a toast.
+    pub done: Vec<String>,
     /// The inspector groups after the user opened or closed one, for the settings.
     pub groups: Option<InspectorGroups>,
 }
@@ -335,7 +349,10 @@ pub fn editor_ui(
         }
     }
     crop::show(ui, editor);
+    export::show(ui, editor);
+    let (done, failed) = export::ended(editor);
     let mut errors: Vec<String> = tick.error.into_iter().collect();
+    errors.extend(failed);
     errors.extend(actions::run(ui, editor, now));
     if editor.playback.is_playing() {
         // Decision 002: while playing, a repaint per frame step; paused, nothing runs.
@@ -350,6 +367,7 @@ pub fn editor_ui(
             ..layout
         }),
         errors,
+        done,
         groups: toggled.then(|| editor.groups.clone()),
     }
 }
