@@ -196,7 +196,12 @@ fn toggle(shared: &mut Shared, kind: popover::Kind, anchor: f32) {
     shared.popover = (!open).then_some(popover::Open::new(kind, anchor));
     shared.previews = None;
     if !open && kind == popover::Kind::Sound {
-        shared.refresh_microphones();
+        // The list taken at the start or the last opening, if it came; a fresh one follows.
+        if let Some(Ok(names)) = shared.mic_refresh.take() {
+            shared.microphones = names;
+        }
+        let ctx = shared.ctx.clone();
+        shared.mic_refresh.start(&ctx);
     }
     if !open && kind == popover::Kind::Source {
         shared.previews = Some(picker::Previews::start(&shared.ctx));

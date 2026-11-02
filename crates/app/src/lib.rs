@@ -25,6 +25,7 @@ mod keymap;
 mod logging;
 mod logo;
 mod meters;
+mod microphones;
 mod models;
 mod monitor;
 mod recognition;
@@ -90,6 +91,10 @@ pub fn run() -> Result<(), AppError> {
                 .as_ref()
                 .ok_or_else(|| AppError::Window("окна рисуются без wgpu".to_owned()))?;
             shared.gpu = Some(gpu::PreviewGpu::new(gpu, state));
+            // The real screens and windows: `Shared::new` lists none, so tests never ask the system.
+            shared.refresh_sources();
+            // Ready before the sound popover first opens: it then opens at its height.
+            shared.mic_refresh.start(&cc.egui_ctx);
             let tray = tray::Tray::new(&cc.egui_ctx)?;
             let keys = hotkeys::GlobalKeys::new(&cc.egui_ctx)?;
             Ok(Box::new(app::App::new(calls, shared, hwnd, tray, keys)))

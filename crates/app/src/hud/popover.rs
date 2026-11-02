@@ -324,6 +324,11 @@ fn source(ui: &mut Ui, shared: &mut Shared) {
 }
 
 fn sound(ui: &mut Ui, shared: &mut Shared) {
+    match shared.mic_refresh.take() {
+        Some(Ok(names)) => shared.microphones = names,
+        Some(Err(error)) => shared.report(Err(error)),
+        None => {}
+    }
     let mut recording = shared.store.get().recording.clone();
     let ctx = ui.ctx().clone();
     let meters = &shared.meters;

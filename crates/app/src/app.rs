@@ -44,6 +44,8 @@ pub struct Shared {
     pub area_asked: Option<crate::area::AreaAsk>,
     /// Microphone names, read when the sound popover or the settings window opens.
     pub microphones: Vec<String>,
+    /// The fresh microphone list the sound popover asked for.
+    pub mic_refresh: crate::microphones::Refresh,
     pub meters: Meters,
     /// The recording: countdown, recorder, timer.
     pub session: Session,
@@ -85,8 +87,10 @@ impl Shared {
         }
     }
 
+    /// The shared state with no sources and no microphones listed: the app lists them at its
+    /// start (`lib.rs`), tests give their own.
     pub fn new(ctx: egui::Context, store: Store) -> Self {
-        let mut shared = Self {
+        Self {
             ctx,
             store,
             sources: SourceList {
@@ -99,6 +103,7 @@ impl Shared {
             area: None,
             area_asked: None,
             microphones: Vec::new(),
+            mic_refresh: crate::microphones::Refresh::default(),
             meters: Meters::default(),
             session: Session::Idle,
             taken_hotkeys: Vec::new(),
@@ -109,9 +114,7 @@ impl Shared {
             downloads: crate::downloads::Downloads::default(),
             exports: None,
             waiters: crate::remote::Waiters::default(),
-        };
-        shared.refresh_sources();
-        shared
+        }
     }
 
     pub fn refresh_sources(&mut self) {
