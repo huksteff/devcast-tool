@@ -4,7 +4,8 @@
 //! A cue ends after a sentence end, at a gap of [`PAUSE`] between words, at a silence of
 //! [`SPLIT_SILENCE`] in the gap, or when it reaches [`MAX_CUE`]. Words lying wholly inside such
 //! a silence are Whisper's inventions and are dropped. Short neighbours are merged, then every
-//! cue gets up to [`EDGE_PAD`] around it without overlapping its neighbours.
+//! cue gets up to [`EDGE_PAD`] around it without overlapping its neighbours. A cue whose last word
+//! runs into a silence ends where the silence starts (Whisper stretches it over the pause).
 
 use crate::words::Word;
 
@@ -84,13 +85,24 @@ pub fn cues(words: &[Word], silences: &[(i64, i64)]) -> Vec<Cue> {
         let (first, last) = (*indices.first()?, *indices.last()?);
         Some(Cue {
             start: words[first].start,
-            end: words[last].end,
+            end: quiet_end(&words[last], silences),
             words: indices,
         })
     });
     let mut merged = merge_short(pieces.collect(), words);
     pad(&mut merged);
     merged
+}
+
+/// The end of `word` where it runs into a silence: Whisper stretches the last word before a pause
+/// over it, so a cue would stay on screen through the quiet.
+fn quiet_end(word: &Word, silences: &[(i64, i64)]) -> i64 {
+    silences
+        .iter()
+        .filter(|(s, e)| word.start < *s && *s < word.end && word.end <= *e)
+        .map(|(s, _)| *s)
+        .min()
+        .unwrap_or(word.end)
 }
 
 fn merge_short(cues: Vec<Cue>, words: &[Word]) -> Vec<Cue> {

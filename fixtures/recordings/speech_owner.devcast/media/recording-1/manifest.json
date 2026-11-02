@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "tracks": [
+    {
+      "name": "video",
+      "rate": 60,
+      "start": 13379852864,
+      "segments": [],
+      "file": "video.mp4",
+      "length": 2738,
+      "size": [
+        2560,
+        1440
+      ]
+    },
+    {
+      "name": "mic",
+      "rate": 48000,
+      "start": 13379852864,
+      "segments": [],
+      "file": "mic.mp4",
+      "length": 2190067,
+      "size": null
+    },
+    {
+      "name": "system",
+      "rate": 48000,
+      "start": 13379852864,
+      "segments": [],
+      "file": "system.mp4",
+      "length": 2190067,
+      "size": null
+    }
+  ],
+  "pauses": []
+}

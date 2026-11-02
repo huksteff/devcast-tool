@@ -137,3 +137,19 @@ fn padding_never_overlaps_and_results_are_sorted() {
         assert!(pair[0].end <= pair[1].start, "{cues:?}");
     }
 }
+
+#[test]
+fn a_last_word_stretched_over_a_pause_ends_where_the_quiet_starts() {
+    // «суперскими.» of the owner's speech: Whisper gives 15.54–16.76 s, the quiet is 16.23–17.70.
+    let items = [
+        ("быть", 0.0, 0.54),
+        ("суперскими.", 0.0, 1.22),
+        ("Идёт", 0.88, 0.5),
+    ];
+    let words = said(15.0, &items);
+    let trimmed = cues(&words, &[(16_230_000, 17_700_000)]);
+    assert_eq!(trimmed[0].text(&words), "быть суперскими.");
+    assert_eq!(trimmed[0].end, 16_230_000 + EDGE_PAD);
+    let untouched = cues(&words, &[]);
+    assert_eq!(untouched[0].end, words[1].end + EDGE_PAD);
+}

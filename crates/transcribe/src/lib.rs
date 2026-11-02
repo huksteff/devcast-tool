@@ -9,7 +9,7 @@ pub mod speech;
 pub mod words;
 
 pub use cache::{read_words, words_cache_path, write_words};
-pub use cues::{Cue, cues};
+pub use cues::{Cue, EDGE_PAD, cues};
 pub use dc_models::Model;
 pub use error::{Result, TranscribeError};
 pub use recognize::{Recognized, WHISPER_RATE, recognize};

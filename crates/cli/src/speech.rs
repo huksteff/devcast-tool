@@ -234,7 +234,8 @@ fn new_cue(media: &MediaWords, cue: &Cue) -> Result<NewCue, CommandError> {
         .map(|w| {
             Ok(dc_fx_captions::Word {
                 text: w.text.clone(),
-                range: range(w.start, w.end)?,
+                // The last word may run into a silence where its cue ends (`dc_transcribe::cues`).
+                range: range(w.start, w.end.min(cue.end))?,
             })
         })
         .collect::<Result<Vec<_>, CommandError>>()?;

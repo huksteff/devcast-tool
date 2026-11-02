@@ -77,3 +77,71 @@ fn recognizes_russian_speech_with_word_times() {
         );
     }
 }
+
+/// The owner speaking into the microphone (`fixtures/recordings/speech_owner.devcast`, 45 s):
+/// recognized as Russian; a cue ending in a pause ends where the quiet starts, though Whisper
+/// stretches its last word over the pause. Pauses by silencedetect at
+/// −45 dB, at least 0.8 s, on its `mic.mp4`: seconds from the file start.
+const OWNER_PAUSES: [(f64, f64); 3] = [(12.78, 13.61), (16.23, 17.70), (22.29, 23.33)];
+
+#[test]
+#[ignore = "needs .deps/models/ggml-small.bin"]
+fn the_owners_cues_end_where_the_pauses_start() {
+    let track = SourceTrack {
+        name: "mic".to_owned(),
+        path: root().join("fixtures/recordings/speech_owner.devcast/media/recording-1/mic.mp4"),
+        stream: 0,
+        origin: 0,
+    };
+    let samples = speech_samples(&[track], 0, 45 * i64::from(RATE)).unwrap();
+    let model = root().join(".deps/models/ggml-small.bin");
+    let recognized = recognize(&model, Model::Small, &samples, None, |_| {}).unwrap();
+    for word in &recognized.words {
+        println!(
+            "  {:>6.2}–{:<6.2} {}",
+            word.start as f64 / 1e6,
+            word.end as f64 / 1e6,
+            word.text
+        );
+    }
+    assert_eq!(recognized.language, "ru");
+    assert!(
+        recognized.words.len() >= 30,
+        "{} words",
+        recognized.words.len()
+    );
+    // Whisper's word times are rounded to its 20 ms frames and drift a little at the edges.
+    const SLACK: f64 = 0.25;
+    let silences: Vec<(i64, i64)> = OWNER_PAUSES
+        .iter()
+        .map(|(from, to)| ((from * 1e6) as i64, (to * 1e6) as i64))
+        .collect();
+    let found = cues(&recognized.words, &silences);
+    let pad = dc_transcribe::EDGE_PAD as f64 / 1e6;
+    for (from, to) in OWNER_PAUSES {
+        // A cue ending in a pause ends where it starts, plus its padding; a pause inside a
+        // sentence (shorter than a splitting silence) keeps its cue on screen.
+        let late: Vec<String> = found
+            .iter()
+            .filter(|c| {
+                let end = c.end as f64 / 1e6;
+                end > from + pad + SLACK && end < to
+            })
+            .map(|c| c.text(&recognized.words))
+            .collect();
+        assert!(
+            late.is_empty(),
+            "cues ending late in the pause {from}–{to}: {late:?}"
+        );
+        let next = recognized
+            .words
+            .iter()
+            .map(|w| w.start as f64 / 1e6)
+            .find(|start| *start >= from)
+            .unwrap();
+        assert!(
+            (next - to).abs() < 0.4,
+            "speech after the pause {from}–{to} starts at {next:.2}"
+        );
+    }
+}
