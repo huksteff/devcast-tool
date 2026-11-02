@@ -5,16 +5,17 @@
 //! of 15°); the edges and the centre stick to the frame and to the other annotations shown (7.23,
 //! `snap.rs`) while the snapping (N) is on and Ctrl is up. One `annot set` per gesture, to the key
 //! at the playhead when it stands on one (`--at`, the rule of the panel, 7.18); the preview shows
-//! the draft meanwhile.
+//! the draft meanwhile. A left drag inside the picked drawing draws instead (`brush.rs`); its box
+//! moves with a right drag (mockup 3c).
 
-use dc_fx_annotations::{AnnotId, Annotations, SIZE_MIN, key_offset};
+use dc_fx_annotations::{AnnotId, Annotations, Kind, SIZE_MIN, key_offset};
 use dc_ops::Step;
-use eframe::egui::{CursorIcon, Pos2, Response, Ui, Vec2};
+use eframe::egui::{CursorIcon, PointerButton, Pos2, Response, Ui, Vec2};
 use serde_json::json;
 
 use super::geom::{Boxed, GRAB, Grip, KNOB, Mapping, Resize};
 use super::snap::{Guide, Lines, PULL, axes};
-use super::{Drag, finish, paint, show_draft};
+use super::{Drag, brush, finish, paint, show_draft};
 use crate::editor::EditorWindow;
 use crate::editor::inspector::Edit;
 use crate::editor::selection::{Item, Selected, same_moment};
@@ -24,6 +25,7 @@ use crate::editor::timeline::Row;
 #[derive(Debug, Clone, PartialEq)]
 pub struct OnFrame {
     pub edit: Edit,
+    pub kind: Kind,
     pub boxed: Boxed,
 }
 
@@ -74,7 +76,8 @@ pub fn shown(editor: &EditorWindow, canvas: Vec2) -> Vec<OnFrame> {
             let at = region.keys.iter().copied().find(|k| same_moment(*k, now));
             let edit = Edit { id, at };
             let boxed = Boxed::of(rect, rotation, canvas);
-            found.push(((row, order), OnFrame { edit, boxed }));
+            let kind = annotation.kind;
+            found.push(((row, order), OnFrame { edit, kind, boxed }));
         }
     }
     found.sort_by_key(|(order, _)| *order);
@@ -98,36 +101,24 @@ pub fn ui(ui: &Ui, editor: &mut EditorWindow, response: &Response, map: Mapping)
         Some(Drag::Annot(drag)) => Some(drag.grip),
         _ => None,
     };
-    let hovered = response.hover_pos().and_then(|p| {
-        let p = map.canvas(p);
-        let own = picked.and_then(|s| s.boxed.grip(p, grab, knob));
-        own.or_else(|| topmost(&shown, p).map(|_| Grip::Move))
-    });
-    if let Some(grip) = held.or(hovered) {
-        let angle = picked.map_or(0.0, |s| s.boxed.angle);
-        ui.ctx().set_cursor_icon(cursor(grip, angle));
+    let pointer = response.hover_pos();
+    let own = |p: Pos2| picked.and_then(|s| s.boxed.grip(map.canvas(p), grab, knob));
+    let hovered =
+        pointer.and_then(|p| own(p).or_else(|| topmost(&shown, map.canvas(p)).map(|_| Grip::Move)));
+    let brushing = matches!(editor.view.stage, Some(Drag::Brush(_)));
+    let drawing = picked.filter(|s| s.kind == Kind::Drawing);
+    let over_drawing =
+        drawing.is_some() && held.is_none() && pointer.and_then(own) == Some(Grip::Move);
+    match (drawing, pointer) {
+        (Some(on), Some(at)) if brushing || over_drawing => brush::hover(ui, editor, on, map, at),
+        _ => {
+            if let Some(grip) = held.or(hovered) {
+                let angle = picked.map_or(0.0, |s| s.boxed.angle);
+                ui.ctx().set_cursor_icon(cursor(grip, angle));
+            }
+        }
     }
-    if response.drag_started()
-        && let Some(press) = ui.input(|i| i.pointer.press_origin())
-    {
-        start(editor, &shown, picked, map, press);
-    }
-    if response.clicked()
-        && let Some(at) = response.interact_pointer_pos()
-    {
-        pick(editor, &shown, map.canvas(at));
-    }
-    if response.dragged()
-        && let Some(pointer) = response.interact_pointer_pos()
-    {
-        drag(ui, editor, &shown, map, map.canvas(pointer));
-    }
-    if response.drag_stopped()
-        && let Some(Drag::Annot(drag)) = editor.view.stage.clone()
-    {
-        let changed = drag.now != drag.from;
-        finish(editor, drag.drafted, changed.then(|| vec![step(&drag)]));
-    }
+    gestures(ui, editor, response, &shown, picked, map);
     let id = picked.map(|s| s.edit.id);
     let (boxed, guides) = match &editor.view.stage {
         Some(Drag::Annot(drag)) if Some(drag.edit.id) == id => {
@@ -138,6 +129,55 @@ pub fn ui(ui: &Ui, editor: &mut EditorWindow, response: &Response, map: Mapping)
     paint::guides(ui, map, &guides);
     if let Some(boxed) = boxed {
         paint::selected(ui, map, &boxed);
+    }
+}
+
+/// The press, click, drag and release on the preview: a left drag inside the picked drawing
+/// draws (`brush.rs`), anything else picks, moves, resizes or turns.
+fn gestures(
+    ui: &Ui,
+    editor: &mut EditorWindow,
+    response: &Response,
+    shown: &[OnFrame],
+    picked: Option<&OnFrame>,
+    map: Mapping,
+) {
+    if response.drag_started()
+        && let Some(press) = ui.input(|i| i.pointer.press_origin())
+    {
+        let (grab, knob) = (map.length(GRAB), map.length(KNOB));
+        let drawing = picked.filter(|s| {
+            s.kind == Kind::Drawing
+                && response.drag_started_by(PointerButton::Primary)
+                && s.boxed.grip(map.canvas(press), grab, knob) == Some(Grip::Move)
+        });
+        match drawing {
+            Some(on) => brush::start(ui, editor, on, map, press),
+            None => start(editor, shown, picked, map, press),
+        }
+    }
+    if response.clicked()
+        && let Some(at) = response.interact_pointer_pos()
+    {
+        pick(editor, shown, map.canvas(at));
+    }
+    if response.dragged()
+        && let Some(pointer) = response.interact_pointer_pos()
+    {
+        match editor.view.stage {
+            Some(Drag::Brush(_)) => brush::drag(ui, editor, map.canvas(pointer)),
+            _ => drag(ui, editor, shown, map, map.canvas(pointer)),
+        }
+    }
+    if response.drag_stopped() {
+        match editor.view.stage.clone() {
+            Some(Drag::Annot(drag)) => {
+                let changed = drag.now != drag.from;
+                finish(editor, drag.drafted, changed.then(|| vec![step(&drag)]));
+            }
+            Some(Drag::Brush(_)) => brush::stop(editor),
+            _ => {}
+        }
     }
 }
 

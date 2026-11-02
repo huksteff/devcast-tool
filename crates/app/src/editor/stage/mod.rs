@@ -1,6 +1,7 @@
-//! Editing on the preview (7.21–7.23): the frame of the picked zoom (`zoom.rs`) and the boxes of
+//! Editing on the preview (7.21–7.24): the frame of the picked zoom (`zoom.rs`) and the boxes of
 //! the annotations (`annot.rs`) follow the pointer over the output frame, with guides and
-//! snapping (`snap.rs`); the math is `geom.rs`, the drawing `paint.rs`.
+//! snapping (`snap.rs`); the brush draws in the picked drawing (`brush.rs`); the math is
+//! `geom.rs`, the drawing `paint.rs`.
 //!
 //! A gesture is one registry command on release (`Action::Apply`, one undo step, the same as
 //! `devcast`). While it goes on, the preview renders the draft: the project as that command would
@@ -8,11 +9,14 @@
 //! bring the preview back to the project.
 
 mod annot;
+mod brush;
 mod geom;
 mod paint;
 mod snap;
 mod zoom;
 
+#[cfg(test)]
+mod brush_tests;
 #[cfg(test)]
 mod geom_tests;
 #[cfg(test)]
@@ -33,6 +37,7 @@ use geom::Mapping;
 pub enum Drag {
     Zoom(zoom::ZoomDrag),
     Annot(annot::AnnotDrag),
+    Brush(brush::BrushDrag),
 }
 
 impl Drag {
@@ -41,6 +46,7 @@ impl Drag {
         match self {
             Self::Zoom(drag) => drag.drafted,
             Self::Annot(drag) => drag.drafted,
+            Self::Brush(drag) => drag.drafted,
         }
     }
 }

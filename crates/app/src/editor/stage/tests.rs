@@ -16,21 +16,21 @@ use crate::editor::tests::harness;
 use crate::editor::{SIZE, Transport};
 
 /// Canvas of the test project, px.
-const CANVAS: Vec2 = vec2(2560.0, 1440.0);
+pub(super) const CANVAS: Vec2 = vec2(2560.0, 1440.0);
 
-fn started() -> H {
+pub(super) fn started() -> H {
     let mut harness = harness(SIZE);
     harness.run();
     harness
 }
 
 /// The output frame on screen.
-fn frame(harness: &H) -> Rect {
+pub(super) fn frame(harness: &H) -> Rect {
     harness.get_by_label(text::PREVIEW_FRAME).rect()
 }
 
 /// Canvas px `p` on screen (no camera: the tests have no GPU frame).
-fn on_screen(harness: &H, p: Pos2) -> Pos2 {
+pub(super) fn on_screen(harness: &H, p: Pos2) -> Pos2 {
     let frame = frame(harness);
     frame.min + p.to_vec2() * (frame.width() / CANVAS.x)
 }
@@ -50,7 +50,7 @@ fn button(harness: &mut H, pos: Pos2, pressed: bool, modifiers: Modifiers) {
 }
 
 /// Presses at `from` and moves to `to` in steps, without releasing.
-fn hold(harness: &mut H, from: Pos2, to: Pos2, modifiers: Modifiers) {
+pub(super) fn hold(harness: &mut H, from: Pos2, to: Pos2, modifiers: Modifiers) {
     button(harness, from, true, modifiers);
     harness.run();
     for share in [0.25, 0.5, 0.75, 1.0] {
@@ -60,14 +60,14 @@ fn hold(harness: &mut H, from: Pos2, to: Pos2, modifiers: Modifiers) {
     }
 }
 
-fn release(harness: &mut H, at: Pos2, modifiers: Modifiers) {
+pub(super) fn release(harness: &mut H, at: Pos2, modifiers: Modifiers) {
     button(harness, at, false, modifiers);
     harness.event(Event::ModifiersChanged(Modifiers::NONE));
     harness.run();
     harness.run();
 }
 
-fn drag(harness: &mut H, from: Pos2, to: Pos2, modifiers: Modifiers) {
+pub(super) fn drag(harness: &mut H, from: Pos2, to: Pos2, modifiers: Modifiers) {
     hold(harness, from, to, modifiers);
     release(harness, to, modifiers);
 }
@@ -92,13 +92,13 @@ fn annot_rect(project: &Project, n: u32) -> ([f64; 4], f64) {
 }
 
 /// The preview renders a project other than the document: the draft of a gesture.
-fn drafted(harness: &H) -> Option<Project> {
+pub(super) fn drafted(harness: &H) -> Option<Project> {
     let editor = &harness.state().editor;
     let (shown, _) = editor.preview.project();
     (*shown != *editor.doc.project()).then(|| (*shown).clone())
 }
 
-fn at(harness: &mut H, secs: f64) {
+pub(super) fn at(harness: &mut H, secs: f64) {
     let time = OutputTime::from_secs_f64(secs);
     harness
         .state_mut()

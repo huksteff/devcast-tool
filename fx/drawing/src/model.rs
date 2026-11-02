@@ -1,7 +1,7 @@
 //! The fields of a drawing annotation, kept in `Annotation::body` (fx/annotations).
 
 use dc_fx_annotations::{Blend, step};
-use dc_render::Rgba;
+use dc_render::{BLUE, Rgba};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +21,17 @@ pub struct DrawingBody {
     pub strokes: Vec<Stroke>,
     /// Opacity of the whole drawing, 0..1.
     pub opacity: f64,
+}
+
+impl DrawingBody {
+    /// Colour and thickness of the drawing's pencil: those of its first pencil stroke, the
+    /// defaults while it has none. New pencil strokes of the editor take them.
+    pub fn pencil(&self) -> (Rgba, f64) {
+        self.strokes
+            .iter()
+            .find(|s| s.tool == StrokeTool::Pencil)
+            .map_or((BLUE, PENCIL_WIDTH), |s| (s.color, s.width))
+    }
 }
 
 impl Default for DrawingBody {

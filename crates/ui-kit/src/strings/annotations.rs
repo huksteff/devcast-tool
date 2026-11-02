@@ -112,8 +112,7 @@ pub fn picture(name: &str, w: u32, h: u32) -> String {
 pub const PENCIL: &str = "Цвет карандаша";
 pub const DRAWING_COLOR: &str = "Цвет";
 pub const CLEAR: &str = "Очистить рисунок";
-pub const DRAWING_NOTE: &str =
-    "Цвет и толщина меняются у всех штрихов карандаша. Рисовать на превью — задача 7.24.";
+pub const DRAWING_NOTE: &str = "Цвет и толщина меняются у всех штрихов карандаша. На превью: ЛКМ — карандаш, Shift+ЛКМ — ластик, Alt+ЛКМ — прямая, ПКМ — двигать.";
 
 /// «Штрихов: 3»: how many strokes the drawing has.
 pub fn strokes(count: usize) -> String {

@@ -1,9 +1,9 @@
 //! «Основное» of a drawing (mockup 3c «Рисунок»): the colour and thickness of every pencil
 //! stroke and the opacity of the drawing (`drawing set`), how many strokes it has and «Очистить
-//! рисунок» (`drawing clear`). Drawing and erasing strokes on the preview is task 7.24.
+//! рисунок» (`drawing clear`); strokes are drawn and erased on the preview (`stage/brush.rs`).
 //! «Сбросить» brings the pencil to blue 4 px and the opacity to 100 %.
 
-use dc_fx_drawing::{DrawingBody, PENCIL_WIDTH, StrokeTool, WIDTH_MAX, WIDTH_MIN};
+use dc_fx_drawing::{DrawingBody, PENCIL_WIDTH, WIDTH_MAX, WIDTH_MIN};
 use dc_ops::Step;
 use dc_render::{BLUE, Rgba};
 use dc_ui_kit::strings::{annotations as text, inspector as names};
@@ -20,7 +20,7 @@ impl Section for DrawingBody {
     const ID: &'static str = "drawing";
 
     fn basic(&self, ui: &mut Ui, cx: &mut Cx<'_>, edit: Edit) {
-        let (color, width) = pencil(self);
+        let (color, width) = self.pencil();
         if let Some((_, color)) = rows::colors(ui, text::DRAWING_COLOR, &[(text::PENCIL, color)]) {
             cx.actions.push(edit.apply(SET, [("color", json!(color))]));
         }
@@ -44,18 +44,9 @@ impl Section for DrawingBody {
 
     fn basic_reset(&self, edit: Edit) -> Option<Vec<Step>> {
         let default = fields((BLUE, PENCIL_WIDTH), 1.0);
-        let now = fields(pencil(self), self.opacity);
+        let now = fields(self.pencil(), self.opacity);
         Some(edit.reset(SET, &now, &default).into_iter().collect())
     }
-}
-
-/// Colour and thickness of the first pencil stroke: the drawing's pencil (new strokes take the
-/// defaults when there is none).
-fn pencil(body: &DrawingBody) -> (Rgba, f64) {
-    body.strokes
-        .iter()
-        .find(|s| s.tool == StrokeTool::Pencil)
-        .map_or((BLUE, PENCIL_WIDTH), |s| (s.color, s.width))
 }
 
 fn fields((color, width): (Rgba, f64), opacity: f64) -> [(&'static str, Value); 3] {
