@@ -7,7 +7,8 @@ use std::path::{Path, PathBuf};
 use dc_media::{Picture, decode_picture};
 use dc_render::SHEET_GAP;
 
-use crate::test_util::{defaults_file, fixture_copy, run_line_with};
+use crate::run::{Local, run_with};
+use crate::test_util::{decoded, defaults_file, fixture_copy, run_line_with};
 
 struct Clicks {
     tmp: tempfile::TempDir,
@@ -27,11 +28,17 @@ impl Clicks {
 
     fn ok(&self, line: &str) -> String {
         let defaults = defaults_file(self.tmp.path());
-        let out = run_line_with(
-            line,
+        let channel = format!("test-export-still-{}", std::process::id());
+        let local = Local {
+            defaults: Some(&defaults),
+            export_channel: Some(&channel),
+        };
+        let args = line.split(' ').map(str::to_owned).collect();
+        let out = run_with(
+            args,
             &self.root,
             &dc_ops::Registry::devcast().unwrap(),
-            &defaults,
+            local,
         );
         assert_eq!(out.code, 0, "{line}: {}", out.stderr);
         out.stdout.trim_end().to_owned()
@@ -93,6 +100,59 @@ fn sheet_puts_frames_of_equal_parts_in_rows() {
     );
     let sheet = f.png("лист.png");
     let size = |cell: u32| 2 * (cell + SHEET_GAP) + SHEET_GAP;
+/// `frame` shows what the export writes at the same moment (same evaluator, sources and
+/// compositor): the luma of the PNG and of the MP4 frame differ only by coding noise, while a frame
+/// of another moment differs much more.
+#[test]
+fn frame_is_the_frame_of_the_export() {
+    let f = Clicks::new();
+    f.ok("annot add shape --at 1 --duration 4 --rect 0.6,0.3,0.3,0.3");
+    f.ok("shape set a1 --figure rectangle --fill #ef4444ff --outline false");
+    f.ok("zoom add --at 2 --duration 2 --scale 2 --mode fixed --x 0.7 --y 0.4");
+    f.ok("cut 5-12");
+    f.ok("frame --at 3 -o ../кадр.png");
+    f.ok("frame --at 0.5 -o ../другой.png");
+    f.ok("export -o ../урок.mp4 --res source --fps 30");
+    let video = f.tmp.path().join("урок.mp4");
+    let yuv = decoded(&[
+        "-i",
+        video.to_str().unwrap(),
+        "-vf",
+        "trim=start_frame=90",
+        "-frames:v",
+        "1",
+        "-pix_fmt",
+        "yuv420p",
+        "-f",
+        "rawvideo",
+        "-",
+    ]);
+    let luma = &yuv[..1280 * 720];
+    let same = mean_difference(&f.png("кадр.png"), luma);
+    let other = mean_difference(&f.png("другой.png"), luma);
+    assert!(same < 1.5, "frame and export differ by {same}");
+    assert!(
+        other > 10.0 * same,
+        "another moment differs by {other} only"
+    );
+}
+
+/// Mean difference between the BT.709 limited-range luma of `picture` (as the export writes it)
+/// and `luma`, 0..255.
+fn mean_difference(picture: &Picture, luma: &[u8]) -> f64 {
+    let rgba = &picture.frames[0].rgba;
+    let total: f64 = rgba
+        .chunks_exact(4)
+        .zip(luma)
+        .map(|(p, &y)| {
+            let [r, g, b] = [p[0], p[1], p[2]].map(f64::from);
+            let expected = 16.0 + 219.0 * (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+            (expected - f64::from(y)).abs()
+        })
+        .sum();
+    total / luma.len() as f64
+}
+
     assert_eq!(
         (sheet.size.width, sheet.size.height),
         (size(1280), size(720))
