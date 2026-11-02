@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use super::{Countdown, Session, clock};
-use crate::recorder::Recorder;
+use crate::recorder::{Event, Recorder, Request};
 
 #[test]
 fn countdown_goes_down_once_a_second() {
@@ -27,7 +27,8 @@ fn a_second_stop_keeps_the_recording_being_prepared() {
     let dir = tempfile::tempdir().unwrap();
     let store = crate::settings::Store::load(&dir.path().join("settings.json")).unwrap();
     let mut shared = crate::app::Shared::new(eframe::egui::Context::default(), store);
-    shared.session = Session::Preparing(Recorder::idle(dir.path().join("запись.dcproj")));
+    let (recorder, _events, _requests) = Recorder::fake(dir.path().join("запись.dcproj"));
+    shared.session = Session::Preparing(recorder);
     shared.stop();
     assert!(
         matches!(shared.session, Session::Preparing(_)),
@@ -36,4 +37,31 @@ fn a_second_stop_keeps_the_recording_being_prepared() {
     shared.session = Session::Countdown(Countdown::new(3, Instant::now()));
     shared.stop();
     assert!(shared.session.is_idle(), "stop cancels the countdown");
+}
+
+#[test]
+fn stop_while_starting_stops_right_after_the_start() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = crate::settings::Store::load(&dir.path().join("settings.json")).unwrap();
+    let mut shared = crate::app::Shared::new(eframe::egui::Context::default(), store);
+    let (recorder, events, requests) = Recorder::fake(dir.path().join("запись.dcproj"));
+    shared.session = Session::Starting {
+        recorder,
+        stop: false,
+    };
+    shared.stop();
+    assert!(matches!(
+        shared.session,
+        Session::Starting { stop: true, .. }
+    ));
+    assert!(
+        requests.try_recv().is_err(),
+        "nothing to stop before the start"
+    );
+    events
+        .send(Event::Started(dc_capture::HostTime::from_micros(5)))
+        .unwrap();
+    shared.tick();
+    assert!(matches!(shared.session, Session::Preparing(_)));
+    assert_eq!(requests.try_iter().collect::<Vec<_>>(), [Request::Stop]);
 }

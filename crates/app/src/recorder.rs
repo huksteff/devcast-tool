@@ -80,17 +80,19 @@ impl Recorder {
         })
     }
 
-    /// A recorder of `root` without a thread, which takes no requests (tests).
+    /// A recorder of `root` without a thread (tests): the test sends its events and reads the
+    /// requests it got.
     #[cfg(test)]
-    pub(crate) fn idle(root: PathBuf) -> Self {
-        let (requests, _) = mpsc::channel();
-        let (_, events) = mpsc::channel();
-        Self {
+    pub(crate) fn fake(root: PathBuf) -> (Self, Sender<Event>, Receiver<Request>) {
+        let (requests, received) = mpsc::channel();
+        let (sender, events) = mpsc::channel();
+        let recorder = Self {
             root,
             requests,
             events,
             thread: None,
-        }
+        };
+        (recorder, sender, received)
     }
 
     pub fn root(&self) -> &std::path::Path {

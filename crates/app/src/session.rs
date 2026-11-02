@@ -3,21 +3,19 @@
 //! here are the states, their timing and what each action of the HUD, the tray and the hotkeys
 //! does to them. The timer runs on the recorder's clock: host time minus the pauses.
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use dc_capture::{HostTime, Pauses};
 use eframe::egui;
 
 use crate::app::Shared;
+pub use crate::countdown::Countdown;
 use crate::error::AppError;
 use crate::hotkeys::Command;
 use crate::hud::popover;
 use crate::recorder::{Event, Recorder, Request};
 use crate::tray::TrayView;
 use dc_ui_kit::strings::tray;
-
-/// One step of the countdown.
-const SECOND: Duration = Duration::from_secs(1);
 
 #[derive(Default)]
 pub enum Session {
@@ -28,42 +26,17 @@ pub enum Session {
     /// gets into the first frames.
     Launch,
     /// The recorder opens the devices and waits for the first frame.
-    Starting(Recorder),
+    Starting {
+        recorder: Recorder,
+        /// Stop was pressed meanwhile: it is sent as soon as the recording has started
+        /// (decision of the owner 2026-11-02).
+        stop: bool,
+    },
     Live(Live),
     /// Stop was sent: the tracks are joined and the project saved.
     Preparing(Recorder),
     /// Cancel was sent: the files are deleted.
     Cancelling(Recorder),
-}
-
-/// Seconds left before the recording starts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Countdown {
-    pub left: u32,
-    /// When `left` goes down by one.
-    pub next: Instant,
-    /// Its window has been excluded from capture. Sent once: a command makes the window draw
-    /// again, and sending it every frame drew the countdown nonstop and starved the HUD.
-    pub excluded: bool,
-}
-
-impl Countdown {
-    pub fn new(seconds: u32, now: Instant) -> Self {
-        Self {
-            left: seconds,
-            next: now + SECOND,
-            excluded: false,
-        }
-    }
-
-    /// Counts the seconds passed by `now`; true once it reached zero.
-    pub fn tick(&mut self, now: Instant) -> bool {
-        while self.left > 0 && now >= self.next {
-            self.left -= 1;
-            self.next += SECOND;
-        }
-        self.left == 0
-    }
 }
 
 pub struct Live {
@@ -116,7 +89,7 @@ impl Session {
     /// Stops a running recording and waits for its project; for quitting the app.
     pub fn finish(self) {
         match self {
-            Self::Starting(recorder) | Self::Live(Live { recorder, .. }) => {
+            Self::Starting { recorder, .. } | Self::Live(Live { recorder, .. }) => {
                 recorder.send(Request::Stop);
                 recorder.join();
             }
@@ -170,7 +143,10 @@ impl Shared {
             }
             Session::Launch => {
                 self.session = match self.start_recorder() {
-                    Ok(recorder) => Session::Starting(recorder),
+                    Ok(recorder) => Session::Starting {
+                        recorder,
+                        stop: false,
+                    },
                     Err(error) => {
                         self.report(Err(error));
                         Session::Idle
@@ -178,7 +154,7 @@ impl Shared {
                 };
             }
             Session::Idle => {}
-            Session::Starting(recorder)
+            Session::Starting { recorder, .. }
             | Session::Live(Live { recorder, .. })
             | Session::Preparing(recorder)
             | Session::Cancelling(recorder) => {
@@ -200,13 +176,16 @@ impl Shared {
 
     fn on_event(&mut self, event: Event) {
         match (event, std::mem::take(&mut self.session)) {
-            (Event::Started(start), Session::Starting(recorder)) => {
+            (Event::Started(start), Session::Starting { recorder, stop }) => {
                 self.session = Session::Live(Live {
                     recorder,
                     start,
                     pauses: Pauses::default(),
                     asking: false,
                 });
+                if stop {
+                    self.stop();
+                }
             }
             (Event::Paused(at), Session::Live(mut live)) => {
                 self.report(live.pauses.pause(at));
@@ -266,10 +245,17 @@ impl Shared {
         }
     }
 
-    /// Stop: the HUD shows «Подготовка записи» until the project is saved.
-    /// A countdown is cancelled; any other state stays as it is.
+    /// Stop: the HUD shows «Подготовка записи» until the project is saved. While the recording
+    /// is starting the stop waits for its start. A countdown is cancelled; any other state stays
+    /// as it is.
     pub fn stop(&mut self) {
         match std::mem::take(&mut self.session) {
+            Session::Starting { recorder, .. } => {
+                self.session = Session::Starting {
+                    recorder,
+                    stop: true,
+                };
+            }
             Session::Live(live) => {
                 live.recorder.send(Request::Stop);
                 self.popover = None;
@@ -331,7 +317,7 @@ impl Shared {
     /// «Выход»: at once at rest; while recording the HUD asks «Сохранить и выйти?» first.
     pub fn quit(&mut self) {
         match self.session {
-            Session::Starting(_) | Session::Live(_) => {
+            Session::Starting { .. } | Session::Live(_) => {
                 self.show_hud();
                 self.popover = Some(popover::Open::new(popover::Kind::Quit, 0.0));
             }
@@ -356,7 +342,7 @@ impl Shared {
                 recording: true,
                 can_stop: false,
             },
-            Session::Starting(_) | Session::Cancelling(_) => TrayView {
+            Session::Starting { .. } | Session::Cancelling(_) => TrayView {
                 status: tray::recording("00:00", &source()),
                 recording: true,
                 can_stop: false,
@@ -386,7 +372,7 @@ impl Shared {
 /// Joins the thread of a recorder that has sent its last event.
 fn finished(session: Session) {
     match session {
-        Session::Starting(recorder)
+        Session::Starting { recorder, .. }
         | Session::Live(Live { recorder, .. })
         | Session::Preparing(recorder)
         | Session::Cancelling(recorder) => recorder.join(),

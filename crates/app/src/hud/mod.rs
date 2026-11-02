@@ -149,7 +149,9 @@ fn content(ui: &mut Ui, shared: &Shared) -> Option<(bar::Clicked, f32)> {
         }
         Session::Idle => bar::RecordButton::Ready,
         Session::Countdown(countdown) => bar::RecordButton::Countdown(countdown.left),
-        Session::Launch | Session::Starting(_) | Session::Cancelling(_) => bar::RecordButton::Busy,
+        Session::Launch | Session::Starting { .. } | Session::Cancelling(_) => {
+            bar::RecordButton::Busy
+        }
     };
     let settings = shared.store.get();
     let source = bar::source_label(&settings.recording.source, &shared.sources);

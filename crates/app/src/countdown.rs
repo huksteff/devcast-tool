@@ -1,9 +1,10 @@
 //! The countdown window (mockup 4): 200 × 200 in the middle of what will be recorded (the
 //! monitor, the area or the window), the number in 88 px; a click anywhere or Esc cancels. It
 //! takes the focus so Esc reaches it. It closes before the recorder starts, so it is never in
-//! the recording.
+//! the recording. Its state is [`Countdown`]: the seconds left.
 
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use dc_capture::{Source, SourceList};
 use dc_ui_kit::fonts::{self, Weight};
@@ -112,4 +113,37 @@ pub fn face(ui: &mut Ui, left: u32) -> bool {
         TEXT_3,
     );
     response.clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape))
+}
+
+/// One step of the countdown.
+const SECOND: Duration = Duration::from_secs(1);
+
+/// Seconds left before the recording starts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Countdown {
+    pub left: u32,
+    /// When `left` goes down by one.
+    pub next: Instant,
+    /// Its window has been excluded from capture. Sent once: a command makes the window draw
+    /// again, and sending it every frame drew the countdown nonstop and starved the HUD.
+    pub excluded: bool,
+}
+
+impl Countdown {
+    pub fn new(seconds: u32, now: Instant) -> Self {
+        Self {
+            left: seconds,
+            next: now + SECOND,
+            excluded: false,
+        }
+    }
+
+    /// Counts the seconds passed by `now`; true once it reached zero.
+    pub fn tick(&mut self, now: Instant) -> bool {
+        while self.left > 0 && now >= self.next {
+            self.left -= 1;
+            self.next += SECOND;
+        }
+        self.left == 0
+    }
 }
