@@ -189,7 +189,12 @@ impl SettingsWindow {
                 &items,
                 ui.available_width() - METER - ui.spacing().item_spacing.x,
             );
-            ui.add(LevelBar::new(mic_level, METER, &hud::level(hud::MIC)));
+            // Without a microphone there is nothing to hear; its room stays so the list keeps its width.
+            let listened = next.recording.microphone.is_some();
+            ui.add_visible(
+                listened,
+                LevelBar::new(mic_level, METER, &hud::level(hud::MIC)),
+            );
         });
         field(ui, hud::SYSTEM_AUDIO, None, |ui| {
             ui.add(Toggle::new(
