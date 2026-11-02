@@ -171,6 +171,25 @@ fn a_picked_clip_edits_its_own_levels() {
     );
 }
 
+#[test]
+fn a_picked_clip_normalizes_and_denoises_its_own_tracks() {
+    let mut harness = tall();
+    pick(&mut harness, Some(Selected::Clip(ClipId::from_number(1))));
+    let denoise = harness.get_all_by_role_and_label(egui::Role::Switch, text::DENOISE);
+    assert_eq!(denoise.count(), 1, "only the microphone is denoised");
+    switch_nth(&mut harness, text::NORMALIZE, 1);
+    switch_nth(&mut harness, text::DENOISE, 0);
+    let caption = text::own(text::SYSTEM, &[text::OWN_NORMALIZE]);
+    assert!(harness.query_by_label(&caption).is_some());
+    let lines = [
+        "audio channel system --clip c1 --normalize true",
+        "audio channel mic --clip c1 --denoise true",
+    ];
+    assert_eq!(project_json(&harness), json(&cli(&lines)));
+    undo(&mut harness);
+    assert_eq!(project_json(&harness), json(&cli(&lines[..1])));
+}
+
 fn extra(harness: &mut H) {
     let id = AudioId::from_number(1);
     pick(harness, Some(Selected::Region(Item::Sound(id))));

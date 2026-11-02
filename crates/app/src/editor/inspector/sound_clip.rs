@@ -1,12 +1,13 @@
 //! The sound of a picked clip (mockup 3d, «Клип»), picked on the clips row or on its stretch of
 //! «Микрофон» / «Системный звук»: «Весь клип» — sound or silence (`audio mute`), then per track
-//! of the recording its own volume, gain and mute (`audio channel <track> --clip`). A level the
+//! of the recording its own volume, gain, mute, normalization and, for the microphone, noise
+//! suppression (`audio channel <track> --clip`). A level the
 //! clip never set follows the track's default (decision 000); the caption of the track names
 //! the levels of its own. «Сбросить» — `audio reset` (every level back to the defaults) and
 //! sound on, one undo step.
 
 use dc_core::{Clip, ClipId, project::MediaKind};
-use dc_fx_audio_tracks::Audio;
+use dc_fx_audio_tracks::{Audio, DENOISED};
 use dc_ops::Step;
 use dc_ui_kit::strings::sound as text;
 use eframe::egui::Ui;
@@ -74,6 +75,16 @@ fn track(
     }
     if let Some(on) = rows::toggle(ui, text::SILENT, now.muted) {
         cx.actions.push(sound::set(name, id, "mute", json!(on)));
+    }
+    if let Some(on) = rows::toggle_hint(ui, text::NORMALIZE, now.normalize, text::LUFS) {
+        cx.actions
+            .push(sound::set(name, id, "normalize", json!(on)));
+    }
+    // Only the microphone is denoised (`audio channel` refuses it elsewhere).
+    if name == DENOISED
+        && let Some(on) = rows::toggle(ui, text::DENOISE, now.denoise)
+    {
+        cx.actions.push(sound::set(name, id, "denoise", json!(on)));
     }
 }
 
