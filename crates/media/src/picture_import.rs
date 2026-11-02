@@ -9,7 +9,7 @@ use dc_project::ProjectDir;
 use crate::error::MediaError;
 use crate::picture::{Picture, decode_picture};
 
-/// Picture files that can be imported (decision 000: PNG, JPEG, WebP, GIF; SVG is not read yet).
+/// Picture files that can be imported (decision 000: PNG, JPEG, WebP, GIF; no SVG, raster only).
 pub const PICTURE_EXTENSIONS: [&str; 5] = ["png", "jpg", "jpeg", "webp", "gif"];
 
 /// A picture put into the project.
