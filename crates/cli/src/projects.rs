@@ -13,7 +13,7 @@ use crate::live::{app_channel, ask_app, refused};
 use crate::run::Answer;
 
 /// The project the editor of the running app holds; none without the app.
-fn open_in_editor(ctx: &Ctx<'_>) -> Result<Option<PathBuf>, CliError> {
+pub(crate) fn open_in_editor(ctx: &Ctx<'_>) -> Result<Option<PathBuf>, CliError> {
     let channel = app_channel(ctx.local.app_channel)?;
     match ask_app(&channel, &Request::Current)? {
         Some(Live::Current { root }) => Ok(root),

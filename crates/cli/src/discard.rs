@@ -73,7 +73,17 @@ fn discard_files(dir: &ProjectDir) -> Result<bool, CliError> {
 /// `devcast close [--save | --discard]`: the editor window of the project closes, the HUD comes
 /// back.
 pub(crate) fn close(ctx: &Ctx<'_>, changes: Option<Changes>) -> Result<Answer, CliError> {
-    let dir = find_project(ctx.globals.project.as_deref(), ctx.cwd)?;
+    let dir = match find_project(ctx.globals.project.as_deref(), ctx.cwd) {
+        Ok(dir) => dir,
+        // Without --project outside a project: the window of whatever the editor has open.
+        Err(error) if ctx.globals.project.is_none() => {
+            match crate::projects::open_in_editor(ctx)? {
+                Some(root) => ProjectDir::open(root)?,
+                None => return Err(error),
+            }
+        }
+        Err(error) => return Err(error),
+    };
     let name = dir.name().to_owned();
     let what = match changes {
         None => None,

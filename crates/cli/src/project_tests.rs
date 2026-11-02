@@ -189,3 +189,13 @@ fn a_fake_editor_of_one_project_is_elsewhere_for_another() {
     assert_eq!(working(&held).clips.len(), 2);
     editor.stop();
 }
+
+#[test]
+fn close_outside_a_project_closes_what_the_editor_has_open() {
+    let (held, editor, _unlocked) = pair("close-open");
+    let nowhere = tempfile::tempdir().unwrap();
+    let out = crate::fake_editor::run_in(&held, nowhere.path(), "close", &editor.channel);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(out.stdout.contains("Урок 1.devcast"), "{}", out.stdout);
+    editor.gone();
+}

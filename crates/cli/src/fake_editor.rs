@@ -213,6 +213,11 @@ impl State {
 
 /// `devcast <line>` in `f` with the app on `channel`.
 pub(crate) fn run(f: &Fixture, line: &str, channel: &str) -> Outcome {
+    run_in(f, &f.cwd, line, channel)
+}
+
+/// [`run`] with `cwd` as the current folder.
+pub(crate) fn run_in(f: &Fixture, cwd: &std::path::Path, line: &str, channel: &str) -> Outcome {
     let defaults = defaults_file(f._tmp.path());
     let local = Local {
         settings: defaults.parent(),
@@ -222,5 +227,5 @@ pub(crate) fn run(f: &Fixture, line: &str, channel: &str) -> Outcome {
         ..Local::default()
     };
     let args = line.split(' ').map(str::to_owned).collect();
-    run_with(args, &f.cwd, &f.registry, local)
+    run_with(args, cwd, &f.registry, local)
 }
