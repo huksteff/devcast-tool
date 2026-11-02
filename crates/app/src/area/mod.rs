@@ -23,6 +23,10 @@ pub struct Screen {
     /// once): the closed picker had the focus, and Windows leaves it nowhere, so Esc and Enter
     /// reached no window until a click (winit gives it with its patch, decision 019).
     focus: bool,
+    /// The window has drawn its first picture. It opens hidden and shows on its second frame:
+    /// shown at once, it is grey for a moment before its picture.
+    drawn: bool,
+    shown: bool,
 }
 
 /// The open selection on all monitors.
@@ -65,6 +69,8 @@ impl AreaSession {
                 let size = (b.width() as i32, b.height() as i32);
                 Screen {
                     focus: hud == Some(monitor.index),
+                    drawn: false,
+                    shown: false,
                     monitor,
                     frame,
                     selection: Selection {
@@ -134,6 +140,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         // A borderless window the size of the monitor, not winit's fullscreen: DXGI refuses a
         // swapchain for a window created fullscreen (DXGI_ERROR_INVALID_CALL, the app fell).
         let builder = crate::borderless::window(dc_ui_kit::strings::area::HINT)
+            .with_visible(false)
             .with_position(egui::pos2(b.x() as f32 / ppp, b.y() as f32 / ppp))
             .with_inner_size(egui::vec2(b.width() as f32 / ppp, b.height() as f32 / ppp));
         let shared = Arc::clone(shared);
@@ -158,7 +165,15 @@ fn screen_ui(ui: &mut egui::Ui, shared: &mut Shared, index: u32) {
     else {
         return;
     };
-    if std::mem::take(&mut screen.focus) {
+    if !screen.drawn {
+        screen.drawn = true;
+        ui.ctx().request_repaint();
+    } else if !screen.shown {
+        screen.shown = true;
+        ui.ctx()
+            .send_viewport_cmd(egui::ViewportCommand::Visible(true));
+        ui.ctx().request_repaint();
+    } else if std::mem::take(&mut screen.focus) {
         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Focus);
     }
     let frame = screen.frame.as_ref().map(TextureHandle::id);
