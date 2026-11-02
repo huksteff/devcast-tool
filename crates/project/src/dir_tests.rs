@@ -103,6 +103,20 @@ fn save_as_copies_media_and_assets() {
 }
 
 #[test]
+fn save_as_works_without_an_assets_folder() {
+    let (tmp, dir) = temp_project();
+    std::fs::remove_dir(dir.assets_dir()).unwrap();
+    let copy = dir
+        .save_as(
+            &Project::default(),
+            tmp.path().join("Копия без assets.dcproj"),
+        )
+        .unwrap();
+    assert!(copy.assets_dir().is_dir());
+    assert_eq!(copy.load().unwrap(), Project::default());
+}
+
+#[test]
 fn corrupt_and_future_files_explain_what_to_do() {
     let (_tmp, dir) = temp_project();
     std::fs::write(dir.file(PROJECT_FILE), "{ not json").unwrap();

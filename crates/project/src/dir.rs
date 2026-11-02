@@ -179,9 +179,14 @@ pub(crate) fn read_project(path: &Path) -> Result<Project> {
     Ok(project)
 }
 
+/// Copies the folder `from` into `to`; a missing `from` is an empty folder (git keeps no empty
+/// folders, so a cloned project may have no `assets/`).
 fn copy_tree(from: &Path, to: &Path) -> Result<()> {
     std::fs::create_dir_all(to).map_err(ProjectError::io("создать папку", to))?;
-    let entries = std::fs::read_dir(from).map_err(ProjectError::io("прочитать папку", from))?;
+    let entries = match std::fs::read_dir(from) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        entries => entries.map_err(ProjectError::io("прочитать папку", from))?,
+    };
     for entry in entries {
         let entry = entry.map_err(ProjectError::io("прочитать папку", from))?;
         let (path, target) = (entry.path(), to.join(entry.file_name()));
