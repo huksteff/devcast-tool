@@ -240,6 +240,7 @@ fn frame(ui: &mut Ui, editor: &mut EditorWindow) {
             paint(ui, rect, &shown);
             stage::ui(ui, editor, &response, rect, shown.camera);
         });
+    stage::brush_bar(ui, editor, area);
 }
 
 fn paint(ui: &Ui, rect: Rect, shown: &Shown) {

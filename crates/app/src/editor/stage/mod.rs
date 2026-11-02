@@ -23,6 +23,7 @@ mod geom_tests;
 mod tests;
 
 pub use annot::picked;
+pub use brush::bar as brush_bar;
 
 use dc_fx_zoom::ZoomId;
 use dc_ops::Step;

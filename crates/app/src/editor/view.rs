@@ -5,6 +5,7 @@
 use dc_core::time::Output;
 use dc_core::{ClipId, OutputTime, Range};
 use dc_fx_annotations::AnnotId;
+use dc_fx_drawing::{ERASER_WIDTH, StrokeTool};
 use eframe::egui::Pos2;
 
 use super::clipboard::Clipboard;
@@ -108,6 +109,11 @@ pub struct View {
     pub lift: Option<u32>,
     /// A gesture on the preview: the zoom frame or an annotation box (7.21, 7.22).
     pub stage: Option<super::stage::Drag>,
+    /// Tool of a left drag in the picked drawing, chosen on the brush bar (7.24); Shift erases
+    /// with either.
+    pub brush: StrokeTool,
+    /// Thickness of a new eraser stroke, px at 1080p, `WIDTH_MIN..=WIDTH_MAX`.
+    pub eraser: f64,
 }
 
 impl Default for View {
@@ -137,6 +143,8 @@ impl Default for View {
             remove: None,
             lift: None,
             stage: None,
+            brush: StrokeTool::Pencil,
+            eraser: ERASER_WIDTH,
         }
     }
 }

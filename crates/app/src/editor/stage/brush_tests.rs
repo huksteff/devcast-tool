@@ -1,12 +1,15 @@
 //! The brush on the preview: a stroke is one `drawing add`, the same project as `devcast`, one
 //! undo step; Shift erases with a circle as big as the stroke it leaves, Alt draws a line, a key
-//! at the playhead takes the stroke.
+//! at the playhead takes the stroke; the brush bar picks the tool of a plain drag and the eraser's
+//! size.
 
 use dc_core::{PixelSize, Project};
 use dc_fx_annotations::{AnnotId, Annotation, Annotations, Placement};
 use dc_fx_drawing::{DrawingBody, Stroke, StrokeTool};
 use dc_render::{BLUE, Camera};
+use dc_ui_kit::strings::annotations as text;
 use eframe::egui::{Event, Modifiers, pos2};
+use egui_kittest::kittest::Queryable;
 
 use super::brush::diameter;
 use super::geom::Mapping;
@@ -183,4 +186,43 @@ fn a_right_drag_moves_the_drawing() {
     assert!(strokes(&harness).is_empty(), "no stroke");
     let rect = last(harness.state().editor.doc.project()).rect;
     assert!(rect.x() > 0.25, "{rect:?}");
+}
+
+#[test]
+fn the_bar_picks_the_eraser_and_its_size() {
+    let mut harness = started();
+    assert!(harness.query_by_label(text::BRUSH_ERASER).is_none());
+    let id = drawing(&mut harness);
+    harness.get_by_label(text::BRUSH_ERASER).click();
+    harness.run();
+    assert_eq!(harness.state().editor.view.brush, StrokeTool::Eraser);
+    harness.state_mut().editor.view.eraser = 30.0;
+    harness.run();
+    let a = on_screen(&harness, pos2(800.0, 500.0));
+    let b = on_screen(&harness, pos2(1500.0, 900.0));
+    hold(&mut harness, a, b, Modifiers::NONE);
+    harness.snapshot("preview_brush_bar");
+    release(&mut harness, b, Modifiers::NONE);
+    drag(&mut harness, b, a, Modifiers::ALT);
+    let drawn = strokes(&harness);
+    assert_eq!(
+        drawn.iter().map(|s| (s.tool, s.width)).collect::<Vec<_>>(),
+        [(StrokeTool::Eraser, 30.0), (StrokeTool::Eraser, 30.0)]
+    );
+    assert_eq!(drawn[1].points.len(), 2, "Alt still draws a line");
+    let lines = [ADD, &line(id, &drawn[0], ""), &line(id, &drawn[1], "")];
+    assert_eq!(project_json(&harness), json(&cli(&lines)));
+
+    harness.get_by_label(text::BRUSH_PENCIL).click();
+    harness.run();
+    drag(&mut harness, a, b, Modifiers::SHIFT);
+    let last = strokes(&harness).pop().unwrap();
+    assert_eq!(
+        (last.tool, last.width),
+        (StrokeTool::Eraser, 30.0),
+        "Shift erases"
+    );
+    harness.state_mut().editor.view.selection.clear();
+    harness.run();
+    assert!(harness.query_by_label(text::BRUSH_ERASER).is_none());
 }
