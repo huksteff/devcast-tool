@@ -60,6 +60,8 @@ pub struct Shared {
     pub downloads: crate::downloads::Downloads,
     /// The export queue of the app, made when the first editor opens with a device.
     pub exports: Option<crate::exports::Exports>,
+    /// `devcast` runs waiting for the recording (`remote.rs`).
+    pub waiters: crate::remote::Waiters,
 }
 
 /// Which windows are open and the step of the recording: what the HUD's frame acts on.
@@ -106,6 +108,7 @@ impl Shared {
             gpu: None,
             downloads: crate::downloads::Downloads::default(),
             exports: None,
+            waiters: crate::remote::Waiters::default(),
         };
         shared.refresh_sources();
         shared
@@ -185,6 +188,8 @@ pub struct App {
     hud: HudWindow,
     tray: Tray,
     keys: GlobalKeys,
+    /// `devcast app quit` runs, answered just before the app ends.
+    quitting: Vec<crate::instance::Reply>,
 }
 
 impl App {
@@ -203,6 +208,7 @@ impl App {
             hud,
             tray,
             keys,
+            quitting: Vec::new(),
         }
     }
 
@@ -286,16 +292,19 @@ impl eframe::App for App {
 
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         for call in self.calls.try_iter() {
-            let answer = match call.request {
+            match call.request {
                 dc_ops::live::Request::Show => {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
                     ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
-                    dc_ops::live::Answer::Shown
+                    call.reply.send(dc_ops::live::Answer::Shown);
                 }
-                request => lock(&self.shared).live(request),
-            };
-            // The run that asked may have given up waiting; nothing to answer then.
-            let _ = call.reply.send(answer);
+                // As the tray's «Выход» at rest: `on_exit` stops and saves a recording.
+                dc_ops::live::Request::Quit => {
+                    self.quitting.push(call.reply);
+                    ctx.send_viewport_cmd_to(egui::ViewportId::ROOT, egui::ViewportCommand::Close);
+                }
+                request => lock(&self.shared).call(request, call.reply),
+            }
         }
         lock(&self.shared).tick();
         self.hotkeys();
@@ -305,11 +314,20 @@ impl eframe::App for App {
     /// A running recording is stopped and saved before the app goes.
     fn on_exit(&mut self) {
         let mut shared = lock(&self.shared);
-        std::mem::take(&mut shared.session).finish();
+        let recorded = std::mem::take(&mut shared.session).finish();
+        if let Some(root) = &recorded {
+            shared
+                .waiters
+                .hear(crate::remote::Heard::Stopped(root.clone()));
+        }
         if let Some(Err(error)) = shared.editor.as_mut().map(|e| e.doc.flush()) {
             tracing::error!("рабочее состояние проекта не записано при выходе: {error}");
         }
         crate::editor::timeline_window::remember(&mut shared);
+        for reply in self.quitting.drain(..) {
+            let recorded = recorded.clone();
+            reply.send_written(dc_ops::live::Answer::Quit { recorded });
+        }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

@@ -9,9 +9,11 @@ use serde_json::json;
 
 use crate::edit::Ctx;
 use crate::error::CliError;
+use crate::export_app::{self, Queue, parse_id};
 use crate::export_args::{ExportArgs, settings};
 use crate::export_queue::{self, Finished, Job, Reply, Request, Server};
 use crate::find::find_project;
+use crate::live::app_channel;
 use crate::run::Answer;
 use crate::workspace::Workspace;
 
@@ -45,8 +47,8 @@ pub(crate) fn export(
         (Some(Action::Status), Some(_)) => Err(CliError::Usage(
             "export status показывает всю очередь: devcast export status".to_owned(),
         )),
-        (Some(Action::Status), None) => status(channel),
-        (Some(Action::Cancel), id) => cancel(channel, id.map(parse_id).transpose()?),
+        (Some(Action::Status), None) => status(ctx, channel),
+        (Some(Action::Cancel), id) => cancel(ctx, channel, id.map(parse_id).transpose()?),
         (None, None) => start(ctx, args, channel),
     }
 }
@@ -84,7 +86,15 @@ fn start(ctx: &Ctx<'_>, args: &ExportArgs, channel: &str) -> Result<Answer, CliE
         let json = json!({"dry_run": true, "out": spec.out, "settings": spec.settings});
         return Ok(Answer::new(text, json));
     }
-    let mut answer = run(spec, channel)?;
+    let app = workspace.editor().map(|e| e.channel().to_owned());
+    let in_app = match app {
+        Some(app) => export_app::run(&app, &spec)?,
+        None => None,
+    };
+    let mut answer = match in_app {
+        Some(finished) => done(finished, Queue::App)?,
+        None => run(spec, channel)?,
+    };
     answer.warnings.extend(workspace.warnings);
     Ok(answer)
 }
@@ -93,14 +103,14 @@ fn start(ctx: &Ctx<'_>, args: &ExportArgs, channel: &str) -> Result<Answer, CliE
 fn run(spec: Spec, channel: &str) -> Result<Answer, CliError> {
     let request = || Request::Run(Box::new(spec.clone()));
     if let Some(reply) = export_queue::ask(channel, &request())? {
-        return done(reply);
+        return finished(reply);
     }
     let gpu = Gpu::new(AdapterChoice::Auto).map_err(|e| CliError::Failed(e.to_string()))?;
     match Server::start(channel, gpu)? {
         Some(server) => serve(server, spec),
         // Another call took the channel between the two steps: its queue takes this export.
         None => match export_queue::ask(channel, &request())? {
-            Some(reply) => done(reply),
+            Some(reply) => finished(reply),
             None => Err(CliError::Failed(
                 "очередь экспорта только что закрылась: начни экспорт ещё раз".to_owned(),
             )),
@@ -125,21 +135,26 @@ fn serve(server: Server, spec: Spec) -> Result<Answer, CliError> {
         ))
     })?;
     let warnings = server.close()?;
-    let finished = export_queue::finished(id, state);
-    let mut answer = done(Reply::Finished(finished))?;
+    let mut answer = done(export_queue::finished(id, state), Queue::Cli)?;
     answer.warnings.extend(ctrl_c);
     answer.warnings.extend(warnings);
     Ok(answer)
 }
 
-fn done(reply: Reply) -> Result<Answer, CliError> {
-    let Reply::Finished(finished) = reply else {
-        return Err(CliError::Failed(
+fn finished(reply: Reply) -> Result<Answer, CliError> {
+    match reply {
+        Reply::Finished(finished) => done(finished, Queue::Cli),
+        _ => Err(CliError::Failed(
             "очередь экспорта ответила не тем: обнови devcast".to_owned(),
-        ));
-    };
-    let json = serde_json::to_value(&finished)
+        )),
+    }
+}
+
+/// How the export of `queue` ended.
+fn done(finished: Finished, queue: Queue) -> Result<Answer, CliError> {
+    let mut json = serde_json::to_value(&finished)
         .map_err(|e| CliError::Failed(format!("ответ экспорта не записался в JSON: {e}")))?;
+    json["queue"] = queue.name().into();
     match finished {
         Finished::Done {
             id,
@@ -157,15 +172,18 @@ fn done(reply: Reply) -> Result<Answer, CliError> {
             let size = megabytes(bytes);
             let speed = duration / seconds;
             let text = format!(
-                "e{id} готово: {path} — {width}×{height}, {fps} fps, {duration:.1} с, {size}{codec}; за {seconds:.1} с (×{speed:.1} реального времени)"
+                "{} готово: {path} — {width}×{height}, {fps} fps, {duration:.1} с, {size}{codec}; за {seconds:.1} с (×{speed:.1} реального времени)",
+                queue.tag(id)
             );
             Ok(Answer::new(text, json))
         }
         Finished::Failed { id, message } => Err(CliError::Failed(format!(
-            "e{id}: экспорт не удался: {message}"
+            "{}: экспорт не удался: {message}",
+            queue.tag(id)
         ))),
         Finished::Cancelled { id } => Err(CliError::Failed(format!(
-            "e{id}: экспорт отменён, файл не записан"
+            "{}: экспорт отменён, файл не записан",
+            queue.tag(id)
         ))),
     }
 }
@@ -174,8 +192,21 @@ fn megabytes(bytes: u64) -> String {
     format!("{:.1} МБ", bytes as f64 / 1_048_576.0)
 }
 
-fn status(channel: &str) -> Result<Answer, CliError> {
-    let jobs = match export_queue::ask(channel, &Request::Status)? {
+/// The channel of the queue of `devcast export` processes in this run.
+pub(crate) fn run_channel(ctx: &Ctx<'_>) -> Result<String, CliError> {
+    match ctx.local.export_channel {
+        Some(channel) => Ok(channel.to_owned()),
+        None => channel(),
+    }
+}
+
+/// The jobs of both queues: of `devcast export` processes and the app's.
+pub(crate) fn all_jobs(ctx: &Ctx<'_>) -> Result<Vec<(Queue, Job)>, CliError> {
+    jobs(ctx, &run_channel(ctx)?)
+}
+
+fn jobs(ctx: &Ctx<'_>, channel: &str) -> Result<Vec<(Queue, Job)>, CliError> {
+    let cli = match export_queue::ask(channel, &Request::Status)? {
         None => Vec::new(),
         Some(Reply::Status { jobs }) => jobs,
         Some(_) => {
@@ -184,14 +215,36 @@ fn status(channel: &str) -> Result<Answer, CliError> {
             ));
         }
     };
+    let app = export_app::jobs(&app_channel(ctx.local.app_channel)?)?;
+    let cli = cli.into_iter().map(|j| (Queue::Cli, j));
+    Ok(cli
+        .chain(app.into_iter().map(|j| (Queue::App, j)))
+        .collect())
+}
+
+/// Both queues.
+fn status(ctx: &Ctx<'_>, channel: &str) -> Result<Answer, CliError> {
+    let jobs = jobs(ctx, channel)?;
     let text = match jobs.is_empty() {
         true => "экспорт не идёт".to_owned(),
         false => jobs.iter().map(line).collect::<Vec<_>>().join("\n"),
     };
-    Ok(Answer::new(text, json!({ "jobs": jobs })))
+    let listed: Vec<_> = jobs
+        .iter()
+        .map(|(queue, job)| listed(*queue, job))
+        .collect();
+    Ok(Answer::new(text, json!({ "jobs": listed })))
 }
 
-fn line(job: &Job) -> String {
+/// A job in JSON: its fields, its queue and its tag (`e2`, `p2`) for `export cancel`.
+pub(crate) fn listed(queue: Queue, job: &Job) -> serde_json::Value {
+    let mut value = json!(job);
+    value["queue"] = queue.name().into();
+    value["tag"] = queue.tag(job.id).into();
+    value
+}
+
+pub(crate) fn line((queue, job): &(Queue, Job)) -> String {
     let state = match job.state.as_str() {
         "running" if job.total > 0 && job.done > 0 => {
             let left = job.elapsed * (job.total - job.done) as f64 / job.done as f64;
@@ -208,40 +261,45 @@ fn line(job: &Job) -> String {
         "cancelled" => "отменён".to_owned(),
         _ => format!("ошибка: {}", job.error.as_deref().unwrap_or("")),
     };
-    format!("e{}  {state}  {}", job.id, job.label)
+    let place = match queue {
+        Queue::Cli => "",
+        Queue::App => "  (программа)",
+    };
+    format!("{}  {state}  {}{place}", queue.tag(job.id), job.label)
 }
 
-fn cancel(channel: &str, id: Option<u32>) -> Result<Answer, CliError> {
-    let ids = match export_queue::ask(channel, &Request::Cancel { id })? {
-        Some(Reply::Cancelled { ids }) => ids,
-        None => Vec::new(),
-        Some(_) => {
-            return Err(CliError::Failed(
-                "очередь экспорта ответила не тем: обнови devcast".to_owned(),
-            ));
-        }
-    };
-    if ids.is_empty() {
-        return Err(CliError::Failed(match id {
-            Some(id) => {
-                format!("e{id} не идёт и не ждёт в очереди: список — devcast export status")
+/// One job of either queue, or every job of both.
+fn cancel(ctx: &Ctx<'_>, channel: &str, id: Option<(Queue, u32)>) -> Result<Answer, CliError> {
+    let mut cancelled = Vec::new();
+    if id.is_none_or(|(queue, _)| queue == Queue::Cli) {
+        let one = id.map(|(_, id)| id);
+        let ids = match export_queue::ask(channel, &Request::Cancel { id: one })? {
+            Some(Reply::Cancelled { ids }) => ids,
+            None => Vec::new(),
+            Some(_) => {
+                return Err(CliError::Failed(
+                    "очередь экспорта ответила не тем: обнови devcast".to_owned(),
+                ));
             }
+        };
+        cancelled.extend(ids.into_iter().map(|id| Queue::Cli.tag(id)));
+    }
+    if id.is_none_or(|(queue, _)| queue == Queue::App) {
+        let app = app_channel(ctx.local.app_channel)?;
+        let ids = export_app::cancel(&app, id.map(|(_, id)| id))?;
+        cancelled.extend(ids.into_iter().map(|id| Queue::App.tag(id)));
+    }
+    if cancelled.is_empty() {
+        return Err(CliError::Failed(match id {
+            Some((queue, id)) => format!(
+                "{} не идёт и не ждёт в очереди: список — devcast export status",
+                queue.tag(id)
+            ),
             None => "экспорт не идёт: отменять нечего".to_owned(),
         }));
     }
-    let list: Vec<_> = ids.iter().map(|id| format!("e{id}")).collect();
     Ok(Answer::new(
-        format!("отменено: {}", list.join(", ")),
-        json!({ "cancelled": ids }),
+        format!("отменено: {}", cancelled.join(", ")),
+        json!({ "cancelled": cancelled }),
     ))
-}
-
-fn parse_id(text: &str) -> Result<u32, CliError> {
-    text.strip_prefix('e')
-        .and_then(|n| n.parse().ok())
-        .ok_or_else(|| {
-            CliError::Usage(format!(
-                "«{text}» — не номер экспорта: e1, e2 … (devcast export status)"
-            ))
-        })
 }

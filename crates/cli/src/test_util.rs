@@ -56,10 +56,20 @@ pub(crate) fn run_line_with(
     let args = line.split(' ').map(str::to_owned).collect();
     let local = Local {
         settings: defaults.parent(),
+        app_channel: Some(NO_APP),
+        record_channel: Some(NO_RECORDING),
+        export_channel: Some(EXPORTS),
         ..Local::default()
     };
     run_with(args, cwd, registry, local)
 }
+
+/// An app channel nobody listens on: a test never reaches the user's running app.
+pub(crate) const NO_APP: &str = "devcast-test-no-app";
+/// A `devcast record` channel nobody listens on.
+pub(crate) const NO_RECORDING: &str = "devcast-test-no-recording";
+/// The queue of the exports the tests run, apart from the user's.
+pub(crate) const EXPORTS: &str = "devcast-test-exports";
 
 /// Where the tests keep the app defaults: next to the project, never in `%APPDATA%`.
 pub(crate) fn defaults_file(tmp: &Path) -> PathBuf {

@@ -73,6 +73,8 @@ struct State {
     unsaved: bool,
     /// The app settings, in the settings folder of the runs (`run`).
     store: Store,
+    /// The app's recording and export queue.
+    app: crate::fake_app::FakeApp,
 }
 
 impl State {
@@ -88,6 +90,7 @@ impl State {
             pending: Vec::new(),
             unsaved: working.unsaved,
             store,
+            app: crate::fake_app::FakeApp::default(),
         }
     }
 
@@ -181,7 +184,8 @@ impl State {
                 let root = Some(self.dir.root().to_path_buf());
                 (Answer::Current { root }, false)
             }
-            _ => (Answer::NotOpen, false),
+            Request::Quit => (Answer::Quit { recorded: None }, true),
+            other => (self.app.answer(other, &self.dir, self.unsaved), false),
         }
     }
 
@@ -213,6 +217,8 @@ pub(crate) fn run(f: &Fixture, line: &str, channel: &str) -> Outcome {
     let local = Local {
         settings: defaults.parent(),
         app_channel: Some(channel),
+        record_channel: Some(crate::test_util::NO_RECORDING),
+        export_channel: Some(crate::test_util::EXPORTS),
         ..Local::default()
     };
     let args = line.split(' ').map(str::to_owned).collect();

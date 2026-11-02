@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use crate::builtin_app::{ConfigCommand, HotkeysCommand, ModelsCommand};
+use crate::builtin_app::{AppCommand, ConfigCommand, HotkeysCommand, ModelsCommand};
 use crate::builtin_groups::{
     AudioCommand, CaptionsCommand, ClipCommand, DefaultsCommand, FontCommand, ImageCommand,
     StyleCommand, ZoomCommand,
@@ -238,6 +238,12 @@ enum Builtin {
         #[command(subcommand)]
         command: ModelsCommand,
     },
+    /// `app show|quit|status`: the running app.
+    #[command(disable_help_subcommand = true)]
+    App {
+        #[command(subcommand)]
+        command: AppCommand,
+    },
     #[command(
         about = "Одна команда в нескольких проектах: у каждого своя запись истории; ошибка в одном не останавливает другие",
         after_help = "batch *.devcast -- set captions.size=36"
@@ -254,7 +260,7 @@ enum Builtin {
     )]
     Sheet(SheetArgs),
     #[command(
-        about = "Записать экран в новый проект; record stop|pause|resume|cancel — управлять идущей записью",
+        about = "Записать экран в новый проект; --app — в запущенной программе; record stop|pause|resume|cancel — управлять идущей записью",
         after_help = "record --source screen:1 --duration 10 -o урок.devcast"
     )]
     Record {
@@ -266,7 +272,7 @@ enum Builtin {
         args: RecordArgs,
     },
     #[command(
-        about = "Экспорт в MP4 или GIF через очередь в фоне; export status — очередь, export cancel [e2] — отмена",
+        about = "Экспорт в MP4 или GIF через очередь в фоне; export status — очереди devcast (e2) и программы (p2), export cancel [e2|p2] — отмена",
         after_help = "export -o урок.mp4 --res 1080p --fps 60 --quality high"
     )]
     Export {
@@ -274,7 +280,9 @@ enum Builtin {
             help = "status — что в очереди, cancel — отменить; без него — экспортировать и дождаться файла"
         )]
         action: Option<Action>,
-        #[arg(help = "Номер экспорта для cancel: e2; без него cancel отменяет все")]
+        #[arg(
+            help = "Номер экспорта для cancel: e2 (очередь devcast) или p2 (программы); без него cancel отменяет все"
+        )]
         id: Option<String>,
         #[command(flatten)]
         args: ExportArgs,
@@ -348,15 +356,13 @@ impl Cli {
             Builtin::Config { command } => command.execute(ctx),
             Builtin::Hotkeys { command } => command.execute(ctx),
             Builtin::Models { command } => command.execute(ctx),
+            Builtin::App { command } => command.execute(ctx),
             Builtin::Batch(args) => batch::batch(ctx, &args),
             Builtin::Frame(args) => still::frame(ctx, &args),
             Builtin::Sheet(args) => still::sheet(ctx, &args),
             Builtin::Record { control, args } => record::record(ctx, control, &args),
             Builtin::Export { action, id, args } => {
-                let channel = match ctx.local.export_channel {
-                    Some(channel) => channel.to_owned(),
-                    None => export::channel()?,
-                };
+                let channel = export::run_channel(ctx)?;
                 export::export(ctx, action, id.as_deref(), &args, &channel)
             }
             Builtin::Skill {

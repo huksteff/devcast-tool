@@ -113,12 +113,18 @@ impl Recorder {
     }
 
     /// Waits until the recording thread has ended (after a stop or cancel was sent).
-    pub fn join(mut self) {
+    pub fn join(self) {
+        self.join_events();
+    }
+
+    /// [`Self::join`], then the events the thread sent that were not taken.
+    pub fn join_events(mut self) -> Vec<Event> {
         if let Some(thread) = self.thread.take()
             && thread.join().is_err()
         {
             tracing::error!("поток записи упал");
         }
+        self.events()
     }
 }
 

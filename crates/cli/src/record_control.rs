@@ -81,13 +81,20 @@ pub(crate) fn send(channel: &str, control: Control, dry_run: bool) -> Result<Ans
             json!({"dry_run": true, "control": control}),
         ));
     }
-    match dc_ipc::request(channel, &control) {
-        Ok(Reply::Done { text, json }) => Ok(Answer::new(text, json)),
-        Ok(Reply::Failed { message }) => Err(CliError::Failed(message)),
-        Err(IpcError::NotRunning(_)) => Err(CliError::Failed(
+    ask(channel, control)?.ok_or_else(|| {
+        CliError::Failed(
             "запись не идёт: начни её — devcast record --source screen:1 (источники — devcast ls sources)"
                 .to_owned(),
-        )),
+        )
+    })
+}
+
+/// Sends `control` to the recording listening on `channel`; `None` when there is none.
+pub(crate) fn ask(channel: &str, control: Control) -> Result<Option<Answer>, CliError> {
+    match dc_ipc::request(channel, &control) {
+        Ok(Reply::Done { text, json }) => Ok(Some(Answer::new(text, json))),
+        Ok(Reply::Failed { message }) => Err(CliError::Failed(message)),
+        Err(IpcError::NotRunning(_)) => Ok(None),
         Err(e) => Err(CliError::Failed(format!(
             "не удалось связаться с записью ({e}): проверь, что процесс devcast record жив"
         ))),

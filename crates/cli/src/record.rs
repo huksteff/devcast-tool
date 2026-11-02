@@ -13,6 +13,7 @@ use serde_json::json;
 
 use crate::edit::Ctx;
 use crate::error::CliError;
+use crate::record_app;
 use crate::record_args::{RecordArgs, config, duration, project_folder};
 use crate::record_control::{self, Control, Reply, Request, Server};
 use crate::run::Answer;
@@ -29,9 +30,8 @@ pub(crate) fn record(
         ));
     }
     match control {
-        Some(control) if args.is_empty() => {
-            record_control::send(&record_control::channel()?, control, ctx.globals.dry_run)
-        }
+        Some(control) if args.is_empty() => controlled(ctx, control, args.app),
+        None if args.app => record_app::start(ctx, args),
         Some(control) => Err(CliError::Usage(format!(
             "record {} управляет идущей записью и не берёт настроек: devcast record {}",
             name(control),
@@ -39,6 +39,21 @@ pub(crate) fn record(
         ))),
         None => start(ctx, args),
     }
+}
+
+/// `record <control>`: the `devcast record` process, else the app's recording (`--app`: only it).
+fn controlled(ctx: &Ctx<'_>, control: Control, app: bool) -> Result<Answer, CliError> {
+    let channel = match ctx.local.record_channel {
+        Some(channel) => channel.to_owned(),
+        None => record_control::channel()?,
+    };
+    if ctx.globals.dry_run {
+        return record_control::send(&channel, control, true);
+    }
+    if !app && let Some(answer) = record_control::ask(&channel, control)? {
+        return Ok(answer);
+    }
+    record_app::control(ctx, control)
 }
 
 fn name(control: Control) -> &'static str {
@@ -175,7 +190,7 @@ impl Default for Recorded {
     }
 }
 
-fn at(what: &str, recorded: Duration) -> Answer {
+pub(crate) fn at(what: &str, recorded: Duration) -> Answer {
     let time = SourceTime::from_micros(recorded.as_micros() as i64);
     Answer::new(
         format!("{what}: записано {time}"),

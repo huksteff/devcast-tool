@@ -13,9 +13,10 @@ pub use crate::countdown::Countdown;
 use crate::error::AppError;
 use crate::hotkeys::Command;
 use crate::hud::popover;
-use crate::recorder::{Event, Recorder, Request};
+use crate::recorder::{Recorder, Request};
+use crate::remote::Heard;
 use crate::tray::TrayView;
-use dc_ui_kit::strings::{hud, tray};
+use dc_ui_kit::strings::tray;
 
 #[derive(Default)]
 pub enum Session {
@@ -85,18 +86,6 @@ impl Session {
     pub fn is_idle(&self) -> bool {
         matches!(self, Self::Idle)
     }
-
-    /// Stops a running recording and waits for its project; for quitting the app.
-    pub fn finish(self) {
-        match self {
-            Self::Starting { recorder, .. } | Self::Live(Live { recorder, .. }) => {
-                recorder.send(Request::Stop);
-                recorder.join();
-            }
-            Self::Preparing(recorder) | Self::Cancelling(recorder) => recorder.join(),
-            Self::Idle | Self::Countdown(_) | Self::Launch => {}
-        }
-    }
 }
 
 impl Shared {
@@ -123,6 +112,7 @@ impl Shared {
     pub fn cancel_countdown(&mut self) {
         if matches!(self.session, Session::Countdown(_)) {
             self.session = Session::Idle;
+            self.waiters.hear(Heard::CountdownCancelled);
         }
     }
 
@@ -148,6 +138,7 @@ impl Shared {
                         stop: false,
                     },
                     Err(error) => {
+                        self.waiters.hear(Heard::Failed(error.to_string()));
                         self.report(Err(error));
                         Session::Idle
                     }
@@ -172,68 +163,6 @@ impl Shared {
         let root = dc_capture::project::free_project_root(dir);
         let defaults = dc_project::Defaults::load(&dc_project::settings::defaults_file()?)?;
         Recorder::start(&self.ctx, settings.recording.clone(), root, defaults)
-    }
-
-    fn on_event(&mut self, event: Event) {
-        match (event, std::mem::take(&mut self.session)) {
-            (Event::Started(start), Session::Starting { recorder, stop }) => {
-                self.session = Session::Live(Live {
-                    recorder,
-                    start,
-                    pauses: Pauses::default(),
-                    asking: false,
-                });
-                if stop {
-                    self.stop();
-                }
-            }
-            (Event::Paused(at), Session::Live(mut live)) => {
-                self.report(live.pauses.pause(at));
-                self.session = Session::Live(live);
-            }
-            (Event::Resumed(at), Session::Live(mut live)) => {
-                self.report(live.pauses.resume(at));
-                self.session = Session::Live(live);
-            }
-            (Event::Error(message), session) => {
-                self.session = session;
-                self.report(Err(message));
-            }
-            (Event::Stopped(project, zooms), session) => {
-                finished(session);
-                self.recorded(*project, zooms);
-            }
-            (Event::Cancelled, session) => finished(session),
-            (Event::Failed(message), Session::Preparing(recorder)) => {
-                let root = recorder.root().to_path_buf();
-                recorder.join();
-                self.show_hud();
-                self.failure = Some((message, root));
-                self.popover = Some(popover::Open::new(popover::Kind::Failed, 0.0));
-            }
-            (Event::Failed(message), session) => {
-                finished(session);
-                self.show_hud();
-                self.report(Err(message));
-            }
-            (event, session) => {
-                tracing::warn!("событие записи {event:?} пришло не вовремя");
-                self.session = session;
-            }
-        }
-    }
-
-    /// The recording is saved in its project: the editor opens with it, the HUD hides until
-    /// the editor closes (v1). What went wrong on the way (`zooms`: the auto zooms) is reported.
-    fn recorded(&mut self, project: dc_capture::win::RecordedProject, zooms: Option<String>) {
-        tracing::info!("запись сохранена: {}", project.dir.root().display());
-        self.open_editor(&project);
-        for problem in project.summary.problems() {
-            self.report(Err(problem));
-        }
-        if let Some(problem) = zooms {
-            self.report(Err(hud::auto_zooms_failed(&problem)));
-        }
     }
 
     /// Pause or resume.
@@ -265,7 +194,7 @@ impl Shared {
                 self.session = Session::Preparing(live.recorder);
                 self.show_hud();
             }
-            Session::Countdown(_) => {}
+            Session::Countdown(_) => self.waiters.hear(Heard::CountdownCancelled),
             other => self.session = other,
         }
     }
@@ -372,16 +301,8 @@ impl Shared {
     }
 }
 
-/// Joins the thread of a recorder that has sent its last event.
-fn finished(session: Session) {
-    match session {
-        Session::Starting { recorder, .. }
-        | Session::Live(Live { recorder, .. })
-        | Session::Preparing(recorder)
-        | Session::Cancelling(recorder) => recorder.join(),
-        Session::Idle | Session::Countdown(_) | Session::Launch => {}
-    }
-}
+#[path = "session_events.rs"]
+mod events;
 
 #[cfg(test)]
 #[path = "session_tests.rs"]

@@ -71,6 +71,8 @@ pub struct Local<'a> {
     /// The channel of the app whose editor may hold the project; `None` — the real
     /// `devcast-app-<user>`.
     pub app_channel: Option<&'a str>,
+    /// The channel of a `devcast record` process; `None` — the real `devcast-record-<user>`.
+    pub record_channel: Option<&'a str>,
     /// Where progress lines of a long command go (`models download`); `None` — nowhere.
     pub progress: Option<fn(&str)>,
 }

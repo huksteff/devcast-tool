@@ -29,6 +29,7 @@ mod models;
 mod monitor;
 mod recognition;
 mod recorder;
+mod remote;
 mod session;
 mod settings;
 mod settings_captions;

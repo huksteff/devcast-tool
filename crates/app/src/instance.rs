@@ -33,32 +33,79 @@ fn claim_on(name: &str) -> Result<Claim, IpcError> {
 /// A request of the channel for the main window; the answer goes back through `reply`.
 pub struct Call {
     pub request: Request,
-    pub reply: Sender<Answer>,
+    pub reply: Reply,
+}
+
+/// The way back to the run that asked. The main window may keep it until the answer is known
+/// (`record stop` answers once the project is saved): each request waits on its own thread.
+pub struct Reply {
+    answer: Sender<Answer>,
+    /// Closes once the answer is written to the run (or could not be).
+    written: Receiver<()>,
+}
+
+impl Reply {
+    pub fn send(self, answer: Answer) {
+        // The run that asked may have given up waiting; nothing to answer then.
+        let _ = self.answer.send(answer);
+    }
+
+    /// Sends and waits until the answer is written: the app ends right after it.
+    pub fn send_written(self, answer: Answer) {
+        if self.answer.send(answer).is_ok() {
+            let _ = self.written.recv();
+        }
+    }
+
+    /// A reply whose answer the test reads (no channel).
+    #[cfg(test)]
+    pub fn fake() -> (Self, Receiver<Answer>) {
+        let (answer, answers) = mpsc::channel();
+        let (_written, written) = mpsc::channel();
+        (Self { answer, written }, answers)
+    }
 }
 
 /// Takes requests on its own thread for the life of the process: each goes to the returned
-/// receiver, wakes the main window and waits for its answer.
+/// receiver and wakes the main window; its answer is awaited and written on a thread of its own,
+/// so a request whose answer takes long (a stop, an export) does not hold up the others.
 pub fn serve(listener: Listener, ctx: egui::Context) -> Receiver<Call> {
     let (calls, receiver) = mpsc::channel();
     std::thread::spawn(move || {
         loop {
-            let answered = listener.accept().and_then(|mut connection| {
-                let request = connection.receive()?;
-                let (reply, answer) = mpsc::channel();
-                if calls.send(Call { request, reply }).is_err() {
-                    return Ok(false);
+            let mut connection = match listener.accept() {
+                Ok(connection) => connection,
+                Err(error) => {
+                    tracing::warn!("запрос к DevCast не принят: {error}");
+                    continue;
                 }
-                ctx.request_repaint_of(egui::ViewportId::ROOT);
-                match answer.recv() {
-                    Ok(answer) => connection.send(&answer).map(|()| true),
-                    Err(_) => Ok(false),
+            };
+            let request = match connection.receive() {
+                Ok(request) => request,
+                Err(error) => {
+                    tracing::warn!("запрос к DevCast не прочитан: {error}");
+                    continue;
                 }
-            });
-            match answered {
-                Ok(true) => {}
-                Ok(false) => return,
-                Err(error) => tracing::warn!("запрос к DevCast не обработан: {error}"),
+            };
+            let (answer, answered) = mpsc::channel();
+            let (written, done) = mpsc::channel::<()>();
+            let reply = Reply {
+                answer,
+                written: done,
+            };
+            if calls.send(Call { request, reply }).is_err() {
+                return;
             }
+            ctx.request_repaint_of(egui::ViewportId::ROOT);
+            std::thread::spawn(move || {
+                // No answer: the app has ended without one; the run sees the channel close.
+                if let Ok(answer) = answered.recv()
+                    && let Err(error) = connection.send(&answer)
+                {
+                    tracing::warn!("ответ DevCast не отправлен: {error}");
+                }
+                drop(written);
+            });
         }
     });
     receiver
@@ -78,7 +125,7 @@ mod tests {
         let window = std::thread::spawn(move || {
             let call = calls.recv().unwrap();
             assert_eq!(call.request, Request::Show);
-            call.reply.send(Answer::Shown).unwrap();
+            call.reply.send(Answer::Shown);
         });
         assert!(matches!(claim_on(&name).unwrap(), Claim::Running));
         window.join().unwrap();

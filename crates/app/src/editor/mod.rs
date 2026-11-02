@@ -13,7 +13,7 @@ mod crop;
 mod document;
 mod export;
 mod fonts;
-mod generation;
+pub(crate) mod generation;
 mod header;
 mod help;
 mod inspector;

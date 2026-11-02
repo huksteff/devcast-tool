@@ -64,7 +64,7 @@ impl Shared {
     }
 
     /// The editor of the project in `root`, if it is the open one.
-    fn editor_of(&mut self, root: &Path) -> Option<&mut EditorWindow> {
+    pub(crate) fn editor_of(&mut self, root: &Path) -> Option<&mut EditorWindow> {
         self.editor
             .as_mut()
             .filter(|e| same_folder(e.doc.dir().root(), root))

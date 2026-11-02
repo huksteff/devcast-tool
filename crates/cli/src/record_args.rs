@@ -37,6 +37,11 @@ pub(crate) struct RecordArgs {
         help = "Папка нового проекта *.devcast; по умолчанию recording-N.devcast в текущей папке"
     )]
     pub out: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "В запущенной программе DevCast, как кнопка «Запись»: её настройки и отсчёт, после стопа — редактор; с stop|pause|resume|cancel — только её запись"
+    )]
+    pub app: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -54,6 +59,7 @@ impl RecordArgs {
             audio,
             mic,
             out,
+            app: _,
         } = self;
         source.is_none()
             && fps.is_none()

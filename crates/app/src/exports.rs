@@ -87,8 +87,14 @@ impl Exports {
             .any(|s| matches!(s.state, JobState::Queued | JobState::Running { .. }))
     }
 
-    pub fn cancel(&self, id: u32) {
-        self.0.queue.cancel(Some(id));
+    /// Cancels job `id` or (`None`) all of them; the ids cancelled.
+    pub fn cancel(&self, id: Option<u32>) -> Vec<u32> {
+        self.0.queue.cancel(id)
+    }
+
+    /// Waits until job `id` has ended; `None` when the queue does not know it.
+    pub fn wait(&self, id: u32) -> Option<JobState> {
+        self.0.queue.wait(id)
     }
 
     /// The queue changed since the last call.

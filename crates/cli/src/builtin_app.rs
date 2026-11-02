@@ -8,7 +8,7 @@ use dc_settings::SpeechModel;
 use crate::edit::Ctx;
 use crate::error::CliError;
 use crate::run::Answer;
-use crate::{config, hotkeys, models};
+use crate::{app_control, config, hotkeys, models};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum ConfigCommand {
@@ -121,6 +121,35 @@ impl ModelsCommand {
         match self {
             Self::Ls => models::ls(ctx),
             Self::Download { model } => models::download(ctx, model),
+        }
+    }
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum AppCommand {
+    #[command(
+        about = "Состояние программы DevCast: запись, проект редактора и распознавание субтитров, экспорт обеих очередей",
+        after_help = "app status --json"
+    )]
+    Status,
+    #[command(
+        about = "Показать HUD запущенной программы (как её второй запуск)",
+        after_help = "app show"
+    )]
+    Show,
+    #[command(
+        about = "Закрыть программу, как «Выход» в трее, без вопроса: идущая запись остановится и сохранится, редактор запишет рабочее состояние",
+        after_help = "app quit"
+    )]
+    Quit,
+}
+
+impl AppCommand {
+    pub(crate) fn execute(self, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
+        match self {
+            Self::Status => app_control::status(ctx),
+            Self::Show => app_control::show(ctx),
+            Self::Quit => app_control::quit(ctx),
         }
     }
 }

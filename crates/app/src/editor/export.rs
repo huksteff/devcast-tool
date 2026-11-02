@@ -281,7 +281,7 @@ pub fn queue_list(ui: &Ui, editor: &mut EditorWindow, button: egui::Rect) {
 
 fn cancel(ui: &mut Ui, exports: &crate::exports::Exports, id: u32) {
     if ui.add(Button::new(text::CANCEL_JOB).small()).clicked() {
-        exports.cancel(id);
+        exports.cancel(Some(id));
     }
 }
 

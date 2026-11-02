@@ -14,7 +14,8 @@ impl Cli {
             | Builtin::Defaults { .. }
             | Builtin::Config { .. }
             | Builtin::Hotkeys { .. }
-            | Builtin::Models { .. } => Some("не работает с проектом"),
+            | Builtin::Models { .. }
+            | Builtin::App { .. } => Some("не работает с проектом"),
             Builtin::Ls { list, .. } if list == sources::SOURCES || list == super::PROJECTS => {
                 Some("не работает с проектом")
             }
@@ -25,7 +26,10 @@ impl Cli {
             Builtin::Save(args) if args.as_name.is_some() => {
                 Some("даёт всем копиям одно имя; копируй каждый проект с --project")
             }
-            Builtin::Close(_) => Some("в редакторе открыт один проект; запусти её с --project"),
+            Builtin::Close(_)
+            | Builtin::Captions {
+                command: CaptionsCommand::Stop,
+            } => Some("в редакторе открыт один проект; запусти её с --project"),
             Builtin::Batch(_) | Builtin::Style { .. } | Builtin::Trash(_) => {
                 Some("сама перечисляет проекты")
             }

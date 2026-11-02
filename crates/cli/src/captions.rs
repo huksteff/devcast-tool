@@ -1,15 +1,19 @@
-//! `devcast captions gen | export | import`: the caption commands that need Whisper or files. The
-//! rest (`captions set`, `split`, `merge`, `rm`, `clear`) are ops of the registry.
+//! `devcast captions gen | export | import | stop`: the caption commands that need Whisper, files or
+//! the editor. The rest (`captions set`, `split`, `merge`, `rm`, `clear`) are ops of the registry.
 
 use std::path::Path;
 use std::rc::Rc;
 
 use dc_core::CommandError;
 use dc_fx_captions::{CaptionsGen, CaptionsImport, export_text, parse_text};
+use dc_ops::live::{Answer as Live, Request};
 use serde_json::json;
 
 use crate::edit::{self, Ctx, answer};
 use crate::error::CliError;
+use crate::find::find_project;
+use crate::live::{ask_app, held_by_app, refused};
+use crate::open::absolute;
 use crate::run::Answer;
 use crate::speech::OnProgress;
 
@@ -87,4 +91,34 @@ pub(crate) fn import(ctx: &Ctx<'_>, file: &Path) -> Result<Answer, CliError> {
         CaptionsImport::NAME,
         &[&CaptionsImport { texts }],
     )
+}
+
+/// `captions stop`: «Отменить» of the captions panel in the editor holding the project; the
+/// cues stay as they were. A `captions gen` of this console stops with Ctrl+C.
+pub(crate) fn stop(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
+    let dir = find_project(ctx.globals.project.as_deref(), ctx.cwd)?;
+    let not_open = || {
+        CliError::Failed(format!(
+            "«{}» не открыт в редакторе DevCast: останавливать нечего (devcast captions gen в консоли останавливается Ctrl+C)",
+            dir.name()
+        ))
+    };
+    let channel = held_by_app(&dir, ctx.local.app_channel)?.ok_or_else(not_open)?;
+    if ctx.globals.dry_run {
+        let text = format!("{}распознавание в редакторе не тронуто", ctx.prefix());
+        return Ok(Answer::new(text, json!({"dry_run": true})));
+    }
+    let request = Request::StopCaptions {
+        root: absolute(dir.root()),
+    };
+    let stopped = match ask_app(&channel, &request)? {
+        Some(Live::CaptionsStopped { stopped }) => stopped,
+        Some(Live::NotOpen) | None => return Err(not_open()),
+        Some(answer) => return Err(refused(answer)),
+    };
+    let text = match stopped {
+        true => "распознавание субтитров в редакторе остановлено",
+        false => "распознавание субтитров в редакторе не шло",
+    };
+    Ok(Answer::new(text.to_owned(), json!({"stopped": stopped})))
 }

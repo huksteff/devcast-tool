@@ -48,6 +48,11 @@ pub(crate) enum CaptionsCommand {
     )]
     Gen(captions::GenArgs),
     #[command(
+        about = "Остановить «Создать субтитры», идущее в редакторе с этим проектом (реплики не меняются)",
+        after_help = "captions stop"
+    )]
+    Stop,
+    #[command(
         about = "Текст всех реплик в файл для перевода: строка «s3 текст» на реплику, по порядку видео",
         after_help = "captions export -o субтитры.txt"
     )]
@@ -164,6 +169,7 @@ impl CaptionsCommand {
     pub(crate) fn execute(self, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         match self {
             Self::Gen(args) => captions::generate(ctx, &args),
+            Self::Stop => captions::stop(ctx),
             Self::Export { out } => captions::export(ctx, &out),
             Self::Import { file } => captions::import(ctx, &file),
             Self::Op(words) => edit::op(ctx, &[vec!["captions".to_owned()], words].concat()),

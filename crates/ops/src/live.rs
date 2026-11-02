@@ -14,6 +14,12 @@ use dc_core::{History, Project};
 use dc_project::history_log::Event;
 use serde::{Deserialize, Serialize};
 
+use crate::export::Spec;
+use crate::export_jobs::{Finished, Job};
+pub use crate::live_app::{
+    AppStatus, CaptionsState, EditorState, RecordAnswer, RecordControl, RecordingState,
+};
+
 /// Service name of the channel (`dc_ipc::socket_name`).
 pub const SERVICE: &str = "app";
 
@@ -64,6 +70,28 @@ pub enum Request {
     Settings { edit: dc_settings::Edit },
     /// `devcast ls projects`: which project the editor holds ([`Answer::Current`]).
     Current,
+    /// `devcast record --app`: as «Запись» of the HUD, with the app's settings (countdown
+    /// included). The answer comes once the first frame is recorded ([`RecordAnswer::Started`]),
+    /// or why not.
+    Record,
+    /// `devcast record stop|pause|resume|cancel` while no `devcast record` runs. The answer
+    /// comes once the recording has done it (stop: once the project is saved).
+    RecordControl(RecordControl),
+    /// `devcast export` of the project the editor holds: the job joins the app's queue, the
+    /// answer ([`Answer::Exported`]) comes when it has ended.
+    Export(Box<Spec>),
+    /// `devcast export status`: the app's queue ([`Answer::Exports`]).
+    Exports,
+    /// `devcast export cancel [pN]`: one job of the app's queue or all ([`Answer::ExportsCancelled`]).
+    CancelExports { id: Option<u32> },
+    /// `devcast captions stop`: the editor of `root` stops «Создать субтитры».
+    StopCaptions { root: PathBuf },
+    /// `devcast app status` ([`Answer::Status`]).
+    Status,
+    /// `devcast app quit`: as «Выход» of the tray without its question: a recording is stopped
+    /// and saved, the editor writes its working state. The answer comes just before the app
+    /// ends ([`Answer::Quit`]).
+    Quit,
 }
 
 /// What `devcast close` does with unsaved changes.
@@ -120,6 +148,30 @@ pub enum Answer {
     },
     /// Not done; the text says why and what to do.
     Refused(String),
+    /// About the app's recording.
+    Record(RecordAnswer),
+    /// How the export of `Request::Export` ended (`id` — of the app's queue).
+    Exported(Finished),
+    /// The app has no export queue (no device for the preview): the run exports by itself.
+    NoExports,
+    /// The jobs of the app's queue.
+    Exports {
+        jobs: Vec<Job>,
+    },
+    /// The jobs of the app's queue that were cancelled.
+    ExportsCancelled {
+        ids: Vec<u32>,
+    },
+    /// `Request::StopCaptions`: `stopped` — the recognition (or the wait for its model) was
+    /// going on and is stopped.
+    CaptionsStopped {
+        stopped: bool,
+    },
+    Status(Box<AppStatus>),
+    /// The app ends now; `recorded`: the project of the recording it stopped and saved.
+    Quit {
+        recorded: Option<PathBuf>,
+    },
 }
 
 /// Refusal of a write over a state that changed after the run read it.

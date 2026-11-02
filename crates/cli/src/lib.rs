@@ -1,5 +1,6 @@
 //! devcast command-line tool: edit, analyse, render and export projects.
 
+mod app_control;
 mod app_settings;
 mod audio;
 mod autozoom;
@@ -15,6 +16,7 @@ mod edit;
 pub mod error;
 mod events;
 mod export;
+mod export_app;
 mod export_args;
 mod export_queue;
 pub mod find;
@@ -32,6 +34,7 @@ mod models;
 mod open;
 mod projects;
 mod record;
+mod record_app;
 mod record_args;
 mod record_control;
 mod rename;
@@ -52,6 +55,8 @@ pub mod worker;
 pub mod workspace;
 
 #[cfg(test)]
+mod app_tests;
+#[cfg(test)]
 mod audio_tests;
 #[cfg(test)]
 mod autozoom_tests;
@@ -67,6 +72,8 @@ mod edit_tests;
 mod events_tests;
 #[cfg(test)]
 mod export_tests;
+#[cfg(test)]
+mod fake_app;
 #[cfg(test)]
 mod fake_editor;
 #[cfg(test)]

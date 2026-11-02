@@ -30,7 +30,10 @@ fn call(
         globals: &globals,
         cwd,
         registry,
-        local: Local::default(),
+        local: Local {
+            app_channel: Some(crate::test_util::NO_APP),
+            ..Local::default()
+        },
     };
     export::export(&ctx, action, id, args, channel)
 }

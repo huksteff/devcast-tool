@@ -3,19 +3,18 @@
 //! send their export there and wait for its answer; `export status` and `export cancel` ask it.
 //! The process that holds the channel lives until the queue is empty.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 
-use dc_encode::{ExportQueue, JobState, JobStatus};
+use dc_encode::{ExportQueue, JobState};
 use dc_ipc::{IpcError, Listener};
 use dc_ops::export::Spec;
 use dc_render::Gpu;
 use serde::{Deserialize, Serialize};
 
 use crate::error::CliError;
-use crate::round::thousandths;
+pub(crate) use dc_ops::export_jobs::{Finished, Job, finished};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "request", rename_all = "snake_case")]
@@ -35,110 +34,6 @@ pub(crate) enum Reply {
     Finished(Finished),
     Status { jobs: Vec<Job> },
     Cancelled { ids: Vec<u32> },
-}
-
-/// How a job ended, as the caller prints it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "state", rename_all = "snake_case")]
-pub(crate) enum Finished {
-    Done {
-        id: u32,
-        path: String,
-        width: u32,
-        height: u32,
-        fps: u32,
-        frames: u64,
-        /// Length of the video, s.
-        duration: f64,
-        bytes: u64,
-        codec: Option<String>,
-        /// How long the export took, s.
-        seconds: f64,
-        /// Busy time of every export stage, s (`dc_encode::export::Stages`).
-        stages: BTreeMap<String, f64>,
-    },
-    Failed {
-        id: u32,
-        message: String,
-    },
-    Cancelled {
-        id: u32,
-    },
-}
-
-/// A job as `export status` prints it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) struct Job {
-    pub id: u32,
-    pub label: String,
-    /// queued, running, done, failed, cancelled.
-    pub state: String,
-    pub done: u64,
-    pub total: u64,
-    /// Since the start, s.
-    pub elapsed: f64,
-    pub error: Option<String>,
-}
-
-impl Job {
-    fn of(status: &JobStatus) -> Self {
-        let mut job = Self {
-            id: status.id,
-            label: status.label.clone(),
-            state: String::new(),
-            done: 0,
-            total: 0,
-            elapsed: 0.0,
-            error: None,
-        };
-        job.state = match &status.state {
-            JobState::Queued => "queued",
-            JobState::Running { progress, elapsed } => {
-                (job.done, job.total) = (progress.done, progress.total);
-                job.elapsed = elapsed.as_secs_f64();
-                "running"
-            }
-            JobState::Done { exported, elapsed } => {
-                (job.done, job.total) = (exported.frames, exported.frames);
-                job.elapsed = elapsed.as_secs_f64();
-                "done"
-            }
-            JobState::Failed(message) => {
-                job.error = Some(message.clone());
-                "failed"
-            }
-            JobState::Cancelled => "cancelled",
-        }
-        .to_owned();
-        job
-    }
-}
-
-pub(crate) fn finished(id: u32, state: JobState) -> Finished {
-    match state {
-        JobState::Done { exported, elapsed } => Finished::Done {
-            id,
-            path: exported.path.display().to_string(),
-            width: exported.size.width,
-            height: exported.size.height,
-            fps: exported.fps,
-            frames: exported.frames,
-            duration: exported.duration.as_secs_f64(),
-            bytes: exported.bytes,
-            codec: exported.codec.map(|c| c.to_string()),
-            seconds: elapsed.as_secs_f64(),
-            stages: exported
-                .stages
-                .named()
-                .into_iter()
-                .map(|(name, time)| (name.to_owned(), thousandths(time.as_secs_f64())))
-                .collect(),
-        },
-        JobState::Failed(message) => Finished::Failed { id, message },
-        JobState::Queued | JobState::Running { .. } | JobState::Cancelled => {
-            Finished::Cancelled { id }
-        }
-    }
 }
 
 /// Sends `request` to the process that runs the queue; `None` when there is none.

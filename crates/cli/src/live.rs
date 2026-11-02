@@ -64,6 +64,11 @@ impl Editor {
         }
     }
 
+    /// The channel of the app whose editor this is.
+    pub(crate) fn channel(&self) -> &str {
+        &self.channel
+    }
+
     /// `devcast save` through the editor.
     pub(crate) fn save(&self) -> Result<(), CliError> {
         let request = Request::Save {

@@ -120,7 +120,7 @@ fn requests_come_over_the_app_channel() {
     });
     let call = calls.recv().unwrap();
     let (answer, _) = editor.live(call.request, Instant::now());
-    call.reply.send(answer).unwrap();
+    call.reply.send(answer);
     assert_eq!(cli.join().unwrap(), Answer::Open { revision: 0 });
 }
 
