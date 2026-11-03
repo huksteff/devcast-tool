@@ -12,7 +12,7 @@ H.264, FLAC и AAC через FFmpeg (ffmpeg-next): выбор кодека ви
 - Качество (`Quality`) — постоянное качество кодека; запись — `High`.
 - MP4: `Mp4Writer` обычный или фрагментированный (`Mp4Layout::Fragmented` — сегменты записи), одна или несколько дорожек (`with_streams`). `Mp4Reader` читает пакеты без декодирования в нужной шкале тиков.
 - FFmpeg-типы наружу не торчат: `Packet`, `StreamParameters`, `Nv12Frame` — свои обёртки.
-- Кадр в PNG (`still.rs`): `frame_png` / `sheet_png` рисуют сцену тем же `Compositor`, что превью и экспорт (`Compositor::render_at`). `Sources::feed` подаёт кадры видео и картинки проекта. PNG кодирует `dc_media::encode_png`.
+- Кадр в PNG (`still.rs`): `frame_png` / `sheet_png` рисуют сцену тем же `Compositor`, что превью и экспорт (`Compositor::render_at`). `Sources::feed` подаёт кадры видео и картинки проекта; декодер или картинка, не нужные 120 подачам подряд, закрываются (`UNUSED_FEEDS`: память превью не растёт за сессию). PNG кодирует `dc_media::encode_png`.
 - Экспорт (`export/`): `Timeline` даёт сцену на момент выхода (`dc_ops::Evaluator`, решение 015) и сведённый звук — эффектов экспорт не знает.
 - Кадр экспорта n — момент n/fps с округлением до мкс, как `rescale` FFmpeg; кадров `ceil(длительность × fps)`, звук — ровно длительность.
 - Цепочка экспорта: `Compositor::draw` → `Nv12Readback` → кодек `open_for_export` (первый из `ORDER` с самопроверкой, без проверки скорости) → `Mp4Writer`.

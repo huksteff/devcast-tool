@@ -22,18 +22,32 @@ pub enum Seek {
     Keyframe,
 }
 
+/// Feeds after which a decoder or a decoded picture no scene asked for is dropped: 2 s of
+/// playback at 60 fps. Without it the preview keeps every video and picture it ever showed.
+const UNUSED_FEEDS: u64 = 120;
+
 /// Decoders of a project's media, kept open between frames, and its pictures decoded once: the
-/// frames of an animated picture are uploaded one by one as the scenes show them.
+/// frames of an animated picture are uploaded one by one as the scenes show them. What the last
+/// [`UNUSED_FEEDS`] feeds did not use is dropped.
 pub struct Sources<'p> {
     project: &'p ProjectDir,
-    decoders: HashMap<String, Decoder>,
-    pictures: HashMap<String, Picture>,
+    /// Feeds so far: the clock of `Kept::used`.
+    feeds: u64,
+    decoders: HashMap<String, Kept<Decoder>>,
+    pictures: HashMap<String, Kept<Picture>>,
+}
+
+/// A decoder or a picture and the feed that used it last.
+struct Kept<T> {
+    value: T,
+    used: u64,
 }
 
 impl<'p> Sources<'p> {
     pub fn new(project: &'p ProjectDir) -> Self {
         Self {
             project,
+            feeds: 0,
             decoders: HashMap::new(),
             pictures: HashMap::new(),
         }
@@ -57,6 +71,12 @@ impl<'p> Sources<'p> {
         scene: &Scene,
         seek: Seek,
     ) -> Result<(), EncodeError> {
+        self.feeds += 1;
+        let now = self.feeds;
+        self.decoders
+            .retain(|_, kept| now - kept.used < UNUSED_FEEDS);
+        self.pictures
+            .retain(|_, kept| now - kept.used < UNUSED_FEEDS);
         for (_, layer) in scene.painted() {
             match layer {
                 Layer::Video(video) => {
@@ -71,12 +91,15 @@ impl<'p> Sources<'p> {
                 }
                 Layer::Sprite(sprite) if !compositor.has_image(&sprite.image) => {
                     let key = &sprite.image;
-                    let picture = match self.pictures.entry(key.path.clone()) {
+                    let kept = match self.pictures.entry(key.path.clone()) {
                         Entry::Occupied(decoded) => decoded.into_mut(),
-                        Entry::Vacant(slot) => {
-                            slot.insert(decode_picture(&self.project.root().join(&key.path))?)
-                        }
+                        Entry::Vacant(slot) => slot.insert(Kept {
+                            value: decode_picture(&self.project.root().join(&key.path))?,
+                            used: now,
+                        }),
                     };
+                    kept.used = now;
+                    let picture = &kept.value;
                     let frame = picture.frames.get(key.frame as usize).ok_or_else(|| {
                         EncodeError::NoPictureFrame {
                             path: key.path.clone(),
@@ -94,17 +117,26 @@ impl<'p> Sources<'p> {
     }
 
     fn decoder(&mut self, media: &str) -> Result<&mut Decoder, EncodeError> {
-        match self.decoders.entry(media.to_owned()) {
-            Entry::Occupied(open) => Ok(open.into_mut()),
+        let kept = match self.decoders.entry(media.to_owned()) {
+            Entry::Occupied(open) => open.into_mut(),
             Entry::Vacant(slot) => {
                 let probe = cached_probe(self.project, media)?;
                 let pool = FramePool::new(nv12_len(probe.size));
                 let path = self.project.root().join(media);
-                Ok(slot.insert(Decoder::open(&path, probe, pool)?))
+                slot.insert(Kept {
+                    value: Decoder::open(&path, probe, pool)?,
+                    used: self.feeds,
+                })
             }
-        }
+        };
+        kept.used = self.feeds;
+        Ok(&mut kept.value)
     }
 }
+
+#[cfg(test)]
+#[path = "still_tests.rs"]
+mod tests;
 
 /// `scene` scaled to `size` as a PNG.
 pub fn frame_png(
