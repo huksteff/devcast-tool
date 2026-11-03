@@ -100,6 +100,7 @@ fn serve(gpu: &Gpu, dir: &ProjectDir, inbox: &Receiver<Request>, reply: &dyn Fn(
                 Ok(evaluator) => painter.draw(gpu, evaluator, &request.want),
                 Err(error) => Err(error.clone()),
             };
+            tracing::debug!(at_us = request.want.time.micros(), "preview frame drawn");
             if !reply((request.generation, answer)) {
                 return;
             }
