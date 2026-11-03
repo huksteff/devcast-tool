@@ -1,4 +1,4 @@
-//! Zoom regions, follow mode, motion, auto zooms.
+//! Zoom regions, follow mode, motion, auto zooms; the inspector panels of the zoom are [`panel`].
 
 mod aim;
 mod classify;
@@ -7,6 +7,8 @@ mod follow;
 mod frame;
 mod model;
 mod motion;
+pub mod panel;
+mod panel_region;
 mod pointer;
 mod ramp;
 mod region;
@@ -24,7 +26,8 @@ pub use model::{
 pub use motion::ZoomMotion;
 pub use region::{ZoomAdd, ZoomRm, ZoomSet};
 pub use suggest::{
-    Action, CLUSTER_GAP, CLUSTER_PAD, Pointer, Recording, Suggestion, Suggestions, suggest,
+    AT_CLICKS, Action, CLUSTER_GAP, CLUSTER_PAD, Pointer, Recording, Suggestion, Suggestions,
+    by_clicks, suggest,
 };
 pub use track::{CameraTrack, STEP};
 
@@ -44,6 +47,8 @@ pub fn effect() -> EffectInfo {
     EffectInfo::of::<ZoomEffect>(vec![ZoomKind::PREFIX])
 }
 
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod suggest_tests;
 #[cfg(test)]

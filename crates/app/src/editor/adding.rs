@@ -1,5 +1,5 @@
 //! Adding regions (mockup 2e, «призрак»): a hovered empty spot of a row, Z and T at the playhead,
-//! a sound file on an extra sound row, the zooms of the clicks («Подобрать зумы»); a picture
+//! a sound file on an extra sound row; a picture
 //! file into an image annotation. A new region has the length v1 gives (`LENGTH`), fits the
 //! room it is in (zooms and extra sound do not overlap their neighbours, zooms, annotations and
 //! callout events lie in one clip) and is added by the effect's own command, then picked. Tab
@@ -8,12 +8,10 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use dc_core::Op;
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeDelta};
 use dc_fx_annotations::TRACKS;
 use dc_fx_audio_tracks::AudioAdd;
-use dc_fx_zoom::{DEFAULT_SCALE, Mode, ZoomAdd};
 use dc_ops::{SoundPlace, Step};
 use serde_json::{Map, Value};
 
@@ -191,17 +189,6 @@ pub fn sound(editor: &mut EditorWindow, file: &SoundFile, now: Instant) -> Resul
             Err(e) => format!("{error}; {e}"),
         }),
     }
-}
-
-/// «Подобрать зумы»: the zooms of the clusters of clicks, as `devcast zoom add --at clicks`
-/// adds them (scale 1.5, follow), one undo step. `Some` reason when there are none.
-pub fn suggested(editor: &mut EditorWindow, now: Instant) -> Result<Option<String>, String> {
-    let doc = &mut editor.doc;
-    let found = dc_ops::click_zooms(doc.dir().root(), doc.project()).map_err(|e| e.to_string())?;
-    let commands = dc_ops::click_commands(&found, DEFAULT_SCALE, Mode::default());
-    doc.apply_commands(ZoomAdd::NAME, &dc_ops::as_commands(&commands), now)
-        .map_err(|e| e.to_string())?;
-    Ok(dc_ops::no_click_zooms(&found))
 }
 
 /// Copies the picture `file` into the project and shows it in its annotation, as one undo step

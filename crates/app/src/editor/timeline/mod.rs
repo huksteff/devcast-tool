@@ -232,7 +232,9 @@ fn toolbar(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes) {
             .small()
             .icon(Icon::Wand);
         if ui.add(suggest).clicked() {
-            editor.actions.push(Action::SuggestZooms);
+            editor
+                .actions
+                .push(Action::Paste(vec![dc_ops::autozoom::by_clicks()]));
         }
         let idle = editor.captions.phase() == crate::editor::generation::Phase::Idle;
         let make = Button::new(text::MAKE_CAPTIONS)

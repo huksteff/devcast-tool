@@ -1,12 +1,16 @@
 //! Auto zooms (docs/porting/zoom.md §10.4): presses close in time on the output become one zoom
 //! from just before the first to just after the last. Pauses of the pointer are not used
 //! (decision 000). The CLI reads the telemetry and passes it in; [`suggest`] only proposes,
-//! [`Suggestion::command`] makes the `zoom add` that places one.
+//! [`Suggestion::command`] makes the `zoom add` that places one. [`by_clicks`] asks for all of
+//! them as a step (`zoom add --at clicks`), which `dc_ops::autozoom` resolves.
 
 use dc_core::TimeMap;
 use dc_core::time::{Output, Source};
 use dc_core::timemap::Segment;
-use dc_core::{CommandError, OutputTime, Point, Project, Range, SourceTime, TimeArg, TimeDelta};
+use dc_core::{
+    CommandError, Op, OutputTime, Point, Project, Range, SourceTime, Step, TimeArg, TimeDelta,
+};
+use serde_json::Value;
 
 use crate::classify::strength;
 use crate::model::{Mode, ZoomEffect};
@@ -17,6 +21,18 @@ use crate::span::{self, timeline};
 pub const CLUSTER_GAP: TimeDelta = TimeDelta::from_millis(2500);
 /// A cluster's zoom starts this long before its first press and ends this long after the last.
 pub const CLUSTER_PAD: TimeDelta = TimeDelta::from_millis(500);
+/// The value of `zoom add --at` that places the suggested zooms. A command is a pure function of
+/// the project and the clicks lie in the recordings' files, so `dc_ops::autozoom` resolves it.
+pub const AT_CLICKS: &str = "clicks";
+
+/// `zoom add --at clicks`: the suggested zooms (scale 1.5, follow) as one step, as `devcast` and
+/// the plans of `devcast apply` give it.
+pub fn by_clicks() -> Step {
+    let args = [("at".to_owned(), Value::from(AT_CLICKS))]
+        .into_iter()
+        .collect();
+    Step::new(ZoomAdd::NAME, args)
+}
 
 /// The pointer of one recording (`Media.path`), in source time order.
 #[derive(Debug, Clone, PartialEq)]

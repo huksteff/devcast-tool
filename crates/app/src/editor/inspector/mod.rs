@@ -23,8 +23,6 @@ mod cue;
 mod cursor;
 mod font;
 mod object;
-mod zoom;
-mod zoom_region;
 
 #[cfg(test)]
 mod annot_kinds_tests;
@@ -83,11 +81,16 @@ type PanelUi = fn(&mut Ui, &mut Cx<'_>);
 fn tab(panel: Panel) -> (&'static str, PanelUi) {
     match panel {
         Panel::Keys => (dc_fx_keys::panel::ID, keys),
-        Panel::Zoom => (zoom::ID, zoom::ui),
+        Panel::Zoom => (dc_fx_zoom::panel::ID, zoom),
         Panel::Cursor => (cursor::ID, cursor::ui),
         Panel::Captions => (captions::ID, captions::ui),
         Panel::Sound => (dc_fx_audio_tracks::panel::ID, sound),
     }
+}
+
+/// «Зум» of `dc_fx_zoom`: no facts, the zooms are in the project.
+fn zoom(ui: &mut Ui, cx: &mut Cx<'_>) {
+    dc_fx_zoom::panel::ui(ui, &mut cx.base);
 }
 
 /// «Показ клавиш» of `dc_fx_keys` with the shortcuts the «Клавиши» row placed.
@@ -190,6 +193,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
             fonts: &editor.fonts,
             groups: Groups::new(&mut editor.groups.0),
             edits: Vec::new(),
+            adds: Vec::new(),
         },
         tracks: &editor.tracks,
         captioning: captions::Captioning {
@@ -221,6 +225,8 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
         });
     let edits = std::mem::take(&mut cx.base.edits);
     cx.actions.extend(edits.into_iter().map(Action::Apply));
+    let adds = std::mem::take(&mut cx.base.adds);
+    cx.actions.extend(adds.into_iter().map(Action::Paste));
     if let Some(typed) = rows::flush(ui) {
         cx.actions.push(Action::Apply(vec![typed]));
     }

@@ -18,9 +18,11 @@ use super::{adding, crop, fonts, generation, library};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     Travel(Way),
-    /// Registry commands as one undo step.
+    /// Registry commands as one undo step (also `zoom add --at clicks`, which the recordings of
+    /// the project resolve: `Document::apply_resolved`).
     Apply(Vec<Step>),
-    /// Registry commands that add regions, as one undo step; the added regions get picked.
+    /// Registry commands that add regions, as one undo step; the added regions get picked
+    /// («Подобрать зумы» is `zoom add --at clicks`, `dc_ops::autozoom::by_clicks`).
     Paste(Vec<Step>),
     /// Registry commands that put a key of the annotation at the playhead, as one undo step;
     /// that key gets picked (I, Ctrl+V of a key).
@@ -34,9 +36,6 @@ pub enum Action {
     Picture(adding::PictureFile),
     /// A font file added to the project and chosen by a panel's command, as one undo step.
     Font(fonts::FontFile),
-    /// The zooms the clicks of the recordings suggest (`devcast zoom add --at clicks`), as one
-    /// undo step; they get picked.
-    SuggestZooms,
     /// «Создать субтитры»: recognize the speech (downloading the model first when needed); the
     /// cues replace all cues as one undo step when they come (`generation.rs`).
     Generate,
@@ -100,12 +99,15 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                 Ok(applied) => (changed, moved) = (changed | applied, true),
                 Err(error) => errors.push(error),
             },
-            Action::Apply(steps) => match editor.doc.apply(&steps, now) {
-                Ok(applied) => changed |= applied.changed,
+            Action::Apply(steps) => match editor.doc.apply_resolved(&steps, now) {
+                Ok((applied, notes)) => {
+                    changed |= applied.changed;
+                    errors.extend(notes);
+                }
                 Err(error) => errors.push(error.to_string()),
             },
             Action::Paste(steps) => {
-                let add = |e: &mut EditorWindow| e.doc.apply(&steps, now).map(|_| None);
+                let add = |e: &mut EditorWindow| e.doc.apply_resolved(&steps, now).map(|(_, n)| n);
                 moved |= adds(editor, now, &mut errors, |e| {
                     add(e).map_err(|e| e.to_string())
                 });
@@ -116,7 +118,7 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                 rows = true;
             }
             Action::Sound(file) => {
-                let add = |e: &mut EditorWindow| adding::sound(e, &file, now).map(|()| None);
+                let add = |e: &mut EditorWindow| adding::sound(e, &file, now).map(|()| Vec::new());
                 moved |= adds(editor, now, &mut errors, add);
             }
             Action::Picture(file) => match adding::picture(editor, &file, now) {
@@ -127,9 +129,6 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                 Ok(applied) => changed |= applied,
                 Err(error) => errors.push(error),
             },
-            Action::SuggestZooms => {
-                moved |= adds(editor, now, &mut errors, |e| adding::suggested(e, now));
-            }
             Action::Generate => errors.extend(generation::start(ui.ctx(), editor).err()),
             Action::StopGenerating => editor.captions.cancel(),
             Action::Detach(open) => editor.detach(open),
@@ -240,13 +239,13 @@ fn transport_run(editor: &mut EditorWindow, transport: Transport, now: Instant) 
     }
 }
 
-/// Runs `add`, which adds regions (`Some` note on success, an error otherwise), and picks
-/// what it added; true when it did.
+/// Runs `add`, which adds regions (its notes on success, an error otherwise), and picks what
+/// it added; true when it did.
 fn adds(
     editor: &mut EditorWindow,
     now: Instant,
     errors: &mut Vec<String>,
-    add: impl FnOnce(&mut EditorWindow) -> Result<Option<String>, String>,
+    add: impl FnOnce(&mut EditorWindow) -> Result<Vec<String>, String>,
 ) -> bool {
     let before = items(editor);
     match add(editor) {

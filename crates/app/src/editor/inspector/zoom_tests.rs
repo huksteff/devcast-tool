@@ -199,4 +199,6 @@ fn suggest_zooms_adds_the_zooms_of_the_clicks_in_one_step() {
     zoom_tab(&mut harness);
     click(&mut harness, egui::Role::Button, names::ZOOM_SUGGEST);
     assert_eq!(project_json(&harness), expected);
+    let added = zooms(&harness);
+    assert_eq!(harness.state().editor.view.selection.len(), added, "picked");
 }

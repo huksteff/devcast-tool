@@ -138,7 +138,7 @@
   - [x] Шов (`dc_ui_kit::panel`, `dc_core::Step`) и панель «Показ клавиш» (`fx/keys/src/panel.rs`).
   - [x] Облачко (`inspector/callout.rs` → `fx/callout/src/panel.rs`): фактов нет, заголовок — `panel::about`, панель — строка в `object.rs`.
   - [x] Звук (`sound.rs`, `sound_clip.rs`, `sound_extra.rs`) → `fx/audio-tracks/src/panel*.rs`; дорожки звука, `streams` и длина видео — факты `panel::Sources` от редактора (`inspector::Cx::sources`); mute в шапке группы — `panel::Cx::group_with`. Просьб не о проекте нет.
-  - [ ] Зум (`zoom.rs`, `zoom_region.rs`) → `fx/zoom`; «Подобрать зумы» — `Step` команды, а не действие редактора.
+  - [x] Зум (`zoom.rs`, `zoom_region.rs`) → `fx/zoom/src/panel.rs`, `panel_region.rs` (`panel::ui`, `panel::region`); фактов нет. «Подобрать зумы» — шаг `zoom add --at clicks` (`dc_fx_zoom::by_clicks`), его строит `dc_ops::autozoom::expand` (перенесён из dc-cli, общий с редактором: `Document::apply_resolved`); панель отдаёт шаг в `panel::Cx::adds` (добавленное выбирается, `Action::Paste`), кнопки таймлайна — тоже `Action::Paste`; `Action::SuggestZooms` удалён. Просьб не о проекте нет.
   - [ ] Курсор и клики (`cursor.rs`, `click.rs`, `click_style.rs`) → `fx/cursor`; точки кликов дорожки (`timeline/dots.rs`) — факты от редактора.
   - [ ] Субтитры (`captions.rs`, `captions_style.rs`, `cue.rs`) → `fx/captions`; распознавание (процесс, поток) остаётся в редакторе, панель получает его состояние фактами и просит запуск своим ответом.
   - [ ] Аннотации (`annotation.rs`, `annotation_rows.rs`, `object.rs` в части аннотаций, `font.rs`) → `fx/annotations`, виды (`annot_*.rs`) → `fx/text|shape|image|drawing|blur`; общий выбор ключа `target` — в `fx/annotations` (его зовёт и превью).

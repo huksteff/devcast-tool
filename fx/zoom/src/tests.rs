@@ -32,7 +32,7 @@ fn clip(project: &mut Project, length: f64) -> &mut Clip {
     project.clips.last_mut().unwrap()
 }
 
-fn project(lengths: &[f64]) -> Project {
+pub(crate) fn project(lengths: &[f64]) -> Project {
     let mut p = Project::default();
     for length in lengths {
         clip(&mut p, *length);
@@ -40,7 +40,7 @@ fn project(lengths: &[f64]) -> Project {
     p
 }
 
-fn add(at: f64, duration: f64) -> ZoomAdd {
+pub(crate) fn add(at: f64, duration: f64) -> ZoomAdd {
     serde_json::from_value(serde_json::json!({"at": at, "duration": duration})).unwrap()
 }
 
@@ -60,7 +60,7 @@ fn state(p: &Project) -> ZoomState {
     p.state::<ZoomEffect>().unwrap()
 }
 
-fn run(p: &mut Project, command: &dyn Command) -> String {
+pub(crate) fn run(p: &mut Project, command: &dyn Command) -> String {
     command.apply(p).unwrap().to_string()
 }
 

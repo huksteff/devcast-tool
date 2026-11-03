@@ -6,7 +6,8 @@
 //! [`Cx::group`] (open or closed is remembered per panel by [`Groups`]; «Сбросить» ↺ brings the
 //! group's fields back to the defaults with one registry command), and its rows with the
 //! helpers of [`rows`]. Every committed edit is a registry [`Step`] list in [`Cx::edits`] — one
-//! undo step each; the editor runs them after the layout, as `devcast` would.
+//! undo step each; the editor runs them after the layout, as `devcast` would. A list that adds
+//! objects the editor picks afterwards goes to [`Cx::adds`].
 
 mod head;
 pub mod rows;
@@ -47,6 +48,9 @@ pub struct Cx<'a> {
     pub groups: Groups<'a>,
     /// What the panel asked for: each list is one registry change, one undo step.
     pub edits: Vec<Vec<Step>>,
+    /// Registry changes that add objects (one undo step each); the editor picks what they
+    /// added («Подобрать зумы по кликам»).
+    pub adds: Vec<Vec<Step>>,
 }
 
 impl Cx<'_> {

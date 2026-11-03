@@ -96,6 +96,24 @@ impl Document {
         Ok(self.record(applied, now))
     }
 
+    /// [`Self::apply`] that also builds the steps `devcast` resolves with the project's files
+    /// (`zoom add --at clicks`, `dc_ops::autozoom::expand`), with what they say (no zooms to add).
+    pub fn apply_resolved(
+        &mut self,
+        steps: &[Step],
+        now: Instant,
+    ) -> Result<(Applied, Vec<String>), OpsError> {
+        let mut notes = Vec::new();
+        let (root, project) = (self.dir.root(), &self.project);
+        let commands = dc_ops::build_with(&self.registry, steps, |step| {
+            dc_ops::autozoom::expand(root, project, step, &mut notes)
+        })?;
+        let commands: Vec<&dyn dc_core::Command> = commands.iter().map(AsRef::as_ref).collect();
+        let name = dc_ops::step_name(steps);
+        let applied = self.apply_commands(name, &commands, now)?;
+        Ok((applied, notes))
+    }
+
     /// The project as `steps` would make it, without changing it or its history: what the
     /// preview shows while a drag on it goes on (7.22).
     pub fn draft(&self, steps: &[Step]) -> Result<Project, OpsError> {

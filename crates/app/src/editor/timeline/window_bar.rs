@@ -28,7 +28,9 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes) {
         add_menu(ui, editor);
         let suggest = IconButton::new(Icon::Wand, text::SUGGEST_ZOOMS);
         if ui.add(suggest).on_hover_text(text::SUGGEST_ZOOMS).clicked() {
-            editor.actions.push(Action::SuggestZooms);
+            editor
+                .actions
+                .push(Action::Paste(vec![dc_ops::autozoom::by_clicks()]));
         }
         let idle = editor.captions.phase() == Phase::Idle;
         let make = IconButton::new(Icon::Captions, text::MAKE_CAPTIONS);

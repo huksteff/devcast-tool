@@ -1,25 +1,72 @@
 //! Auto zooms from the clicks of the recordings (`dc_fx_zoom::suggest`), one path for
 //! `devcast zoom suggest`, `devcast zoom add --at clicks`, the zooms after a recording (of
-//! `devcast record` and of the app) and the editor's «Подобрать зумы». The suggestion is not a registry command: a command is a pure
-//! function of the project, and the clicks lie in the recordings' telemetry files, which the
-//! caller's project folder gives.
+//! `devcast record` and of the app) and the editor's «Подобрать зумы». The suggestion is not a
+//! registry command: a command is a pure function of the project, and the clicks lie in the
+//! recordings' telemetry files, which the caller's project folder gives. The step
+//! `zoom add --at clicks` ([`by_clicks`]) asks for them; [`expand`] builds it.
 
 use std::path::Path;
 
 use dc_capture::input::{Button, CursorEvent};
 use dc_capture::project::{Recorded, fraction, recorded};
-use dc_core::{Op, Project};
+use dc_core::{Command, Op, Project};
 use dc_fx_zoom::{
     Action, DEFAULT_SCALE, Mode, Pointer, Recording, Suggestions, ZoomAdd, ZoomEffect,
 };
 use dc_project::history_log::Event;
 use dc_project::{HistoryLog, ProjectDir, ProjectLock, Working};
+use serde::Deserialize;
+use serde_json::Value;
 
 use crate::apply::{Applied, apply_commands, as_commands};
 use crate::error::OpsError;
+use crate::plan::{Commands, Step};
+pub use dc_fx_zoom::{AT_CLICKS as CLICKS, by_clicks};
 
-/// The value of `zoom add --at` that places the suggested zooms.
-pub const CLICKS: &str = "clicks";
+/// What `zoom add --at clicks` takes besides `--at`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ClickArgs {
+    #[serde(default = "default_scale")]
+    scale: f64,
+    #[serde(default)]
+    mode: Mode,
+}
+
+fn default_scale() -> f64 {
+    DEFAULT_SCALE
+}
+
+/// `zoom add --at clicks` of the project at `root` (one op, a step of a plan, a button of the
+/// editor): the suggested zooms, their reason in `notes` when there are none; `None` for any
+/// other step, which the registry builds.
+pub fn expand(
+    root: &Path,
+    project: &Project,
+    step: &Step,
+    notes: &mut Vec<String>,
+) -> Result<Option<Commands>, OpsError> {
+    if step.op != ZoomAdd::NAME || step.args.get("at") != Some(&Value::from(CLICKS)) {
+        return Ok(None);
+    }
+    let mut fields = step.args.clone();
+    fields.remove("at");
+    let args: ClickArgs = serde_json::from_value(Value::Object(fields)).map_err(|e| {
+        OpsError::Usage(format!(
+            "zoom add --at clicks: {e}. С --at clicks задаются только --scale и --mode: \
+             длительность и фокус берутся из кликов"
+        ))
+    })?;
+    let found = click_zooms(root, project)?;
+    notes.extend(no_click_zooms(&found));
+    let commands = click_commands(&found, args.scale, args.mode);
+    Ok(Some(
+        commands
+            .into_iter()
+            .map(|c| Box::new(c) as Box<dyn Command>)
+            .collect(),
+    ))
+}
 
 /// The zooms the clicks of the recordings of the project at `root` suggest.
 pub fn click_zooms(root: &Path, project: &Project) -> Result<Suggestions, OpsError> {

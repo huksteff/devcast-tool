@@ -58,6 +58,7 @@ fn harness(project: Project, number: u32) -> Harness<'static, State> {
                     fonts: &[],
                     groups: Groups::new(&mut state.groups),
                     edits: Vec::new(),
+                    adds: Vec::new(),
                 };
                 panel::ui(ui, &mut cx, state.event);
                 let edits = cx.edits;

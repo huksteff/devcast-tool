@@ -1,8 +1,8 @@
 //! The panel of the object picked on the timeline: a zoom, a cue, a callout event, an annotation
 //! (also through one of its keys), an extra sound, a clip or a click (its own panel, `click.rs`).
 //! The frame gives each its header — the colour of its row, its name, where it is — and
-//! «Удалить» (the same command as Delete); a zoom gets its parameters (`zoom_region.rs`), a
-//! callout event its own (`dc_fx_callout::panel`), a cue its text and times (`cue.rs`), an
+//! «Удалить» (the same command as Delete); a zoom gets its parameters
+//! (`dc_fx_zoom::panel::region`), a callout event its own (`dc_fx_callout::panel`), a cue its text and times (`cue.rs`), an
 //! annotation its key strip and groups (`annotation.rs`) and «Дублировать» (`annot paste` of a
 //! copy where it is, on top of its row; the copy gets picked), a clip its sound and an extra
 //! sound its levels and place (`dc_fx_audio_tracks::panel::clip`, `extra`, with the facts of
@@ -12,10 +12,11 @@ use dc_core::Range;
 use dc_core::time::Output;
 use dc_fx_audio_tracks::panel as sound;
 use dc_fx_callout::panel as callout;
+use dc_fx_zoom::panel as zoom;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{annotations, editor as text, inspector as names, timeline as rows_text};
 
-use super::{Cx, Header, annotation, click, cue, header, header_button, padded, rows, zoom_region};
+use super::{Cx, Header, annotation, click, cue, header, header_button, padded, rows};
 use crate::editor::selection::{Item, Selected, same_moment};
 use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
 use crate::editor::{Action, clipboard, montage, regions};
@@ -69,7 +70,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
         }
     });
     match picked {
-        Selected::Region(Item::Zoom(id)) => zoom_region::ui(ui, cx, id),
+        Selected::Region(Item::Zoom(id)) => zoom::region(ui, &mut cx.base, id),
         Selected::Region(Item::Callout(id)) => callout::ui(ui, &mut cx.base, id),
         Selected::Region(Item::Cue(id)) => cue_panel(ui, cx, id, region.range),
         Selected::Region(Item::Annotation(id)) => {
