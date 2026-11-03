@@ -5,40 +5,9 @@
 use dc_core::{ClipId, OutputTime};
 use dc_fx_annotations::AnnotId;
 pub use dc_fx_annotations::same_moment;
-use dc_fx_audio_tracks::AudioId;
-use dc_fx_callout::EventId;
-use dc_fx_captions::CueId;
-use dc_fx_zoom::ZoomId;
+pub use dc_ui_kit::lane::Item;
 
 use super::timeline::Tracks;
-
-/// The effect object behind a region of the timeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Item {
-    Zoom(ZoomId),
-    Cue(CueId),
-    Callout(EventId),
-    Annotation(AnnotId),
-    Sound(AudioId),
-}
-
-impl Item {
-    /// The item whose id `devcast` writes as `text` (`s3`); the prefixes of the kinds differ.
-    pub fn parse(text: &str) -> Option<Self> {
-        text.parse()
-            .map(Self::Zoom)
-            .or_else(|_| text.parse().map(Self::Cue))
-            .or_else(|_| text.parse().map(Self::Callout))
-            .or_else(|_| text.parse().map(Self::Annotation))
-            .or_else(|_| text.parse().map(Self::Sound))
-            .ok()
-    }
-
-    /// Items of one kind lie on the same rows: Ctrl+A picks them all.
-    pub fn same_kind(self, other: Self) -> bool {
-        std::mem::discriminant(&self) == std::mem::discriminant(&other)
-    }
-}
 
 /// An object picked on the timeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,7 +103,7 @@ impl Selection {
             Selected::Clip(id) => regions().any(|r| r.clip == Some(*id)),
             Selected::Region(item) => regions().any(|r| r.item == Some(*item)),
             Selected::Key { id, at } => regions().any(|r| {
-                r.item == Some(Item::Annotation(*id)) && r.keys.iter().any(|k| same_moment(*k, *at))
+                r.item == Some(Item::of(*id)) && r.keys.iter().any(|k| same_moment(*k, *at))
             }),
             Selected::Click(at) => tracks.clicks.iter().any(|d| same_moment(d.at, *at)),
         });

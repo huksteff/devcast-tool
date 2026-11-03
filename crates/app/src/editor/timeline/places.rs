@@ -67,7 +67,7 @@ pub fn group(
             let start = region.range.start() + shift.delta;
             let range = Range::new(start, region.range.end() + shift.delta).ok()?;
             let track = track_of(rows.get(row)?.0)
-                .filter(|_| rows_by != 0 && kind == Some(Kind::of(item)))
+                .filter(|_| rows_by != 0 && kind == Some(Kind::of(rows[row].0)))
                 .map(|t| (i64::from(t) + rows_by) as u32);
             let lands = match (track, rows[row].0) {
                 (Some(t), Row::Annotations(_)) => row_index(rows, Row::Annotations(t)),
@@ -198,10 +198,11 @@ enum Kind {
 }
 
 impl Kind {
-    fn of(item: Item) -> Self {
-        match item {
-            Item::Annotation(_) => Self::Annotations,
-            Item::Sound(_) => Self::Sound,
+    /// The kind of the regions on `row`.
+    fn of(row: Row) -> Self {
+        match row {
+            Row::Annotations(_) => Self::Annotations,
+            Row::Audio(_) => Self::Sound,
             _ => Self::Other,
         }
     }
@@ -226,15 +227,13 @@ fn track_shift(
         (Row::Audio(a), Row::Audio(b)) => (i64::from(b) - i64::from(a), Kind::Sound),
         _ => return (0, None),
     };
-    let same = |row: Row| match kind {
-        Kind::Annotations => matches!(row, Row::Annotations(_)),
-        _ => matches!(row, Row::Audio(_)),
-    };
-    let count = rows.iter().filter(|(r, _)| same(*r)).count() as i64;
+    let count = rows.iter().filter(|(r, _)| Kind::of(*r) == kind).count() as i64;
     let ours = placed
         .iter()
-        .filter(|(_, region)| region.item.is_some_and(|i| Kind::of(i) == kind))
-        .filter_map(|(row, _)| track_of(rows.get(*row)?.0).map(i64::from));
+        .filter(|(_, region)| region.item.is_some())
+        .filter_map(|(row, _)| rows.get(*row).map(|r| r.0))
+        .filter(|row| Kind::of(*row) == kind)
+        .filter_map(|row| track_of(row).map(i64::from));
     let (low, high) = ours.fold((i64::MIN, i64::MAX), |(low, high), t| {
         (low.max(-t), high.min(count - 1 - t))
     });

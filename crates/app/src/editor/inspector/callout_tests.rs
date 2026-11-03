@@ -15,7 +15,7 @@ use crate::editor::selection::{Item, Selected};
 fn picked(number: u32) -> H {
     let mut harness = tall();
     let id = EventId::from_number(number);
-    pick(&mut harness, Some(Selected::Region(Item::Callout(id))));
+    pick(&mut harness, Some(Selected::Region(Item::of(id))));
     harness
 }
 
@@ -82,7 +82,7 @@ fn a_text_left_by_picking_another_event_applies() {
         json(&cli(&[])),
         "nothing while typing"
     );
-    let other = Selected::Region(Item::Callout(EventId::from_number(1)));
+    let other = Selected::Region(Item::of(EventId::from_number(1)));
     pick(&mut harness, Some(other));
     let line = format!("callout set co2 --text {typed}");
     assert_eq!(project_json(&harness), json(&cli(&[line.as_str()])));

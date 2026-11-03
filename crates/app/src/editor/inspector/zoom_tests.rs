@@ -13,7 +13,7 @@ use egui_kittest::kittest::{NodeT as _, Queryable};
 
 use super::tests::{H, cli, first_zoom, pick, project_json, undo};
 use crate::editor::editing_tests::json;
-use crate::editor::selection::{Item, Selected};
+use crate::editor::selection::Selected;
 use crate::editor::tests::{harness_of, harness_with};
 use crate::editor::{EditorWindow, SIZE};
 
@@ -103,7 +103,7 @@ fn zoom_tab_reset_is_one_step_to_the_defaults() {
 fn a_picked_zoom_edits_are_zoom_set() {
     let mut harness = tall();
     let zoom = first_zoom(&harness);
-    let Item::Zoom(id) = zoom else { unreachable!() };
+    let id = zoom;
     pick(&mut harness, Some(Selected::Region(zoom)));
     click(&mut harness, egui::Role::RadioButton, names::ZOOM_FIXED);
     type_in(&mut harness, names::ZOOM_SCALE, 2.0);

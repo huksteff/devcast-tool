@@ -212,7 +212,7 @@ impl Tracks {
                 .filter_map(|a| {
                     let range = map.output_span(&a.media, a.range)?;
                     Some(Region {
-                        item: Some(Item::Annotation(a.id)),
+                        item: Some(Item::of(a.id)),
                         keys: marks::shown(map, a, range),
                         ..region(range, kind_name(a.kind).to_owned())
                     })
@@ -240,7 +240,7 @@ impl Tracks {
                 .filter(|c| c.track == track)
                 .map(|c| Region {
                     faded: c.muted,
-                    item: Some(Item::Sound(c.id)),
+                    item: Some(Item::of(c.id)),
                     wave: Some(wave::extra(c)),
                     ..region(c.range, file_name(&c.file.path))
                 })
@@ -272,7 +272,7 @@ fn captions_of(map: &TimeMap, state: &dc_fx_captions::CaptionsState) -> Vec<Regi
             let range = map.output_span(&cue.media, cue.range)?;
             Some(Region {
                 faded,
-                item: Some(Item::Cue(cue.id)),
+                item: Some(Item::of(cue.id)),
                 ..region(range, cue.text())
             })
         })
@@ -298,7 +298,7 @@ fn zooms_of(map: &TimeMap, state: &ZoomState) -> Vec<Region> {
                 Mode::Fixed => text::fixed_zoom(zoom.scale),
             };
             Some(Region {
-                item: Some(Item::Zoom(zoom.id)),
+                item: Some(Item::of(zoom.id)),
                 ..region(range, label)
             })
         })
@@ -314,7 +314,7 @@ fn callouts_of(map: &TimeMap, state: &CalloutState) -> Vec<Region> {
             Action::Text { text } => text.clone(),
         };
         regions.extend(event.output(map).map(|r| Region {
-            item: Some(Item::Callout(event.id)),
+            item: Some(Item::of(event.id)),
             ..region(r, label)
         }));
     }

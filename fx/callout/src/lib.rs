@@ -3,6 +3,7 @@
 
 mod commands;
 mod evaluate;
+pub mod lane;
 mod model;
 pub mod panel;
 mod resolve;

@@ -155,7 +155,7 @@ fn the_delete_button_removes_the_object_as_the_cli_does() {
     pick(&mut harness, Some(Selected::Region(zoom)));
     harness.get_by_label(names::DELETE).click();
     harness.run();
-    let Item::Zoom(id) = zoom else { unreachable!() };
+    let id = zoom;
     assert_eq!(
         project_json(&harness),
         json(&cli(&[&format!("zoom rm {id}")]))

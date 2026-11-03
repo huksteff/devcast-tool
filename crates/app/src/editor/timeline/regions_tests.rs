@@ -87,11 +87,11 @@ pub(super) fn picked(harness: &H) -> Vec<Item> {
 }
 
 pub(super) fn zoom(n: u32) -> Item {
-    Item::Zoom(dc_core::Id::from_number(n))
+    Item::of(dc_fx_zoom::ZoomId::from_number(n))
 }
 
 pub(super) fn annotation(n: u32) -> Item {
-    Item::Annotation(dc_core::Id::from_number(n))
+    Item::of(dc_fx_annotations::AnnotId::from_number(n))
 }
 
 pub(super) fn at(harness: &mut H, secs: f64) {

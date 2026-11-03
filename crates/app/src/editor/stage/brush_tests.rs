@@ -41,7 +41,7 @@ fn drawing(harness: &mut H) -> AnnotId {
     harness.run();
     let id = last(harness.state().editor.doc.project()).id;
     at(harness, 24.0);
-    pick(harness, Some(Selected::Region(Item::Annotation(id))));
+    pick(harness, Some(Selected::Region(Item::of(id))));
     id
 }
 

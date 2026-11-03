@@ -7,6 +7,7 @@ mod arrange;
 mod commands;
 mod keyed;
 mod keys;
+pub mod lane;
 mod model;
 mod motion;
 pub mod panel;

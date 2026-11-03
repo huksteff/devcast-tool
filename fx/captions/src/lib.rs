@@ -3,6 +3,7 @@
 mod edit;
 mod evaluate;
 mod generate;
+pub mod lane;
 mod layout;
 mod model;
 pub mod panel;

@@ -88,7 +88,7 @@ fn drawing_edits_are_drawing_set_and_clear() {
         "drawing add a4 --points 0.1,0.1,0.9,0.9",
     ];
     given(&mut harness, &made);
-    let drawing = crate::editor::selection::Item::Annotation(AnnotId::from_number(4));
+    let drawing = crate::editor::selection::Item::of(AnnotId::from_number(4));
     super::tests::pick(
         &mut harness,
         Some(crate::editor::selection::Selected::Region(drawing)),
@@ -112,7 +112,7 @@ fn a_picked_picture_is_image_set() {
     let made = ["annot add image --at 50 --duration 2 --track 1"];
     given(&mut harness, &made);
     let id = AnnotId::from_number(4);
-    let item = crate::editor::selection::Item::Annotation(id);
+    let item = crate::editor::selection::Item::of(id);
     super::tests::pick(
         &mut harness,
         Some(crate::editor::selection::Selected::Region(item)),

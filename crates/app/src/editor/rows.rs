@@ -50,7 +50,7 @@ fn retrack(project: &Project, to: impl Fn(u32) -> Option<u32>) -> Vec<Step> {
         .annotations
         .iter()
         .filter_map(|a| match to(a.track) {
-            None => Some(remove(Item::Annotation(a.id))),
+            None => remove(Item::of(a.id)),
             Some(track) if track != a.track => Some(step("annot move", a.id.to_string(), track)),
             Some(_) => None,
         })
@@ -67,9 +67,9 @@ pub fn remove_sound(project: &Project, track: u32) -> Vec<Step> {
     clips.sort_by_key(|c| c.track);
     clips
         .into_iter()
-        .map(|c| match c.track == track {
-            true => remove(Item::Sound(c.id)),
-            false => step("audio set", c.id.to_string(), c.track - 1),
+        .filter_map(|c| match c.track == track {
+            true => remove(Item::of(c.id)),
+            false => Some(step("audio set", c.id.to_string(), c.track - 1)),
         })
         .collect()
 }

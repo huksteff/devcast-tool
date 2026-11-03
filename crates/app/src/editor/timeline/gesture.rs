@@ -141,7 +141,7 @@ fn edge(
             _ if stretch.now == range => None,
             Target::Region(item) => {
                 let project = editor.doc.project();
-                Some(commands::resize(project, item, range, end, at))
+                commands::resize(project, item, range, end, at)
             }
             Target::Speed { factor, .. } => commands::speed_edge(range, end, at, factor),
         };
@@ -181,7 +181,7 @@ fn key(
     x: f32,
     down: bool,
 ) {
-    let item = Some(Item::Annotation(id));
+    let item = Some(Item::of(id));
     let region = editor.tracks.rows.get(row).map(|t| &t.regions);
     let range = region
         .and_then(|r| r.iter().find(|r| r.item == item))
@@ -196,7 +196,9 @@ fn key(
     let point = snap::point(raw, &targets, px, (range.start(), range.end()));
     if !down {
         if !same_moment(point.at, from) {
-            editor.ask(Action::Apply(vec![commands::key_move(id, from, point.at)]));
+            editor.ask(Action::Apply(Vec::from_iter(commands::key_move(
+                id, from, point.at,
+            ))));
             let at = point.at;
             editor.view.selection.only(Selected::Key { id, at });
         }

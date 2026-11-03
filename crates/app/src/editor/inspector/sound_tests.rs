@@ -241,7 +241,7 @@ fn an_imported_video_without_sound_says_so_once_read() {
 
 fn extra(harness: &mut H) {
     let id = AudioId::from_number(1);
-    pick(harness, Some(Selected::Region(Item::Sound(id))));
+    pick(harness, Some(Selected::Region(Item::of(id))));
 }
 
 #[test]
@@ -291,7 +291,7 @@ fn duplicate_puts_a_copy_of_the_sound_on_a_free_row_and_picks_it() {
     let (first, copy) = (&state.clips[0], &state.clips[1]);
     assert_eq!((copy.track, copy.range), (1, first.range));
     assert_eq!((copy.volume, &copy.file), (first.volume, &first.file));
-    let picked = Selected::Region(Item::Sound(copy.id));
+    let picked = Selected::Region(Item::of(copy.id));
     assert_eq!(harness.state().editor.view.selection.single(), Some(picked));
     undo(&mut harness);
     let now = harness.state().editor.doc.project();

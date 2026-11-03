@@ -290,7 +290,7 @@ fn a_sound_file_is_copied_onto_its_row_in_one_step() {
             .join("assets/audio/тон 2.wav")
             .is_file()
     );
-    assert_eq!(picked(&harness), [Item::Sound(clip.id)]);
+    assert_eq!(picked(&harness), [Item::of(clip.id)]);
     undo_is_one_step(&mut harness);
 }
 

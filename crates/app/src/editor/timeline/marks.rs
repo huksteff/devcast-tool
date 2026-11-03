@@ -63,7 +63,7 @@ pub fn ui(ui: &Ui, rows: &[(Row, Rect)], editor: &mut EditorWindow, scale: &Time
         }
         let painter = ui.painter_at(lane);
         for region in editor.tracks.rows[index].regions.clone() {
-            let Some(Item::Annotation(id)) = region.item else {
+            let Some(id) = region.item.and_then(Item::id) else {
                 continue;
             };
             let y = paint::body(lane, scale, region.range).center().y;

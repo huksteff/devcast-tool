@@ -59,7 +59,7 @@ pub fn shown(editor: &EditorWindow, canvas: Vec2) -> Vec<OnFrame> {
             continue;
         };
         for region in &track.regions {
-            let Some(Item::Annotation(id)) = region.item else {
+            let Some(id) = region.item.and_then(Item::id) else {
                 continue;
             };
             if now < region.range.start() || now >= region.range.end() {
@@ -87,7 +87,8 @@ pub fn shown(editor: &EditorWindow, canvas: Vec2) -> Vec<OnFrame> {
 /// The annotation picked alone (as a region or by one of its keys).
 pub fn picked(editor: &EditorWindow) -> Option<AnnotId> {
     match editor.view.selection.single()? {
-        Selected::Region(Item::Annotation(id)) | Selected::Key { id, .. } => Some(id),
+        Selected::Region(item) => item.id(),
+        Selected::Key { id, .. } => Some(id),
         _ => None,
     }
 }
@@ -190,7 +191,7 @@ fn topmost(shown: &[OnFrame], p: Pos2) -> Option<&OnFrame> {
 fn pick(editor: &mut EditorWindow, shown: &[OnFrame], p: Pos2) {
     let selection = &mut editor.view.selection;
     match topmost(shown, p) {
-        Some(on) => selection.only(Selected::Region(Item::Annotation(on.edit.id))),
+        Some(on) => selection.only(Selected::Region(Item::of(on.edit.id))),
         None => selection.clear(),
     }
 }
@@ -211,7 +212,7 @@ fn start(
         return;
     };
     if picked.map(|s| s.edit.id) != Some(on.edit.id) {
-        let item = Selected::Region(Item::Annotation(on.edit.id));
+        let item = Selected::Region(Item::of(on.edit.id));
         editor.view.selection.only(item);
     }
     editor.view.stage = Some(Drag::Annot(AnnotDrag {

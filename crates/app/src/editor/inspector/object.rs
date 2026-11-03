@@ -15,10 +15,14 @@ use dc_core::Range;
 use dc_core::time::Output;
 use dc_fx_annotations::panel::{self as annot, Region as Shown};
 use dc_fx_annotations::{AnnotId, Kind};
+use dc_fx_audio_tracks::AudioId;
 use dc_fx_audio_tracks::panel as sound;
+use dc_fx_callout::EventId;
 use dc_fx_callout::panel as callout;
+use dc_fx_captions::CueId;
 use dc_fx_captions::panel as cue;
 use dc_fx_cursor::panel::{self as cursor, Press, PressButton};
+use dc_fx_zoom::ZoomId;
 use dc_fx_zoom::panel as zoom;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::panel::{Header, header, header_button};
@@ -32,7 +36,7 @@ use eframe::egui::Ui;
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
     let picked = match picked {
-        Selected::Key { id, .. } => Selected::Region(Item::Annotation(id)),
+        Selected::Key { id, .. } => Selected::Region(Item::of(id)),
         Selected::Click(at) => {
             let dot = tracks.clicks.iter().find(|d| same_moment(d.at, at));
             if let Some(dot) = dot {
@@ -47,7 +51,11 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
         return;
     };
     let mut about = describe(picked, row, region);
-    if let Selected::Region(Item::Callout(id)) = picked
+    let object = match picked {
+        Selected::Region(item) => Object::of(item),
+        _ => None,
+    };
+    if let Some(Object::Callout(id)) = object
         && let Some((title, subtitle)) =
             callout::about(cx.base.project, id, &timecode(region.range.start()))
     {
@@ -59,8 +67,8 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
         title: &about.title,
         subtitle: &about.subtitle,
     };
-    let copy = match picked {
-        Selected::Region(item @ (Item::Annotation(_) | Item::Sound(_))) => {
+    let copy = match (picked, object) {
+        (Selected::Region(item), Some(Object::Annotation(_) | Object::Sound(_))) => {
             clipboard::duplicate(cx.base.project, item, region.range)
         }
         _ => None,
@@ -77,23 +85,42 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
             cx.actions.push(Action::Paste(vec![step]));
         }
     });
-    match picked {
-        Selected::Region(Item::Zoom(id)) => zoom::region(ui, &mut cx.base, id),
-        Selected::Region(Item::Callout(id)) => callout::ui(ui, &mut cx.base, id),
-        Selected::Region(Item::Cue(id)) => cue::cue(ui, &mut cx.base, id, region.range),
-        Selected::Region(Item::Annotation(id)) => {
-            annotation(ui, cx, id, region);
-        }
-        Selected::Region(Item::Sound(id)) => {
+    if let Selected::Clip(id) = picked {
+        let sources = cx.sources(Some(id));
+        sound::clip(ui, &mut cx.base, id, &sources);
+    }
+    match object {
+        Some(Object::Zoom(id)) => zoom::region(ui, &mut cx.base, id),
+        Some(Object::Callout(id)) => callout::ui(ui, &mut cx.base, id),
+        Some(Object::Cue(id)) => cue::cue(ui, &mut cx.base, id, region.range),
+        Some(Object::Annotation(id)) => annotation(ui, cx, id, region),
+        Some(Object::Sound(id)) => {
             let sources = cx.sources(None);
             sound::extra(ui, &mut cx.base, id, &sources);
         }
-        Selected::Clip(id) => {
-            let sources = cx.sources(Some(id));
-            sound::clip(ui, &mut cx.base, id, &sources);
-        }
         // A key opens its annotation and a click its own panel, above.
-        Selected::Key { .. } | Selected::Click(_) => {}
+        None => {}
+    }
+}
+
+/// The effect object of a picked region, by the kind of its id.
+#[derive(Clone, Copy)]
+enum Object {
+    Zoom(ZoomId),
+    Callout(EventId),
+    Cue(CueId),
+    Annotation(AnnotId),
+    Sound(AudioId),
+}
+
+impl Object {
+    fn of(item: Item) -> Option<Self> {
+        item.id()
+            .map(Self::Zoom)
+            .or_else(|| item.id().map(Self::Callout))
+            .or_else(|| item.id().map(Self::Cue))
+            .or_else(|| item.id().map(Self::Annotation))
+            .or_else(|| item.id().map(Self::Sound))
     }
 }
 
@@ -131,12 +158,14 @@ fn describe(picked: Selected, row: Row, region: &Region) -> About {
             title: region.label.clone(),
             subtitle: region.detail.clone().unwrap_or(length),
         },
-        Selected::Region(Item::Zoom(_)) => timed(text::ZOOM),
-        Selected::Region(Item::Callout(_)) => timed(names::CALLOUT),
-        Selected::Region(Item::Cue(_)) => timed(names::CUE),
-        Selected::Region(Item::Annotation(_)) | Selected::Key { .. } => layered(),
+        Selected::Region(item) => match Object::of(item) {
+            Some(Object::Zoom(_)) => timed(text::ZOOM),
+            Some(Object::Callout(_)) => timed(names::CALLOUT),
+            Some(Object::Cue(_)) => timed(names::CUE),
+            Some(Object::Annotation(_) | Object::Sound(_)) | None => layered(),
+        },
+        Selected::Key { .. } => layered(),
         Selected::Click(_) => timed(names::CLICK),
-        Selected::Region(Item::Sound(_)) => layered(),
     }
 }
 
@@ -149,7 +178,7 @@ fn span(range: Range<Output>) -> String {
 fn delete(picked: Selected) -> Option<Action> {
     match picked {
         Selected::Clip(id) => montage::remove([id]),
-        Selected::Region(item) => Some(Action::Apply(vec![regions::remove(item)])),
+        Selected::Region(item) => Some(Action::Apply(vec![regions::remove(item)?])),
         Selected::Key { .. } | Selected::Click(_) => None,
     }
 }

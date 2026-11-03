@@ -72,7 +72,7 @@ fn a_line_of_the_list_picks_the_cue_and_seeks_to_it() {
     assert_eq!(head.value().as_deref(), Some("3 реплики"));
     click_line(&mut harness, "0:09.00", "Открываем страницу логина");
     let view = &harness.state().editor.view;
-    let cue = Selected::Region(Item::Cue(CueId::from_number(2)));
+    let cue = Selected::Region(Item::of(CueId::from_number(2)));
     assert_eq!(view.selection.single(), Some(cue));
     assert_eq!(view.object, None, "the list stays open");
     assert_eq!(view.playhead, OutputTime::from_secs_f64(9.0));
@@ -174,7 +174,7 @@ fn style_edits_are_captions_style_and_reset_is_one_step() {
 #[test]
 fn a_cue_picked_on_the_timeline_opens_its_editor() {
     let mut harness = tall();
-    let cue = Selected::Region(Item::Cue(CueId::from_number(1)));
+    let cue = Selected::Region(Item::of(CueId::from_number(1)));
     pick(&mut harness, Some(cue));
     let head = harness.get_by_role_and_label(egui::Role::Heading, names::CUE);
     assert_eq!(head.value().as_deref(), Some("0:01.00 – 0:08.00 · 7,0 с"));
@@ -208,7 +208,7 @@ fn esc_in_a_cue_field_drops_the_draft() {
             before,
             "{hint}: the text is back"
         );
-        let cue = Selected::Region(Item::Cue(CueId::from_number(2)));
+        let cue = Selected::Region(Item::of(CueId::from_number(2)));
         let view = &harness.state().editor.view;
         assert_eq!(
             view.selection.single(),

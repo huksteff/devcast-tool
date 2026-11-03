@@ -19,6 +19,7 @@ mod help;
 mod inspector;
 mod keyframes;
 mod keys;
+mod lanes;
 mod library;
 mod live;
 mod montage;

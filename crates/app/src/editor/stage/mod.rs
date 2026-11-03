@@ -31,7 +31,7 @@ use dc_render::Camera;
 use dc_ui_kit::strings::editor as text;
 use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo};
 
-use super::selection::{Item, Selected};
+use super::selection::Selected;
 use super::{Action, EditorWindow};
 use geom::Mapping;
 
@@ -57,7 +57,7 @@ impl Drag {
 /// The zoom picked alone: the preview shows its frame over the picture without the camera.
 pub fn picked_zoom(editor: &EditorWindow) -> Option<ZoomId> {
     match editor.view.selection.single()? {
-        Selected::Region(Item::Zoom(id)) => Some(id),
+        Selected::Region(item) => item.id(),
         _ => None,
     }
 }

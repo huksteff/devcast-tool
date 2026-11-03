@@ -8,6 +8,7 @@
 
 mod channel;
 mod clips;
+pub mod lane;
 mod model;
 pub mod panel;
 mod panel_clip;

@@ -43,7 +43,7 @@ use eframe::egui::{self, Frame, Margin, ScrollArea, Ui};
 
 use super::adding::PictureFile;
 use super::fonts::FontFile;
-use super::selection::{Item, Selected};
+use super::selection::Selected;
 use super::streams::{Imported, Streams};
 use super::view::{Panel, View};
 use super::{Action, EditorWindow, Transport};
@@ -217,7 +217,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
 fn action(request: Request) -> Option<Action> {
     match request {
         Request::Pick(id) => {
-            let item = Item::parse(&id);
+            let item = crate::editor::lanes::parse(&id);
             if item.is_none() {
                 tracing::warn!("a panel asked to pick {id}, which is not an object of the rows");
             }

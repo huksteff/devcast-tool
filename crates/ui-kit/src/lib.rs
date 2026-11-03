@@ -4,6 +4,7 @@
 mod error;
 pub mod fonts;
 pub mod icons;
+pub mod lane;
 pub mod panel;
 pub mod settings_rows;
 pub mod strings;
@@ -24,3 +25,6 @@ pub fn install(ctx: &egui::Context) -> Result<(), UiKitError> {
     theme::apply(ctx);
     Ok(())
 }
+
+#[cfg(test)]
+mod lane_tests;

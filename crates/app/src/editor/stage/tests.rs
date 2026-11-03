@@ -112,7 +112,7 @@ fn dragging_the_zoom_frame_moves_the_focus_and_stands_the_camera() {
     let mut harness = started();
     pick(
         &mut harness,
-        Some(Selected::Region(Item::Zoom(ZoomId::from_number(1)))),
+        Some(Selected::Region(Item::of(ZoomId::from_number(1)))),
     );
     harness.snapshot("preview_zoom_frame");
     let centre = on_screen(&harness, pos2(1280.0, 720.0));
@@ -142,7 +142,7 @@ fn a_corner_of_the_zoom_frame_sets_the_scale() {
     let mut harness = started();
     pick(
         &mut harness,
-        Some(Selected::Region(Item::Zoom(ZoomId::from_number(1)))),
+        Some(Selected::Region(Item::of(ZoomId::from_number(1)))),
     );
     // 1.5×: the frame is the middle two thirds; its bottom right corner goes to the centre.
     let corner = on_screen(&harness, pos2(2560.0 * 5.0 / 6.0, 1440.0 * 5.0 / 6.0));
@@ -171,7 +171,7 @@ fn a_click_picks_the_topmost_annotation_and_nothing_drops_it() {
     let inside = on_screen(&harness, pos2(600.0, 200.0));
     click(&mut harness, inside);
     let picked = harness.state().editor.view.selection.single();
-    let a3 = Selected::Region(Item::Annotation(AnnotId::from_number(3)));
+    let a3 = Selected::Region(Item::of(AnnotId::from_number(3)));
     assert_eq!(picked, Some(a3), "the upper row wins");
     harness.snapshot("preview_annotation_picked");
     let empty = on_screen(&harness, pos2(2000.0, 1200.0));
@@ -209,7 +209,7 @@ fn a_handle_at_a_key_resizes_that_key() {
     at(&mut harness, 24.0);
     pick(
         &mut harness,
-        Some(Selected::Region(Item::Annotation(AnnotId::from_number(1)))),
+        Some(Selected::Region(Item::of(AnnotId::from_number(1)))),
     );
     // The right edge of 256..1024 × 144..288 pulled 200 px right.
     let edge = on_screen(&harness, pos2(1024.0, 216.0));
@@ -240,7 +240,7 @@ fn the_knob_turns_and_shift_snaps_to_15() {
     at(&mut harness, 24.0);
     pick(
         &mut harness,
-        Some(Selected::Region(Item::Annotation(AnnotId::from_number(1)))),
+        Some(Selected::Region(Item::of(AnnotId::from_number(1)))),
     );
     let frame = frame(&harness);
     let k = frame.width() / CANVAS.x;

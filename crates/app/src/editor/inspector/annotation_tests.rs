@@ -21,7 +21,7 @@ pub(super) fn picked(number: u32, at: f64) -> H {
     let mut harness = tall();
     harness.state_mut().editor.view.playhead = OutputTime::from_secs_f64(at);
     let id = AnnotId::from_number(number);
-    pick(&mut harness, Some(Selected::Region(Item::Annotation(id))));
+    pick(&mut harness, Some(Selected::Region(Item::of(id))));
     harness
 }
 
@@ -228,7 +228,7 @@ fn duplicate_adds_a_copy_right_after_and_picks_it() {
     click(&mut harness, egui::Role::Button, text::DUPLICATE);
     let copy = AnnotId::from_number(4);
     assert_eq!(copy_at(&harness, copy), ((29_000, 35_000), 0), "after a1");
-    let picked = Selected::Region(Item::Annotation(copy));
+    let picked = Selected::Region(Item::of(copy));
     assert_eq!(harness.state().editor.view.selection.single(), Some(picked));
     undo(&mut harness);
     let now = harness.state().editor.doc.project();

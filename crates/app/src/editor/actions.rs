@@ -270,7 +270,7 @@ pub fn pick_key(editor: &mut EditorWindow, id: AnnotId) {
         .rows
         .iter()
         .flat_map(|t| &t.regions)
-        .filter(|r| r.item == Some(Item::Annotation(id)))
+        .filter(|r| r.item == Some(Item::of(id)))
         .find_map(|r| r.keys.iter().copied().find(|k| same_moment(*k, playhead)));
     if let Some(at) = key {
         editor.view.selection.only(Selected::Key { id, at });

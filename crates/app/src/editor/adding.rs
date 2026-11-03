@@ -13,10 +13,10 @@ use dc_core::{OutputTime, Range, TimeDelta};
 use dc_fx_annotations::TRACKS;
 use dc_fx_audio_tracks::AudioAdd;
 use dc_ops::{SoundPlace, Step};
+use dc_ui_kit::lane::seconds;
 use serde_json::{Map, Value};
 
 use super::montage::arg;
-use super::regions::seconds;
 use super::selection::{Item, Selected};
 use super::timeline::{Row, Tracks};
 use super::{Action, EditorWindow};

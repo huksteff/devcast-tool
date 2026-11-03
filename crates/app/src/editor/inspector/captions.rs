@@ -26,18 +26,18 @@ fn list(cx: &Cx<'_>) -> List {
         .iter()
         .filter(|t| t.row == Row::Captions)
         .flat_map(|t| &t.regions)
-        .filter_map(|r| match r.item {
-            Some(Item::Cue(id)) => Some(Shown {
+        .filter_map(|r| {
+            let id = r.item.and_then(Item::id)?;
+            Some(Shown {
                 id,
                 at: r.range,
                 start: timecode(r.range.start()),
-            }),
-            _ => None,
+            })
         })
         .collect();
     shown.sort_by_key(|s| s.at.start());
     let picked = match cx.picked {
-        Some(Selected::Region(Item::Cue(id))) => Some(id),
+        Some(Selected::Region(item)) => item.id(),
         _ => None,
     };
     List { shown, picked }

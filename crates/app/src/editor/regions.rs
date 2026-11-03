@@ -1,48 +1,19 @@
-//! Regions of the effects as registry commands, written as `devcast` takes them (times are
-//! seconds with six digits, `montage::arg`): a moved group, a dragged edge, removal. Each
-//! effect keeps its own rules (a zoom does not overlap a zoom, a cue stays in its recording); a
-//! command that refuses fails the whole gesture, and the editor shows why.
+//! Regions of the effects as registry commands: a moved group, a dragged edge, removal. The
+//! commands are the effects' own (`dc_ui_kit::lane::Lane`, found by `lanes::of`): each keeps its
+//! own rules (a zoom does not overlap a zoom, a cue stays in its recording); a command that
+//! refuses fails the whole gesture, and the editor shows why. The speed bands are the editor's
+//! (montage, `speed`).
 
 use dc_core::time::Output;
-use dc_core::{OutputTime, Project, Range, TimeDelta};
+use dc_core::{OutputTime, Project, Range};
 use dc_fx_annotations::AnnotId;
-use dc_fx_audio_tracks::Audio;
 use dc_ops::Step;
+pub use dc_ui_kit::lane::Moved;
+use dc_ui_kit::lane::Resize;
 use serde_json::{Map, Value};
 
-use super::montage::arg;
+use super::lanes;
 use super::selection::Item;
-
-/// A region after a move: its new place and, for annotations and extra sound, a new track.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Moved {
-    pub item: Item,
-    pub range: Range<Output>,
-    pub track: Option<u32>,
-}
-
-/// The command and the id of `item`.
-fn command(item: Item, verb: &str) -> (String, Map<String, Value>) {
-    let (op, id) = match item {
-        Item::Zoom(id) => ("zoom", id.to_string()),
-        Item::Cue(id) => ("captions", id.to_string()),
-        Item::Callout(id) => ("callout", id.to_string()),
-        Item::Annotation(id) => ("annot", id.to_string()),
-        Item::Sound(id) => ("audio", id.to_string()),
-    };
-    let mut args = Map::new();
-    args.insert("id".to_owned(), Value::String(id));
-    (format!("{op} {verb}"), args)
-}
-
-fn time(t: OutputTime) -> Value {
-    Value::String(arg(t))
-}
-
-/// A length in seconds: the number `devcast` reads from `1.500000`.
-pub fn seconds(length: TimeDelta) -> Value {
-    Value::from(length.micros() as f64 / 1e6)
-}
 
 /// The commands that put each region of `moved` in its new place, one after another so that
 /// no step meets a region that has not moved yet: the front of the group goes first (`forward`
@@ -53,80 +24,32 @@ pub fn moves(moved: &[Moved], forward: bool) -> Vec<Step> {
     if forward {
         order.reverse();
     }
-    order.into_iter().map(move_step).collect()
+    order
+        .into_iter()
+        .filter_map(|m| Some((lanes::of(m.item)?.moved)(m)))
+        .collect()
 }
 
-fn move_step(moved: &Moved) -> Step {
-    let (start, end) = (moved.range.start(), moved.range.end());
-    let (op, args) = match moved.item {
-        Item::Zoom(_) | Item::Cue(_) => {
-            let (op, mut args) = command(moved.item, "set");
-            args.insert("from".to_owned(), time(start));
-            args.insert("to".to_owned(), time(end));
-            (op, args)
-        }
-        Item::Annotation(_) => with_track(command(moved.item, "move"), start, moved.track),
-        Item::Callout(_) => with_track(command(moved.item, "set"), start, None),
-        Item::Sound(_) => with_track(command(moved.item, "set"), start, moved.track),
-    };
-    Step::new(op, args)
-}
-
-fn with_track(
-    (op, mut args): (String, Map<String, Value>),
-    at: OutputTime,
-    track: Option<u32>,
-) -> (String, Map<String, Value>) {
-    args.insert("at".to_owned(), time(at));
-    if let Some(track) = track {
-        args.insert("track".to_owned(), track.into());
-    }
-    (op, args)
-}
-
-/// The command that drags the `end` (or the start) of `item` lying at `range` to `at`. A
-/// callout event keeps its end when its start moves; extra sound keeps the sound under its
-/// end (the file's start moves too).
+/// The command that drags the `end` (or the start) of `item` lying at `range` to `at`.
 pub fn resize(
     project: &Project,
     item: Item,
     range: Range<Output>,
     end: bool,
     at: OutputTime,
-) -> Step {
-    let (op, mut args) = command(item, "set");
-    match (item, end) {
-        (Item::Zoom(_) | Item::Cue(_) | Item::Annotation(_), true) => {
-            args.insert("to".to_owned(), time(at));
-        }
-        (Item::Zoom(_) | Item::Cue(_) | Item::Annotation(_), false) => {
-            args.insert("from".to_owned(), time(at));
-        }
-        (Item::Callout(_) | Item::Sound(_), true) => {
-            args.insert("duration".to_owned(), seconds(at.since(range.start())));
-        }
-        (Item::Callout(_) | Item::Sound(_), false) => {
-            args.insert("at".to_owned(), time(at));
-            args.insert("duration".to_owned(), seconds(range.end().since(at)));
-        }
-    }
-    if let (Item::Sound(id), false) = (item, end) {
-        let offset = project
-            .state::<Audio>()
-            .ok()
-            .and_then(|s| s.clips.into_iter().find(|c| c.id == id))
-            .map(|c| TimeDelta::from_micros(c.offset.micros() + at.since(range.start()).micros()));
-        if let Some(offset) = offset {
-            args.insert("offset".to_owned(), seconds(offset));
-        }
-    }
-    Step::new(op, args)
+) -> Option<Step> {
+    let resize = Resize {
+        item,
+        range,
+        end,
+        at,
+    };
+    Some((lanes::of(item)?.resized)(project, &resize))
 }
 
 /// `<effect> rm <id>`.
-pub fn remove(item: Item) -> Step {
-    let (op, args) = command(item, "rm");
-    Step::new(op, args)
+pub fn remove(item: Item) -> Option<Step> {
+    Some(lanes::of(item)?.removed(item))
 }
 
 /// A speed band from `from` dragged by one edge to `to`: the part it takes gets its
@@ -149,16 +72,13 @@ pub fn speed_edge(from: Range<Output>, end: bool, to: OutputTime, factor: f64) -
 }
 
 /// `annot key rm <id> --at <at>`: the key of annotation `id` at output `at`.
-pub fn key_remove(id: AnnotId, at: OutputTime) -> Step {
-    let (op, mut args) = command(Item::Annotation(id), "key rm");
-    args.insert("at".to_owned(), time(at));
-    Step::new(op, args)
+pub fn key_remove(id: AnnotId, at: OutputTime) -> Option<Step> {
+    let item = Item::of(id);
+    Some(lanes::of(item)?.key_removed(item, at))
 }
 
 /// `annot key move <id> --at <from> --to <to>`.
-pub fn key_move(id: AnnotId, from: OutputTime, to: OutputTime) -> Step {
-    let (op, mut args) = command(Item::Annotation(id), "key move");
-    args.insert("at".to_owned(), time(from));
-    args.insert("to".to_owned(), time(to));
-    Step::new(op, args)
+pub fn key_move(id: AnnotId, from: OutputTime, to: OutputTime) -> Option<Step> {
+    let item = Item::of(id);
+    Some(lanes::of(item)?.key_moved(item, from, to))
 }

@@ -93,7 +93,7 @@ fn a_copied_key_pastes_at_the_playhead_into_the_picked_annotation() {
 
     let state = harness.state().editor.doc.project().state::<Annotations>();
     let added = state.unwrap().annotations.last().unwrap().id;
-    pick(&mut harness, Selected::Region(Item::Annotation(added)));
+    pick(&mut harness, Selected::Region(Item::of(added)));
     press(&mut harness, Key::V, Modifiers::COMMAND);
     let into = format!("annot key copy a1 --at 24 --to 25 --into {added}");
     expect(&harness, &[base[0], base[1], base[2], &into]);
