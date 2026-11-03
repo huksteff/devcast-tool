@@ -54,6 +54,8 @@ pub enum Panel {
     Keys,
     Captions,
     Sound,
+    /// «Сделать красиво» by the user's AI agent (8.11).
+    Ai,
 }
 
 #[derive(Debug, Clone, PartialEq)]

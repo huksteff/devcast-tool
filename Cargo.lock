@@ -1271,6 +1271,7 @@ name = "dc-app"
 version = "0.1.0"
 dependencies = [
  "crash-handler",
+ "dc-agent",
  "dc-audio",
  "dc-capture",
  "dc-core",

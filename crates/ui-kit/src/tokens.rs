@@ -82,6 +82,9 @@ pub const HUE_KEYS: Hue = hue(0x38414f, 0x8a99b0);
 pub const HUE_CAPTIONS: Hue = hue(0x6e5210, 0xe0b23a);
 pub const HUE_ANNOTATIONS: Hue = hue(0x7e2450, 0xf0609e);
 pub const HUE_AUDIO: Hue = hue(0x125a3b, 0x34d399);
+/// «Сделать красиво» of the editor: running (accent) and done (green) (mockup 9).
+pub const HUE_AI: Hue = hue(0x1e3a8a, 0x3b82f6);
+pub const HUE_AI_DONE: Hue = hue(0x14532d, 0x22c55e);
 
 const fn hue(fill: u32, line: u32) -> Hue {
     Hue {

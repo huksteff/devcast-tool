@@ -252,6 +252,9 @@ pub mod export;
 /// Projects of the editor: the «Проекты» menu, saving, closing, recovery, renaming.
 pub mod projects;
 
+/// The «Нейронка» tab: «Сделать красиво» by the user's AI agent.
+pub mod ai;
+
 /// The settings window.
 pub mod settings {
     pub const TITLE: &str = "Настройки — DevCast";

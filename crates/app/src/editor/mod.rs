@@ -7,6 +7,7 @@
 
 mod actions;
 mod adding;
+pub mod ai;
 mod clipboard;
 mod closing;
 mod crop;
@@ -151,6 +152,8 @@ pub struct EditorWindow {
     pub groups: InspectorGroups,
     /// «Создать субтитры»: the model, the worker process and the choices of the panel (7.17).
     pub captions: generation::Generation,
+    /// «Сделать красиво»: the user's AI agent and its run (8.11).
+    pub ai: ai::Ai,
     /// Families of the font pickers: built-in and the project's own.
     pub fonts: Vec<String>,
     /// The timeline window: open or not, its place, which window should repaint.
@@ -202,6 +205,7 @@ impl EditorWindow {
             presses: presses::Presses::default(),
             streams: streams::Streams::default(),
             captions: generation::Generation::default(),
+            ai: ai::Ai::default(),
             fonts,
             keys: EditorKeys::default(),
             help: None,

@@ -3,7 +3,7 @@
 use dc_ui_kit::Icon;
 use dc_ui_kit::tokens::{S3, SURFACE};
 use dc_ui_kit::widgets::{
-    Button, IconButton, Kind, Slider, Toggle, anchors, dropdown, dropdown_some, palette,
+    Button, Checkbox, IconButton, Kind, Slider, Toggle, anchors, dropdown, dropdown_some, palette,
     search_field, segmented, text_area, text_field, tiles,
 };
 use egui_kittest::Harness;
@@ -93,6 +93,18 @@ fn toggle() {
     });
     harness.snapshot("toggle");
     harness.get_by_label("Бета-версии").click();
+    harness.run();
+    assert_eq!(*harness.state(), [true, true]);
+}
+
+#[test]
+fn checkbox() {
+    let mut harness = harness([true, false], |ui, on: &mut [bool; 2]| {
+        ui.add(Checkbox::new(&mut on[0], "Убрать паузы"));
+        ui.add(Checkbox::new(&mut on[1], "Показ клавиш"));
+    });
+    harness.snapshot("checkbox");
+    harness.get_by_label("Показ клавиш").click();
     harness.run();
     assert_eq!(*harness.state(), [true, true]);
 }

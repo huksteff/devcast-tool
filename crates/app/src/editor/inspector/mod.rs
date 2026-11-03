@@ -8,9 +8,12 @@
 //! project (`panel::Request`) becomes an [`Action`] in [`action`]. A tab gets its panel in
 //! [`tab`], an object kind in `object.rs`.
 
+mod ai;
 mod captions;
 mod object;
 
+#[cfg(test)]
+mod ai_tests;
 #[cfg(test)]
 mod annot_kinds_tests;
 #[cfg(test)]
@@ -71,6 +74,7 @@ fn tab(panel: Panel) -> (&'static str, PanelUi) {
         Panel::Cursor => (dc_fx_cursor::panel::ID, cursor),
         Panel::Captions => (dc_fx_captions::panel::ID, captions::tab),
         Panel::Sound => (dc_fx_audio_tracks::panel::ID, sound),
+        Panel::Ai => (ai::ID, ai::tab),
     }
 }
 
@@ -103,6 +107,7 @@ impl Panel {
             Self::Keys => Icon::Keyboard,
             Self::Captions => Icon::Captions,
             Self::Sound => Icon::Speaker,
+            Self::Ai => Icon::Spark,
         }
     }
 
@@ -113,6 +118,7 @@ impl Panel {
             Self::Keys => text::KEYS,
             Self::Captions => text::CAPTIONS,
             Self::Sound => text::SOUND,
+            Self::Ai => dc_ui_kit::strings::ai::TAB,
         }
     }
 }
@@ -134,6 +140,8 @@ pub struct Cx<'a> {
     pub sound: &'a [String],
     /// Sound tracks of the imported videos, as they come: the groups of their clips' panel.
     pub streams: &'a crate::editor::streams::Streams,
+    /// «Сделать красиво»: the agent, its run and the choices of the settings.
+    pub ai: &'a mut crate::editor::ai::Ai,
     /// What the panel asked for; the editor runs it after the layout.
     pub actions: Vec<Action>,
 }
@@ -181,6 +189,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
         recognition: captions::recognition(&editor.captions, &editor.sound),
         sound: &editor.sound,
         streams: &editor.streams,
+        ai: &mut editor.ai,
         actions: Vec::new(),
     };
     let view = &editor.view;
@@ -258,17 +267,29 @@ fn follow(view: &mut View) {
     }
 }
 
+/// The tabs of the effects, a line, then «Нейронка» (mockup 9).
 fn rail(ui: &mut Ui, view: &mut View) {
     ui.spacing_mut().item_spacing.y = 2.0;
     for panel in PANELS {
-        let on = view.object.is_none() && view.panel == panel;
-        let button = IconButton::new(panel.icon(), panel.title())
-            .size(TAB, tokens::ICON)
-            .on(on);
-        let response = ui.add(button).on_hover_text(panel.title());
-        if response.clicked() {
-            view.panel = panel;
-            view.object = None;
-        }
+        tab_button(ui, view, panel);
+    }
+    let (line, _) = ui.allocate_exact_size(egui::vec2(TAB, tokens::S2 + 1.0), egui::Sense::hover());
+    let y = line.center().y;
+    let x = line.center().x;
+    let half = (TAB - tokens::S3) / 2.0;
+    ui.painter()
+        .hline(x - half..=x + half, y, (1.0, tokens::BORDER));
+    tab_button(ui, view, Panel::Ai);
+}
+
+fn tab_button(ui: &mut Ui, view: &mut View, panel: Panel) {
+    let on = view.object.is_none() && view.panel == panel;
+    let button = IconButton::new(panel.icon(), panel.title())
+        .size(TAB, tokens::ICON)
+        .on(on);
+    let response = ui.add(button).on_hover_text(panel.title());
+    if response.clicked() {
+        view.panel = panel;
+        view.object = None;
     }
 }

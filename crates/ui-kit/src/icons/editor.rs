@@ -127,7 +127,48 @@ impl Pen<'_> {
                 self.line(&[(17.0, 9.0), (22.0, 15.0)]);
                 self.line(&[(22.0, 9.0), (17.0, 15.0)]);
             }
+            Icon::Spark | Icon::Stop | Icon::Pen => self.agent(icon),
             // The recording icons are drawn by `draw` and never come here.
+            _ => {}
+        }
+    }
+
+    /// The icons of the «Нейронка» tab.
+    fn agent(&self, icon: Icon) {
+        match icon {
+            Icon::Spark => {
+                self.closed(&[
+                    (12.0, 3.0),
+                    (13.8, 8.2),
+                    (19.0, 10.0),
+                    (13.8, 11.8),
+                    (12.0, 17.0),
+                    (10.2, 11.8),
+                    (5.0, 10.0),
+                    (10.2, 8.2),
+                ]);
+                self.closed(&[
+                    (19.0, 15.0),
+                    (19.8, 17.2),
+                    (22.0, 18.0),
+                    (19.8, 18.8),
+                    (19.0, 21.0),
+                    (18.2, 18.8),
+                    (16.0, 18.0),
+                    (18.2, 17.2),
+                ]);
+            }
+            Icon::Stop => self.rect(6.0, 6.0, 12.0, 12.0, 2.0),
+            Icon::Pen => {
+                self.closed(&[
+                    (4.0, 20.0),
+                    (8.0, 19.0),
+                    (19.0, 8.0),
+                    (16.0, 5.0),
+                    (5.0, 16.0),
+                ]);
+                self.line(&[(14.0, 7.0), (17.0, 10.0)]);
+            }
             _ => {}
         }
     }

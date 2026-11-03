@@ -3,6 +3,7 @@
 
 mod anchors;
 mod button;
+mod checkbox;
 mod color;
 mod dialog;
 mod dropdown;
@@ -18,6 +19,7 @@ mod toggle;
 
 pub use anchors::anchors;
 pub use button::{Button, Kind};
+pub use checkbox::Checkbox;
 pub use color::{GRADIENT_COLORS, color_button, gradient_editor, palette};
 pub use dialog::{
     Answer, Choice, Chosen, Confirm, ErrorAction, ErrorPanel, modal_line, modal_section,

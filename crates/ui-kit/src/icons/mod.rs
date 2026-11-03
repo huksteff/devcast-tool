@@ -79,10 +79,16 @@ pub enum Icon {
     Copy,
     /// «Сохранить» of the projects menu.
     Save,
+    /// «Сделать красиво»: two four-point stars.
+    Spark,
+    /// «Остановить» the AI agent.
+    Stop,
+    /// Edit an own recipe.
+    Pen,
 }
 
 impl Icon {
-    pub const ALL: [Self; 54] = [
+    pub const ALL: [Self; 57] = [
         Self::Monitor,
         Self::Window,
         Self::Area,
@@ -137,6 +143,9 @@ impl Icon {
         Self::Trash,
         Self::Copy,
         Self::Save,
+        Self::Spark,
+        Self::Stop,
+        Self::Pen,
     ];
 
     /// Draws the icon into `rect` (usually 16 × 16) in `color`.

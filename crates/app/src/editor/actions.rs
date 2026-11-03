@@ -13,7 +13,7 @@ use super::playback::seek;
 use super::selection::{Item, Selected, same_moment};
 use super::timeline::Least;
 use super::{EditorWindow, Way};
-use super::{adding, crop, fonts, generation, library};
+use super::{adding, ai, crop, fonts, generation, library};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
@@ -50,6 +50,8 @@ pub enum Action {
     Detach(bool),
     /// What the recordings library asks (`library/`).
     Library(library::Ask),
+    /// What the «Нейронка» tab asks of the run (`ai.rs`).
+    Ai(ai::AiAsk),
     /// Ctrl+S: the working state into `project.json`.
     Save,
 }
@@ -92,6 +94,7 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
             Err(error) => errors.push(error),
         }
     }
+    editor.ai.receive(now);
     for action in std::mem::take(&mut editor.actions) {
         match action {
             Action::Travel(way) => changed |= editor.doc.travel(way, now).is_some(),
@@ -131,6 +134,7 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
             },
             Action::Generate => errors.extend(generation::start(ui.ctx(), editor).err()),
             Action::StopGenerating => editor.captions.cancel(),
+            Action::Ai(ask) => changed |= ask_ai(ui, editor, ask, now, &mut errors),
             Action::Detach(open) => editor.detach(open),
             Action::Save => errors.extend(editor.doc.save().err().map(|e| e.to_string())),
             Action::ListPick(picked) => {
@@ -298,4 +302,26 @@ fn pick_new(editor: &mut EditorWindow, before: &[Item]) {
     for item in added {
         editor.view.selection.add(Selected::Region(item));
     }
+}
+
+/// Does what the «Нейронка» tab asked; true when the project changed («Отменить всё»).
+fn ask_ai(
+    ui: &Ui,
+    editor: &mut EditorWindow,
+    ask: ai::AiAsk,
+    now: Instant,
+    errors: &mut Vec<String>,
+) -> bool {
+    match ask {
+        ai::AiAsk::Run => errors.extend(editor.ai.start(ui.ctx(), editor.doc.dir().root()).err()),
+        ai::AiAsk::Stop => editor.ai.stop(now),
+        ai::AiAsk::Restart => editor.ai.restart(),
+        ai::AiAsk::LookAgain => editor.ai.look_again(),
+        ai::AiAsk::UndoAll => {
+            let ours =
+                editor.ai.group.is_some() && editor.doc.top_group() == editor.ai.group.as_deref();
+            return ours && editor.doc.travel(Way::Undo, now).is_some();
+        }
+    }
+    false
 }

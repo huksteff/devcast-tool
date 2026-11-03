@@ -31,6 +31,7 @@ impl Shared {
             crate::models::Models::of_app(self.downloads.clone()),
             crate::recognition::job::cli_worker(),
         );
+        editor.ai = super::ai::Ai::of_computer();
         if let Some(gpu) = self.gpu.clone() {
             if self.exports.is_none() {
                 let ctx = self.ctx.clone();
@@ -94,6 +95,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
             | e.presses.take_news()
             | e.streams.take_news()
             | e.captions.take_news()
+            | e.ai.take_news()
             | e.library.thumbs.take_news()
             | e.exports.as_ref().is_some_and(|x| x.take_news());
         let wake = &mut e.detached;
@@ -124,10 +126,12 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     );
     let recordings = shared.store.get().recordings_dir.clone();
     let recent = shared.store.get().recent_projects.clone();
+    let ai = shared.store.get().ai.clone();
     let Some(editor) = shared.editor.as_mut() else {
         return;
     };
     editor.captions.model = model;
+    editor.ai.choices = ai;
     (editor.captions.language, editor.captions.listen) = speech;
     let open = editor.doc.dir().root().to_path_buf();
     editor.library.folder(&recordings, &open);
@@ -174,6 +178,7 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
         });
         shared.report(saved);
     }
+    ai_edits(shared);
     if let Some(groups) = outcome.groups {
         let saved = shared.store.update(|s| s.inspector = groups);
         shared.report(saved);
@@ -209,3 +214,24 @@ pub(super) fn save_layout(shared: &mut Shared, ui: &Ui, was: EditorLayout, now: 
 #[cfg(test)]
 #[path = "window_tests.rs"]
 pub(super) mod tests;
+
+/// Writes the choices the «Нейронка» tab made to the settings; a refused one is a toast.
+fn ai_edits(shared: &mut Shared) {
+    let Some(edits) = shared
+        .editor
+        .as_mut()
+        .map(|e| std::mem::take(&mut e.ai.edits))
+    else {
+        return;
+    };
+    for edit in edits {
+        let applied = dc_settings::apply(shared.store.get(), dc_settings::Edit::Ai(edit));
+        match applied {
+            Ok(applied) => {
+                let saved = shared.store.update(|s| *s = applied.settings);
+                shared.report(saved);
+            }
+            Err(error) => shared.report(Err(error.to_string())),
+        }
+    }
+}

@@ -148,6 +148,15 @@ impl Document {
         applied
     }
 
+    /// The group of the step undo would take (`Change::group`): the run of the AI agent it
+    /// belongs to, if any.
+    pub fn top_group(&self) -> Option<&str> {
+        self.history
+            .changes()
+            .last()
+            .and_then(|c| c.group.as_deref())
+    }
+
     /// The working state as a revision: what a `devcast` run reads after [`Self::flush`].
     pub fn revision(&self) -> u64 {
         self.revision
