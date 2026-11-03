@@ -1303,6 +1303,113 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
   <li><b>Контакты</b> берутся из конфиг-файла, правятся без кода (roadmap 8.4); до публичного репозитория обновления ставятся вручную — тоста нет.</li>
 </ul>
 
+<h2>9. Нейронка: «Сделать красиво» (8.11)</h2>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/></symbol>
+</defs></svg>
+<style>
+.cbx{width:16px;height:16px;border-radius:4px;border:1px solid var(--border);background:var(--surface-3);flex:none;display:inline-flex;align-items:center;justify-content:center}
+.cbx.on{background:var(--accent);border-color:var(--accent)}
+.cbx.on::after{content:"";width:8px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+.rcp{display:flex;align-items:center;gap:8px;min-height:30px}
+.rcp .nm{flex:1;min-width:0}
+.rcp .ib{width:24px;height:24px;opacity:.6}
+.alog{font:500 11.5px/1.6 var(--mono);color:var(--text-2);display:flex;flex-direction:column}
+.alog .ok::before{content:"✓ ";color:var(--ok)}
+.alog .run::before{content:"● ";color:var(--accent-hi)}
+.alog .say{font-family:Inter,sans-serif;font-size:var(--fs-s);color:var(--text);margin-top:4px}
+</style>
+<p class="lead" style="margin-top:0">Вкладка «Нейронка» — последняя иконка (✦) в столбце вкладок инспектора. Нейронка пользователя (Claude Code или Codex — что найдено на ПК) выполняет только команды <code>devcast</code>, правки появляются в редакторе сразу (7.32). Всё, что она сделала за один запуск, отменяется одним Ctrl+Z.</p>
+<div class="stage"><div class="row" style="align-items:flex-start">
+  <div class="insp" style="border:1px solid var(--border);border-radius:var(--r3);overflow:hidden">
+    <div class="itabs">
+      <span class="ib"><svg class="ico"><use href="#i-frame"/></svg></span>
+      <span class="ib"><svg class="ico"><use href="#i-cursor"/></svg></span>
+      <span class="ib"><svg class="ico"><use href="#i-kbd"/></svg></span>
+      <span class="ib"><svg class="ico"><use href="#i-cc"/></svg></span>
+      <span class="ib"><svg class="ico"><use href="#i-vol"/></svg></span>
+      <span style="height:1px;width:24px;background:var(--border);margin:4px 0"></span>
+      <span class="ib on"><svg class="ico"><use href="#i-spark"/></svg></span>
+    </div>
+    <div class="panel" style="border:0;border-radius:0">
+      <div class="ph"><span class="chip" style="background:var(--accent-hi)"></span><div><b>Сделать красиво</b><br><small>нейронка правит проект командами devcast</small></div><span class="sp"></span></div>
+      <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Рецепты</div><div class="gb">
+        <div class="rcp"><span class="cbx on"></span><span class="nm">Убрать паузы</span></div>
+        <div class="rcp"><span class="cbx on"></span><span class="nm">Зумы по кликам</span></div>
+        <div class="rcp"><span class="cbx on"></span><span class="nm">Субтитры</span></div>
+        <div class="rcp"><span class="cbx"></span><span class="nm">Убрать оговорки и «ээ»</span></div>
+        <div class="rcp"><span class="cbx"></span><span class="nm">Показ клавиш</span></div>
+        <div class="rcp"><span class="cbx on"></span><span class="nm">Мой: кадр 16:9, лого в углу</span><span class="ib"><svg class="ico"><use href="#i-edit"/></svg></span><span class="ib"><svg class="ico"><use href="#i-trash"/></svg></span></div>
+        <span class="btn sm ghost" style="align-self:flex-start"><svg class="ico"><use href="#i-plus"/></svg>Свой рецепт</span>
+      </div></div>
+      <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Ещё попросить</div><div class="gb">
+        <div class="txtarea" style="color:var(--text-3)">например: «не режь паузу на 0:42»</div>
+      </div></div>
+      <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Нейронка<span class="r hint" style="padding-right:6px">Claude Code · Sonnet</span></div></div>
+      <div style="padding:10px 12px"><span class="btn primary block"><svg class="ico"><use href="#i-spark"/></svg>Сделать красиво</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--accent-hi)"></span><div><b>Сделать красиво</b><br><small>работает · 0:48</small></div><span class="sp"></span></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Ход работы</div><div class="gb">
+      <div class="alog">
+        <span class="ok">devcast ls clips</span>
+        <span class="ok">cut silence — 14 вырезов</span>
+        <span class="ok">zoom add --at clicks — 6 зумов</span>
+        <span class="run">captions gen…</span>
+        <span class="say">Распознаю речь, потом поправлю длинные реплики.</span>
+      </div>
+    </div></div>
+    <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Рецепты<span class="r hint" style="padding-right:6px">4 из 6</span></div></div>
+    <div style="padding:10px 12px"><span class="btn block"><svg class="ico"><use href="#i-stop"/></svg>Остановить</span></div>
+    <div class="hint" style="padding:0 12px 12px">Пока нейронка работает, проект можно править: её команда, попавшая на вашу правку, повторится.</div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><span class="chip" style="background:var(--ok)"></span><div><b>Сделать красиво</b><br><small>готово · 1:32 · 23 правки</small></div><span class="sp"></span></div>
+    <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Ход работы<span class="r hint" style="padding-right:6px">9 команд</span></div></div>
+    <div class="grp"><div class="gb" style="padding-top:12px">
+      <div class="alog"><span class="say">Вырезал 14 пауз (−0:41), добавил 6 зумов и субтитры, кадр 16:9 с лого справа внизу.</span></div>
+      <span class="btn sm" style="align-self:flex-start;margin-top:6px"><svg class="ico"><use href="#i-undo"/></svg>Отменить всё (Ctrl+Z)</span>
+    </div></div>
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Доделать или исправить</div><div class="gb">
+      <div class="txtarea">верни паузу на 0:42 и сделай зумы помедленнее</div>
+      <span class="btn sm primary" style="align-self:flex-end;margin-top:4px">Отправить</span>
+    </div></div>
+    <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Рецепты</div></div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px;width:320px;max-width:100%">
+    <div class="panel">
+      <div class="ph"><span class="chip" style="background:var(--text-3)"></span><div><b>Сделать красиво</b><br><small>нейронка не найдена</small></div></div>
+      <div class="gb" style="padding:12px">
+        <span>Нужен Claude Code или Codex, вошедший в вашу подписку. Ключи DevCast не хранит.</span>
+        <span class="btn sm" style="align-self:flex-start;margin-top:6px">Как поставить</span>
+        <span class="btn sm ghost" style="align-self:flex-start">Проверить снова</span>
+      </div>
+    </div>
+    <div class="dlg">
+      <div class="dh" style="font-size:var(--fs-m)">Свой рецепт<span class="ib"><svg class="ico"><use href="#i-x"/></svg></span></div>
+      <div class="db" style="display:flex;flex-direction:column;gap:8px">
+        <div class="prow"><span>Название</span><span class="c"><span class="num" style="flex:1;font-family:Inter">Кадр 16:9, лого в углу</span></span></div>
+        <div class="txtarea">Сделай кадр 16:9, вставь лого assets/logo.png в правый нижний угол на всё видео, отступ 24 px.</div>
+      </div>
+      <div class="df"><span class="btn sm ghost">Отмена</span><span class="btn sm primary">Сохранить</span></div>
+    </div>
+  </div>
+</div></div>
+<p class="src"><b>Взято:</b> из Descript Underlord — готовые действия галочками и одна кнопка; из Cursor и Claude Code — ход действий агента строками и «Стоп»; из DaVinci — панель в инспекторе, превью не закрывается.</p>
+<ul class="notes">
+  <li><b>Выбор нейронки</b> — в свёрнутой группе «Нейронка»: агент (если найдены оба) и модель; запоминается в настройках.</li>
+  <li><b>Рецепты</b> — встроенные и свои; галочки и свои рецепты хранятся в настройках программы, не в проекте. ✎ и 🗑 — только у своих.</li>
+  <li><b>Ход работы</b> — каждая команда <code>devcast</code> строкой (✓ сделано, ● идёт) и короткие фразы нейронки. «Остановить» завершает нейронку; сделанное до этого остаётся одним шагом истории.</li>
+  <li><b>Доделать</b> — тот же разговор продолжается (нейронка помнит, что сделала); каждый запуск — свой шаг отмены.</li>
+  <li><b>CLI:</b> <code>devcast beautify [--recipe …] [--ask "…"]</code> — то же из консоли; рецепты — <code>devcast recipes ls|add|rm</code>.</li>
+</ul>
+
 </div>
 </body>
 </html>
