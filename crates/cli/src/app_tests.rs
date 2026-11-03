@@ -167,3 +167,18 @@ fn feedback_lists_contacts_and_the_logs_folder() {
             .contains("Отчётов о падениях в логах: 1")
     );
 }
+
+#[test]
+fn changelog_lists_releases_up_to_this_version() {
+    let f = Fixture::new();
+    let all = f.run("app changelog --json");
+    assert_eq!(all.code, 0, "{}", all.stderr);
+    let releases: serde_json::Value = serde_json::from_str(&all.stdout).unwrap();
+    let news = dc_update::news(None, env!("CARGO_PKG_VERSION")).unwrap();
+    assert_eq!(releases.as_array().unwrap().len(), news.len());
+    let since = format!("app changelog --since {}", env!("CARGO_PKG_VERSION"));
+    assert!(f.run(&since).stdout.starts_with("выпусков после"));
+    let wrong = f.run("app changelog --since бета");
+    assert_eq!(wrong.code, 2);
+    assert!(wrong.stderr.contains("1.2.3"), "{}", wrong.stderr);
+}

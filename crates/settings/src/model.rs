@@ -231,6 +231,9 @@ pub struct AppSettings {
     /// Unix seconds of the newest crash report the app has told about (`logs\crashes`): a newer
     /// one at the start shows «DevCast в прошлый раз упал».
     pub crash_seen: u64,
+    /// The version of the app that ran last: a newer one at its first start shows «Что нового»
+    /// for the releases in between (`CHANGELOG.md`). None — not run yet, nothing to tell.
+    pub version_seen: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -255,6 +258,7 @@ impl Default for AppSettings {
             recent_projects: Vec::new(),
             export: ExportChoices::default(),
             crash_seen: 0,
+            version_seen: None,
         }
     }
 }

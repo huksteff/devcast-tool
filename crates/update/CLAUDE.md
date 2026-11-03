@@ -9,10 +9,11 @@ Velopack: хуки установщика, позже обновления (8.2)
 - Проверки обновлений нет, пока репозиторий приватный (8.2). Когда появятся — не мешают записи и экспорту.
 - Пакет собирает `cargo xtask package`, не этот крейт.
 - Контакты обратной связи — `feedback.json` в корне крейта (правится без кода, `name`/`value`/`url`, `repository`), вшиты в программы (`feedback()`): файл рядом с exe не годится — папку установки Velopack заменяет при обновлении. Показывают «О программе» настроек (dc-app `settings_about.rs`) и `devcast app feedback`.
+- «Что нового» — `news()`: разделы `## <версия>` вшитого `CHANGELOG.md` новее последней запущенной версии (`settings.json` `version_seen`) до текущей; «Не выпущено» не выпуск. Показывают поповер HUD при первом запуске новой версии (dc-app `hud/notices.rs`) и `devcast app changelog`. Анонсов (`announcements.json`) нет: репозиторий приватный (после 8.2).
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-update` — `feedback.json` читается; `cargo nextest run -p xtask` — аргументы `vpk pack`, значок, версия.
+- `cargo nextest run -p dc-update` — `feedback.json` читается, разбор CHANGELOG и версий; `cargo nextest run -p xtask` — аргументы `vpk pack`, значок, версия.
 - Установку проверяет владелец: `Setup.exe` из `<папка сборки>/velopack/releases`.
 
 ## Куда не лезть

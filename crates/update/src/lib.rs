@@ -1,8 +1,10 @@
 //! Velopack updates, What's new window data, announcements, feedback contacts.
 
+mod changelog;
 mod error;
 mod feedback;
 
+pub use changelog::{Group, Release, news};
 pub use error::UpdateError;
 pub use feedback::{Contact, Feedback, feedback};
 

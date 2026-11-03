@@ -19,6 +19,13 @@ pub mod notices {
     pub const CRASHED: &str = "DevCast в прошлый раз упал";
     pub const CRASHED_TEXT: &str =
         "Отчёт о падении сохранён. Отправьте папку логов команде — так быстрее починим.";
+    pub const WHATS_NEW: &str = "Что нового";
+    pub const GOT_IT: &str = "Понятно";
+
+    /// «Что нового в 2.1.0».
+    pub fn whats_new(version: &str) -> String {
+        format!("{WHATS_NEW} в {version}")
+    }
 }
 
 /// The HUD bar and its popovers.

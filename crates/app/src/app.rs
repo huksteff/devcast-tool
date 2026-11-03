@@ -64,6 +64,8 @@ pub struct Shared {
     pub exports: Option<crate::exports::Exports>,
     /// `devcast` runs waiting for the recording (`remote.rs`).
     pub waiters: crate::remote::Waiters,
+    /// Releases «Что нового» shows at the start, newest first (`hud/notices.rs`).
+    pub news: Vec<dc_update::Release>,
 }
 
 /// Which windows are open and the step of the recording: what the HUD's frame acts on.
@@ -114,6 +116,7 @@ impl Shared {
             downloads: crate::downloads::Downloads::default(),
             exports: None,
             waiters: crate::remote::Waiters::default(),
+            news: Vec::new(),
         }
     }
 

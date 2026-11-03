@@ -9,6 +9,7 @@ mod builtin;
 mod builtin_app;
 mod builtin_groups;
 mod captions;
+mod changelog;
 mod config;
 mod defaults;
 mod discard;

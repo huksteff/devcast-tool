@@ -7,7 +7,7 @@ use crate::hud::popover::{self, Kind, Open};
 use crate::settings::Store;
 use crate::settings_window::ID as SETTINGS_ID;
 
-const KINDS: [Kind; 8] = [
+const KINDS: [Kind; 9] = [
     Kind::Source,
     Kind::Sound,
     Kind::Timing,
@@ -16,6 +16,7 @@ const KINDS: [Kind; 8] = [
     Kind::Quit,
     Kind::Failed,
     Kind::Crashed,
+    Kind::WhatsNew,
 ];
 
 /// A context of an integration with real windows, as eframe's.

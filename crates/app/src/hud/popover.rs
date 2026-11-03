@@ -38,6 +38,8 @@ pub enum Kind {
     Failed,
     /// «DevCast в прошлый раз упал» at the start (8.5).
     Crashed,
+    /// «Что нового» at the first start of a new version (8.3).
+    WhatsNew,
 }
 
 impl Kind {
@@ -52,6 +54,7 @@ impl Kind {
             Self::Quit => tray::QUIT_TITLE,
             Self::Failed => hud::PREPARE_FAILED,
             Self::Crashed => notices::CRASHED,
+            Self::WhatsNew => notices::WHATS_NEW,
         }
     }
 
@@ -131,6 +134,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::More => 260.0,
         Kind::Cancel | Kind::Quit => 280.0,
         Kind::Failed | Kind::Crashed => 360.0,
+        Kind::WhatsNew => 380.0,
     };
     let shared = Arc::clone(shared);
     let builder = builder(open, width, bar);
@@ -189,6 +193,7 @@ fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
                         Kind::Quit => quit(ui, shared),
                         Kind::Failed => failed(ui, shared),
                         Kind::Crashed => super::notices::crashed(ui, shared),
+                        Kind::WhatsNew => super::notices::whats_new(ui, shared),
                     }
                 })
                 .response

@@ -8,7 +8,7 @@ use dc_settings::SpeechModel;
 use crate::edit::Ctx;
 use crate::error::CliError;
 use crate::run::Answer;
-use crate::{app_control, config, feedback, hotkeys, models};
+use crate::{app_control, changelog, config, feedback, hotkeys, models};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum ConfigCommand {
@@ -147,6 +147,14 @@ pub(crate) enum AppCommand {
         after_help = "app feedback"
     )]
     Feedback,
+    #[command(
+        about = "Что нового: выпуски из CHANGELOG.md до версии этой программы, новые сверху (как окно при первом запуске новой версии)",
+        after_help = "app changelog --since 0.1.0"
+    )]
+    Changelog {
+        #[arg(long, help = "Только выпуски новее этой версии, вида 1.2.3")]
+        since: Option<String>,
+    },
 }
 
 impl AppCommand {
@@ -156,6 +164,7 @@ impl AppCommand {
             Self::Show => app_control::show(ctx),
             Self::Quit => app_control::quit(ctx),
             Self::Feedback => feedback::feedback(ctx),
+            Self::Changelog { since } => changelog::changelog(since.as_deref()),
         }
     }
 }
