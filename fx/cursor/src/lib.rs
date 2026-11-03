@@ -8,6 +8,7 @@ mod clicks;
 mod commands;
 mod effects;
 mod evaluate;
+pub mod lane;
 pub mod panel;
 mod panel_click;
 mod panel_style;

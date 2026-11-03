@@ -10,7 +10,6 @@
 //! sound its levels and place (`dc_fx_audio_tracks::panel::clip`, `extra`, with the facts of
 //! [`Cx::sources`]) and «Дублировать» (`audio paste` on the first free row).
 
-use dc_capture::input::Button;
 use dc_core::Range;
 use dc_core::time::Output;
 use dc_fx_annotations::panel::{self as annot, Region as Shown};
@@ -21,7 +20,7 @@ use dc_fx_callout::EventId;
 use dc_fx_callout::panel as callout;
 use dc_fx_captions::CueId;
 use dc_fx_captions::panel as cue;
-use dc_fx_cursor::panel::{self as cursor, Press, PressButton};
+use dc_fx_cursor::panel as cursor;
 use dc_fx_zoom::ZoomId;
 use dc_fx_zoom::panel as zoom;
 use dc_ui_kit::icons::Icon;
@@ -30,7 +29,7 @@ use dc_ui_kit::strings::{annotations, editor as text, inspector as names, timeli
 
 use super::Cx;
 use crate::editor::selection::{Item, Selected, same_moment};
-use crate::editor::timeline::{self, Dot, Region, Row, Tracks, timecode};
+use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
 use crate::editor::{Action, clipboard, montage, regions};
 use eframe::egui::Ui;
 
@@ -38,9 +37,9 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
     let picked = match picked {
         Selected::Key { id, .. } => Selected::Region(Item::of(id)),
         Selected::Click(at) => {
-            let dot = tracks.clicks.iter().find(|d| same_moment(d.at, at));
+            let dot = tracks.clicks.iter().find(|d| same_moment(d.press.at, at));
             if let Some(dot) = dot {
-                cursor::click(ui, &mut cx.base, &press(dot), &timecode(dot.at));
+                cursor::click(ui, &mut cx.base, &dot.press, &timecode(at));
             }
             return;
         }
@@ -180,23 +179,6 @@ fn delete(picked: Selected) -> Option<Action> {
         Selected::Clip(id) => montage::remove([id]),
         Selected::Region(item) => Some(Action::Apply(vec![regions::remove(item)?])),
         Selected::Key { .. } | Selected::Click(_) => None,
-    }
-}
-
-/// The facts of the click panel from the dot of a press.
-fn press(dot: &Dot) -> Press {
-    Press {
-        at: dot.at,
-        media: dot.media.clone(),
-        source: dot.source,
-        button: match dot.button {
-            Button::Left => PressButton::Left,
-            Button::Right => PressButton::Right,
-            Button::Middle => PressButton::Middle,
-            Button::X1 => PressButton::Back,
-            Button::X2 => PressButton::Forward,
-        },
-        double: dot.double,
     }
 }
 

@@ -12,10 +12,11 @@ use egui_kittest::kittest::{NodeT as _, Queryable};
 use super::tests::{H, cli, project_json, undo};
 use super::zoom_tests::{click, tall, type_in};
 use crate::editor::editing_tests::json;
+use crate::editor::lanes::click_dots;
 use crate::editor::presses::recordings;
 use crate::editor::selection::Selected;
 use crate::editor::tests::{harness_with, project};
-use crate::editor::timeline::{click_dots, timecode};
+use crate::editor::timeline::timecode;
 
 fn cursor_tab(harness: &mut H) {
     click(harness, egui::Role::Button, text::CURSOR);
@@ -57,7 +58,7 @@ fn dots_stand_at_the_output_times_of_the_presses() {
         m if *m == media[1] => Some(&second),
         _ => None,
     });
-    let at: Vec<OutputTime> = dots.iter().map(|d| d.at).collect();
+    let at: Vec<OutputTime> = dots.iter().map(|d| d.press.at).collect();
     // 26 s is 5 s of cut later; 34 s is 30 + 4 / 4 after the cut; the second recording starts
     // at 49 s (60 − 5 cut − 6 saved by 4×).
     assert_eq!(

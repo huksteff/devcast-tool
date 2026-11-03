@@ -105,7 +105,7 @@ impl Selection {
             Selected::Key { id, at } => regions().any(|r| {
                 r.item == Some(Item::of(*id)) && r.keys.iter().any(|k| same_moment(*k, *at))
             }),
-            Selected::Click(at) => tracks.clicks.iter().any(|d| same_moment(d.at, *at)),
+            Selected::Click(at) => tracks.clicks.iter().any(|d| same_moment(d.press.at, *at)),
         });
     }
 }

@@ -247,7 +247,7 @@ impl EditorWindow {
         self.presses.want(presses::recordings(project).iter());
         self.streams.want(streams::imported(project).iter());
         self.tracks.clicks =
-            timeline::click_dots(project, |media| self.presses.get(media).map(|p| &p.clicks));
+            lanes::click_dots(project, |media| self.presses.get(media).map(|p| &p.clicks));
         self.tracks
             .place_keys(project, &self.presses.key_tracks(project));
         let end = self.end();

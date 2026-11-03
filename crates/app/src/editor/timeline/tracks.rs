@@ -110,7 +110,7 @@ pub struct Tracks {
     pub keys: Vec<OutputTime>,
     /// Presses of the recordings on the «Курсор» row (7.15), set apart from `of`: they come
     /// from the recordings' files (`editor/presses.rs`).
-    pub clicks: Vec<super::dots::Dot>,
+    pub clicks: Vec<lanes::cursor::Dot>,
     /// What the shortcuts of the recordings give the panel «Показ клавиш» (7.16), set with the
     /// chips of the «Клавиши» row by `place_keys`.
     pub shortcuts: dc_fx_keys::panel::Shortcuts,

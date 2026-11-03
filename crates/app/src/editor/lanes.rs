@@ -3,6 +3,11 @@
 //! commands of the gestures are the lane's. The editor reaches an effect only through its seam
 //! module, re-exported here.
 
+use dc_capture::input::{Button, Click};
+use dc_core::Project;
+use dc_core::project::Media;
+pub use dc_fx_cursor::lane as cursor;
+use dc_fx_cursor::panel::PressButton;
 pub use dc_fx_zoom::lane as zoom;
 use dc_ui_kit::lane::{Item, Lane};
 
@@ -13,6 +18,33 @@ const LANES: [&Lane; 5] = [
     &dc_fx_annotations::lane::LANE,
     &dc_fx_audio_tracks::lane::LANE,
 ];
+
+/// The dots of the presses `of` gives for each recording of `project`, in time order.
+pub fn click_dots<'a>(
+    project: &Project,
+    of: impl Fn(&Media) -> Option<&'a Vec<Click>>,
+) -> Vec<cursor::Dot> {
+    let recordings = super::presses::recordings(project)
+        .into_iter()
+        .map(|media| {
+            let presses = of(&media)
+                .into_iter()
+                .flatten()
+                .map(|click| cursor::Pressed {
+                    at: click.at,
+                    button: match click.button {
+                        Button::Left => PressButton::Left,
+                        Button::Right => PressButton::Right,
+                        Button::Middle => PressButton::Middle,
+                        Button::X1 => PressButton::Back,
+                        Button::X2 => PressButton::Forward,
+                    },
+                    double: click.double,
+                });
+            (media.path.clone(), presses.collect())
+        });
+    cursor::dots(project, recordings.collect())
+}
 
 /// The lane of `item`.
 pub fn of(item: Item) -> Option<&'static Lane> {
