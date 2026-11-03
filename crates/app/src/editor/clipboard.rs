@@ -8,7 +8,6 @@
 
 use dc_core::{OutputTime, Project, TimeDelta};
 use dc_fx_annotations::AnnotId;
-use dc_fx_zoom::ZoomKind;
 use dc_ops::Step;
 use serde_json::{Map, Value};
 
@@ -16,6 +15,7 @@ use super::lanes;
 use super::montage::arg;
 use super::regions::{key_remove, remove};
 use super::selection::{Item, Selected};
+use super::timeline::Row;
 use super::{Action, EditorWindow};
 
 /// What Ctrl+V puts at the playhead.
@@ -136,17 +136,16 @@ pub fn paste(editor: &mut EditorWindow) {
 /// with no region picked, all zooms (v1).
 pub fn select_all(editor: &mut EditorWindow) {
     let picked: Vec<Item> = editor.view.selection.regions().collect();
-    let wanted = |item: Item| match picked.is_empty() {
-        true => item.is::<ZoomKind>(),
+    let wanted = |row: Row, item: Item| match picked.is_empty() {
+        true => row == Row::Zooms,
         false => picked.iter().any(|p| p.same_kind(item)),
     };
     let all: Vec<Item> = editor
         .tracks
         .rows
         .iter()
-        .flat_map(|t| &t.regions)
-        .filter_map(|r| r.item)
-        .filter(|&item| wanted(item))
+        .flat_map(|t| t.regions.iter().map(move |r| (t.row, r)))
+        .filter_map(|(row, r)| r.item.filter(|&item| wanted(row, item)))
         .collect();
     if all.is_empty() {
         return;

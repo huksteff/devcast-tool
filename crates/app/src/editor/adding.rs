@@ -16,6 +16,7 @@ use dc_ops::{SoundPlace, Step};
 use dc_ui_kit::lane::seconds;
 use serde_json::{Map, Value};
 
+use super::lanes;
 use super::montage::arg;
 use super::selection::{Item, Selected};
 use super::timeline::{Row, Tracks};
@@ -90,10 +91,12 @@ fn regions(tracks: &Tracks, row: Row) -> impl Iterator<Item = Range<Output>> + '
 
 /// The command that adds a region at `range` of `row` (a text annotation, a callout «on»).
 pub fn step(row: Row, range: Range<Output>) -> Option<Step> {
+    if row == Row::Zooms {
+        return Some(lanes::zoom::added(range));
+    }
     let mut args = Map::new();
     args.insert("at".to_owned(), Value::String(arg(range.start())));
     let op = match row {
-        Row::Zooms => "zoom add",
         Row::Cursor => {
             args.insert("action".to_owned(), Value::from("on"));
             "callout add"

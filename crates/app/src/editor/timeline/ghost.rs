@@ -5,7 +5,6 @@
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range};
-use dc_fx_zoom::DEFAULT_SCALE;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::FS_S;
@@ -15,6 +14,7 @@ use super::paint;
 use super::scale::TimeScale;
 use super::tracks::Row;
 use crate::editor::adding::{self, SoundFile};
+use crate::editor::lanes;
 use crate::editor::{Action, EditorWindow};
 
 /// Opacity of the ghost's fill.
@@ -100,7 +100,7 @@ fn paint(painter: &eframe::egui::Painter, body: Rect, row: Row) {
     let stroke = Stroke::new(1.0, hue.line);
     painter.extend(Shape::dashed_line(&corners, stroke, 3.0, 3.0));
     let label = match row {
-        Row::Zooms => text::times(DEFAULT_SCALE),
+        Row::Zooms => lanes::zoom::ghost(),
         _ => text::GHOST.to_owned(),
     };
     painter.text(

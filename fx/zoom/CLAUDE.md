@@ -17,6 +17,7 @@
 - Motion blur (`CameraTrack::evaluate`, §9): `camera_motion.from` = камера на `t − 4/60 с × motion_blur` (не раньше 0), 13 выборок; нет движения или силы — `None`.
 - Рамка (`frame.rs`): квадрат `1/scale` в долях кадра вокруг `reachable` фокуса; `resize` за угол — противоположный угол стоит (сдвигается внутрь, если места меньше 1/5), размер — среднее по осям, масштаб 1–5.
 - Панели инспектора (`panel.rs` — вкладка «Зум», `panel_region.rs` — `panel::region` выбранного зума; docs/ARCHITECTURE.md «Панель эффекта»): фактов от редактора нет; правки — `zoom motion` и `zoom set` в `cx.edits`; «Подобрать зумы по кликам» — шаг `zoom add --at clicks` (`by_clicks`, `AT_CLICKS`) в `cx.adds` (редактор выбирает добавленные). Шаг строит `dc_ops::autozoom::expand` по телеметрии записей: команда не читает файлы.
+- Дорожка таймлайна (`lane.rs`, ARCHITECTURE «Дорожка эффекта»): `lane::regions` (подпись «2×» или масштаб «Фикс.»), `LANE` (перенос и края — `zoom set --from --to`, копия — `zoom add` со всеми полями), новый зум — `lane::added`, подпись призрака — `lane::ghost`. Поведение проверяют тесты таймлайна dc-app.
 - Зависит от dc-core, dc-render и dc-ui-kit.
 
 ## Как тестировать

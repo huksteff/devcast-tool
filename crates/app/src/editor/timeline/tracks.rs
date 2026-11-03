@@ -4,18 +4,21 @@
 use dc_capture::audio::{MIC_TRACK, SYSTEM_TRACK};
 use dc_core::project::MediaKind;
 use dc_core::time::Output;
-use dc_core::{ChannelLevels, ClipId, Effect, OutputTime, Project, Range, TimeDelta, TimeMap};
+use dc_core::{
+    ChannelLevels, ClipId, Effect, OutputTime, Project, Range, StateError, TimeDelta, TimeMap,
+};
 use dc_fx_annotations::{Annotations, Kind, TRACKS};
 use dc_fx_audio_tracks::{Audio, AudioState, Sound, TRACKS as AUDIO_TRACKS};
 use dc_fx_callout::{Action, Callout, CalloutState};
 use dc_fx_captions::CaptionsEffect;
 use dc_fx_keys::Keys;
-use dc_fx_zoom::{Mode, ZoomEffect, ZoomState};
+use dc_ui_kit::lane;
 use dc_ui_kit::strings::timeline as text;
 
 use super::marks;
 use super::scale::length;
 use super::wave::{self, Source, Wave};
+use crate::editor::lanes;
 use crate::editor::selection::Item;
 
 /// A row of the timeline.
@@ -54,6 +57,21 @@ pub struct Region {
     pub wave: Option<Wave>,
     /// Output times of the keys of an annotation that show (7.12), in time order.
     pub keys: Vec<OutputTime>,
+}
+
+impl From<lane::Region> for Region {
+    fn from(region: lane::Region) -> Self {
+        Self {
+            range: region.range,
+            label: region.label,
+            detail: None,
+            faded: region.faded,
+            clip: None,
+            item: region.item,
+            wave: None,
+            keys: region.keys,
+        }
+    }
 }
 
 /// A speed range on the clips row.
@@ -118,7 +136,7 @@ impl Tracks {
         let captions = tracks.read::<CaptionsEffect>(project);
         let audio = tracks.read::<Audio>(project);
         let keys = tracks.read::<Keys>(project);
-        let zooms = tracks.read::<ZoomEffect>(project);
+        let zooms = tracks.lane(lanes::zoom::regions(project, &map));
         let callout = tracks.read::<Callout>(project);
         tracks.add(
             Row::Captions,
@@ -126,7 +144,7 @@ impl Tracks {
             !captions.settings.show,
         );
         tracks.clips(project, &map);
-        tracks.add(Row::Zooms, zooms_of(&map, &zooms), false);
+        tracks.add(Row::Zooms, zooms, false);
         let cursor = callouts_of(&map, &callout);
         tracks.add(Row::Cursor, cursor, false);
         tracks.add(Row::Keys, Vec::new(), !keys.settings.show);
@@ -150,6 +168,17 @@ impl Tracks {
             self.problems.push(e.to_string());
             E::State::default()
         })
+    }
+
+    /// The regions of an effect's lane; a broken state is a problem and shows nothing.
+    fn lane(&mut self, regions: Result<Vec<lane::Region>, StateError>) -> Vec<Region> {
+        match regions {
+            Ok(regions) => regions.into_iter().map(Region::from).collect(),
+            Err(error) => {
+                self.problems.push(error.to_string());
+                Vec::new()
+            }
+        }
     }
 
     fn add(&mut self, row: Row, regions: Vec<Region>, off: bool) {
@@ -285,24 +314,6 @@ fn clip_span(map: &TimeMap, id: ClipId) -> Option<Range<Output>> {
     let first = segments.next()?;
     let end = segments.next_back().unwrap_or(first).output_end();
     Range::new(first.output_start, end).ok()
-}
-
-fn zooms_of(map: &TimeMap, state: &ZoomState) -> Vec<Region> {
-    state
-        .zooms
-        .iter()
-        .filter_map(|zoom| {
-            let range = map.output_span(&zoom.media, zoom.range)?;
-            let label = match zoom.mode {
-                Mode::Follow => text::times(zoom.scale),
-                Mode::Fixed => text::fixed_zoom(zoom.scale),
-            };
-            Some(Region {
-                item: Some(Item::of(zoom.id)),
-                ..region(range, label)
-            })
-        })
-        .collect()
 }
 
 fn callouts_of(map: &TimeMap, state: &CalloutState) -> Vec<Region> {

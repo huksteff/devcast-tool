@@ -1,12 +1,14 @@
-//! The zooms on the timeline (`dc_ui_kit::lane`): the commands of a moved region and a dragged
-//! edge (`zoom set --from --to`; a zoom does not overlap a zoom, the command says why), a copy
-//! (`zoom add` with all of the zoom).
+//! The zooms on the timeline (`dc_ui_kit::lane`): a region per zoom that shows, «2×» (follow)
+//! or the fixed scale; the commands of a moved region and a dragged edge (`zoom set --from
+//! --to`; a zoom does not overlap a zoom, the command says why), a copy (`zoom add` with all of
+//! the zoom) and a new zoom (`zoom add`, the ghost shows the default scale).
 
 use dc_core::time::Output;
-use dc_core::{IdKind, Project, Range, Step, TimeDelta};
-use dc_ui_kit::lane::{self, Item, Lane, Moved, Resize, id_args, seconds, time};
+use dc_core::{IdKind, Project, Range, StateError, Step, TimeDelta, TimeMap};
+use dc_ui_kit::lane::{self, Item, Lane, Moved, Region, Resize, id_args, seconds, time};
+use dc_ui_kit::strings::timeline as text;
 
-use crate::{ZoomEffect, ZoomKind};
+use crate::{DEFAULT_SCALE, Mode, ZoomEffect, ZoomKind};
 
 pub const LANE: Lane = Lane {
     prefix: ZoomKind::PREFIX,
@@ -46,4 +48,34 @@ fn copied(project: &Project, item: Item, length: TimeDelta) -> Option<Step> {
 
 fn duplicated(project: &Project, item: Item, range: Range<Output>) -> Option<Step> {
     lane::in_place(copied(project, item, range.duration()), range)
+}
+
+/// The regions of the zooms that show on the output.
+pub fn regions(project: &Project, map: &TimeMap) -> Result<Vec<Region>, StateError> {
+    let state = project.state::<ZoomEffect>()?;
+    let regions = state.zooms.iter().filter_map(|zoom| {
+        let range = map.output_span(&zoom.media, zoom.range)?;
+        let label = match zoom.mode {
+            Mode::Follow => text::times(zoom.scale),
+            Mode::Fixed => text::fixed_zoom(zoom.scale),
+        };
+        Some(Region {
+            item: Some(Item::of(zoom.id)),
+            ..Region::new(range, label)
+        })
+    });
+    Ok(regions.collect())
+}
+
+/// `zoom add` of a new zoom at `range`.
+pub fn added(range: Range<Output>) -> Step {
+    let mut args = serde_json::Map::new();
+    args.insert("at".to_owned(), time(range.start()));
+    args.insert("duration".to_owned(), seconds(range.duration()));
+    Step::new("zoom add", args)
+}
+
+/// What the ghost of a new zoom says: its scale.
+pub fn ghost() -> String {
+    text::times(DEFAULT_SCALE)
 }

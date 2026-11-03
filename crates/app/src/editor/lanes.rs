@@ -1,7 +1,9 @@
 //! Registration of the effects on the timeline (docs/ARCHITECTURE.md, «Дорожка эффекта»): the
 //! lane of each effect with regions. The editor finds the lane of an item by its prefix; the
-//! commands of the gestures are the lane's.
+//! commands of the gestures are the lane's. The editor reaches an effect only through its seam
+//! module, re-exported here.
 
+pub use dc_fx_zoom::lane as zoom;
 use dc_ui_kit::lane::{Item, Lane};
 
 const LANES: [&Lane; 5] = [
