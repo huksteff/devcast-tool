@@ -13,7 +13,7 @@ use dc_ui_kit::widgets::Button;
 use eframe::egui::{RichText, Ui};
 
 use crate::error::AppError;
-use crate::settings_rows::{heading, wide_field};
+use dc_ui_kit::settings_rows::{heading, wide_field};
 
 /// The defaults file and what it holds.
 #[derive(Debug)]

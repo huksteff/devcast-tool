@@ -102,11 +102,11 @@ pub fn keys_strip(
         .iter()
         .rev()
         .copied()
-        .find(|k| *k < cx.playhead && !same_moment(*k, cx.playhead));
+        .find(|k| *k < cx.base.playhead && !same_moment(*k, cx.base.playhead));
     let next = keys
         .iter()
         .copied()
-        .find(|k| *k > cx.playhead && !same_moment(*k, cx.playhead));
+        .find(|k| *k > cx.base.playhead && !same_moment(*k, cx.base.playhead));
     let mut cell = ui.new_child(
         UiBuilder::new()
             .max_rect(rect.shrink2(vec2(S2, 0.0)))

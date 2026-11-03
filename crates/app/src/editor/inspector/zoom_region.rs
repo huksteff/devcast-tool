@@ -28,13 +28,13 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: ZoomId) {
         return;
     };
     // The selection keeps only what the rows show, so the zoom is there.
-    let Ok(state) = cx.project.state::<ZoomEffect>() else {
+    let Ok(state) = cx.base.project.state::<ZoomEffect>() else {
         return;
     };
     let Some(region) = state.zooms.into_iter().find(|z| z.id == id) else {
         return;
     };
-    cx.panel = zoom::ID;
+    cx.base.groups.panel(zoom::ID);
     let basic = Group {
         id: "region",
         title: text::BASIC,

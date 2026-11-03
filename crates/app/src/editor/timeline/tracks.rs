@@ -95,7 +95,7 @@ pub struct Tracks {
     pub clicks: Vec<super::dots::Dot>,
     /// What the shortcuts of the recordings give the panel «Показ клавиш» (7.16), set with the
     /// chips of the «Клавиши» row by `place_keys`.
-    pub shortcuts: super::shortcuts::Shortcuts,
+    pub shortcuts: dc_fx_keys::panel::Shortcuts,
     /// Broken effect states: their rows stay empty, the text says what to do.
     pub problems: Vec<String>,
 }

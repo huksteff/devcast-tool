@@ -2,9 +2,9 @@
 //! on the left, the control on the right, both centred vertically; a thin line under each row.
 //! The editor's inspector lays its parameter rows out with the same caption and row (`labelled`).
 
-use dc_ui_kit::fonts::{self, Weight};
-use dc_ui_kit::tokens::{CONTROL, FS_L, FS_M, S1, S3, SURFACE_2, TEXT, TEXT_2, TEXT_3};
-use eframe::egui::{self, Align, Layout, RichText, Stroke, Ui, vec2};
+use crate::fonts::{self, Weight};
+use crate::tokens::{CONTROL, FS_L, FS_M, S1, S3, SURFACE_2, TEXT, TEXT_2, TEXT_3};
+use egui::{self, Align, Layout, RichText, Stroke, Ui, vec2};
 
 /// Width of the caption column, points (mockup: 190 px).
 pub const LABEL: f32 = 190.0;

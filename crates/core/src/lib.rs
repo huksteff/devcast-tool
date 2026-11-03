@@ -14,6 +14,7 @@ pub mod item;
 pub mod keys;
 pub mod project;
 pub mod span;
+pub mod step;
 pub mod time;
 pub mod timemap;
 
@@ -33,5 +34,6 @@ pub use id::{Id, IdCounter, IdKind};
 pub use item::{Item, Place};
 pub use keys::{KeyPress, KeyTracks};
 pub use project::{Clip, ClipId, Project};
+pub use step::Step;
 pub use time::{OutputTime, Range, SourceTime, TimeDelta};
 pub use timemap::TimeMap;

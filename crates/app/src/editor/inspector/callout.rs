@@ -41,7 +41,7 @@ const ACTIONS: [(Does, &str); 3] = [
 
 /// The event `id` of the project and the look of every callout.
 fn read(cx: &Cx<'_>, id: EventId) -> Option<(CalloutEvent, CalloutSettings)> {
-    let state = cx.project.state::<Callout>().ok()?;
+    let state = cx.base.project.state::<Callout>().ok()?;
     let event = state.events.into_iter().find(|e| e.id == id)?;
     Some((event, state.settings))
 }
@@ -69,7 +69,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: EventId) {
             return;
         }
     };
-    cx.panel = ID;
+    cx.base.groups.panel(ID);
     let group = Group {
         id: "event",
         title: names::CALLOUT_EVENT,

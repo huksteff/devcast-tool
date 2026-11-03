@@ -1523,6 +1523,8 @@ version = "0.1.0"
 dependencies = [
  "dc-core",
  "dc-render",
+ "dc-ui-kit",
+ "egui_kittest",
  "insta",
  "schemars",
  "serde",
@@ -1702,11 +1704,13 @@ dependencies = [
 name = "dc-ui-kit"
 version = "0.1.0"
 dependencies = [
+ "dc-core",
  "dc-render",
  "dc-ui-kit",
  "egui",
  "egui-wgpu",
  "egui_kittest",
+ "serde_json",
  "thiserror 2.0.21",
  "wgpu",
 ]

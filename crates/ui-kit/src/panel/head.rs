@@ -1,11 +1,11 @@
 //! The head of a panel (mockup `.ph`): the colour chip of its effect, the title, the subtitle
 //! and buttons on the right.
 
-use dc_ui_kit::fonts::{self, Weight};
-use dc_ui_kit::icons::Icon;
-use dc_ui_kit::tokens::{self, FS_L, FS_S, Hue, S2, S3, TEXT, TEXT_3};
-use dc_ui_kit::widgets::IconButton;
-use eframe::egui::{self, Align, Layout, Rect, Sense, Ui, UiBuilder, pos2, vec2};
+use crate::fonts::{self, Weight};
+use crate::icons::Icon;
+use crate::tokens::{self, FS_L, FS_S, Hue, S2, S3, TEXT, TEXT_3};
+use crate::widgets::IconButton;
+use egui::{self, Align, Layout, Rect, Sense, Ui, UiBuilder, pos2, vec2};
 
 use super::{BUTTON, CHEVRON, PANEL_HEADER, bottom_line};
 

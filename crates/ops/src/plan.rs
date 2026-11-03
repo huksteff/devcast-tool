@@ -1,25 +1,11 @@
 //! Steps of a change: one from the command line, or many from a plan file
 //! `[{"op": "zoom add", "at": 12.5}, {"op": "cut", "range": "10-12"}]`.
 
-use serde_json::{Map, Value};
+pub use dc_core::Step;
+use serde_json::Value;
 
 use crate::error::OpsError;
 use crate::registry::Registry;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Step {
-    pub op: String,
-    pub args: Map<String, Value>,
-}
-
-impl Step {
-    pub fn new(op: impl Into<String>, args: Map<String, Value>) -> Self {
-        Self {
-            op: op.into(),
-            args,
-        }
-    }
-}
 
 const PLAN_HINT: &str = r#"план — JSON-массив шагов вида {"op": "zoom add", "at": 12.5}"#;
 

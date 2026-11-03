@@ -1,27 +1,30 @@
-//! «Показ клавиш» (mockup 3b): the settings of the pressed-keys plate for the whole project.
+//! «Показ клавиш» (mockup 3b): the inspector panel of the plate settings for the whole project.
 //! The subtitle counts the shortcuts of the recordings; «Основное» — show, place, size and a
-//! sample plate in the project's colours from its most repeated shortcut (`Tracks::shortcuts`);
+//! sample plate in the project's colours from its most repeated shortcut ([`Shortcuts`]);
 //! «Тонкая настройка» — colours and how long a shortcut stays.
 //! Every edit and «Сбросить» is the `keys` command (`devcast keys …`, the settings key `keys`).
 
-use dc_fx_keys::{Keys, KeysSettings, Position};
+use std::collections::BTreeSet;
+
+use dc_core::{Effect, KeyTracks};
 use dc_render::Rgba;
+use dc_ui_kit::egui::{self, Color32, Sense, Stroke, StrokeKind, Ui, WidgetInfo, vec2};
 use dc_ui_kit::fonts::{self, Weight};
+use dc_ui_kit::panel::{Cx, Group, Header, args, header, padded, reset, rows};
 use dc_ui_kit::strings::{editor as text, inspector as names};
 use dc_ui_kit::tokens::{BORDER, FS_L, HUE_KEYS};
-use eframe::egui::{self, Color32, Sense, Stroke, StrokeKind, Ui, WidgetInfo, vec2};
 use serde_json::{Map, Value, json};
 
-use super::{Cx, Group, Header, args, header, padded, reset, rows};
-use crate::editor::Action;
-use crate::editor::timeline::Sample;
+use crate::{
+    DURATION_MAX, DURATION_MIN, Keys, KeysSettings, Position, Prepared, SIZE_MAX, SIZE_MIN,
+};
 
 /// Padding of the sample plate around its letters and its corners, points (mockup: 12 × 6, 6).
 const PLATE_PAD: egui::Vec2 = vec2(12.0, 6.0);
 const PLATE_RADIUS: u8 = 6;
 
 /// Id of the panel in the remembered groups.
-pub const ID: &str = "keys";
+pub const ID: &str = Keys::ID;
 /// The registry command of the plate settings.
 const OP: &str = "keys";
 
@@ -35,8 +38,47 @@ const PLACES: [(Position, &str); 6] = [
     (Position::BottomRight, names::BOTTOM_RIGHT),
 ];
 
-pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
-    let found = names::shortcuts_found(cx.tracks.shortcuts.names);
+/// What the recordings hold for the panel: the editor keeps it with the «Клавиши» row.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Shortcuts {
+    /// Different shortcuts pressed in the recordings, cut parts too.
+    pub names: usize,
+    /// The plate pressed most often on the output (the first of equals): the sample of the panel.
+    pub sample: Option<Sample>,
+}
+
+/// A plate of the project: its shortcut and how many presses it counts.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sample {
+    pub name: String,
+    pub count: usize,
+}
+
+impl Shortcuts {
+    /// The facts of the shortcuts `keys` of the recordings placed as `prepared` shows them.
+    pub fn of(prepared: &Prepared, keys: &KeyTracks) -> Self {
+        let names: BTreeSet<&str> = keys.values().flatten().map(|k| k.name.as_str()).collect();
+        let mut sample: Option<Sample> = None;
+        for shown in prepared.shown() {
+            let count = shown.presses.len();
+            if count > 0 && sample.as_ref().is_none_or(|s| count > s.count) {
+                sample = Some(Sample {
+                    name: shown.name.clone(),
+                    count,
+                });
+            }
+        }
+        Self {
+            names: names.len(),
+            sample,
+        }
+    }
+}
+
+/// The panel: its edits go to `cx.edits`.
+pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, shortcuts: &Shortcuts) {
+    cx.groups.panel(ID);
+    let found = names::shortcuts_found(shortcuts.names);
     let head = Header {
         hue: HUE_KEYS,
         title: text::KEYS,
@@ -64,7 +106,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
                 .collect(),
         ),
     };
-    cx.group(ui, basic, |ui, cx| basic_rows(ui, cx, &now));
+    cx.group(ui, basic, |ui, cx| basic_rows(ui, cx, &now, shortcuts));
     let fine = Group {
         id: "fine",
         title: text::FINE,
@@ -79,9 +121,9 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
     padded(ui, |ui| rows::note(ui, names::KEYS_NOTE));
 }
 
-fn basic_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &KeysSettings) {
+fn basic_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &KeysSettings, shortcuts: &Shortcuts) {
     if let Some(show) = rows::toggle(ui, names::KEYS_SHOW, now.show) {
-        cx.actions.push(set("show", json!(show)));
+        cx.apply(OP, [("show", json!(show))]);
     }
     let places: Vec<&str> = PLACES.iter().map(|(_, name)| *name).collect();
     let place = PLACES
@@ -89,16 +131,13 @@ fn basic_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &KeysSettings) {
         .position(|(p, _)| *p == now.position)
         .unwrap_or_default();
     if let Some(i) = rows::anchors(ui, names::KEYS_WHERE, place, &places) {
-        cx.actions.push(set("position", json!(PLACES[i].0)));
+        cx.apply(OP, [("position", json!(PLACES[i].0))]);
     }
-    let size = (
-        dc_fx_keys::SIZE_MIN..=dc_fx_keys::SIZE_MAX,
-        (0.05, names::TIMES),
-    );
+    let size = (SIZE_MIN..=SIZE_MAX, (0.05, names::TIMES));
     if let Some(v) = rows::slider(ui, names::KEYS_SIZE, now.size, size.0, size.1) {
-        cx.actions.push(set("size", json!(v)));
+        cx.apply(OP, [("size", json!(v))]);
     }
-    if let Some(sample) = &cx.tracks.shortcuts.sample {
+    if let Some(sample) = &shortcuts.sample {
         plate(ui, sample, now);
     }
 }
@@ -134,18 +173,13 @@ fn fine_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &KeysSettings) {
     ];
     if let Some((i, color)) = rows::colors(ui, names::KEYS_COLORS, &colors) {
         let field = if i == 0 { "color" } else { "background" };
-        cx.actions.push(set(field, json!(color)));
+        cx.apply(OP, [(field, json!(color))]);
     }
-    let range = dc_fx_keys::DURATION_MIN.as_secs_f64()..=dc_fx_keys::DURATION_MAX.as_secs_f64();
+    let range = DURATION_MIN.as_secs_f64()..=DURATION_MAX.as_secs_f64();
     let hold = now.duration.as_secs_f64();
     if let Some(v) = rows::slider(ui, names::KEYS_HOLD, hold, range, (0.1, names::SECONDS)) {
-        cx.actions.push(set("duration", json!(v)));
+        cx.apply(OP, [("duration", json!(v))]);
     }
-}
-
-/// `keys --<field> <value>`.
-fn set(field: &'static str, value: Value) -> Action {
-    Action::op(OP, [(field, value)])
 }
 
 /// The fields of «Основное» as arguments of `keys`.

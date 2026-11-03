@@ -60,6 +60,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
 /// when the project's zoom state is broken.
 pub fn settings(ui: &mut Ui, cx: &Cx<'_>) -> Option<(ZoomSettings, ZoomSettings)> {
     let read = cx
+        .base
         .project
         .state::<ZoomEffect>()
         .and_then(|now| Ok((now.settings, cx.defaults_of::<ZoomEffect>()?.settings)));

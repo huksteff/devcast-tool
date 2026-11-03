@@ -52,7 +52,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
     };
     let copy = match picked {
         Selected::Region(item @ (Item::Annotation(_) | Item::Sound(_))) => {
-            clipboard::duplicate(cx.project, item, region.range)
+            clipboard::duplicate(cx.base.project, item, region.range)
         }
         _ => None,
     };
@@ -141,7 +141,7 @@ fn delete(picked: Selected) -> Option<Action> {
 
 /// The panel of a cue picked on the timeline: its text and times, split, merge (`cue.rs`).
 fn cue_panel(ui: &mut Ui, cx: &mut Cx<'_>, id: dc_fx_captions::CueId, at: Range<Output>) {
-    let Ok(state) = cx.project.state::<dc_fx_captions::CaptionsEffect>() else {
+    let Ok(state) = cx.base.project.state::<dc_fx_captions::CaptionsEffect>() else {
         return;
     };
     let Some(found) = state.cues.iter().find(|c| c.id == id) else {

@@ -3,6 +3,7 @@
 
 mod commands;
 mod evaluate;
+pub mod panel;
 mod prepared;
 mod state;
 
@@ -35,6 +36,8 @@ pub fn effect() -> EffectInfo {
     EffectInfo::of::<Keys>(Vec::new())
 }
 
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod test_util;
 #[cfg(test)]

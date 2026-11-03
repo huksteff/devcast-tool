@@ -68,6 +68,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
 /// when the project's cursor state is broken.
 pub fn settings(ui: &mut Ui, cx: &Cx<'_>) -> Option<(CursorSettings, CursorSettings)> {
     let read = cx
+        .base
         .project
         .state::<Cursor>()
         .and_then(|now| Ok((now.settings, cx.defaults_of::<Cursor>()?.settings)));

@@ -11,8 +11,10 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+dc-core = { path = "../core" }
 dc-render = { path = "../render" }
 egui = "0.37"
+serde_json.workspace = true
 egui-wgpu = { version = "0.37", optional = true }
 egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"], optional = true }
 thiserror.workspace = true

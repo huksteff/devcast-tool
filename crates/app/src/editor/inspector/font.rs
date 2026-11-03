@@ -14,9 +14,13 @@ use crate::editor::fonts::FontFile;
 /// The row `label` with family `now`: the family picked from the list. A file added with the
 /// button is chosen by `then` with its family as `font`.
 pub fn font(ui: &mut Ui, cx: &mut Cx<'_>, label: &str, now: &str, then: Step) -> Option<String> {
-    let mut families: Vec<(String, &str)> =
-        cx.fonts.iter().map(|f| (f.clone(), f.as_str())).collect();
-    if !cx.fonts.iter().any(|f| f == now) {
+    let mut families: Vec<(String, &str)> = cx
+        .base
+        .fonts
+        .iter()
+        .map(|f| (f.clone(), f.as_str()))
+        .collect();
+    if !cx.base.fonts.iter().any(|f| f == now) {
         families.push((now.to_owned(), now));
     }
     let picked = rows::row(ui, label, |ui| {

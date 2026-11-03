@@ -20,16 +20,17 @@ use crate::editor::Action;
 use crate::editor::streams::Imported;
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: ClipId) {
-    let Some(clip) = cx.project.clips.iter().find(|c| c.id == id).cloned() else {
+    let Some(clip) = cx.base.project.clips.iter().find(|c| c.id == id).cloned() else {
         return;
     };
     // A broken sound state is a problem the timeline shows already: the defaults read neutral.
     let defaults = cx
+        .base
         .project
         .state::<Audio>()
         .map(|s| s.settings.channels)
         .unwrap_or_default();
-    cx.panel = sound::ID;
+    cx.base.groups.panel(sound::ID);
     let group = Group {
         id: "clip",
         title: text::CLIP_SOUND,

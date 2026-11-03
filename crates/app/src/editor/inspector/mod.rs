@@ -2,10 +2,10 @@
 //! settings of an effect — and the open panel. Picking one object on the timeline opens its
 //! panel; a tab opens the tab's panel until another object is picked.
 //!
-//! A panel is a function over [`Cx`]: it draws its [`header`], then its groups with
-//! [`Cx::group`] (open or closed is remembered per panel in the app settings; «Сбросить» ↺ brings
-//! the group's fields back to the defaults with one registry command), and its rows with the
-//! helpers of `rows.rs`; every committed edit is a registry command — one undo step. A tab gets
+//! A panel draws with the kit of `dc_ui_kit::panel` (header, groups, rows) over its
+//! `panel::Cx`. A panel that lives in its effect's crate (docs/ARCHITECTURE.md, «Панель
+//! эффекта») gets [`Cx::base`] and the facts of the timeline it needs; one not moved yet works
+//! with the whole [`Cx`]. Every committed edit is a registry command — one undo step. A tab gets
 //! its panel in [`tab`], an object kind in `object.rs`.
 
 mod annot_blur;
@@ -23,10 +23,7 @@ mod click_style;
 mod cue;
 mod cursor;
 mod font;
-mod head;
-mod keys;
 mod object;
-mod rows;
 mod sound;
 mod sound_clip;
 mod sound_extra;
@@ -53,33 +50,24 @@ pub(crate) mod tests;
 mod zoom_tests;
 
 use dc_core::{Effect, Project, StateError};
-use dc_ops::Step;
-use dc_project::Defaults;
-use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
-use dc_ui_kit::strings::{editor as text, inspector as names};
-use dc_ui_kit::tokens::{self, BG, BORDER, FS_M, S2, S3, SURFACE, TEXT, TEXT_2, TEXT_3};
+use dc_ui_kit::panel::{self, Groups};
+use dc_ui_kit::strings::editor as text;
+use dc_ui_kit::tokens::{self, BG, SURFACE};
 use dc_ui_kit::widgets::IconButton;
-use eframe::egui::{
-    self, Frame, Margin, Rect, ScrollArea, Sense, Stroke, Ui, UiBuilder, pos2, vec2,
-};
-use serde_json::{Map, Value};
+use eframe::egui::{self, Frame, Margin, Rect, ScrollArea, Ui};
 
 use super::selection::{Item, Selected};
 use super::view::{Panel, View};
 use super::{Action, EditorWindow};
-use crate::settings::InspectorGroups;
 pub use annotation::{Edit, target};
-pub use head::{Header, header, header_button};
+pub use dc_ui_kit::panel::{
+    BUTTON, CHEVRON, Group, Header, args, bottom_line, header, header_button, padded, reset, rows,
+};
 
-/// Width of the tab rail, side of a tab, height of the panel and group headers (mockup).
+/// Width of the tab rail, side of a tab (mockup).
 const RAIL: f32 = 44.0;
 const TAB: f32 = 36.0;
-const PANEL_HEADER: f32 = 44.0;
-const GROUP_HEADER: f32 = 34.0;
-/// Side of a header button (reset, delete) and of the group chevron.
-const BUTTON: f32 = 26.0;
-const CHEVRON: f32 = 14.0;
 
 const PANELS: [Panel; 5] = [
     Panel::Zoom,
@@ -95,12 +83,17 @@ type PanelUi = fn(&mut Ui, &mut Cx<'_>);
 /// The panel of a rail tab with its id (the first part of its groups' keys).
 fn tab(panel: Panel) -> (&'static str, PanelUi) {
     match panel {
-        Panel::Keys => (keys::ID, keys::ui),
+        Panel::Keys => (dc_fx_keys::panel::ID, keys),
         Panel::Zoom => (zoom::ID, zoom::ui),
         Panel::Cursor => (cursor::ID, cursor::ui),
         Panel::Captions => (captions::ID, captions::ui),
         Panel::Sound => (sound::ID, sound::ui),
     }
+}
+
+/// «Показ клавиш» of `dc_fx_keys` with the shortcuts the «Клавиши» row placed.
+fn keys(ui: &mut Ui, cx: &mut Cx<'_>) {
+    dc_fx_keys::panel::ui(ui, &mut cx.base, &cx.tracks.shortcuts);
 }
 
 impl Panel {
@@ -125,13 +118,12 @@ impl Panel {
     }
 }
 
-/// What a panel works with this frame.
+/// What a panel of the editor works with this frame: what every panel gets and the editor's
+/// own parts the panels not moved to their effects' crates still read.
 pub struct Cx<'a> {
-    pub project: &'a Project,
-    /// Where the playhead stands: an annotation edit goes to its key there (7.18).
-    pub playhead: dc_core::OutputTime,
-    /// «Авто-ключи»: an annotation edit makes a key at the playhead (7.25).
-    pub auto_keys: bool,
+    /// The project, the defaults, the playhead, the fonts and the groups; edits of the panels
+    /// of the effects' crates.
+    pub base: panel::Cx<'a>,
     /// What the timeline shows of it: the shortcuts of the recordings for «Показ клавиш».
     pub tracks: &'a super::Tracks,
     /// The generation and the cue list of the captions panel (7.17).
@@ -140,15 +132,6 @@ pub struct Cx<'a> {
     pub sound: &'a [String],
     /// Sound tracks of the imported videos, as they come: the groups of their clips' panel.
     pub streams: &'a crate::editor::streams::Streams,
-    /// Families of the font pickers: built-in and the project's own.
-    pub fonts: &'a [String],
-    /// The settings new projects start with: «Сбросить» brings a group back to them.
-    defaults: &'a Defaults,
-    /// Groups the user opened or closed; `toggled` when one changed this frame.
-    groups: &'a mut InspectorGroups,
-    toggled: bool,
-    /// Id of the open panel: the first part of its groups' keys (`keys.fine`).
-    panel: &'static str,
     /// What the panel asked for; the editor runs it after the layout.
     pub actions: Vec<Action>,
 }
@@ -156,9 +139,7 @@ pub struct Cx<'a> {
 impl Cx<'_> {
     /// The default state of effect `E`: its settings from the defaults, the rest factory.
     pub fn defaults_of<E: Effect>(&self) -> Result<E::State, StateError> {
-        let mut project = Project::default();
-        self.defaults.apply(&mut project);
-        project.state::<E>()
+        self.base.defaults_of::<E>()
     }
 
     /// A group: its header (chevron, title, «Сбросить») and, when open, `body`.
@@ -175,69 +156,14 @@ impl Cx<'_> {
         buttons: impl FnOnce(&mut Ui, &mut Self, Rect),
         body: impl FnOnce(&mut Ui, &mut Self),
     ) {
-        let key = format!("{}.{}", self.panel, group.id);
-        let open = self.groups.0.get(&key).copied().unwrap_or(group.open);
-        let rect = ui
-            .allocate_exact_size(vec2(ui.available_width(), GROUP_HEADER), Sense::hover())
-            .0;
-        if group_header(ui, rect, group.title, open) {
-            if open == group.open {
-                self.groups.0.insert(key, !open);
-            } else {
-                self.groups.0.remove(&key);
-            }
-            self.toggled = true;
+        let mut head = self.base.groups.head(ui, group);
+        if let Some(reset) = head.reset.take() {
+            self.actions.push(Action::Apply(reset));
         }
-        if let Some(reset) = group.reset {
-            let button = Rect::from_center_size(
-                pos2(rect.right() - 6.0 - BUTTON / 2.0, rect.center().y),
-                vec2(BUTTON, BUTTON),
-            );
-            let mut cell = ui.new_child(UiBuilder::new().max_rect(button));
-            let label = names::reset_group(group.title);
-            let icon = IconButton::new(Icon::Reset, &label).size(BUTTON, CHEVRON);
-            let clicked = cell
-                .add_enabled(!reset.is_empty(), icon)
-                .on_hover_text(text::RESET)
-                .clicked();
-            if clicked {
-                self.actions.push(Action::Apply(reset));
-            }
-        }
-        let more = Rect::from_center_size(
-            pos2(rect.right() - 8.0 - BUTTON * 1.5, rect.center().y),
-            vec2(BUTTON, BUTTON),
-        );
+        let more = head.more;
         buttons(ui, self, more);
-        let mut bottom = rect;
-        if open {
-            Frame::new()
-                .inner_margin(Margin {
-                    left: S3 as i8,
-                    right: S3 as i8,
-                    top: 2,
-                    bottom: S3 as i8,
-                })
-                .show(ui, |ui| {
-                    ui.spacing_mut().item_spacing.y = 4.0;
-                    body(ui, self);
-                });
-            bottom = bottom.with_max_y(ui.min_rect().bottom());
-        }
-        bottom_line(ui, bottom);
+        head.body(ui, |ui| body(ui, self));
     }
-}
-
-/// A group of a panel.
-pub struct Group<'a> {
-    /// Unique in the panel: the second part of the remembered key.
-    pub id: &'static str,
-    pub title: &'a str,
-    /// Open until the user closes it.
-    pub open: bool,
-    /// The commands that bring the group's fields to the defaults: empty when they are the
-    /// defaults already (the button is off), `None` for a group without «Сбросить».
-    pub reset: Option<Vec<Step>>,
 }
 
 /// Rail and panel; true when the user opened or closed a group (the settings keep it).
@@ -247,10 +173,18 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
         .exact_size(RAIL)
         .frame(Frame::new().fill(BG).inner_margin(Margin::symmetric(4, 6)))
         .show(ui, |ui| rail(ui, &mut editor.view));
+    let mut defaults = Project::default();
+    editor.defaults.apply(&mut defaults);
     let mut cx = Cx {
-        project: editor.doc.project(),
-        playhead: editor.view.playhead,
-        auto_keys: editor.view.auto_keys,
+        base: panel::Cx {
+            project: editor.doc.project(),
+            defaults: &defaults,
+            playhead: editor.view.playhead,
+            auto_keys: editor.view.auto_keys,
+            fonts: &editor.fonts,
+            groups: Groups::new(&mut editor.groups.0),
+            edits: Vec::new(),
+        },
         tracks: &editor.tracks,
         captioning: captions::Captioning {
             generation: &mut editor.captions,
@@ -263,11 +197,6 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
         },
         sound: &editor.sound,
         streams: &editor.streams,
-        fonts: &editor.fonts,
-        defaults: &editor.defaults,
-        groups: &mut editor.groups,
-        toggled: false,
-        panel: "",
         actions: Vec::new(),
     };
     let view = &editor.view;
@@ -279,15 +208,17 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
                 Some(picked) => object::ui(ui, &mut cx, tracks, picked),
                 None => {
                     let (id, panel) = tab(view.panel);
-                    cx.panel = id;
+                    cx.base.groups.panel(id);
                     panel(ui, &mut cx);
                 }
             });
         });
+    let edits = std::mem::take(&mut cx.base.edits);
+    cx.actions.extend(edits.into_iter().map(Action::Apply));
     if let Some(typed) = rows::flush(ui) {
         cx.actions.push(Action::Apply(vec![typed]));
     }
-    let toggled = cx.toggled;
+    let toggled = cx.base.groups.toggled();
     let actions = cx.actions;
     editor.actions.extend(actions);
     toggled
@@ -315,59 +246,4 @@ fn rail(ui: &mut Ui, view: &mut View) {
             view.object = None;
         }
     }
-}
-
-/// A group header: true when clicked (it opens or closes the group).
-fn group_header(ui: &mut Ui, rect: Rect, title: &str, open: bool) -> bool {
-    let response = ui.interact(
-        rect,
-        ui.make_persistent_id(("group", title)),
-        Sense::click(),
-    );
-    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, open, title));
-    let chevron = Rect::from_center_size(
-        pos2(rect.left() + 10.0 + CHEVRON / 2.0, rect.center().y),
-        vec2(CHEVRON, CHEVRON),
-    );
-    let icon = if open { Icon::Down } else { Icon::Right };
-    icon.paint(ui.painter(), chevron, TEXT_3);
-    let (weight, color) = if open {
-        (Weight::Semibold, TEXT)
-    } else {
-        (Weight::Medium, TEXT_2)
-    };
-    let galley = ui
-        .painter()
-        .layout_no_wrap(title.to_owned(), fonts::text(FS_M, weight), color);
-    let at = pos2(
-        chevron.right() + 6.0,
-        rect.center().y - galley.size().y / 2.0,
-    );
-    ui.painter().galley(at, galley, color);
-    response.clicked()
-}
-
-/// Content with the side margins of a group body (mockup `.gb`).
-fn padded(ui: &mut Ui, body: impl FnOnce(&mut Ui)) {
-    Frame::new()
-        .inner_margin(Margin::symmetric(S3 as i8, S2 as i8 + 2))
-        .show(ui, body);
-}
-
-fn bottom_line(ui: &Ui, rect: Rect) {
-    ui.painter()
-        .hline(rect.x_range(), rect.bottom(), Stroke::new(1.0, BORDER));
-}
-
-/// Arguments of a command from its fields (`("show", true)` is `--show true`).
-pub fn args<const N: usize>(fields: [(&str, Value); N]) -> Map<String, Value> {
-    fields
-        .into_iter()
-        .map(|(name, value)| (name.to_owned(), value))
-        .collect()
-}
-
-/// `op` with the default fields of a group; nothing when the fields are the defaults already.
-pub fn reset(op: &str, now: &Map<String, Value>, default: Map<String, Value>) -> Option<Step> {
-    (*now != default).then(|| Step::new(op, default))
 }

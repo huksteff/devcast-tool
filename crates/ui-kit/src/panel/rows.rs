@@ -5,14 +5,14 @@
 //! with the pointer when it is let go. Meanwhile the control shows the dragged value (a draft in
 //! egui's temporary memory) and the project stays as it was.
 
-use dc_ops::Step;
-use dc_render::Rgba;
-use dc_ui_kit::tokens::{FS_S, S2, TEXT_3};
-use dc_ui_kit::widgets::{
+use crate::tokens::{FS_S, S2, TEXT_3};
+use crate::widgets::{
     Slider, Toggle, anchors as anchor_grid, color_button, gradient_editor, palette as swatches,
     segmented, text_area as text_area_widget, text_field, tiles as tile_row,
 };
-use eframe::egui::{self, Color32, Id, Painter, Rect, Response, RichText, Ui};
+use dc_core::Step;
+use dc_render::Rgba;
+use egui::{self, Color32, Id, Painter, Rect, Response, RichText, Ui};
 
 use crate::settings_rows;
 

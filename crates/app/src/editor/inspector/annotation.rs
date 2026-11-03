@@ -111,8 +111,8 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: AnnotId, range: Range<Output>, keys:
     let Some(shown) = read(cx, id, range) else {
         return;
     };
-    let on = key_at(keys, cx.playhead);
-    let at = target(keys, cx.playhead, range, cx.auto_keys);
+    let on = key_at(keys, cx.base.playhead);
+    let at = target(keys, cx.base.playhead, range, cx.base.auto_keys);
     keys_strip(ui, cx, keys, on, at);
     let edit = Edit { id, at };
     match shown.annotation.kind {
@@ -145,7 +145,7 @@ pub fn target(
 
 /// Annotation `id` with what the playhead shows of it: before it — its start, after — its end.
 fn read(cx: &Cx<'_>, id: AnnotId, range: Range<Output>) -> Option<Shown> {
-    let state = cx.project.state::<Annotations>().ok()?;
+    let state = cx.base.project.state::<Annotations>().ok()?;
     let tracks = state
         .annotations
         .iter()
@@ -153,13 +153,13 @@ fn read(cx: &Cx<'_>, id: AnnotId, range: Range<Output>) -> Option<Shown> {
         .max()
         .unwrap_or(1);
     let annotation = state.annotations.into_iter().find(|a| a.id == id)?;
-    let offset = match key_offset(cx.project, &annotation, cx.playhead) {
+    let offset = match key_offset(cx.base.project, &annotation, cx.base.playhead) {
         Ok(offset) => offset,
-        Err(_) if cx.playhead <= range.start() => TimeDelta::ZERO,
+        Err(_) if cx.base.playhead <= range.start() => TimeDelta::ZERO,
         Err(_) => annotation.range.duration(),
     };
-    let crop = cx.project.state::<dc_fx_crop::Crop>().ok()?;
-    let canvas = dc_fx_crop::canvas(cx.project, &crop.settings);
+    let crop = cx.base.project.state::<dc_fx_crop::Crop>().ok()?;
+    let canvas = dc_fx_crop::canvas(cx.base.project, &crop.settings);
     let (rect, rotation) = annotation.frame_at(offset);
     let body = annotation.body_at(offset);
     Some(Shown {
@@ -181,7 +181,7 @@ fn panel<B: Section>(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
             return;
         }
     };
-    cx.panel = B::ID;
+    cx.base.groups.panel(B::ID);
     let basic = Group {
         id: "basic",
         title: editor::BASIC,

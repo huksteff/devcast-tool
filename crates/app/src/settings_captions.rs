@@ -18,7 +18,7 @@ use std::sync::Arc;
 use crate::error::AppError;
 use crate::models::{ModelState, Models};
 use crate::settings::{AppSettings, Language, Listen, SpeechModel};
-use crate::settings_rows::{field, heading};
+use dc_ui_kit::settings_rows::{field, heading};
 
 /// Choices of the language, here and in the captions panel.
 pub const LANGUAGES: [(Language, &str); 3] = [

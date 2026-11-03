@@ -39,6 +39,7 @@ pub struct Captioning<'a> {
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
     let read = cx
+        .base
         .project
         .state::<CaptionsEffect>()
         .and_then(|now| Ok((now, cx.defaults_of::<CaptionsEffect>()?.settings)));

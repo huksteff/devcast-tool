@@ -63,7 +63,6 @@ use eframe::egui::{self, Align, Frame, Layout, Margin, Rect, ScrollArea, Sense, 
 pub use dots::{Dot, placed as click_dots};
 pub use paint::{hue, name};
 pub use scale::{TimeScale, timecode};
-pub use shortcuts::Sample;
 pub use tracks::{Least, Region, Row, Track, Tracks};
 pub use viewport::Viewport;
 pub use wave::Source;

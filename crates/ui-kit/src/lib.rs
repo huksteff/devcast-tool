@@ -4,6 +4,8 @@
 mod error;
 pub mod fonts;
 pub mod icons;
+pub mod panel;
+pub mod settings_rows;
 pub mod strings;
 #[cfg(feature = "kittest")]
 pub mod testing;
@@ -11,6 +13,8 @@ pub mod theme;
 pub mod tokens;
 pub mod widgets;
 
+/// The egui of all windows: the panels of the effects draw with it (one version for all).
+pub use egui;
 pub use error::UiKitError;
 pub use icons::Icon;
 

@@ -24,7 +24,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, dot: &Dot) {
         subtitle: &subtitle,
     };
     header(ui, &head, |_| {});
-    let state = match cx.project.state::<Cursor>() {
+    let state = match cx.base.project.state::<Cursor>() {
         Ok(state) => state,
         Err(error) => {
             padded(ui, |ui| rows::note(ui, &error.to_string()));
@@ -42,7 +42,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, dot: &Dot) {
         Some(_) => vec![Step::new("click reset", at_only(&at))],
         None => Vec::new(),
     };
-    cx.panel = cursor::ID;
+    cx.base.groups.panel(cursor::ID);
     let group = Group {
         id: "one",
         title: names::CLICK_ONE,

@@ -23,7 +23,7 @@ use crate::monitor::on_hud_monitor;
 use crate::settings::{AppSettings, Countdown, Store};
 use crate::settings_defaults::{DefaultsFile, OpenProject};
 use crate::settings_hotkeys::HotkeyPage;
-use crate::settings_rows::{field, heading, wide_field};
+use dc_ui_kit::settings_rows::{field, heading, wide_field};
 
 /// Size of the window, points (mockup: 760 × 480, at least 640 × 420).
 pub const SIZE: egui::Vec2 = vec2(760.0, 480.0);

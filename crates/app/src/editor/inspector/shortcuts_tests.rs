@@ -12,7 +12,9 @@ use super::zoom_tests::click;
 use crate::editor::editing_tests::json;
 use crate::editor::presses::{Pressed, recordings};
 use crate::editor::tests::{harness_with, project};
-use crate::editor::timeline::{Region, Row, Sample, Tracks};
+use dc_fx_keys::panel::Sample;
+
+use crate::editor::timeline::{Region, Row, Tracks};
 
 fn key(at: f64, name: &str) -> KeyPress {
     KeyPress {

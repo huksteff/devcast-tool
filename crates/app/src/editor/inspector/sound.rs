@@ -67,6 +67,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>) {
     };
     header(ui, &head, |_| {});
     let read = cx
+        .base
         .project
         .state::<Audio>()
         .and_then(|now| Ok((now.settings, cx.defaults_of::<Audio>()?.settings)));

@@ -17,9 +17,9 @@ use eframe::egui::{self, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, ve
 use crate::hotkeys::Command;
 use crate::keymap::{Binding, EditorKey, Title, taken_by};
 use crate::settings::AppSettings;
-use crate::settings_rows::{row, row_height, separator};
 use crate::shortcut::Caps;
 use dc_settings::Shortcut;
+use dc_ui_kit::settings_rows::{row, row_height, separator};
 
 /// A shortcut another command already has, waiting for «Заменить» or «Отмена».
 #[derive(Debug, Clone, PartialEq, Eq)]

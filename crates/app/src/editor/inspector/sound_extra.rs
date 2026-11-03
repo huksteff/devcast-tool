@@ -17,13 +17,13 @@ use crate::editor::Action;
 const SET: &str = "audio set";
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: AudioId) {
-    let Ok(state) = cx.project.state::<Audio>() else {
+    let Ok(state) = cx.base.project.state::<Audio>() else {
         return;
     };
     let Some(clip) = state.clips.into_iter().find(|c| c.id == id) else {
         return;
     };
-    cx.panel = sound::ID;
+    cx.base.groups.panel(sound::ID);
     let added = level_args(id, 100.0, 1.0, (false, false));
     let basic = Group {
         id: "extra",
