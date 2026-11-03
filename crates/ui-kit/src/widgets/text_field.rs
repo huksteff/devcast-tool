@@ -1,5 +1,5 @@
 //! One-line text field: 32 px high, 10 px inside, grey hint; the hint is also its accessible
-//! name, so kittest and egui-mcp find the field by it. The search field has the search icon at
+//! name, so kittest finds the field by it. The search field has the search icon at
 //! its left (mockup 5b).
 
 use egui::{Align2, Margin, Response, TextEdit, Ui, WidgetInfo, vec2};

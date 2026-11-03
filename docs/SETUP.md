@@ -24,7 +24,6 @@
 | Модели Whisper | субтитры | Программа и `devcast` скачивают их сами в `%APPDATA%\DevCast\models` (решение 010). Вручную в `.deps/models/` (`ggml-small.bin`, `ggml-large-v3-turbo.bin` с https://huggingface.co/ggerganov/whisper.cpp, SHA-256 из решения 010) — только для игнорируемых тестов `dc-transcribe` и `dc-models` (`--run-ignored only`) |
 | Шрифты | текст в рендере | `cargo xtask deps` (п. 6а) скачивает в `.deps/fonts/` с проверкой SHA-256: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono из https://github.com/google/fonts; Noto Color Emoji (сборка CBDT) из релиза https://github.com/googlefonts/noto-emoji. См. docs/decisions/005-text.md |
 | .NET SDK 10 (LTS) и vpk | установщик `cargo xtask package` и обновления (Velopack) | без админа: официальный `dotnet-install.ps1 -Channel LTS` (https://dot.net/v1/dotnet-install.ps1) в `%LOCALAPPDATA%\Microsoft\dotnet`, затем `dotnet tool install -g vpk --version 1.2.161` (версия как у крейта `velopack` в `crates/update`) и перезапусти терминал. Проверка: `vpk --help`. См. docs/decisions/013-velopack.md |
-| egui-mcp | живой прогон окон агентом (`.mcp.json`, `EGUI_INSPECTION=1`) | `cargo install egui_mcp --locked`. См. docs/decisions/012-testing.md |
 
 ## После установки
 

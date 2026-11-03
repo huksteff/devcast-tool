@@ -25,7 +25,7 @@
 | Корзина | trash 5 | Библиотека записей отправляет проекты в корзину Windows и возвращает последнюю пачку (`os_limited::restore_all`); решение владельца 2026-11-02. |
 | Логи и падения | tracing + tracing-appender (держать `WorkerGuard`), panic hook; crash-handler + minidumper для падений в нативном коде | |
 | Схема проекта | serde + schemars | JSON Schema служит документацией для агента и для `devcast help`. |
-| Тесты | cargo-nextest, insta (снимки), proptest; egui_kittest 0.37 (UI и снимки PNG); эталонные кадры рендера (nv-flip: ꟻLIP, им же сверяет кадры wgpu; dify отклонён — тянет `image` и это CLI); egui_inspection + egui_mcp (агент сам кликает по живому приложению и делает скриншоты) | Детали в [PROCESS.md](PROCESS.md). |
+| Тесты | cargo-nextest, insta (снимки), proptest; egui_kittest 0.37 (UI и снимки PNG); эталонные кадры рендера (nv-flip: ꟻLIP, им же сверяет кадры wgpu; dify отклонён — тянет `image` и это CLI) | Детали в [PROCESS.md](PROCESS.md). |
 
 **Лицензия.** v2 выходит под AGPL-3.0, как и v1: алгоритмы переносятся из v1. Код Cap (AGPL/MIT) можно брать как образец, при копировании сохраняя уведомления. Крейт `dssim` не используем.
 
@@ -66,7 +66,7 @@
 | [009](decisions/009-input-hooks.md) Ввод | LL-хуки на своём потоке, фильтр приватности внутри хука. Монохромные курсоры конвертируются по маскам AND/XOR. |
 | [010](decisions/010-whisper.md) Whisper | Качество на русском отличное, на CPU медленно. whisper-rs + Vulkan: на RTX 4060 ×10–30 реального времени, CPU — запасной путь. Время слов — DTW со сдвигом ~0,26 с и привязкой к тишине. |
 | [011](decisions/011-ipc.md) IPC | interprocess local socket. Без редактора CLI сразу работает с файлами. Задержка < 1 мс + vsync. |
-| [012](decisions/012-testing.md) Тесты | egui_kittest (снимки, AccessKit, проверка глифов); эталоны рендера отдельно для каждого бэкенда; egui-mcp для живой проверки агентом. |
+| [012](decisions/012-testing.md) Тесты | egui_kittest (снимки, AccessKit, проверка глифов); эталоны рендера отдельно для каждого бэкенда. |
 | [013](decisions/013-velopack.md) Установщик | Velopack 1.2.161 (+ `vpk` через .NET 10 LTS): установка без прав администратора, дельта-обновления, данные вне папки установки. |
 | [014](decisions/014-cli-output.md) Вывод CLI | Типичный сценарий из 17 команд печатает ≈ 500–600 токенов (оценка): ответ — одна строка diff, вложенные поля в `ls` через точку. |
 | [015](decisions/015-project-evaluate.md) evaluate | `evaluate` проекта — `dc_ops::Evaluator`: единственный слой ниже cli и app, который видит все эффекты. Состояния и карта времени читаются один раз, кадр — чистая функция. |

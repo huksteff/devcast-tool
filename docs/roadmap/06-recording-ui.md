@@ -4,15 +4,15 @@
 
 **Проверка каждой UI-задачи:**
 - снимок egui_kittest;
-- живой прогон через egui_mcp со скриншотами;
+- живой прогон командами `devcast` со снимками экрана (клики в окне — владелец);
 - работа на двух мониторах с разным DPI, если это применимо.
 
 - [x] **6.1** Каркас `app` на eframe 0.37:
   - один экземпляр;
   - tracing с ротацией файлов, panic hook, crash-handler + minidumper;
   - CPU в простое около 0%;
-  - dev-сборка с фичами eframe `inspection` + `accesskit`, `.mcp.json` проекта подключает `egui-mcp` для живой проверки агентом (решение 012).
-  Сделано: один экземпляр через канал dc-ipc `devcast-app-<пользователь>`, журнал с ротацией и паника в журнал, перерисовка только по событию, eframe с `inspection` + `accesskit`, `.mcp.json` с egui-mcp. Minidump — `crash.rs` (crash-handler + minidumper, единственный `unsafe` dc-app по решению владельца), дампы в `%APPDATA%\DevCast\logs\crashes` (с 2026-11-03, 8.5; было `DevCast\crashes`). CPU в простое — в ночной живой проверке.
+  - dev-сборка с фичами eframe `inspection` + `accesskit`, `.mcp.json` проекта подключает `egui-mcp` для живой проверки агентом (решение 012; отменено владельцем 2026-11-03).
+  Сделано: один экземпляр через канал dc-ipc `devcast-app-<пользователь>`, журнал с ротацией и паника в журнал, перерисовка только по событию, eframe с `accesskit` (`inspection` и egui-mcp убраны 2026-11-03). Minidump — `crash.rs` (crash-handler + minidumper, единственный `unsafe` dc-app по решению владельца), дампы в `%APPDATA%\DevCast\logs\crashes` (с 2026-11-03, 8.5; было `DevCast\crashes`). CPU в простое — в ночной живой проверке.
 - [x] **6.2** `ui-kit`: тёмная тема, шрифты из `assets/fonts` (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono, Noto Color Emoji, OFL + лицензии; `FontSystem` без системных шрифтов — решение 005), отступы, цвета, иконки.
   Сделано: токены макета (`tokens.rs`), тёмная тема egui, шрифты Inter 400/500/600/700 (ось `wght` одной гарнитуры), JetBrains Mono, запасной Noto Color Emoji из папки `fonts` программы (`cargo xtask deps`; системных и встроенных egui нет), 23 линейные иконки фигурами; тестовый `testing::harness()` (FXC для WARP). Снимки `theme`, `icons_scale`. Файлы шрифтов в git не кладутся: их скачивает и копирует к программе `xtask deps`.
 - [x] **6.3** `ui-kit`, виджеты ввода: кнопка, иконка-кнопка, переключатель, слайдер с полем числа, выпадающий список, поле ввода.

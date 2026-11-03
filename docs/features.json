@@ -1,5 +1,5 @@
 {
-  "about": "Список приёмки DevCast v2: каждая фича из docs/SCOPE.md. status: todo | pass | fail. verify: test (автотест), golden (эталонные кадры), visual (агент смотрит кадры/скриншоты), ui (egui_kittest + живой прогон egui_mcp), cli (сценарий через devcast), manual (руками на железе). Статус меняется только после проверок из docs/PROCESS.md.",
+  "about": "Список приёмки DevCast v2: каждая фича из docs/SCOPE.md. status: todo | pass | fail. verify: test (автотест), golden (эталонные кадры), visual (агент смотрит кадры/скриншоты), ui (egui_kittest + живой прогон командами devcast со снимками экрана; клики — владелец), cli (сценарий через devcast), manual (руками на железе). Статус меняется только после проверок из docs/PROCESS.md.",
   "features": [
     { "id": "rec.source.screen", "area": "Запись", "title": "Запись всего экрана", "acceptance": "Выбранный монитор (по умолчанию основной) пишется 10 с: длительность совпадает до кадра, системного курсора и жёлтой рамки в кадре нет.", "verify": ["test", "visual"], "tasks": ["3.3", "6.8"], "status": "todo" },
     { "id": "rec.source.window", "area": "Запись", "title": "Запись окна", "acceptance": "Пишется только выбранное окно, в том числе при перемещении и частичном перекрытии.", "verify": ["test", "visual"], "tasks": ["3.3", "6.8"], "status": "todo" },

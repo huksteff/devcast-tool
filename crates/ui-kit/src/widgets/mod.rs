@@ -1,5 +1,5 @@
 //! Widgets of the mockup. Each draws itself from the tokens and has an accessible name, so
-//! kittest and egui-mcp find it by its caption.
+//! kittest finds it by its caption.
 
 mod anchors;
 mod button;

@@ -46,7 +46,7 @@ pub use error::AppError;
 
 use instance::Claim;
 
-/// Name of the app for eframe, the window title and the inspection label.
+/// Name of the app for eframe and the window title.
 const APP_NAME: &str = "DevCast";
 
 /// Starts the app, or brings the running one to front and returns.
