@@ -63,6 +63,10 @@ pub enum Request {
         revision: u64,
         copy: PathBuf,
     },
+    /// `devcast font add` put a font into `assets/fonts/` of the project in `root`: no change of
+    /// the project, so the editor reads the families of its font pickers again
+    /// ([`Answer::FontsRead`]).
+    Fonts { root: PathBuf },
     /// `devcast rename`: the editor renames the project folder to `name` (the header's rename).
     Rename { root: PathBuf, name: String },
     /// `devcast config` and `devcast hotkeys`: the app applies the edit to its settings store,
@@ -134,6 +138,8 @@ pub enum Answer {
     Elsewhere {
         open: Option<PathBuf>,
     },
+    /// The editor's font pickers list the families of the project's fonts on disk.
+    FontsRead,
     /// The project is renamed and open again from this folder.
     Renamed {
         root: PathBuf,

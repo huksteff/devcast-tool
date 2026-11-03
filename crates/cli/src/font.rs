@@ -1,7 +1,8 @@
 //! `devcast font add <file>` copies a `.ttf`/`.otf` file into the project's `assets/fonts/`
 //! (`dc_ops::import_font`, shared with the editor); `devcast font ls` lists the families a style
 //! can name. A font file is not a change of `project.json`: there is no history entry, the style
-//! that names the family is the undoable change.
+//! that names the family is the undoable change. A project the editor holds hears of the font
+//! (`Request::Fonts`): its font pickers list it at once.
 
 use std::path::PathBuf;
 
@@ -22,6 +23,9 @@ pub(crate) fn add(ctx: &Ctx<'_>, args: &AddArgs) -> Result<Answer, CliError> {
     let mut workspace = ctx.open(true)?;
     let imported = dc_ops::import_font(workspace.dir(), &source, ctx.globals.dry_run)
         .map_err(|e| CliError::Failed(e.to_string()))?;
+    if let Some(editor) = workspace.editor().filter(|_| !ctx.globals.dry_run) {
+        editor.fonts_added()?;
+    }
     let (family, file) = (&imported.family, &imported.file);
     let already = !file.copied && !ctx.globals.dry_run;
     let text = format!(

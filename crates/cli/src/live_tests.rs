@@ -134,3 +134,23 @@ fn open_asks_the_app_to_show_the_project_in_its_editor() {
     assert_eq!(out.code, 1);
     assert!(out.stderr.contains("не запущен"), "{}", out.stderr);
 }
+
+#[test]
+fn a_font_added_through_the_editor_reaches_its_font_lists() {
+    let (held, editor, _unlocked) = pair("font");
+    let font = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/fonts/PressStart2P-Regular.ttf");
+    let line = format!("font add {}", font.display());
+    let dry = run(&held, &format!("{line} --dry-run"), &editor.channel);
+    assert_eq!(dry.code, 0, "{}", dry.stderr);
+    assert!(
+        editor.fonts.lock().unwrap().is_empty(),
+        "a dry run adds nothing"
+    );
+    let out = run(&held, &line, &editor.channel);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    let heard = editor.fonts.lock().unwrap().clone();
+    assert_eq!(heard.len(), 1);
+    assert!(heard[0].iter().any(|f| f == "Press Start 2P"), "{heard:?}");
+    editor.stop();
+}

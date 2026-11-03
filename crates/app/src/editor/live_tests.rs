@@ -131,3 +131,16 @@ fn show() -> serde_json::Map<String, serde_json::Value> {
 fn hide() -> serde_json::Map<String, serde_json::Value> {
     serde_json::Map::from_iter([("show".to_owned(), serde_json::Value::Bool(false))])
 }
+
+#[test]
+fn a_font_added_by_devcast_reaches_the_font_lists() {
+    let (_temp, mut editor) = editor();
+    let font = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/fonts/PressStart2P-Regular.ttf");
+    dc_ops::import_font(editor.doc.dir(), &font, false).unwrap();
+    assert!(!editor.fonts.iter().any(|f| f == "Press Start 2P"));
+    let root = editor.doc.dir().root().to_path_buf();
+    let (answer, _) = editor.live(Request::Fonts { root }, Instant::now());
+    assert_eq!(answer, Answer::FontsRead);
+    assert!(editor.fonts.iter().any(|f| f == "Press Start 2P"));
+}

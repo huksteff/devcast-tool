@@ -24,6 +24,8 @@ pub(crate) fn channel(case: &str) -> String {
 /// then it gives back its state.
 pub(crate) struct FakeEditor {
     pub channel: String,
+    /// The families it read on each `Request::Fonts`.
+    pub fonts: std::sync::Arc<std::sync::Mutex<Vec<Vec<String>>>>,
     server: JoinHandle<(Project, History)>,
 }
 
@@ -35,8 +37,11 @@ impl FakeEditor {
         let dir = f.dir.clone();
         let settings = defaults_file(f._tmp.path()).with_file_name(dc_settings::FILE);
         let store = Store::load(&settings).unwrap();
+        let fonts = std::sync::Arc::default();
+        let heard = std::sync::Arc::clone(&fonts);
         let server = std::thread::spawn(move || {
             let mut state = State::new(dir, lock, store);
+            state.fonts = heard;
             loop {
                 let mut connection = listener.accept().unwrap();
                 let (answer, done) = state.answer(connection.receive().unwrap());
@@ -46,7 +51,11 @@ impl FakeEditor {
                 }
             }
         });
-        Self { channel, server }
+        Self {
+            channel,
+            fonts,
+            server,
+        }
     }
 
     /// Its state after `Show`.
@@ -75,6 +84,7 @@ struct State {
     store: Store,
     /// The app's recording and export queue.
     app: crate::fake_app::FakeApp,
+    fonts: std::sync::Arc<std::sync::Mutex<Vec<Vec<String>>>>,
 }
 
 impl State {
@@ -91,6 +101,7 @@ impl State {
             unsaved: working.unsaved,
             store,
             app: crate::fake_app::FakeApp::default(),
+            fonts: std::sync::Arc::default(),
         }
     }
 
@@ -123,6 +134,12 @@ impl State {
                 }
             }
             Request::Write { .. } => Answer::Refused(CHANGED.to_owned()),
+            Request::Fonts { root } => {
+                assert!(self.ours(&root));
+                let families = dc_ops::fonts::families(self.dir.root()).unwrap();
+                self.fonts.lock().unwrap().push(families);
+                Answer::FontsRead
+            }
             Request::Edit { root } if self.ours(&root) => Answer::Opened,
             Request::Edit { .. } => Answer::Asking,
             Request::Save { .. } => {

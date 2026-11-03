@@ -127,7 +127,8 @@ impl EditorWindow {
             Request::Open { root }
             | Request::Write { root, .. }
             | Request::Save { root }
-            | Request::Discard { root } => root,
+            | Request::Discard { root }
+            | Request::Fonts { root } => root,
             _ => return (Answer::NotOpen, None),
         };
         if !same_folder(root, self.doc.dir().root()) {
@@ -162,6 +163,14 @@ impl EditorWindow {
                 Err(error) => (Answer::Refused(error.to_string()), None),
             },
             Request::Discard { .. } => self.discard_asked(now),
+            Request::Fonts { .. } => match super::fonts::families(self.doc.dir()) {
+                Ok(families) => {
+                    self.fonts = families;
+                    self.detached.wake_editor = true;
+                    (Answer::FontsRead, None)
+                }
+                Err(error) => (Answer::Refused(error), None),
+            },
             _ => (Answer::NotOpen, None),
         }
     }

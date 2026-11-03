@@ -64,6 +64,17 @@ impl Editor {
         }
     }
 
+    /// `devcast font add` copied a font into the project: the editor lists it in its pickers.
+    pub(crate) fn fonts_added(&self) -> Result<(), CliError> {
+        let request = Request::Fonts {
+            root: self.root.clone(),
+        };
+        match self.ask(&request)? {
+            Answer::FontsRead => Ok(()),
+            answer => Err(refused(answer)),
+        }
+    }
+
     /// The channel of the app whose editor this is.
     pub(crate) fn channel(&self) -> &str {
         &self.channel
