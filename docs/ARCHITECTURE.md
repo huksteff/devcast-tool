@@ -21,7 +21,7 @@
 | Субтитры | whisper-rs 0.16 (whisper.cpp): Vulkan на Windows и Linux, Metal на macOS; без подходящей видеокарты — на процессоре. Для сборки нужен Vulkan SDK (переменная `VULKAN_SDK`), загрузчик `vulkan-1.dll` лежит рядом с exe | Время слов через DTW (`flash_attn` при этом выключен). Модели GGML small и large-v3-turbo скачиваются с проверкой SHA-256 и докачкой: ureq (блокирующий, rustls), см. решение 010. Whisper линкует только `devcast`; редактор распознаёт его процессом (решение 018). |
 | Связь CLI и редактора | interprocess 2.4: local socket (named pipe / unix socket), сообщения JSON с длиной в начале | Имя сокета своё для каждого пользователя. |
 | Горячие клавиши и трей | global-hotkey 0.9, tray-icon 0.26 | Создаются на потоке цикла событий (в `CreationContext`). События передаются через обработчик и `request_repaint()`. |
-| Установщик и обновления | Velopack (Rust SDK) | Windows, macOS и Linux, дельта-обновления, источник — GitHub Releases. `vpk` в CI требует .NET 8 SDK. |
+| Установщик и обновления | Velopack (Rust SDK, крейт `velopack` =1.2.161 в `dc-update`; значок exe — `embed-resource` в `dc-app`) | Windows, macOS и Linux, дельта-обновления, источник — GitHub Releases. Пакет собирает `cargo xtask package` через `vpk` той же версии (.NET SDK 10, решение 013). |
 | Корзина | trash 5 | Библиотека записей отправляет проекты в корзину Windows и возвращает последнюю пачку (`os_limited::restore_all`); решение владельца 2026-11-02. |
 | Логи и падения | tracing + tracing-appender (держать `WorkerGuard`), panic hook; crash-handler + minidumper для падений в нативном коде | |
 | Схема проекта | serde + schemars | JSON Schema служит документацией для агента и для `devcast help`. |
@@ -120,7 +120,8 @@ fx/              эффекты, каждый в своём крейте (пак
   annotations/     общее: дорожки, слои, поворот, анимации, кейфреймы, направляющие
   text/ shape/ image/ drawing/ blur/   виды аннотаций
   audio-tracks/    дополнительное аудио, уровни каналов клипов, шумоподавление
-xtask/           verify (fmt, clippy, тесты, длины, зависимости), эталоны, нативные зависимости (deps)
+xtask/           verify (fmt, clippy, тесты, длины, зависимости), эталоны, нативные зависимости (deps),
+                 установщик Velopack (package)
 spikes/          пробы этапа 1; удаляются после переноса выводов
 fixtures/        короткие записи (Git LFS), проекты, эталонные кадры по бэкендам
 skill/           SKILL.md для Claude Code: монтаж через CLI

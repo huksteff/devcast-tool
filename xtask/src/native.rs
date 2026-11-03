@@ -145,6 +145,15 @@ fn unpack(deps: &Path, archive: &Archive, download: &Path, dest: &Path) -> Resul
 /// FFmpeg and Vulkan loader DLLs next to the built executables, so `cargo run` / tests start
 /// without PATH tweaks.
 fn copy_dlls(root: &Path, target: &Path) -> Result<(), String> {
+    let dlls = runtime_dlls(root)?;
+    for profile in ["debug", "release"] {
+        copy_files(&dlls, &target.join(profile))?;
+    }
+    Ok(())
+}
+
+/// The DLLs the programs load at start: FFmpeg and the Vulkan loader from `.deps/`.
+pub fn runtime_dlls(root: &Path) -> Result<Vec<PathBuf>, String> {
     let deps = root.join(".deps");
     let mut dlls = Vec::new();
     for dir in [deps.join("ffmpeg").join("bin"), deps.join("vulkan")] {
@@ -157,14 +166,16 @@ fn copy_dlls(root: &Path, target: &Path) -> Result<(), String> {
                 .filter(|p| p.extension().is_some_and(|x| x == "dll")),
         );
     }
-    for profile in ["debug", "release"] {
-        let bin = target.join(profile);
-        create_dir(&bin)?;
-        for dll in &dlls {
-            let name = dll.file_name().ok_or("пустое имя DLL")?;
-            std::fs::copy(dll, bin.join(name))
-                .map_err(|e| format!("не удалось скопировать {}: {e}", dll.display()))?;
-        }
+    Ok(dlls)
+}
+
+/// Copies `files` into the folder `dir`, creating it.
+pub fn copy_files(files: &[PathBuf], dir: &Path) -> Result<(), String> {
+    create_dir(dir)?;
+    for file in files {
+        let name = file.file_name().ok_or("пустое имя файла")?;
+        std::fs::copy(file, dir.join(name))
+            .map_err(|e| format!("не удалось скопировать {}: {e}", file.display()))?;
     }
     Ok(())
 }
@@ -207,7 +218,7 @@ pub(crate) fn create_dir(path: &Path) -> Result<(), String> {
     std::fs::create_dir_all(path).map_err(|e| format!("не удалось создать {}: {e}", path.display()))
 }
 
-fn remove_dir(path: &Path) -> Result<(), String> {
+pub(crate) fn remove_dir(path: &Path) -> Result<(), String> {
     if path.exists() {
         std::fs::remove_dir_all(path)
             .map_err(|e| format!("не удалось удалить {}: {e}", path.display()))?;

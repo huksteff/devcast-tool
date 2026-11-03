@@ -4,6 +4,8 @@
   - установщик для текущего пользователя;
   - ярлыки, иконки из `branding/`;
   - DLL FFmpeg и модели не в установщике (модели качаются при первом использовании).
+
+  Сделано (2026-11-03): `dc_update::handle_installer_hooks` (`VelopackApp::build().run()`, velopack =1.2.161) — первая строка `main` у `devcast-app`; проверки обновлений нет (8.2). Значок `branding/devcast.ico` (из исходников DevCast ветки main: `devcast.svg` и PNG 16–256) вшит в `devcast-app.exe` (`crates/app/build.rs`, embed-resource) — его берут ярлыки. `cargo xtask package`: проверяет `vpk`, `xtask deps`, `cargo build --release -p dc-app -p dc-cli`, папка пакета `<папка сборки>/velopack/pack` (оба exe, DLL FFmpeg и `vulkan-1.dll`, `fonts/` — как в решении 018), `vpk pack` (id `DevCast`, `--mainExe devcast-app.exe`, `--icon`, ярлыки Desktop и StartMenuRoot) в `<папка сборки>/velopack/releases`. Установка у Velopack всегда для текущего пользователя. Не сделано: на ПК нет `vpk` — пакет ни разу не собран и установка не проверена; DLL FFmpeg сейчас в пакете (решение 018 расходится с пунктом выше — вопрос в QUESTIONS.md); окна и трей рисуют старый значок кодом (`logo.rs`).
 - [ ] **8.2** Обновления:
   - проверка раз в 6 ч и «Проверить обновления»;
   - «Скачать?», «Не сейчас» (напомнит через 3 ч), «Пропустить версию»;

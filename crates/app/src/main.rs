@@ -6,6 +6,7 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
+    dc_update::handle_installer_hooks();
     match dc_app::run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {

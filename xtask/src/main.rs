@@ -10,6 +10,7 @@ mod hook;
 mod limits;
 mod metadata;
 mod native;
+mod package;
 mod run;
 mod schema_docs;
 mod seams;
@@ -37,7 +38,10 @@ const USAGE: &str = "\
       Причина обязательна: она идёт в сообщение коммита.
   deps
       Скачать и проверить по SHA-256 нативные зависимости сборки (FFmpeg, libclang) и шрифты в .deps/
-      и скопировать DLL FFmpeg рядом с собираемыми exe.";
+      и скопировать DLL FFmpeg рядом с собираемыми exe.
+  package
+      Установщик Velopack: deps, release-сборка devcast-app и devcast, папка пакета и `vpk pack`.
+      Результат — в <папка сборки>/velopack/releases. Нужен vpk (docs/SETUP.md).";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -72,6 +76,17 @@ fn main() -> ExitCode {
                 Some(Ok(())) => ExitCode::SUCCESS,
                 Some(Err(message)) => {
                     eprintln!("deps: {message}");
+                    ExitCode::FAILURE
+                }
+                None => usage_error("не найден корень workspace"),
+            }
+        }
+        "package" => {
+            let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent();
+            match root.map(package::run) {
+                Some(Ok(())) => ExitCode::SUCCESS,
+                Some(Err(message)) => {
+                    eprintln!("package: {message}");
                     ExitCode::FAILURE
                 }
                 None => usage_error("не найден корень workspace"),
