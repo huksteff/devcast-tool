@@ -8,7 +8,7 @@
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 
-use dc_audio::silence::{self, DEFAULT_DB, DEFAULT_MIN};
+use dc_audio::silence::{self, DEFAULT_MIN};
 use dc_audio::{SourceTrack, frame_at, tracks};
 use dc_core::time::Source;
 use dc_core::{CommandError, Project, Range, SourceTime};
@@ -174,7 +174,8 @@ pub fn media_cues(media: &MediaWords, words: &[Word]) -> Result<Vec<Cue>, OpsErr
     };
     let whole: Range<Source> =
         Range::new(SourceTime::ZERO, SourceTime::from_micros(end.max(1))).map_err(failed)?;
-    let quiet = silence::find(&media.track, whole, DEFAULT_DB, DEFAULT_MIN).map_err(failed)?;
+    let db = silence::threshold(&media.track).map_err(failed)?;
+    let quiet = silence::find(&media.track, whole, db, DEFAULT_MIN).map_err(failed)?;
     let quiet: Vec<(i64, i64)> = quiet
         .iter()
         .map(|r| (r.start().micros(), r.end().micros()))

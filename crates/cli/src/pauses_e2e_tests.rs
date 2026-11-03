@@ -47,6 +47,6 @@ fn cut_pauses_and_a_slip_of_the_tongue() {
         assert!(text.contains(kept), "{text}");
     }
     let removed = before - after;
-    assert!((2.0..4.0).contains(&removed), "{before} → {after}");
+    assert!((1.5..4.0).contains(&removed), "{before} → {after}");
     assert!(calls <= 8, "{calls} calls");
 }

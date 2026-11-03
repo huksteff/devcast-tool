@@ -1,8 +1,10 @@
 //! Silence: stretches where the sound is quieter than a threshold, measured as RMS of 50 ms
 //! blocks over all channels. Not FFmpeg `silencedetect` (every sample below the threshold):
-//! a raised microphone hisses with single samples above −30 dBFS and would have no pauses at
-//! all (owner's speech fixture: noise −35 dB RMS). Defaults are v1's (decision 000): −30 dBFS,
-//! at least 0.5 s, on the microphone track.
+//! a raised microphone hisses with single samples above the noise RMS and would have no pauses
+//! at all (owner's speech fixture: noise −35 dB RMS). At least 0.5 s, on the microphone track
+//! (v1, decision 000). The threshold comes from the track itself ([`threshold`], owner's
+//! decision 2026-11-03): v1's fixed −30 dBFS made a quiet microphone (speech −35…−41 dBFS) all
+//! silence.
 
 use dc_core::time::Source;
 use dc_core::{Range, SourceTime, TimeDelta};
@@ -12,8 +14,19 @@ use crate::reader::TrackReader;
 use crate::track::SourceTrack;
 use crate::{CHANNELS, RATE, frame_at};
 
-pub const DEFAULT_DB: f64 = -30.0;
 pub const DEFAULT_MIN: TimeDelta = TimeDelta::from_millis(500);
+
+/// Floor of the block levels, dBFS: digital silence (a muted or missing signal, a system track
+/// while nothing plays) counts as this level, not as −∞.
+pub const FLOOR_DB: f64 = -90.0;
+/// Percentiles of the block levels taken as the noise floor and as the speech level. Pauses take
+/// more than a tenth of a narrated recording, so the 10th lies in them; speech may take only a
+/// fifth (owner's speech fixture: 22 %), so its level is the 97th, which still leaves out a few
+/// clicks and plosives louder than the speech. Checked on real recordings (2026-11-03): the
+/// owner's noisy microphone gives its hand-marked pauses (−29.9 dB), a quiet one (speech
+/// −35…−41 dBFS) pauses only where nobody speaks (−44.4 dB).
+const NOISE_PERCENTILE: f64 = 0.10;
+const SPEECH_PERCENTILE: f64 = 0.97;
 
 /// Frames of one loudness block: 50 ms.
 pub const BLOCK: usize = RATE as usize / 20;
@@ -135,6 +148,40 @@ pub fn find(
             Range::new(start, end).ok()
         })
         .collect())
+}
+
+/// The silence threshold of `track`, dBFS: halfway in dB between its noise floor and its speech
+/// level ([`NOISE_PERCENTILE`], [`SPEECH_PERCENTILE`] of the 50 ms block levels of the whole
+/// track, at least [`FLOOR_DB`]). Halfway, not «speech − 15 dB»: on a noisy microphone
+/// (noise −45, speech −35 dBFS) that would be below the noise and find no pause.
+pub fn threshold(track: &SourceTrack) -> Result<f64, AudioError> {
+    let mut reader = TrackReader::open(track)?;
+    let mut buffer = vec![0.0; CHUNK * CHANNELS];
+    let mut levels = Vec::new();
+    let mut at = 0;
+    while let Some(read) = reader.fill_until_end(at, &mut buffer)? {
+        for block in buffer[..read * CHANNELS].chunks(BLOCK * CHANNELS) {
+            let square: f64 = block.iter().map(|s| f64::from(*s).powi(2)).sum();
+            levels.push(10.0 * (square / block.len() as f64).log10());
+        }
+        at += read as i64;
+        if read < CHUNK {
+            break;
+        }
+    }
+    Ok(threshold_of(levels))
+}
+
+/// [`threshold`] of block levels in dBFS; no blocks — [`FLOOR_DB`].
+pub fn threshold_of(levels: Vec<f64>) -> f64 {
+    let mut heard: Vec<f64> = levels.into_iter().map(|db| db.max(FLOOR_DB)).collect();
+    heard.sort_by(f64::total_cmp);
+    let last = heard.len().saturating_sub(1) as f64;
+    let at = |share: f64| heard.get((last * share).round() as usize).copied();
+    match (at(NOISE_PERCENTILE), at(SPEECH_PERCENTILE)) {
+        (Some(noise), Some(speech)) => (noise + speech) / 2.0,
+        _ => FLOOR_DB,
+    }
 }
 
 /// Frames of the loudness window when looking for the quietest moment: 10 ms.

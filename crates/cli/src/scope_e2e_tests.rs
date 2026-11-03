@@ -240,11 +240,11 @@ fn check_frames(mp4: &Path, media: &str, root: &Path, map: &TimeMap) {
     let captions = Region::new(0.0, 0.75, 1.0, 0.2);
     let middle = Region::new(0.0, 0.2, 1.0, 0.5);
 
-    // 0.5 s: before the zoom; the title and «Привет!» are on.
-    let (shown, original) = pair(0.5);
+    // 0.15 s: before the zoom-in (it starts 0.32 s before the zoom, at 0.2 s) and before
+    // «Привет!»; the title is on.
+    let (shown, original) = pair(0.15);
     assert!(shown.edge_dark() > 0.9, "the window frame is whole");
     assert!(shown.changed(&original, &annotation) > 5000, "the title");
-    assert!(shown.changed(&original, &captions) > 2500, "the caption");
     assert!(shown.changed(&original, &middle) < 500, "nothing else");
 
     // 5 s: inside the zoom on the clicks (1.5×: the frame line is out of the picture), captions on.
@@ -255,8 +255,9 @@ fn check_frames(mp4: &Path, media: &str, root: &Path, map: &TimeMap) {
     );
     assert!(shown.changed(&original, &captions) > 2500, "the caption");
 
-    // 10.5 s: zoomed out again, after the speech and the title.
-    let (shown, original) = pair(10.5);
+    // 11 s: zoomed out again (the zoom-out ends about 0.7 s after the zoom, at 10.6 s), after
+    // the speech and the title.
+    let (shown, original) = pair(11.0);
     assert!(shown.edge_dark() > 0.9, "the window frame is whole");
     assert!(shown.changed(&original, &annotation) < 200, "no title");
     assert!(shown.changed(&original, &captions) < 1000, "no caption");

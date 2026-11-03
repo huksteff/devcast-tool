@@ -194,7 +194,7 @@ devcast app status|show|quit                     # запущенная прог
 devcast image set a3 --file x.png | font add <файл> | font ls
 devcast ls <zooms|clips|annots|captions|audio|tracks|clicks> [--from --to] [--fields]
 devcast transcript [--from --to] [--words] [--model fast|accurate] [--language ru] [--track mic]   # реплики или слова с id
-devcast silences [--min 0.5] [--db -30] [--track mic] [--from --to]   # паузы по готовому видео
+devcast silences [--min 0.5] [--db -45] [--track mic] [--from --to]   # паузы по готовому видео; без --db — порог самой записи
 devcast events <clicks|keys|activity> [--from --to]
 devcast cut <10.2-12.5,...|w120-w135> [--dry-run]
 devcast speed <from-to> <x>

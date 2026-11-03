@@ -1,10 +1,11 @@
-//! `devcast silences [--min 0.5] [--db -30] [--track mic] [--from --to]`: quiet stretches of the
+//! `devcast silences [--min 0.5] [--db -45] [--track mic] [--from --to]`: quiet stretches of the
 //! output, for cutting pauses (`devcast cut <from>-<to>`). Each clip is searched in its own
-//! recording; quiet parts on both sides of a cut or a clip boundary join into one.
+//! recording, by default with the threshold of that recording (`silence::threshold`); quiet
+//! parts on both sides of a cut or a clip boundary join into one.
 
 use std::collections::HashMap;
 
-use dc_audio::silence::{self, DEFAULT_DB, DEFAULT_MIN};
+use dc_audio::silence::{self, DEFAULT_MIN};
 use dc_audio::{SourceTrack, tracks};
 use dc_core::{OutputTime, Project, TimeDelta, TimeMap};
 use dc_project::ProjectDir;
@@ -22,11 +23,10 @@ pub(crate) struct Args {
     min: f64,
     #[arg(
         long,
-        default_value_t = DEFAULT_DB,
         allow_hyphen_values = true,
-        help = "Порог, dBFS: тише — тишина"
+        help = "Порог, dBFS: тише — тишина; по умолчанию — посередине между шумом и речью записи"
     )]
-    db: f64,
+    db: Option<f64>,
     #[arg(
         long,
         help = "Дорожка: mic (по умолчанию; у импортированного видео — первая), system, audio-1 …"
@@ -46,10 +46,9 @@ pub(crate) fn silences(ctx: &Ctx<'_>, query: &Args) -> Result<Answer, CliError> 
             DEFAULT_MIN.as_secs_f64()
         )));
     }
-    if !(-120.0..0.0).contains(&query.db) {
+    if let Some(db) = query.db.filter(|db| !(-120.0..0.0).contains(db)) {
         return Err(CliError::Usage(format!(
-            "--db {}: порог в dBFS от −120 до 0, например --db {DEFAULT_DB}",
-            query.db
+            "--db {db}: порог в dBFS от −120 до 0, например --db -45; без --db — порог самой записи"
         )));
     }
     let (from, to) = (
@@ -88,7 +87,7 @@ fn search(
 ) -> Result<Vec<(OutputTime, OutputTime)>, CliError> {
     let failed = |e: dc_audio::AudioError| CliError::Failed(e.to_string());
     let map = TimeMap::build(project);
-    let mut chosen: HashMap<String, SourceTrack> = HashMap::new();
+    let mut chosen: HashMap<String, (SourceTrack, f64)> = HashMap::new();
     let mut found: Vec<(OutputTime, OutputTime)> = Vec::new();
     for segment in map.segments() {
         let Some(clip) = project.clip(segment.clip) else {
@@ -100,14 +99,18 @@ fn search(
                 query.track.as_ref(),
                 &segment.media,
             )?;
-            chosen.insert(segment.media.clone(), track);
+            let db = match query.db {
+                Some(db) => db,
+                None => silence::threshold(&track).map_err(failed)?,
+            };
+            chosen.insert(segment.media.clone(), (track, db));
         }
-        let Some(track) = chosen.get(&segment.media) else {
+        let Some((track, db)) = chosen.get(&segment.media) else {
             continue;
         };
         // The minimum is in output time; in source time a slowed segment needs less.
         let source_min = TimeDelta::from_micros((min.micros() as f64 * segment.speed) as i64);
-        for quiet in silence::find(track, segment.source, query.db, source_min).map_err(failed)? {
+        for quiet in silence::find(track, segment.source, *db, source_min).map_err(failed)? {
             let start = segment.output_at(quiet.start());
             let end = if quiet.end() == segment.source.end() {
                 segment.output_end()

@@ -85,6 +85,7 @@ fn wrong_options_explain_what_to_write() {
         assert!(out.stderr.contains(hint), "{line}: {}", out.stderr);
     }
     let system = speech.ok("silences --track system --min 0.5");
-    // The system track has its own sound in the first 10.65 s.
-    assert!(system.contains("0:10.650–0:20.016"), "{system}");
+    // The system track is digital silence but for a sound at 10.5–11.3 s (fading to −73 dB).
+    assert!(system.contains("0:00.000–0:10.500"), "{system}");
+    assert!(system.contains("0:11.300–0:20.016"), "{system}");
 }
