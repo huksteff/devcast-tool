@@ -62,6 +62,9 @@ pub fn import_sound(
 }
 
 impl SoundImport {
+    /// The name of its command in the history.
+    pub const NAME: &'static str = AudioAdd::NAME;
+
     /// Deletes the copy this import made: the command was refused.
     pub fn discard(&self) -> Result<(), DiscardError> {
         let Some(file) = &self.copy else {

@@ -10,7 +10,6 @@ use std::time::Instant;
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeDelta};
-use dc_fx_audio_tracks::AudioAdd;
 use dc_ops::{SoundPlace, Step};
 
 use super::lanes::{
@@ -168,7 +167,7 @@ pub fn sound(editor: &mut EditorWindow, file: &SoundFile, now: Instant) -> Resul
     command.duration = Some(command.file.duration.min(file.room));
     match editor
         .doc
-        .apply_commands(AudioAdd::NAME, &[&imported.command], now)
+        .apply_commands(dc_ops::SoundImport::NAME, &[&imported.command], now)
     {
         Ok(_) => Ok(()),
         Err(error) => Err(match imported.discard() {
@@ -183,7 +182,7 @@ pub fn sound(editor: &mut EditorWindow, file: &SoundFile, now: Instant) -> Resul
 pub fn picture(editor: &mut EditorWindow, file: &PictureFile, now: Instant) -> Result<(), String> {
     let imported = dc_ops::import_picture(editor.doc.dir(), &file.path, (file.id, file.at), false)
         .map_err(|e| e.to_string())?;
-    let name = dc_fx_image::ImageSet::NAME;
+    let name = dc_ops::PictureImport::NAME;
     match editor.doc.apply_commands(name, &[&imported.command], now) {
         Ok(_) => Ok(()),
         Err(error) => Err(match imported.discard() {

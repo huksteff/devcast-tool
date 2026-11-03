@@ -124,6 +124,15 @@ impl TimeMap {
         Some(segment.output_at(t))
     }
 
+    /// Where clip `clip` plays: from its first segment to its last (its segments follow each
+    /// other); `None` if nothing of it plays.
+    pub fn clip_span(&self, clip: ClipId) -> Option<Range<Output>> {
+        let mut segments = self.segments.iter().filter(|s| s.clip == clip);
+        let first = segments.next()?;
+        let last = segments.next_back().unwrap_or(first);
+        Range::new(first.output_start, last.output_end()).ok()
+    }
+
     /// Where source moment `t` of recording `media` plays: its segment and output time; `None`
     /// if it is cut out or the recording is not on the track there.
     pub fn locate(&self, media: &str, t: SourceTime) -> Option<(&Segment, OutputTime)> {

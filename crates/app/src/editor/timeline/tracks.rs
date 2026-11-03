@@ -1,20 +1,16 @@
 //! What the timeline shows, read from the project: the rows in the order of the mockup and their
 //! regions at output times (through the time map). Rebuilt when the project changes.
 
-use dc_capture::audio::{MIC_TRACK, SYSTEM_TRACK};
+use dc_capture::audio::MIC_TRACK;
 use dc_core::project::MediaKind;
 use dc_core::time::Output;
-use dc_core::{
-    ChannelLevels, ClipId, Effect, KeyTracks, OutputTime, Project, Range, StateError, TimeDelta,
-    TimeMap,
-};
-use dc_fx_audio_tracks::{Audio, AudioState, Sound, TRACKS as AUDIO_TRACKS};
+use dc_core::{ClipId, KeyTracks, OutputTime, Project, Range, StateError, TimeDelta, TimeMap};
 use dc_ui_kit::lane;
 use dc_ui_kit::strings::timeline as text;
 
 use super::scale::length;
 use super::wave::{self, Source, Wave};
-use crate::editor::lanes;
+use crate::editor::lanes::{self, audio::Plays, audio::Sounding};
 use crate::editor::selection::Item;
 
 /// A row of the timeline.
@@ -130,7 +126,8 @@ impl Tracks {
             ..Self::default()
         };
         let captions = tracks.problem(lanes::captions::row(project, &map));
-        let audio = tracks.read::<Audio>(project);
+        let (sounds, broken) = lanes::audio::rows(project, &map, sound, least.audio);
+        tracks.problems.extend(broken.map(|e| e.to_string()));
         let keys = tracks.problem(lanes::keys::shown(project));
         let zooms = tracks.lane(lanes::zoom::regions(project, &map));
         let cursor = tracks.lane(lanes::callout::regions(project, &map));
@@ -140,25 +137,22 @@ impl Tracks {
         tracks.add(Row::Cursor, cursor, false);
         tracks.add(Row::Keys, Vec::new(), !keys);
         tracks.annotations(project, &map, least.annotations);
-        // A broken sound state is a problem already (read above): its rows draw no levels.
-        let levels = dc_fx_audio_tracks::sound(project).unwrap_or_default();
-        for (row, name) in [(Row::Mic, MIC_TRACK), (Row::System, SYSTEM_TRACK)] {
-            if sound.iter().any(|s| s == name) {
-                let off = muted(audio.settings.channels.get(name));
-                let regions = source_sound(project, &map, (name, &levels), off);
-                tracks.add(row, regions, off);
-            }
+        for channel in sounds.channels {
+            let row = if channel.name == MIC_TRACK {
+                Row::Mic
+            } else {
+                Row::System
+            };
+            let regions = channel.regions.into_iter();
+            let regions = regions.filter_map(|s| sounding(project, &map, channel.name, s));
+            tracks.add(row, regions.collect(), channel.off);
         }
-        tracks.extra_sound(&audio, least.audio);
+        for (track, regions) in (0..).zip(sounds.extra) {
+            let regions = regions.into_iter();
+            let regions = regions.filter_map(|s| sounding(project, &map, "", s));
+            tracks.add(Row::Audio(track), regions.collect(), false);
+        }
         tracks
-    }
-
-    /// State of `E`; a broken one is a problem and reads as the default.
-    fn read<E: Effect>(&mut self, project: &Project) -> E::State {
-        project.state::<E>().unwrap_or_else(|e| {
-            self.problems.push(e.to_string());
-            E::State::default()
-        })
     }
 
     /// The chips of the «Клавиши» row and the panel's facts from the shortcuts `keys` of the
@@ -198,7 +192,7 @@ impl Tracks {
     fn clips(&mut self, project: &Project, map: &TimeMap) {
         let mut regions = Vec::new();
         for clip in &project.clips {
-            let Some(range) = clip_span(map, clip.id) else {
+            let Some(range) = map.clip_span(clip.id) else {
                 continue;
             };
             let segments: Vec<_> = map
@@ -244,26 +238,6 @@ impl Tracks {
         }
         self.keys = rows.keys;
     }
-
-    /// Extra sound rows up to the highest used track, at least `least`.
-    fn extra_sound(&mut self, state: &AudioState, least: u32) {
-        let used = state.clips.iter().map(|c| c.track + 1).max().unwrap_or(0);
-        let count = used.max(least.min(AUDIO_TRACKS));
-        for track in 0..count {
-            let regions = state
-                .clips
-                .iter()
-                .filter(|c| c.track == track)
-                .map(|c| Region {
-                    faded: c.muted,
-                    item: Some(Item::of(c.id)),
-                    wave: Some(wave::extra(c)),
-                    ..region(c.range, file_name(&c.file.path))
-                })
-                .collect();
-            self.add(Row::Audio(track), regions, false);
-        }
-    }
 }
 
 pub(super) fn region(range: Range<Output>, label: String) -> Region {
@@ -279,50 +253,23 @@ pub(super) fn region(range: Range<Output>, label: String) -> Region {
     }
 }
 
-/// Where clip `id` plays: its segments follow each other on the output.
-fn clip_span(map: &TimeMap, id: ClipId) -> Option<Range<Output>> {
-    let mut segments = map.segments().iter().filter(|s| s.clip == id);
-    let first = segments.next()?;
-    let end = segments.next_back().unwrap_or(first).output_end();
-    Range::new(first.output_start, end).ok()
-}
-
-/// The sound track `name` of every recording clip at its `levels`; pale where the clip is
-/// silent.
-fn source_sound(
-    project: &Project,
-    map: &TimeMap,
-    (name, levels): (&str, &Sound),
-    all_off: bool,
-) -> Vec<Region> {
-    let mut regions = Vec::new();
-    for clip in &project.clips {
-        if clip.media.kind != MediaKind::Recording {
-            continue;
+/// A sound region of the audio lane with its wave; a recording track plays track `name`.
+fn sounding(project: &Project, map: &TimeMap, name: &str, sound: Sounding) -> Option<Region> {
+    let (clip, wave) = match sound.plays {
+        Plays::Clip(id) => {
+            let media = &project.clips.iter().find(|c| c.id == id)?.media;
+            (Some(id), wave::recording(map, id, media, name, sound.level))
         }
-        let Some(range) = clip_span(map, clip.id) else {
-            continue;
-        };
-        let own = clip.audio.channels.get(name).and_then(|l| l.muted);
-        let faded = clip.audio.muted || own.unwrap_or(all_off);
-        let level = levels
-            .clips
-            .iter()
-            .find(|c| c.clip == clip.id)
-            .and_then(|c| c.channels.get(name))
-            .map_or(1.0, |l| (l.volume * l.gain) as f32);
-        regions.push(Region {
-            faded,
-            clip: Some(clip.id),
-            wave: Some(wave::recording(map, clip.id, &clip.media, name, level)),
-            ..region(range, String::new())
-        });
-    }
-    regions
-}
-
-fn muted(levels: Option<&ChannelLevels>) -> bool {
-    levels.and_then(|l| l.muted).unwrap_or(false)
+        Plays::File { path, offset } => {
+            let range = sound.region.range;
+            (None, wave::file(path, range, offset, sound.level))
+        }
+    };
+    Some(Region {
+        clip,
+        wave: Some(wave),
+        ..Region::from(sound.region)
+    })
 }
 
 /// «music.mp3» of «assets/audio/music.mp3».

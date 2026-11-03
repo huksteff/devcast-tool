@@ -93,7 +93,8 @@ fn extra_sound_plays_its_file_from_the_offset_at_its_level() {
     let state = p.state::<dc_fx_audio_tracks::Audio>().unwrap();
     let mut clip = state.clips[0].clone();
     clip.offset = TimeDelta::from_secs_f64(10.0);
-    let wave = wave::extra(&clip);
+    let level = (clip.volume / 100.0 * clip.gain) as f32;
+    let wave = wave::file(clip.file.path.clone(), clip.range, clip.offset, level);
     assert_eq!(wave.source, Source::File(clip.file.path.clone()));
     assert!((wave.level - 0.3).abs() < 1e-6, "volume 30 %");
     let columns = wave::columns(&wave, &scale(10.0), 0.0, 4.0);

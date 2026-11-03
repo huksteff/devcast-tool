@@ -43,6 +43,9 @@ pub fn import_picture(
 }
 
 impl PictureImport {
+    /// The name of its command in the history.
+    pub const NAME: &'static str = ImageSet::NAME;
+
     /// Deletes the copy this import made: the command was refused.
     pub fn discard(&self) -> Result<(), DiscardError> {
         let Some(file) = &self.copy else {

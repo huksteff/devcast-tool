@@ -8,8 +8,7 @@ use dc_audio::frame_at;
 use dc_audio::peaks::Peaks;
 use dc_core::project::Media;
 use dc_core::time::Output;
-use dc_core::{ClipId, OutputTime, Range, TimeMap};
-use dc_fx_audio_tracks::AudioClip;
+use dc_core::{ClipId, OutputTime, Range, TimeDelta, TimeMap};
 use eframe::egui::{Color32, Painter, Rect, Stroke};
 
 use super::scale::TimeScale;
@@ -75,16 +74,17 @@ pub fn recording(map: &TimeMap, clip: ClipId, media: &Media, name: &str, level: 
     }
 }
 
-/// An extra sound clip: its file from `offset` at 1× (cuts do not touch it).
-pub fn extra(clip: &AudioClip) -> Wave {
+/// An extra sound file (`path` in the project) at `output`, from `offset` of it at 1× (cuts do
+/// not touch it).
+pub fn file(path: String, output: Range<Output>, offset: TimeDelta, level: f32) -> Wave {
     Wave {
-        source: Source::File(clip.file.path.clone()),
+        source: Source::File(path),
         spans: vec![Span {
-            output: clip.range,
-            from: clip.offset.micros(),
+            output,
+            from: offset.micros(),
             speed: 1.0,
         }],
-        level: (clip.volume / 100.0 * clip.gain) as f32,
+        level,
     }
 }
 
