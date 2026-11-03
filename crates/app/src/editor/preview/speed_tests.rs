@@ -1,5 +1,6 @@
 //! How fast the render thread draws frames one after another, as playback asks for them: the
-//! fixture recording (720p60 with its telemetry) and a synthetic 1080p60 video, on the real GPU.
+//! fixture recording (720p60 with its telemetry) and synthetic 1080p60 and 4K60 videos, on the
+//! real GPU.
 //! A measurement, not a check: `cargo nextest run -p dc-app --run-ignored only playback_speed
 //! --no-capture` (and with `--release`).
 
@@ -31,16 +32,17 @@ fn ffmpeg(args: &[&str]) {
     assert!(status.success(), "ffmpeg {args:?}");
 }
 
-/// A project of one imported 1080p60 `testsrc2` video, GOP 1 s like our recordings.
-fn full_hd(root: &Path) -> (ProjectDir, Project) {
-    let dir = ProjectDir::create(root.join("1080p.devcast")).unwrap();
+/// A project of one imported 60 fps `testsrc2` video of `size`, GOP 1 s like our recordings.
+fn synthetic(root: &Path, size: PixelSize) -> (ProjectDir, Project) {
+    let name = format!("{}p.devcast", size.height);
+    let dir = ProjectDir::create(root.join(name)).unwrap();
     std::fs::create_dir_all(dir.root().join("media")).unwrap();
     let video = dir.root().join("media").join("screen.mp4");
     ffmpeg(&[
         "-f",
         "lavfi",
         "-i",
-        "testsrc2=s=1920x1080:r=60:d=8",
+        &format!("testsrc2=s={}x{}:r=60:d=8", size.width, size.height),
         "-c:v",
         "libx264",
         "-g",
@@ -61,10 +63,7 @@ fn full_hd(root: &Path) -> (ProjectDir, Project) {
             path: "media/screen.mp4".to_owned(),
             kind: MediaKind::Imported,
             duration: TimeDelta::from_secs_f64(secs),
-            size: PixelSize {
-                width: 1920,
-                height: 1080,
-            },
+            size,
         },
         trim: range,
         cuts: Vec::new(),
@@ -134,11 +133,18 @@ fn playback_speed() {
     };
     let fps = measure(&gpu, &dir, project, hd);
     println!("clicks.devcast 720p60 with cursor: {fps:.0} frames/s");
-    let (dir, project) = full_hd(temp.path());
     let full = PixelSize {
         width: 1920,
         height: 1080,
     };
+    let (dir, project) = synthetic(temp.path(), full);
     let fps = measure(&gpu, &dir, project, full);
     println!("testsrc2 1080p60: {fps:.0} frames/s");
+    let uhd = PixelSize {
+        width: 3840,
+        height: 2160,
+    };
+    let (dir, project) = synthetic(temp.path(), uhd);
+    let fps = measure(&gpu, &dir, project, full);
+    println!("testsrc2 4K60 into a 1080p preview: {fps:.0} frames/s");
 }

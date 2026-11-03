@@ -96,7 +96,7 @@ pub(super) struct Recorded {
 }
 
 /// A copy of `clicks.devcast` saved under `parent/name.devcast`, as a stop leaves it.
-fn copy(parent: &Path, name: &str) -> ProjectDir {
+pub(super) fn copy(parent: &Path, name: &str) -> ProjectDir {
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/clicks.devcast");
     let source = ProjectDir::open(fixture).unwrap();

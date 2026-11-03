@@ -56,6 +56,8 @@ mod export_tests;
 #[cfg(test)]
 mod generation_tests;
 #[cfg(test)]
+mod idle_tests;
+#[cfg(test)]
 mod keys_tests;
 #[cfg(test)]
 mod live_tests;
@@ -67,6 +69,8 @@ mod test_project;
 mod tests;
 #[cfg(test)]
 mod timeline_window_tests;
+#[cfg(test)]
+mod ui_speed_tests;
 #[cfg(test)]
 mod waves_tests;
 
