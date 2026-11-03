@@ -15,7 +15,6 @@ mod annot_shape;
 mod annot_text;
 mod annotation;
 mod annotation_rows;
-mod callout;
 mod captions;
 mod captions_style;
 mod click;

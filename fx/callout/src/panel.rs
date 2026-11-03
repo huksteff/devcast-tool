@@ -3,22 +3,20 @@
 //! (`callout set`); the text of «Вкл» is the project's one for every «Вкл» (`callout style
 //! --text`). «Стиль облачка» — the look of every callout of the project (`callout style`), its
 //! «Сбросить» brings the look (not the text of «Вкл») to the defaults with one undo step.
+//! The panel needs no facts of the editor: the event and the look are in the project.
 
-use dc_fx_callout::{
-    Action as Kind, Callout, CalloutEvent, CalloutSettings, EventId, GLOW_MAX, SIZE_MAX, SIZE_MIN,
-    TEXT_MAX,
-};
-use dc_ops::Step;
+use dc_core::{Effect, Project, Step};
 use dc_render::Rgba;
+use dc_ui_kit::egui::Ui;
+use dc_ui_kit::panel::{Cx, Group, args, padded, reset, rows};
 use dc_ui_kit::strings::{inspector as names, timeline as rows_text};
-use eframe::egui::Ui;
 use serde_json::{Map, Value, json};
 
-use super::{Cx, Group, args, padded, reset, rows};
-use crate::editor::Action;
+use crate::{Action as Kind, Callout, CalloutEvent, CalloutSettings, EventId, GLOW_MAX};
+use crate::{SIZE_MAX, SIZE_MIN, TEXT_MAX};
 
 /// Id of the callout panel in the remembered groups.
-pub const ID: &str = "callout";
+pub const ID: &str = Callout::ID;
 const SET: &str = "callout set";
 const STYLE: &str = "callout style";
 /// Bounds of the typing or erasing time on its slider, seconds; the command takes any length.
@@ -40,15 +38,15 @@ const ACTIONS: [(Does, &str); 3] = [
 ];
 
 /// The event `id` of the project and the look of every callout.
-fn read(cx: &Cx<'_>, id: EventId) -> Option<(CalloutEvent, CalloutSettings)> {
-    let state = cx.base.project.state::<Callout>().ok()?;
+fn read(project: &Project, id: EventId) -> Option<(CalloutEvent, CalloutSettings)> {
+    let state = project.state::<Callout>().ok()?;
     let event = state.events.into_iter().find(|e| e.id == id)?;
     Some((event, state.settings))
 }
 
 /// The title and the subtitle of the header of event `id` that starts at `at` of the output.
-pub fn about(cx: &Cx<'_>, id: EventId, at: &str) -> Option<(&'static str, String)> {
-    let (event, _) = read(cx, id)?;
+pub fn about(project: &Project, id: EventId, at: &str) -> Option<(&'static str, String)> {
+    let (event, _) = read(project, id)?;
     let (title, what) = match event.action {
         Kind::On => (names::CALLOUT_ON, names::CALLOUT_LENGTH),
         Kind::Text { .. } => (names::CALLOUT_TEXT, names::CALLOUT_TYPING),
@@ -58,8 +56,10 @@ pub fn about(cx: &Cx<'_>, id: EventId, at: &str) -> Option<(&'static str, String
     Some((title, names::callout_about(at, what, &length)))
 }
 
+/// The groups of event `id` under the header the editor draws (`about`); edits go to
+/// `cx.edits`.
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: EventId) {
-    let Some((event, now)) = read(cx, id) else {
+    let Some((event, now)) = read(cx.project, id) else {
         return;
     };
     let default = match cx.defaults_of::<Callout>() {
@@ -69,7 +69,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: EventId) {
             return;
         }
     };
-    cx.base.groups.panel(ID);
+    cx.groups.panel(ID);
     let group = Group {
         id: "event",
         title: names::CALLOUT_EVENT,
@@ -99,20 +99,20 @@ fn event_rows(ui: &mut Ui, cx: &mut Cx<'_>, event: &CalloutEvent, now: &CalloutS
         Kind::Off => Does::Off,
     };
     if let Some(new) = rows::choice(ui, names::CALLOUT_ACTION, Some(does), &ACTIONS) {
-        cx.actions.push(switch(id, new, now));
+        cx.edits.push(vec![switch(id, new, now)]);
     }
     match &event.action {
         Kind::On => {
             let apply = |text: String| step(STYLE, [("text", json!(text))]);
             if let Some(step) = rows::text(ui, names::CALLOUT_TEXT_HINT, id, &now.text, apply) {
-                cx.actions.push(Action::Apply(vec![step]));
+                cx.edits.push(vec![step]);
             }
             rows::note(ui, names::CALLOUT_ON_NOTE);
         }
         Kind::Text { text } => {
-            let apply = |new: String| step(SET, [("id", json!(id)), ("text", json!(new))]);
+            let apply = |new: String| set(id, [("text", json!(new))]);
             if let Some(step) = rows::text(ui, names::CALLOUT_TEXT_HINT, id, text, apply) {
-                cx.actions.push(Action::Apply(vec![step]));
+                cx.edits.push(vec![step]);
             }
             rows::note(ui, &names::callout_count(text.chars().count(), TEXT_MAX));
             time_row(ui, cx, event, names::CALLOUT_TIME);
@@ -128,12 +128,12 @@ fn time_row(ui: &mut Ui, cx: &mut Cx<'_>, event: &CalloutEvent, label: &str) {
     let seconds = event.duration.as_secs_f64();
     let step = (0.1, names::SECONDS);
     if let Some(v) = rows::slider(ui, label, seconds, TIME_MIN..=TIME_MAX, step) {
-        cx.actions.push(set(event.id, [("duration", json!(v))]));
+        cx.edits.push(vec![set(event.id, [("duration", json!(v))])]);
     }
 }
 
 /// The event becomes `does`; a «Текст» gets the text of «Вкл», or a word when there is none.
-fn switch(id: EventId, does: Does, now: &CalloutSettings) -> Action {
+fn switch(id: EventId, does: Does, now: &CalloutSettings) -> Step {
     match does {
         Does::On => set(id, [("action", json!("on"))]),
         Does::Off => set(id, [("action", json!("off"))]),
@@ -154,23 +154,23 @@ fn style_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &CalloutSettings) {
     ];
     if let Some((i, color)) = rows::colors(ui, names::CALLOUT_COLORS, &colors) {
         let field = if i == 0 { "background" } else { "text_color" };
-        cx.actions.push(style(field, json!(color)));
+        cx.apply(STYLE, [(field, json!(color))]);
     }
     let size = (0.05, names::TIMES);
     if let Some(v) = rows::slider(ui, names::CALLOUT_SIZE, now.size, SIZE_MIN..=SIZE_MAX, size) {
-        cx.actions.push(style("size", json!(v)));
+        cx.apply(STYLE, [("size", json!(v))]);
     }
     if let Some(on) = rows::toggle(ui, names::CALLOUT_GRADIENT, now.gradient) {
-        cx.actions.push(style("gradient", json!(on)));
+        cx.apply(STYLE, [("gradient", json!(on))]);
     }
     if now.gradient
         && let Some(colors) = rows::gradient(ui, names::CALLOUT_GRADIENT, now.colors.colors())
     {
-        cx.actions.push(style("colors", json!(joined(&colors))));
+        cx.apply(STYLE, [("colors", json!(joined(&colors)))]);
     }
     let glow = (1.0, "");
     if let Some(v) = rows::slider(ui, names::CALLOUT_GLOW, now.glow, 0.0..=GLOW_MAX, glow) {
-        cx.actions.push(style("glow", json!(v)));
+        cx.apply(STYLE, [("glow", json!(v))]);
     }
 }
 
@@ -180,13 +180,10 @@ fn step<const N: usize>(op: &str, fields: [(&'static str, Value); N]) -> Step {
 }
 
 /// `callout set <id> --<field> <value> …`.
-fn set<const N: usize>(id: EventId, fields: [(&'static str, Value); N]) -> Action {
-    Action::op(SET, std::iter::once(("id", json!(id))).chain(fields))
-}
-
-/// `callout style --<field> <value>`.
-fn style(field: &'static str, value: Value) -> Action {
-    Action::op(STYLE, [(field, value)])
+fn set<const N: usize>(id: EventId, fields: [(&'static str, Value); N]) -> Step {
+    let id = std::iter::once(("id".to_owned(), json!(id)));
+    let rest = fields.into_iter().map(|(k, v)| (k.to_owned(), v));
+    Step::new(SET, id.chain(rest).collect())
 }
 
 /// `#14b8c4ff,#a855f7ff`: the colours as `callout style --colors` takes them.

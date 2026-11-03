@@ -1,9 +1,10 @@
 //! Cursor callout bubble: events «on», «text», «off» on the timeline of each recording, the typed
-//! text and the look of the bubble.
+//! text, the look of the bubble and the inspector panel of an event (`panel`).
 
 mod commands;
 mod evaluate;
 mod model;
+pub mod panel;
 mod resolve;
 mod style;
 mod text;
@@ -33,6 +34,8 @@ pub fn effect() -> EffectInfo {
     EffectInfo::of::<Callout>(vec![EventKind::PREFIX])
 }
 
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod resolve_tests;
 #[cfg(test)]
