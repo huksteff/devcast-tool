@@ -11,11 +11,11 @@ use dc_ui_kit::strings::annotations as text;
 use eframe::egui::{Event, Modifiers, pos2};
 use egui_kittest::kittest::Queryable;
 
-use super::brush::diameter;
 use super::tests::{at, drafted, drag, frame, hold, on_screen, release, started};
 use crate::editor::Action;
 use crate::editor::editing_tests::json;
 use crate::editor::inspector::tests::{H, cli, pick, project_json, step, undo};
+use crate::editor::lanes::brush::diameter;
 use crate::editor::selection::{Item, Selected};
 use dc_ui_kit::stage::geom::Mapping;
 

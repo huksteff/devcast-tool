@@ -152,8 +152,9 @@
     - [x] Субтитры: строка реплик — `dc_fx_captions::lane::row` (`lane::Row`: регионы и «выключен»). Распознавание остаётся в редакторе (`generation.rs`, решение 018).
     - [x] Аннотации: строки и ключи (`lane::rows`, было `tracks.rs`, `marks::shown`), новая (призрак, T), удаление и перестановка строк (`lane::retrack`, было `rows.rs`), вставка ключа (`key_copied`), подсказка ключа (`lane::tip`, было `key_tip.rs`; поля видов — регистрация `lanes::kind_fields`) — `dc_fx_annotations::lane`. Id аннотации и `same_moment` редактор берёт из `lanes::annotations`.
     - [x] Звук: строки дорожек записей и доп. звука (`lane::rows`: `Channel`, `Sounding` с `Plays` и уровнем; волну строит редактор, `wave::file`), удаление строки (`remove_track`) и mute дорожки (`mute`) — `dc_fx_audio_tracks::lane`; место клипа на выходе — `TimeMap::clip_span` (dc-core, общий с регионами клипов); имя команды импорта — `dc_ops::SoundImport::NAME`, `PictureImport::NAME`.
-  - [ ] Жесты на превью (`stage/`) тем же образом.
+  - [x] Жесты на превью (`stage/`) тем же образом.
     - [x] Набор превью `dc_ui_kit::stage` (`geom`, `snap`, `paint` и `geom_tests` из `editor/stage/`), ответ жеста `stage::Answer`; рамка зума — `dc_fx_zoom::stage` (было `stage/zoom.rs`).
+    - [x] Боксы аннотаций — `dc_fx_annotations::stage` (`shown`, жест `Drag`: перенос, ручки, поворот, привязка, `annot set`; `cursor`), кисть — `dc_fx_drawing::stage` (`Brushing`, `pick`, `hover`, `bar`, `is_drawing`). У редактора осталось общее: выбор по клику, какой жест идёт, черновик и конец жеста (`stage/annot.rs`, `brush.rs`).
   - [ ] Правило `xtask verify` «нет кода эффектов в редакторе» — после переноса всех.
 
 **Готово, когда:** все фичи из `features.json` в статусе pass на Windows.

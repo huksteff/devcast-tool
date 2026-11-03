@@ -6,6 +6,7 @@ mod commands;
 mod evaluate;
 mod model;
 mod panel;
+pub mod stage;
 
 pub use commands::{DrawingAdd, DrawingClear, DrawingRm, DrawingSet};
 pub use evaluate::evaluate;

@@ -3,9 +3,9 @@
 //! makes it act.
 
 use super::lanes::annotations::AnnotId;
+use super::lanes::brush::{ERASER_WIDTH, StrokeTool};
 use dc_core::time::Output;
 use dc_core::{ClipId, OutputTime, Range};
-use dc_fx_drawing::{ERASER_WIDTH, StrokeTool};
 use eframe::egui::Pos2;
 
 use super::clipboard::Clipboard;

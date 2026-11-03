@@ -15,6 +15,7 @@ pub mod panel;
 mod panel_rows;
 mod place;
 mod span;
+pub mod stage;
 
 pub use animate::AnnotAnim;
 pub use arrange::{AnnotLayer, AnnotMove, AnnotPaste, Step};

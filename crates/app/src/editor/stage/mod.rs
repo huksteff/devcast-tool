@@ -26,6 +26,8 @@ use dc_ui_kit::stage::geom::Mapping;
 use dc_ui_kit::strings::editor as text;
 use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo};
 
+use super::lanes::boxes;
+use super::lanes::brush::Brushing;
 use super::lanes::zoom_frame::{self, ZoomId};
 use super::selection::Selected;
 use super::{Action, EditorWindow};
@@ -34,8 +36,8 @@ use super::{Action, EditorWindow};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Drag {
     Zoom(zoom_frame::Drag),
-    Annot(annot::AnnotDrag),
-    Brush(brush::BrushDrag),
+    Annot(boxes::Drag),
+    Brush(Brushing),
 }
 
 impl Drag {
