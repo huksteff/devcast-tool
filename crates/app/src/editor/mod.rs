@@ -320,11 +320,7 @@ pub fn editor_ui(
     }
     editor.receive();
     keys::run(ui, editor);
-    let volume = (editor.view.volume / 100.0) as f32;
-    let tick = editor.playback.tick(now, editor.end(), volume);
-    if let Some(at) = tick.at {
-        editor.view.playhead = at;
-    }
+    let sound_error = playback::advance(editor, now);
     let mut open_settings = None;
     egui::Panel::top("editor-header")
         .exact_size(HEADER)
@@ -369,17 +365,13 @@ pub fn editor_ui(
     crop::show(ui, editor);
     export::show(ui, editor);
     let (done, failed) = export::ended(editor);
-    let mut errors: Vec<String> = tick.error.into_iter().collect();
+    let mut errors: Vec<String> = sound_error.into_iter().collect();
     errors.extend(failed);
     errors.extend(closing::show(ui, editor));
     errors.extend(recovery::show(ui, editor, now));
     errors.extend(projects::save_as(ui, editor));
     errors.extend(actions::run(ui, editor, now));
-    if editor.playback.is_playing() {
-        // Decision 002: while playing, a repaint per frame step; paused, nothing runs.
-        ui.ctx()
-            .request_repaint_after(std::time::Duration::from_secs_f64(1.0 / editor.fps));
-    }
+    playback::keep_playing(ui, editor);
     Outcome {
         open_settings,
         layout: timeline.map_or(layout, |t| EditorLayout {

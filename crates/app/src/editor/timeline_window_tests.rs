@@ -218,3 +218,37 @@ fn a_place_off_the_monitors_is_forgotten() {
         "middle at 3280 px"
     );
 }
+
+#[test]
+fn the_window_plays_while_the_editor_gets_no_frames() {
+    let (_project, _settings, both) = shared();
+    let from = OutputTime::from_secs_f64(10.0);
+    edited(&both, |e| {
+        e.detach(true);
+        let started = std::time::Instant::now() - Duration::from_secs(1);
+        assert_eq!(e.playback.play(from, started), None);
+    });
+    let ctx = egui::Context::default();
+    let pass = || {
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            frame(ui, &mut lock(&both));
+        });
+        output.textures_delta.clear();
+        output.viewport_output[&egui::ViewportId::ROOT].repaint_delay
+    };
+    let delay = (0..5).map(|_| pass()).next_back().unwrap();
+    let shared = lock(&both);
+    let e = shared.editor.as_ref().unwrap();
+    assert!(
+        (11.0..20.0).contains(&e.view.playhead.as_secs_f64()),
+        "the window's own frame moves the playhead from 10 s (editor minimized)"
+    );
+    assert!(
+        !e.detached.wake_editor,
+        "playing alone does not repaint the other window"
+    );
+    assert!(
+        delay <= Duration::from_millis(100),
+        "the window asks for its next frame itself: {delay:?}"
+    );
+}

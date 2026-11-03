@@ -18,7 +18,7 @@ use dc_ui_kit::tokens::SURFACE;
 use eframe::egui::{self, Frame, Ui, Vec2, pos2, vec2};
 
 use super::timeline::{self, Place};
-use super::{EditorWindow, View, actions, keys};
+use super::{EditorWindow, View, actions, keys, playback};
 use crate::app::{Shared, lock, other_window};
 use crate::settings::{EditorLayout, WindowPlace};
 
@@ -63,10 +63,16 @@ impl EditorWindow {
         let scrub = view.timeline.scrub.is_some();
         view.timeline = timeline::Viewport::default();
         view.parked = timeline::Viewport::default();
+        let playing = self.playback.is_playing();
+        if playing {
+            // Each window moves the playhead itself while playing (`playback::advance`); marking
+            // the other one for it would repaint both without end.
+            view.playhead = dc_core::OutputTime::ZERO;
+        }
         Mark {
             view,
             scrub,
-            playing: self.playback.is_playing(),
+            playing,
             open: self.detached.open,
             revision: self.preview.project().1,
         }
@@ -190,13 +196,16 @@ pub fn frame(ui: &mut Ui, shared: &mut Shared) {
     let now = Instant::now();
     editor.receive();
     keys::run(ui, editor);
+    let sound_error = playback::advance(editor, now);
     let rows = egui::CentralPanel::no_frame()
         .frame(Frame::new().fill(SURFACE))
         .show(ui, |ui| {
             timeline::ui(ui, editor, layout.rows, Place::Window)
         })
         .inner;
-    let errors = actions::run(ui, editor, now);
+    let mut errors: Vec<String> = sound_error.into_iter().collect();
+    errors.extend(actions::run(ui, editor, now));
+    playback::keep_playing(ui, editor);
     editor.detached.place = ui.input(|i| {
         let viewport = i.viewport();
         let (outer, inner) = (viewport.outer_rect?, viewport.inner_rect?);

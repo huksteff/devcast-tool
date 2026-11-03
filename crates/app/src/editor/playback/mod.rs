@@ -16,7 +16,9 @@ use dc_audio::Off;
 use dc_core::{OutputTime, Project};
 use dc_project::ProjectDir;
 use dc_ui_kit::strings::editor as text;
+use eframe::egui::Ui;
 
+use super::EditorWindow;
 use clock::{Clock, Pace};
 use sound::{Sound, Start};
 
@@ -136,6 +138,27 @@ impl Playback {
 impl Drop for Playback {
     fn drop(&mut self) {
         self.close();
+    }
+}
+
+/// A frame of either editor window moves the playhead to the clock at `now`: a window keeps
+/// playing while the other one is minimized and gets no frames (7.26). Why the sound stopped,
+/// for a toast.
+pub fn advance(editor: &mut EditorWindow, now: Instant) -> Option<String> {
+    let volume = (editor.view.volume / 100.0) as f32;
+    let tick = editor.playback.tick(now, editor.end(), volume);
+    if let Some(at) = tick.at {
+        editor.view.playhead = at;
+    }
+    tick.error
+}
+
+/// At the end of a frame of either editor window: while playing, its next frame in a frame step
+/// (decision 002); paused, nothing runs.
+pub fn keep_playing(ui: &Ui, editor: &EditorWindow) {
+    if editor.playback.is_playing() {
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_secs_f64(1.0 / editor.fps));
     }
 }
 
