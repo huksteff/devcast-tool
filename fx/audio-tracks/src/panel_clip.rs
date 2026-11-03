@@ -2,35 +2,32 @@
 //! «Микрофон» / «Системный звук»: «Весь клип» — sound or silence (`audio mute`), then per track
 //! of the clip its own volume, gain, mute, normalization and, for the microphone, noise
 //! suppression (`audio channel <track> --clip`). A recording's tracks are `mic` and `system`, an
-//! imported video's `audio-1`, `audio-2` … (`editor/streams.rs`). A level the
-//! clip never set follows the track's default (decision 000); the caption of the track names
-//! the levels of its own. «Сбросить» — `audio reset` (every level back to the defaults) and
-//! sound on, one undo step.
+//! imported video's `audio-1`, `audio-2` … ([`Sources::streams`]). A level the clip never set
+//! follows the track's default (decision 000); the caption of the track names the levels of its
+//! own. «Сбросить» — `audio reset` (every level back to the defaults) and sound on, one undo
+//! step.
 
-use dc_core::{Clip, ClipId, project::MediaKind};
-use dc_fx_audio_tracks::{Audio, DENOISED};
-use dc_ops::Step;
+use dc_core::{ChannelLevels, Clip, ClipId, Step, project::MediaKind};
+use dc_ui_kit::egui::Ui;
+use dc_ui_kit::panel::{Cx, Group, rows};
 use dc_ui_kit::strings::sound as text;
-use eframe::egui::Ui;
 use serde_json::{Map, json};
 
-use super::sound::{self, Levels};
-use super::{Cx, Group, rows};
-use crate::editor::Action;
-use crate::editor::streams::Imported;
+use crate::panel::{self, Levels, Sources};
+use crate::{Audio, DENOISED};
 
-pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: ClipId) {
-    let Some(clip) = cx.base.project.clips.iter().find(|c| c.id == id).cloned() else {
+/// The panel of clip `id` under the header the editor draws; edits go to `cx.edits`.
+pub fn clip(ui: &mut Ui, cx: &mut Cx<'_>, id: ClipId, sources: &Sources<'_>) {
+    let Some(clip) = cx.project.clips.iter().find(|c| c.id == id).cloned() else {
         return;
     };
     // A broken sound state is a problem the timeline shows already: the defaults read neutral.
     let defaults = cx
-        .base
         .project
         .state::<Audio>()
         .map(|s| s.settings.channels)
         .unwrap_or_default();
-    cx.base.groups.panel(sound::ID);
+    cx.groups.panel(panel::ID);
     let group = Group {
         id: "clip",
         title: text::CLIP_SOUND,
@@ -41,9 +38,9 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: ClipId) {
         let sounding = !clip.audio.muted;
         let options = [(true, text::SOUND_ON), (false, text::SOUND_OFF)];
         if let Some(on) = rows::choice(ui, text::WHOLE_CLIP, Some(sounding), &options) {
-            cx.actions.push(mute(id, !on));
+            cx.edits.push(vec![mute(id, !on)]);
         }
-        let Some(tracks) = tracks(cx, &clip) else {
+        let Some(tracks) = tracks(sources, &clip) else {
             return;
         };
         if clip.media.kind == MediaKind::Imported && tracks.is_empty() {
@@ -63,22 +60,20 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: ClipId) {
 
 /// The tracks of `clip`, (name, title): the recording's microphone and system sound, an imported
 /// video's `audio-N` once read (`None` until then).
-fn tracks(cx: &Cx<'_>, clip: &Clip) -> Option<Vec<(String, String)>> {
+fn tracks(sources: &Sources<'_>, clip: &Clip) -> Option<Vec<(String, String)>> {
     match clip.media.kind {
         MediaKind::Recording => Some(
-            sound::recorded(cx.sound)
+            panel::recorded(sources.recorded)
                 .map(|(name, title)| (name.to_owned(), title.to_owned()))
                 .collect(),
         ),
-        MediaKind::Imported => {
-            let names = cx.streams.get(&Imported(clip.media.clone()))?;
-            Some(
-                names
-                    .iter()
-                    .map(|name| (name.clone(), text::video_track(name)))
-                    .collect(),
-            )
-        }
+        MediaKind::Imported => Some(
+            sources
+                .streams?
+                .iter()
+                .map(|name| (name.clone(), text::video_track(name)))
+                .collect(),
+        ),
     }
 }
 
@@ -87,35 +82,35 @@ fn track(
     ui: &mut Ui,
     cx: &mut Cx<'_>,
     (clip, name, title): (&Clip, &str, &str),
-    own: &dc_core::ChannelLevels,
-    default: &dc_core::ChannelLevels,
+    own: &ChannelLevels,
+    default: &ChannelLevels,
 ) {
     rows::caption(ui, &caption(title, own));
     let now = Levels::of(&own.over(default));
     let id = Some(clip.id);
-    if let Some(v) = sound::volume(ui, text::VOLUME, now.volume) {
-        cx.actions.push(sound::set(name, id, "volume", json!(v)));
+    let mut set = |field: &str, value| cx.edits.push(vec![panel::set(name, id, field, value)]);
+    if let Some(v) = panel::volume(ui, text::VOLUME, now.volume) {
+        set("volume", json!(v));
     }
-    if let Some(v) = sound::gain(ui, text::GAIN, now.gain) {
-        cx.actions.push(sound::set(name, id, "gain", json!(v)));
+    if let Some(v) = panel::gain(ui, text::GAIN, now.gain) {
+        set("gain", json!(v));
     }
     if let Some(on) = rows::toggle(ui, text::SILENT, now.muted) {
-        cx.actions.push(sound::set(name, id, "mute", json!(on)));
+        set("mute", json!(on));
     }
     if let Some(on) = rows::toggle_hint(ui, text::NORMALIZE, now.normalize, text::LUFS) {
-        cx.actions
-            .push(sound::set(name, id, "normalize", json!(on)));
+        set("normalize", json!(on));
     }
     // Only the microphone is denoised (`audio channel` refuses it elsewhere).
     if name == DENOISED
         && let Some(on) = rows::toggle(ui, text::DENOISE, now.denoise)
     {
-        cx.actions.push(sound::set(name, id, "denoise", json!(on)));
+        set("denoise", json!(on));
     }
 }
 
 /// «Микрофон · как у дорожки» or «Микрофон · свои: громкость, усиление».
-fn caption(title: &str, own: &dc_core::ChannelLevels) -> String {
+fn caption(title: &str, own: &ChannelLevels) -> String {
     let fields: Vec<&str> = [
         (own.volume.is_some(), text::OWN_VOLUME),
         (own.gain.is_some(), text::OWN_GAIN),
@@ -133,11 +128,7 @@ fn caption(title: &str, own: &dc_core::ChannelLevels) -> String {
 }
 
 /// `audio mute <clip>`, with `--off` to sound it again.
-fn mute(clip: ClipId, silent: bool) -> Action {
-    Action::Apply(vec![mute_step(clip, silent)])
-}
-
-fn mute_step(clip: ClipId, silent: bool) -> Step {
+fn mute(clip: ClipId, silent: bool) -> Step {
     let mut args = Map::new();
     args.insert("clip".to_owned(), json!(clip));
     if !silent {
@@ -155,7 +146,7 @@ fn reset(clip: &Clip) -> Vec<Step> {
         steps.push(Step::new("audio reset", args));
     }
     if clip.audio.muted {
-        steps.push(mute_step(clip.id, false));
+        steps.push(mute(clip.id, false));
     }
     steps
 }

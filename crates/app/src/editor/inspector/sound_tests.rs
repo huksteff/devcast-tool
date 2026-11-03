@@ -298,3 +298,10 @@ fn duplicate_puts_a_copy_of_the_sound_on_a_free_row_and_picks_it() {
     let expected = crate::editor::editing_tests::undone(&cli(&[]), now);
     assert_eq!(json(now), expected, "one step");
 }
+
+#[test]
+fn the_sound_panels_name_the_tracks_as_the_recorder_does() {
+    use dc_capture::audio::{MIC_TRACK, SYSTEM_TRACK};
+    assert_eq!(dc_fx_audio_tracks::MIC_TRACK, MIC_TRACK);
+    assert_eq!(dc_fx_audio_tracks::SYSTEM_TRACK, SYSTEM_TRACK);
+}

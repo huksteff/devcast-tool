@@ -63,10 +63,23 @@ impl Cx<'_> {
 
     /// A group: its header (chevron, title, «Сбросить») and, when open, `body`.
     pub fn group(&mut self, ui: &mut Ui, group: Group<'_>, body: impl FnOnce(&mut Ui, &mut Self)) {
+        self.group_with(ui, group, |_, _, _| {}, body);
+    }
+
+    /// [`Cx::group`] whose header has one more button: `buttons` gets its place left of
+    /// «Сбросить», one [`BUTTON`] wide (the mute of a sound track).
+    pub fn group_with(
+        &mut self,
+        ui: &mut Ui,
+        group: Group<'_>,
+        buttons: impl FnOnce(&mut Ui, &mut Self, Rect),
+        body: impl FnOnce(&mut Ui, &mut Self),
+    ) {
         let mut head = self.groups.head(ui, group);
         if let Some(reset) = head.reset.take() {
             self.edits.push(reset);
         }
+        buttons(ui, self, head.more);
         head.body(ui, |ui| body(ui, self));
     }
 }

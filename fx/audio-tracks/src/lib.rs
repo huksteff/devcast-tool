@@ -4,13 +4,17 @@
 //!
 //! The model and commands live here; the mixing is dc-audio's. [`sound`] gives the levels in
 //! effect as plain data, and the caller turns them into the mixer's input.
+//! The inspector panels of the sound — the «Звук» tab, a clip, an extra sound — are [`panel`].
 
 mod channel;
 mod clips;
 mod model;
+pub mod panel;
+mod panel_clip;
+mod panel_extra;
 mod sound;
 
-pub use channel::{AudioChannel, AudioMute, AudioReset, DENOISED};
+pub use channel::{AudioChannel, AudioMute, AudioReset, DENOISED, MIC_TRACK, SYSTEM_TRACK};
 pub use clips::{AudioAdd, AudioPaste, AudioRm, AudioSet};
 pub use model::{
     AUDIO_DIR, Audio, AudioClip, AudioId, AudioKind, AudioSettings, AudioState, MIN_LENGTH,
@@ -38,5 +42,7 @@ pub fn effect() -> EffectInfo {
 
 #[cfg(test)]
 mod clips_tests;
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod tests;

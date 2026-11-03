@@ -1417,6 +1417,8 @@ name = "dc-fx-audio-tracks"
 version = "0.1.0"
 dependencies = [
  "dc-core",
+ "dc-ui-kit",
+ "egui_kittest",
  "schemars",
  "serde",
  "serde_json",

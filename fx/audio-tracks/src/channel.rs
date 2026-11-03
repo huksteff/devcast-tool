@@ -11,8 +11,12 @@ use serde::Deserialize;
 
 use crate::model::Audio;
 
+/// The sound tracks of a recording (`dc_capture::audio::MIC_TRACK`, `SYSTEM_TRACK`).
+pub const MIC_TRACK: &str = "mic";
+pub const SYSTEM_TRACK: &str = "system";
+
 /// The only sound track whose noise is suppressed: the microphone of a recording.
-pub const DENOISED: &str = "mic";
+pub const DENOISED: &str = MIC_TRACK;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -169,7 +173,7 @@ fn check_name(name: &str) -> Result<(), CommandError> {
     let imported = name
         .strip_prefix("audio-")
         .is_some_and(|n| n.parse::<u32>().is_ok_and(|n| n > 0) && !n.starts_with('0'));
-    if matches!(name, "system" | "mic") || imported {
+    if matches!(name, SYSTEM_TRACK | MIC_TRACK) || imported {
         return Ok(());
     }
     Err(CommandError::new(format!(
@@ -190,7 +194,7 @@ fn check_denoise(name: &str, denoise: Option<bool>) -> Result<(), CommandError> 
 
 /// A recording has `system` and `mic`, an imported video `audio-<n>`.
 fn check_track(clip: &Clip, name: &str) -> Result<(), CommandError> {
-    let recording = matches!(name, "system" | "mic");
+    let recording = matches!(name, SYSTEM_TRACK | MIC_TRACK);
     match (clip.media.kind, recording) {
         (MediaKind::Recording, true) | (MediaKind::Imported, false) => Ok(()),
         (MediaKind::Recording, false) => Err(CommandError::new(format!(

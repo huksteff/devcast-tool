@@ -2,28 +2,28 @@
 //! gain, normalization and mute; «Место» — start on the output, the second of the file it starts
 //! from and its length. Every edit is `audio set <id> …` (`devcast audio set`); «Сбросить» of
 //! «Основное» brings the levels `audio add` gives (100 %, 1×, sound, no normalization).
-//! Delete and «Дублировать» are in the head (`object.rs`).
+//! Delete and «Дублировать» are in the head the editor draws.
 
-use dc_core::TimeDelta;
-use dc_fx_audio_tracks::{Audio, AudioClip, AudioId, MIN_LENGTH};
+use dc_core::{Step, TimeDelta};
+use dc_ui_kit::egui::{Label, RichText, Ui};
+use dc_ui_kit::panel::{Cx, Group, args, padded, reset, rows};
 use dc_ui_kit::strings::{editor, inspector as names, sound as text};
-use eframe::egui::{Label, RichText, Ui};
 use serde_json::{Map, Value, json};
 
-use super::sound;
-use super::{Cx, Group, args, padded, reset, rows};
-use crate::editor::Action;
+use crate::panel::{self, Sources};
+use crate::{Audio, AudioClip, AudioId, MIN_LENGTH};
 
 const SET: &str = "audio set";
 
-pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: AudioId) {
-    let Ok(state) = cx.base.project.state::<Audio>() else {
+/// The panel of extra sound `id` under the header the editor draws; edits go to `cx.edits`.
+pub fn extra(ui: &mut Ui, cx: &mut Cx<'_>, id: AudioId, sources: &Sources<'_>) {
+    let Ok(state) = cx.project.state::<Audio>() else {
         return;
     };
     let Some(clip) = state.clips.into_iter().find(|c| c.id == id) else {
         return;
     };
-    cx.base.groups.panel(sound::ID);
+    cx.groups.panel(panel::ID);
     let added = level_args(id, 100.0, 1.0, (false, false));
     let basic = Group {
         id: "extra",
@@ -38,8 +38,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: AudioId) {
         open: true,
         reset: None,
     };
-    let end = cx.tracks.duration;
-    cx.group(ui, place, |ui, cx| place_rows(ui, cx, &clip, end));
+    cx.group(ui, place, |ui, cx| place_rows(ui, cx, &clip, sources.end));
     padded(ui, |ui| rows::note(ui, text::EXTRA_PLACE_NOTE));
 }
 
@@ -48,17 +47,17 @@ fn level_rows(ui: &mut Ui, cx: &mut Cx<'_>, clip: &AudioClip) {
     rows::row(ui, text::FILE, |ui| {
         ui.add(Label::new(RichText::new(file)).truncate());
     });
-    if let Some(v) = sound::volume(ui, text::VOLUME, clip.volume) {
-        cx.actions.push(set(clip.id, "volume", json!(v)));
+    if let Some(v) = panel::volume(ui, text::VOLUME, clip.volume) {
+        cx.edits.push(vec![set(clip.id, "volume", json!(v))]);
     }
-    if let Some(v) = sound::gain(ui, text::GAIN, clip.gain) {
-        cx.actions.push(set(clip.id, "gain", json!(v)));
+    if let Some(v) = panel::gain(ui, text::GAIN, clip.gain) {
+        cx.edits.push(vec![set(clip.id, "gain", json!(v))]);
     }
     if let Some(on) = rows::toggle_hint(ui, text::NORMALIZE, clip.normalize, text::LUFS) {
-        cx.actions.push(set(clip.id, "normalize", json!(on)));
+        cx.edits.push(vec![set(clip.id, "normalize", json!(on))]);
     }
     if let Some(on) = rows::toggle(ui, text::SILENT, clip.muted) {
-        cx.actions.push(set(clip.id, "mute", json!(on)));
+        cx.edits.push(vec![set(clip.id, "mute", json!(on))]);
     }
 }
 
@@ -73,21 +72,21 @@ fn place_rows(ui: &mut Ui, cx: &mut Cx<'_>, clip: &AudioClip, end: TimeDelta) {
     let offset = clip.offset.as_secs_f64();
     let last_start = (end - least).max(0.0);
     if let Some(v) = rows::slider(ui, text::START, start, 0.0..=last_start, unit) {
-        cx.actions.push(set(clip.id, "at", json!(v)));
+        cx.edits.push(vec![set(clip.id, "at", json!(v))]);
     }
     let last_offset = (file - length).max(0.0);
     if let Some(v) = rows::slider(ui, text::OFFSET, offset, 0.0..=last_offset, unit) {
-        cx.actions.push(set(clip.id, "offset", json!(v)));
+        cx.edits.push(vec![set(clip.id, "offset", json!(v))]);
     }
     let longest = (file - offset).min(end - start).max(least);
     if let Some(v) = rows::slider(ui, text::LENGTH, length, least..=longest, unit) {
-        cx.actions.push(set(clip.id, "duration", json!(v)));
+        cx.edits.push(vec![set(clip.id, "duration", json!(v))]);
     }
 }
 
 /// `audio set <id> --<field> <value>`.
-fn set(id: AudioId, field: &'static str, value: Value) -> Action {
-    Action::op(SET, [("id", json!(id)), (field, value)])
+fn set(id: AudioId, field: &'static str, value: Value) -> Step {
+    Step::new(SET, args([("id", json!(id)), (field, value)]))
 }
 
 fn now_args(clip: &AudioClip) -> Map<String, Value> {

@@ -137,7 +137,7 @@
 - [ ] **7.35** Модульность эффектов (решение владельца 2026-11-02, аудит 19–22): панели инспектора и поведение на таймлайне — в крейты `fx/*`, по эффекту за коммит, по образцу ARCHITECTURE «Панель эффекта».
   - [x] Шов (`dc_ui_kit::panel`, `dc_core::Step`) и панель «Показ клавиш» (`fx/keys/src/panel.rs`).
   - [x] Облачко (`inspector/callout.rs` → `fx/callout/src/panel.rs`): фактов нет, заголовок — `panel::about`, панель — строка в `object.rs`.
-  - [ ] Звук (`sound.rs`, `sound_clip.rs`, `sound_extra.rs`) → `fx/audio-tracks`; дорожки звука и `streams` — факты от редактора.
+  - [x] Звук (`sound.rs`, `sound_clip.rs`, `sound_extra.rs`) → `fx/audio-tracks/src/panel*.rs`; дорожки звука, `streams` и длина видео — факты `panel::Sources` от редактора (`inspector::Cx::sources`); mute в шапке группы — `panel::Cx::group_with`. Просьб не о проекте нет.
   - [ ] Зум (`zoom.rs`, `zoom_region.rs`) → `fx/zoom`; «Подобрать зумы» — `Step` команды, а не действие редактора.
   - [ ] Курсор и клики (`cursor.rs`, `click.rs`, `click_style.rs`) → `fx/cursor`; точки кликов дорожки (`timeline/dots.rs`) — факты от редактора.
   - [ ] Субтитры (`captions.rs`, `captions_style.rs`, `cue.rs`) → `fx/captions`; распознавание (процесс, поток) остаётся в редакторе, панель получает его состояние фактами и просит запуск своим ответом.

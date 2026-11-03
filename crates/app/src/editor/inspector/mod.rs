@@ -23,9 +23,6 @@ mod cue;
 mod cursor;
 mod font;
 mod object;
-mod sound;
-mod sound_clip;
-mod sound_extra;
 mod zoom;
 mod zoom_region;
 
@@ -48,15 +45,18 @@ pub(crate) mod tests;
 #[cfg(test)]
 mod zoom_tests;
 
-use dc_core::{Effect, Project, StateError};
+use dc_core::project::MediaKind;
+use dc_core::{ClipId, Effect, Project, StateError};
+use dc_fx_audio_tracks::panel::Sources;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::panel::{self, Groups};
 use dc_ui_kit::strings::editor as text;
 use dc_ui_kit::tokens::{self, BG, SURFACE};
 use dc_ui_kit::widgets::IconButton;
-use eframe::egui::{self, Frame, Margin, Rect, ScrollArea, Ui};
+use eframe::egui::{self, Frame, Margin, ScrollArea, Ui};
 
 use super::selection::{Item, Selected};
+use super::streams::{Imported, Streams};
 use super::view::{Panel, View};
 use super::{Action, EditorWindow};
 pub use annotation::{Edit, target};
@@ -86,13 +86,19 @@ fn tab(panel: Panel) -> (&'static str, PanelUi) {
         Panel::Zoom => (zoom::ID, zoom::ui),
         Panel::Cursor => (cursor::ID, cursor::ui),
         Panel::Captions => (captions::ID, captions::ui),
-        Panel::Sound => (sound::ID, sound::ui),
+        Panel::Sound => (dc_fx_audio_tracks::panel::ID, sound),
     }
 }
 
 /// «Показ клавиш» of `dc_fx_keys` with the shortcuts the «Клавиши» row placed.
 fn keys(ui: &mut Ui, cx: &mut Cx<'_>) {
     dc_fx_keys::panel::ui(ui, &mut cx.base, &cx.tracks.shortcuts);
+}
+
+/// «Звук» of `dc_fx_audio_tracks` with the tracks of the recordings.
+fn sound(ui: &mut Ui, cx: &mut Cx<'_>) {
+    let sources = cx.sources(None);
+    dc_fx_audio_tracks::panel::ui(ui, &mut cx.base, &sources);
 }
 
 impl Panel {
@@ -135,7 +141,7 @@ pub struct Cx<'a> {
     pub actions: Vec<Action>,
 }
 
-impl Cx<'_> {
+impl<'a> Cx<'a> {
     /// The default state of effect `E`: its settings from the defaults, the rest factory.
     pub fn defaults_of<E: Effect>(&self) -> Result<E::State, StateError> {
         self.base.defaults_of::<E>()
@@ -143,25 +149,26 @@ impl Cx<'_> {
 
     /// A group: its header (chevron, title, «Сбросить») and, when open, `body`.
     pub fn group(&mut self, ui: &mut Ui, group: Group<'_>, body: impl FnOnce(&mut Ui, &mut Self)) {
-        self.group_with(ui, group, |_, _, _| {}, body);
-    }
-
-    /// [`Cx::group`] whose header has more buttons: `buttons` gets the place left of
-    /// «Сбросить», one [`BUTTON`] wide (the mute of a sound track).
-    pub fn group_with(
-        &mut self,
-        ui: &mut Ui,
-        group: Group<'_>,
-        buttons: impl FnOnce(&mut Ui, &mut Self, Rect),
-        body: impl FnOnce(&mut Ui, &mut Self),
-    ) {
         let mut head = self.base.groups.head(ui, group);
         if let Some(reset) = head.reset.take() {
             self.actions.push(Action::Apply(reset));
         }
-        let more = head.more;
-        buttons(ui, self, more);
         head.body(ui, |ui| body(ui, self));
+    }
+
+    /// The sound facts of `dc_fx_audio_tracks::panel` for clip `clip` (the streams of its
+    /// imported video), or for no clip.
+    fn sources(&self, clip: Option<ClipId>) -> Sources<'a> {
+        let (project, streams): (&'a Project, &'a Streams) = (self.base.project, self.streams);
+        let media = clip.and_then(|id| project.clips.iter().find(|c| c.id == id));
+        let streams = media
+            .filter(|c| c.media.kind == MediaKind::Imported)
+            .and_then(|c| streams.get(&Imported(c.media.clone())));
+        Sources {
+            recorded: self.sound,
+            streams: streams.map(Vec::as_slice),
+            end: self.tracks.duration,
+        }
     }
 }
 
