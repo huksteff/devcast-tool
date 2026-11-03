@@ -12,6 +12,7 @@ mod metadata;
 mod native;
 mod run;
 mod schema_docs;
+mod seams;
 mod sources;
 mod todo;
 mod verify;

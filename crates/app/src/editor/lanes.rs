@@ -12,6 +12,7 @@ pub use dc_fx_annotations::stage as boxes;
 pub use dc_fx_audio_tracks::lane as audio;
 pub use dc_fx_callout::lane as callout;
 pub use dc_fx_captions::lane as captions;
+pub use dc_fx_crop::stage as frame;
 pub use dc_fx_cursor::lane as cursor;
 use dc_fx_cursor::panel::PressButton;
 pub use dc_fx_drawing::stage as brush;

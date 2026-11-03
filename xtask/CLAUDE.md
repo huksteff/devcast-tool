@@ -10,10 +10,11 @@
 - Слои крейтов в `src/deps.rs` совпадают с картой в docs/ARCHITECTURE.md.
 - Хук блокирует остановку один раз подряд; при повторной остановке показывает отчёт владельцу (не зацикливается).
 - `schema_docs` (`src/schema_docs.rs`, без сборки, входит и в `--quick`): у каждого поля и варианта типа с `derive(JsonSchema)` есть `///` — из них собираются `devcast help` и JSON Schema. Тестовые типы проверяются так же (одно правило), поля с `serde(skip)`/`schemars(skip)` — нет. Разбор — `syn`.
+- `seams` (`src/seams.rs`, текстовая, входит и в `--quick`): в `crates/app/src` вне тестов и комментариев `dc_fx_*` только в файлах регистрации (список `REGISTRATION`), а их `pub use dc_fx_*` ведёт только в модули швов (`lane`, `stage`, `panel`, `dialog`). Новый файл регистрации — только с решением в docs/ARCHITECTURE.md «Дорожка эффекта».
 
 ## Как тестировать
 
-- `cargo nextest run -p xtask` — правила (deps, limits, crates, todo, schema_docs, features, changed, hook) покрыты юнит-тестами.
+- `cargo nextest run -p xtask` — правила (deps, limits, crates, todo, seams, schema_docs, features, changed, hook) покрыты юнит-тестами.
 - Живая проверка: внести нарушение каждого вида и убедиться, что `cargo xtask verify` его ловит и подсказывает исправление.
 
 ## Куда не лезть

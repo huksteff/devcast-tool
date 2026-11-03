@@ -67,6 +67,9 @@ pub fn import_clips(
 }
 
 impl ClipImport {
+    /// The name of its commands in the history.
+    pub const NAME: &'static str = ClipAdd::NAME;
+
     /// Deletes the copies this import made: the commands were refused.
     pub fn discard(&self) -> Result<(), ClipImportError> {
         for copy in &self.copies {

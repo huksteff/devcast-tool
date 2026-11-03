@@ -22,7 +22,6 @@ mod worker_tests;
 use std::sync::Arc;
 
 use dc_core::{OutputTime, PixelSize, Project};
-use dc_fx_crop::Aspect;
 use dc_project::ProjectDir;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::editor as text;
@@ -163,7 +162,7 @@ fn toolbar(ui: &mut Ui, editor: &mut EditorWindow) {
         }
         ui.add_space(S1);
         if let Some(size) = editor.canvas {
-            let format = text::format(aspect_name(editor.aspect), size.width, size.height);
+            let format = text::format(editor.format, size.width, size.height);
             ui.label(RichText::new(format).size(FS_S).color(TEXT_2));
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -189,17 +188,6 @@ fn toolbar(ui: &mut Ui, editor: &mut EditorWindow) {
             ui.label(RichText::new(text::PREVIEW).size(FS_S).color(TEXT_2));
         });
     });
-}
-
-/// «16:9», «Свободный» …
-fn aspect_name(aspect: Aspect) -> &'static str {
-    match aspect {
-        Aspect::Free => text::ASPECT_FREE,
-        Aspect::Source => text::ASPECT_SOURCE,
-        Aspect::Wide16x9 => text::ASPECT_16_9,
-        Aspect::Wide16x10 => text::ASPECT_16_10,
-        Aspect::Standard4x3 => text::ASPECT_4_3,
-    }
 }
 
 /// Which frame of the project the preview asks for.

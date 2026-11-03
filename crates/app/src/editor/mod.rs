@@ -69,7 +69,6 @@ mod waves_tests;
 use std::time::Instant;
 
 use dc_core::PixelSize;
-use dc_fx_crop::{Aspect, Crop};
 use dc_project::ProjectDir;
 use dc_ui_kit::tokens::{BG, SURFACE};
 use eframe::egui::{self, Frame, Ui, vec2};
@@ -105,8 +104,8 @@ pub struct EditorWindow {
     pub sound: Vec<String>,
     /// The timeline rows of the project.
     pub tracks: Tracks,
-    /// Output frame: its aspect setting and size (none without clips).
-    pub aspect: Aspect,
+    /// Output frame: the name of its format and its size (none without clips).
+    pub format: &'static str,
     pub canvas: Option<PixelSize>,
     pub view: View,
     /// The frame of the project at the playhead.
@@ -187,7 +186,7 @@ impl EditorWindow {
             name,
             sound,
             tracks: Tracks::default(),
-            aspect: Aspect::default(),
+            format: lanes::frame::Frame::default().format,
             canvas: None,
             view: View::default(),
             preview,
@@ -226,12 +225,10 @@ impl EditorWindow {
         self.view.stage = None;
         self.retrack();
         let project = self.doc.project();
-        let crop = project.state::<Crop>().unwrap_or_else(|e| {
-            self.tracks.problems.push(e.to_string());
-            Default::default()
-        });
-        self.canvas = dc_fx_crop::canvas(project, &crop.settings);
-        self.aspect = crop.settings.aspect;
+        let (frame, broken) = lanes::frame::frame(project);
+        self.tracks.problems.extend(broken.map(|e| e.to_string()));
+        self.canvas = frame.canvas;
+        self.format = frame.format;
         self.fps = frame_rate(self.doc.dir(), project);
         self.preview.changed(project);
         let (project, revision) = self.preview.project();

@@ -19,7 +19,6 @@ mod tests;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use dc_fx_cut::ClipAdd;
 use eframe::egui::{self, Rect, TextureHandle, Ui};
 
 use super::{Action, EditorWindow, LOCK_OWNER};
@@ -175,7 +174,10 @@ pub fn run(editor: &mut EditorWindow, ask: Ask, now: Instant) -> Result<bool, St
 fn add(editor: &mut EditorWindow, roots: &[PathBuf], now: Instant) -> Result<bool, String> {
     let import = dc_ops::import_clips(editor.doc.dir(), roots, false).map_err(|e| e.to_string())?;
     let commands = dc_ops::as_commands(&import.commands);
-    match editor.doc.apply_commands(ClipAdd::NAME, &commands, now) {
+    match editor
+        .doc
+        .apply_commands(dc_ops::ClipImport::NAME, &commands, now)
+    {
         Ok(_) => Ok(true),
         Err(error) => Err(match import.discard() {
             Ok(()) => error.to_string(),
