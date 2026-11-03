@@ -8,6 +8,7 @@
 mod commands;
 mod evaluate;
 mod model;
+mod panel;
 
 pub use commands::ImageSet;
 pub use evaluate::evaluate;
@@ -15,5 +16,7 @@ pub use model::{IMAGES_DIR, ImageBody, PictureFile};
 
 #[cfg(test)]
 mod evaluate_tests;
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod tests;

@@ -2,6 +2,8 @@
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeDelta};
+use dc_ui_kit::strings::timeline::ruler_label;
+pub use dc_ui_kit::strings::timeline::timecode;
 
 /// Labelled ruler steps, microseconds (v1); the ruler takes the first one wide enough.
 const STEPS: [i64; 17] = [
@@ -62,13 +64,6 @@ impl TimeScale {
     }
 }
 
-/// «0:33.40»: minutes, seconds and hundredths; hours in front from one hour on.
-pub fn timecode(t: OutputTime) -> String {
-    let hundredths = t.micros().max(0) / 10_000;
-    let (seconds, cc) = (hundredths / 100, hundredths % 100);
-    format!("{}.{cc:02}", ruler_label(seconds))
-}
-
 /// «0:52.0»: a length with tenths of a second.
 pub fn length(length: TimeDelta) -> String {
     let tenths = length.micros().max(0) / 100_000;
@@ -87,16 +82,6 @@ pub fn tick_label(t: OutputTime, step: TimeDelta) -> String {
         format!("{seconds}.{}", micros % 1_000_000 / 100_000)
     } else {
         format!("{seconds}.{:02}", micros % 1_000_000 / 10_000)
-    }
-}
-
-/// «1:10» of a ruler tick at `seconds`.
-pub fn ruler_label(seconds: i64) -> String {
-    let (h, m, s) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
-    if h > 0 {
-        format!("{h}:{m:02}:{s:02}")
-    } else {
-        format!("{m}:{s:02}")
     }
 }
 

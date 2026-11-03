@@ -2,20 +2,12 @@
 //! settings of an effect — and the open panel. Picking one object on the timeline opens its
 //! panel; a tab opens the tab's panel until another object is picked.
 //!
-//! A panel draws with the kit of `dc_ui_kit::panel` (header, groups, rows) over its
-//! `panel::Cx`. A panel that lives in its effect's crate (docs/ARCHITECTURE.md, «Панель
-//! эффекта») gets [`Cx::base`] and the facts of the timeline it needs; one not moved yet works
-//! with the whole [`Cx`]. Every committed edit is a registry command — one undo step; what a
-//! panel asks besides the project (`panel::Request`) becomes an [`Action`] in [`action`]. A tab
-//! gets its panel in [`tab`], an object kind in `object.rs`.
+//! Every panel lives in its effect's crate (docs/ARCHITECTURE.md, «Панель эффекта») and draws
+//! with the kit of `dc_ui_kit::panel` over [`Cx::base`] and the facts of the timeline it needs.
+//! Every committed edit is a registry command — one undo step; what a panel asks besides the
+//! project (`panel::Request`) becomes an [`Action`] in [`action`]. A tab gets its panel in
+//! [`tab`], an object kind in `object.rs`.
 
-mod annot_blur;
-mod annot_drawing;
-mod annot_image;
-mod annot_shape;
-mod annot_text;
-mod annotation;
-mod annotation_rows;
 mod captions;
 mod object;
 
@@ -39,25 +31,22 @@ pub(crate) mod tests;
 mod zoom_tests;
 
 use dc_core::project::MediaKind;
-use dc_core::{ClipId, Project};
+use dc_core::{ClipId, OutputTime, Project};
 use dc_fx_audio_tracks::panel::Sources;
 use dc_fx_captions::panel::Recognition;
 use dc_ui_kit::icons::Icon;
-use dc_ui_kit::panel::{self, Groups, Request};
-use dc_ui_kit::strings::{editor as text, inspector as names};
+use dc_ui_kit::panel::{self, Groups, Request, rows};
+use dc_ui_kit::strings::{annotations, editor as text, inspector as names};
 use dc_ui_kit::tokens::{self, BG, SURFACE};
 use dc_ui_kit::widgets::IconButton;
 use eframe::egui::{self, Frame, Margin, ScrollArea, Ui};
 
+use super::adding::PictureFile;
 use super::fonts::FontFile;
 use super::selection::{Item, Selected};
 use super::streams::{Imported, Streams};
 use super::view::{Panel, View};
 use super::{Action, EditorWindow, Transport};
-pub use annotation::{Edit, target};
-pub use dc_ui_kit::panel::{
-    BUTTON, CHEVRON, Group, Header, bottom_line, header, header_button, padded, rows,
-};
 
 /// Width of the tab rail, side of a tab (mockup).
 const RAIL: f32 = 44.0;
@@ -128,8 +117,8 @@ impl Panel {
     }
 }
 
-/// What a panel of the editor works with this frame: what every panel gets and the editor's
-/// own parts the panels not moved to their effects' crates still read.
+/// What the inspector works with this frame: what every panel gets and the editor's own parts
+/// the facts of the panels are made of.
 pub struct Cx<'a> {
     /// The project, the defaults, the playhead, the fonts and the groups; edits of the panels
     /// of the effects' crates.
@@ -150,15 +139,6 @@ pub struct Cx<'a> {
 }
 
 impl<'a> Cx<'a> {
-    /// A group: its header (chevron, title, «Сбросить») and, when open, `body`.
-    pub fn group(&mut self, ui: &mut Ui, group: Group<'_>, body: impl FnOnce(&mut Ui, &mut Self)) {
-        let mut head = self.base.groups.head(ui, group);
-        if let Some(reset) = head.reset.take() {
-            self.actions.push(Action::Apply(reset));
-        }
-        head.body(ui, |ui| body(ui, self));
-    }
-
     /// The sound facts of `dc_fx_audio_tracks::panel` for clip `clip` (the streams of its
     /// imported video), or for no clip.
     fn sources(&self, clip: Option<ClipId>) -> Sources<'a> {
@@ -233,7 +213,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
     toggled
 }
 
-/// What the editor does for a panel's request; nothing for a font dialog closed without a file.
+/// What the editor does for a panel's request; nothing for a file dialog closed without a file.
 fn action(request: Request) -> Option<Action> {
     match request {
         Request::Pick(id) => {
@@ -249,9 +229,24 @@ fn action(request: Request) -> Option<Action> {
             .add_filter(names::FONT_FILES, &dc_render::FONT_EXTENSIONS)
             .pick_file()
             .map(|path| Action::Font(FontFile { path, then })),
+        Request::Picture { id, at } => picture(&id, at),
         Request::Recognize => Some(Action::Generate),
         Request::StopRecognizing => Some(Action::StopGenerating),
     }
+}
+
+/// The image of annotation `id` from a picture file the user picks, at `at` or everywhere;
+/// nothing when the dialog is closed without a file.
+fn picture(id: &str, at: Option<OutputTime>) -> Option<Action> {
+    let Ok(id) = id.parse() else {
+        tracing::warn!("a panel asked for a picture of {id}, which is not an annotation");
+        return None;
+    };
+    let path = rfd::FileDialog::new()
+        .set_title(annotations::PICK_PICTURE)
+        .add_filter(annotations::PICTURES, &dc_media::PICTURE_EXTENSIONS)
+        .pick_file()?;
+    Some(Action::Picture(PictureFile { id, at, path }))
 }
 
 /// A newly picked single object opens its panel; no single object goes back to the tab.

@@ -4,15 +4,15 @@
 //! in percent of the box (`--tail`, `--tip`). «Сбросить» brings the look of the figure to the defaults and keeps the
 //! figure and its ends.
 
-use dc_fx_shape::{CYCLE_MAX, Figure, GLOW_MAX, RADIUS_MAX, ShapeBody, WIDTH_MAX, WIDTH_MIN};
-use dc_ops::Step;
+use crate::{CYCLE_MAX, Figure, GLOW_MAX, RADIUS_MAX, ShapeBody, WIDTH_MAX, WIDTH_MIN};
+use dc_core::Step;
 use dc_render::Rgba;
+use dc_ui_kit::egui::{Painter, Pos2, Rect, Stroke, Ui, pos2};
 use dc_ui_kit::strings::{annotations as text, inspector as names};
-use eframe::egui::{Painter, Pos2, Rect, Stroke, Ui, pos2};
 use serde_json::{Value, json};
 
-use super::annotation::{Edit, Section};
-use super::{Cx, rows};
+use dc_fx_annotations::panel::{Edit, Section};
+use dc_ui_kit::panel::{Cx, rows};
 use dc_ui_kit::tokens::TEXT_2;
 
 const SET: &str = "shape set";
@@ -33,8 +33,7 @@ impl Section for ShapeBody {
         // Two rows of three: six tiles in a row cut their captions.
         for half in FIGURES.chunks(3) {
             if let Some(figure) = rows::tiles(ui, self.figure, half, picture) {
-                cx.actions
-                    .push(edit.apply(SET, [("figure", json!(figure))]));
+                edit.apply(cx, SET, [("figure", json!(figure))]);
             }
         }
         let open = self.figure.is_open();
@@ -45,29 +44,27 @@ impl Section for ShapeBody {
         };
         if let Some((i, color)) = rows::colors(ui, text::SHAPE_COLORS, &colors) {
             let field = if i == 0 { "color" } else { "fill" };
-            cx.actions.push(edit.apply(SET, [(field, json!(color))]));
+            edit.apply(cx, SET, [(field, json!(color))]);
         }
         if let Some(on) = rows::toggle(ui, text::GRADIENT, self.gradient) {
-            cx.actions.push(edit.apply(SET, [("gradient", json!(on))]));
+            edit.apply(cx, SET, [("gradient", json!(on))]);
         }
         if self.gradient
             && let Some(colors) = rows::gradient(ui, text::GRADIENT, self.colors.colors())
         {
-            cx.actions
-                .push(edit.apply(SET, [("colors", json!(joined(&colors)))]));
+            edit.apply(cx, SET, [("colors", json!(joined(&colors)))]);
         }
         let px = (1.0, text::PX);
         if let Some(v) = rows::slider(ui, text::THICKNESS, self.width, WIDTH_MIN..=WIDTH_MAX, px) {
-            cx.actions.push(edit.apply(SET, [("width", json!(v))]));
+            edit.apply(cx, SET, [("width", json!(v))]);
         }
         if !open && let Some(on) = rows::toggle(ui, text::OUTLINE, self.outline) {
-            cx.actions.push(edit.apply(SET, [("outline", json!(on))]));
+            edit.apply(cx, SET, [("outline", json!(on))]);
         }
         let percent = (1.0, names::PERCENT);
         let opacity = self.opacity * 100.0;
         if let Some(v) = rows::slider(ui, text::OPACITY, opacity, 0.0..=100.0, percent) {
-            cx.actions
-                .push(edit.apply(SET, [("opacity", json!(v / 100.0))]));
+            edit.apply(cx, SET, [("opacity", json!(v / 100.0))]);
         }
     }
 
@@ -80,22 +77,22 @@ impl Section for ShapeBody {
     fn fine(&self, ui: &mut Ui, cx: &mut Cx<'_>, edit: Edit) {
         let glow = (1.0, "");
         if let Some(v) = rows::slider(ui, text::GLOW, self.glow, 0.0..=GLOW_MAX, glow) {
-            cx.actions.push(edit.apply(SET, [("glow", json!(v))]));
+            edit.apply(cx, SET, [("glow", json!(v))]);
         }
         if matches!(self.figure, Figure::Rectangle | Figure::Highlight) {
             let px = (1.0, text::PX);
             if let Some(v) = rows::slider(ui, text::RADIUS, self.radius, 0.0..=RADIUS_MAX, px) {
-                cx.actions.push(edit.apply(SET, [("radius", json!(v))]));
+                edit.apply(cx, SET, [("radius", json!(v))]);
             }
         }
         if self.gradient {
             let turn = (1.0, text::DEGREES);
             if let Some(v) = rows::slider(ui, text::ANGLE, self.angle, -360.0..=360.0, turn) {
-                cx.actions.push(edit.apply(SET, [("angle", json!(v))]));
+                edit.apply(cx, SET, [("angle", json!(v))]);
             }
             let loop_time = (0.05, names::SECONDS);
             if let Some(v) = rows::slider(ui, text::CYCLE, self.cycle, 0.0..=CYCLE_MAX, loop_time) {
-                cx.actions.push(edit.apply(SET, [("cycle", json!(v))]));
+                edit.apply(cx, SET, [("cycle", json!(v))]);
             }
             rows::note(ui, text::CYCLE_NOTE);
         }
@@ -136,8 +133,7 @@ fn ends(ui: &mut Ui, cx: &mut Cx<'_>, body: &ShapeBody, edit: Edit) {
             _ => None,
         };
         if let Some((x, y)) = moved {
-            cx.actions
-                .push(edit.apply(SET, [(field, json!(format!("{x},{y}")))]));
+            edit.apply(cx, SET, [(field, json!(format!("{x},{y}")))]);
         }
     }
     rows::note(ui, text::ENDS_NOTE);
@@ -182,13 +178,14 @@ fn picture(painter: &Painter, rect: Rect, figure: Figure) {
                 square(4.0, 6.0, 16.0, 12.0),
                 2,
                 stroke,
-                eframe::egui::StrokeKind::Middle,
+                dc_ui_kit::egui::StrokeKind::Middle,
             );
         }
         Figure::Ellipse => {
             let centre = at(12.0, 12.0);
-            let radius = eframe::egui::vec2(rect.width() * 9.0 / 24.0, rect.height() * 6.0 / 24.0);
-            painter.add(eframe::egui::epaint::EllipseShape::stroke(
+            let radius =
+                dc_ui_kit::egui::vec2(rect.width() * 9.0 / 24.0, rect.height() * 6.0 / 24.0);
+            painter.add(dc_ui_kit::egui::epaint::EllipseShape::stroke(
                 centre, radius, stroke,
             ));
         }

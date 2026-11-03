@@ -4,7 +4,7 @@
 
 use dc_core::{ClipId, OutputTime};
 use dc_fx_annotations::AnnotId;
-use dc_fx_annotations::KEY_TOLERANCE;
+pub use dc_fx_annotations::same_moment;
 use dc_fx_audio_tracks::AudioId;
 use dc_fx_callout::EventId;
 use dc_fx_captions::CueId;
@@ -139,9 +139,4 @@ impl Selection {
             Selected::Click(at) => tracks.clicks.iter().any(|d| same_moment(d.at, *at)),
         });
     }
-}
-
-/// Two output times of one key: closer than `KEY_TOLERANCE`.
-pub fn same_moment(a: OutputTime, b: OutputTime) -> bool {
-    a.since(b).micros().abs() < KEY_TOLERANCE.micros()
 }

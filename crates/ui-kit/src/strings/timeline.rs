@@ -1,5 +1,7 @@
 //! The timeline of the editor.
 
+use dc_core::OutputTime;
+
 pub const ADD_TRACK: &str = "Дорожка";
 pub const MAGNET: &str = "Привязка";
 pub const SUGGEST_ZOOMS: &str = "Подобрать зумы";
@@ -251,5 +253,22 @@ pub fn key_field(name: &str) -> &str {
         "tint" => "Тонировка",
         "strokes" => "Штрихи",
         other => other,
+    }
+}
+
+/// «0:33.40»: minutes, seconds and hundredths; hours in front from one hour on.
+pub fn timecode(t: OutputTime) -> String {
+    let hundredths = t.micros().max(0) / 10_000;
+    let (seconds, cc) = (hundredths / 100, hundredths % 100);
+    format!("{}.{cc:02}", ruler_label(seconds))
+}
+
+/// «1:10» of a ruler tick at `seconds`.
+pub fn ruler_label(seconds: i64) -> String {
+    let (h, m, s) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
+    if h > 0 {
+        format!("{h}:{m:02}:{s:02}")
+    } else {
+        format!("{m}:{s:02}")
     }
 }

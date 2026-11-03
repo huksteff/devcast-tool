@@ -4,6 +4,7 @@
 mod commands;
 mod evaluate;
 mod model;
+mod panel;
 
 pub use commands::TextSet;
 pub use evaluate::evaluate;
@@ -20,5 +21,7 @@ pub fn ops() -> Vec<OpInfo> {
 mod evaluate_tests;
 #[cfg(test)]
 mod keys_tests;
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod tests;

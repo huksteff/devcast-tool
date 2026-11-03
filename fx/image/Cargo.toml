@@ -11,11 +11,14 @@ publish.workspace = true
 dc-core = { path = "../../crates/core" }
 dc-fx-annotations = { path = "../annotations" }
 dc-render = { path = "../../crates/render" }
+dc-ui-kit = { path = "../../crates/ui-kit" }
 schemars.workspace = true
 serde.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+dc-ui-kit = { path = "../../crates/ui-kit", features = ["kittest"] }
+egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
 
 [lints]
 workspace = true

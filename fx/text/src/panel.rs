@@ -3,15 +3,15 @@
 //! the corner radius of the plate. «Сбросить» brings the look to the defaults and keeps the
 //! words.
 
-use dc_fx_text::{RADIUS_MAX, SIZE_MAX, SIZE_MIN, TextAlign, TextBody};
-use dc_ops::Step;
+use crate::{RADIUS_MAX, SIZE_MAX, SIZE_MIN, TextAlign, TextBody};
+use dc_core::Step;
+use dc_ui_kit::egui::Ui;
 use dc_ui_kit::strings::annotations as text;
 use dc_ui_kit::widgets::IconButton;
-use eframe::egui::Ui;
 use serde_json::{Value, json};
 
-use super::annotation::{Edit, Section};
-use super::{BUTTON, CHEVRON, Cx, rows};
+use dc_fx_annotations::panel::{Edit, Section};
+use dc_ui_kit::panel::{BUTTON, CHEVRON, Cx, rows};
 
 const SET: &str = "text set";
 
@@ -27,26 +27,26 @@ impl Section for TextBody {
     fn basic(&self, ui: &mut Ui, cx: &mut Cx<'_>, edit: Edit) {
         let apply = |typed: String| edit.step(SET, [("text", json!(typed))]);
         if let Some(step) = rows::text_area(ui, text::TEXT_HINT, edit.id, &self.text, apply) {
-            cx.actions.push(crate::editor::Action::Apply(vec![step]));
+            cx.edits.push(vec![step]);
         }
-        let font = cx.base.font(ui, text::FONT, &self.font, edit.step(SET, []));
+        let font = cx.font(ui, text::FONT, &self.font, edit.step(SET, []));
         if let Some(font) = font {
-            cx.actions.push(edit.apply(SET, [("font", json!(font))]));
+            edit.apply(cx, SET, [("font", json!(font))]);
         }
         let size = (1.0, text::PX);
         if let Some(v) = rows::slider(ui, text::SIZE, self.size, SIZE_MIN..=SIZE_MAX, size) {
-            cx.actions.push(edit.apply(SET, [("size", json!(v))]));
+            edit.apply(cx, SET, [("size", json!(v))]);
         }
         if let Some((field, on)) = style(ui, self) {
-            cx.actions.push(edit.apply(SET, [(field, json!(on))]));
+            edit.apply(cx, SET, [(field, json!(on))]);
         }
         if let Some(align) = rows::choice_under(ui, text::ALIGN, Some(self.align), &ALIGNS) {
-            cx.actions.push(edit.apply(SET, [("align", json!(align))]));
+            edit.apply(cx, SET, [("align", json!(align))]);
         }
         let colors = [(text::COLOR, self.color), (text::PLATE, self.background)];
         if let Some((i, color)) = rows::colors(ui, text::COLORS, &colors) {
             let field = if i == 0 { "color" } else { "background" };
-            cx.actions.push(edit.apply(SET, [(field, json!(color))]));
+            edit.apply(cx, SET, [(field, json!(color))]);
         }
         rows::note(ui, text::PLATE_NOTE);
         rows::note(ui, text::TEXT_NOTE);
@@ -60,7 +60,7 @@ impl Section for TextBody {
     fn fine(&self, ui: &mut Ui, cx: &mut Cx<'_>, edit: Edit) {
         let radius = (1.0, text::PX);
         if let Some(v) = rows::slider(ui, text::RADIUS, self.radius, 0.0..=RADIUS_MAX, radius) {
-            cx.actions.push(edit.apply(SET, [("radius", json!(v))]));
+            edit.apply(cx, SET, [("radius", json!(v))]);
         }
     }
 

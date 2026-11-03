@@ -5,6 +5,7 @@
 mod commands;
 mod evaluate;
 mod model;
+mod panel;
 
 pub use commands::{DrawingAdd, DrawingClear, DrawingRm, DrawingSet};
 pub use evaluate::evaluate;
@@ -26,5 +27,7 @@ pub fn ops() -> Vec<OpInfo> {
 
 #[cfg(test)]
 mod evaluate_tests;
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod tests;

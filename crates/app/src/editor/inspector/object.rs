@@ -4,23 +4,27 @@
 //! its header — the colour of its row, its name, where it is — and «Удалить» (the same command
 //! as Delete); a zoom gets its parameters (`dc_fx_zoom::panel::region`), a callout event its own
 //! (`dc_fx_callout::panel`), a cue its text and times (`dc_fx_captions::panel::cue`), an
-//! annotation its key strip and groups (`annotation.rs`) and «Дублировать» (`annot paste` of a
-//! copy where it is, on top of its row; the copy gets picked), a clip its sound and an extra
+//! annotation its key strip and groups (`dc_fx_annotations::panel` with the section of its kind,
+//! [`annotation`]) and «Дублировать» (`annot paste` of a copy where it is, on top of its row;
+//! the copy gets picked), a clip its sound and an extra
 //! sound its levels and place (`dc_fx_audio_tracks::panel::clip`, `extra`, with the facts of
 //! [`Cx::sources`]) and «Дублировать» (`audio paste` on the first free row).
 
 use dc_capture::input::Button;
 use dc_core::Range;
 use dc_core::time::Output;
+use dc_fx_annotations::panel::{self as annot, Region as Shown};
+use dc_fx_annotations::{AnnotId, Kind};
 use dc_fx_audio_tracks::panel as sound;
 use dc_fx_callout::panel as callout;
 use dc_fx_captions::panel as cue;
 use dc_fx_cursor::panel::{self as cursor, Press, PressButton};
 use dc_fx_zoom::panel as zoom;
 use dc_ui_kit::icons::Icon;
+use dc_ui_kit::panel::{Header, header, header_button};
 use dc_ui_kit::strings::{annotations, editor as text, inspector as names, timeline as rows_text};
 
-use super::{Cx, Header, annotation, header, header_button};
+use super::Cx;
 use crate::editor::selection::{Item, Selected, same_moment};
 use crate::editor::timeline::{self, Dot, Region, Row, Tracks, timecode};
 use crate::editor::{Action, clipboard, montage, regions};
@@ -78,7 +82,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
         Selected::Region(Item::Callout(id)) => callout::ui(ui, &mut cx.base, id),
         Selected::Region(Item::Cue(id)) => cue::cue(ui, &mut cx.base, id, region.range),
         Selected::Region(Item::Annotation(id)) => {
-            annotation::ui(ui, cx, id, region.range, &region.keys);
+            annotation(ui, cx, id, region);
         }
         Selected::Region(Item::Sound(id)) => {
             let sources = cx.sources(None);
@@ -164,5 +168,28 @@ fn press(dot: &Dot) -> Press {
             Button::X2 => PressButton::Forward,
         },
         double: dot.double,
+    }
+}
+
+/// The panel of annotation `id` (`dc_fx_annotations::panel`) with the section of its kind's
+/// crate, at the place and keys of its region and on the output frame after the crop.
+fn annotation(ui: &mut Ui, cx: &mut Cx<'_>, id: AnnotId, region: &Region) {
+    let project = cx.base.project;
+    let Ok(crop) = project.state::<dc_fx_crop::Crop>() else {
+        return;
+    };
+    let shown = Shown {
+        range: region.range,
+        keys: &region.keys,
+        canvas: dc_fx_crop::canvas(project, &crop.settings),
+    };
+    let cx = &mut cx.base;
+    match annot::kind(project, id) {
+        Some(Kind::Text) => annot::ui::<dc_fx_text::TextBody>(ui, cx, id, &shown),
+        Some(Kind::Shape) => annot::ui::<dc_fx_shape::ShapeBody>(ui, cx, id, &shown),
+        Some(Kind::Image) => annot::ui::<dc_fx_image::ImageBody>(ui, cx, id, &shown),
+        Some(Kind::Drawing) => annot::ui::<dc_fx_drawing::DrawingBody>(ui, cx, id, &shown),
+        Some(Kind::Blur) => annot::ui::<dc_fx_blur::BlurBody>(ui, cx, id, &shown),
+        None => {}
     }
 }

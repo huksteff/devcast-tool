@@ -9,6 +9,8 @@ mod keyed;
 mod keys;
 mod model;
 mod motion;
+pub mod panel;
+mod panel_rows;
 mod place;
 mod span;
 
@@ -18,7 +20,7 @@ pub use commands::{AnnotAdd, AnnotRm, AnnotSet};
 pub use keyed::{
     AnnotKeyAdd, AnnotKeyCopy, AnnotKeyMove, AnnotKeyRm, edit_body, edit_kind, key_offset,
 };
-pub use keys::{Blend, KEY_TOLERANCE, Key, keyed, step};
+pub use keys::{Blend, KEY_TOLERANCE, Key, keyed, same_moment, step};
 pub use model::{
     AnnotId, AnnotKind, Annotation, Annotations, AnnotationsState, Kind, MIN_DURATION,
     POSITION_LIMIT, ROTATION_LIMIT, SIZE_MAX, SIZE_MIN, TRACKS,
@@ -55,5 +57,7 @@ mod arrange_tests;
 mod keys_tests;
 #[cfg(test)]
 mod motion_tests;
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod tests;

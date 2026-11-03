@@ -7,7 +7,7 @@ use serde_json::{Map, Value, json};
 use crate::{BlurBody, BlurSet};
 
 /// One 10 s recording with blur annotation a1 and text annotation a2, both 1–2 s.
-fn project() -> Project {
+pub(crate) fn project() -> Project {
     let mut p = Project::default();
     let id = p.clip_ids.allocate();
     let duration = TimeDelta::from_secs_f64(10.0);

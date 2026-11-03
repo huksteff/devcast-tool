@@ -17,9 +17,9 @@ use super::geom::{Boxed, GRAB, Grip, KNOB, Mapping, Resize};
 use super::snap::{Guide, Lines, PULL, axes};
 use super::{Drag, brush, finish, paint, show_draft};
 use crate::editor::EditorWindow;
-use crate::editor::inspector::{Edit, target};
 use crate::editor::selection::{Item, Selected};
 use crate::editor::timeline::Row;
+use dc_fx_annotations::panel::{Edit, target};
 
 /// An annotation the playhead shows: where its edits go and its box now.
 #[derive(Debug, Clone, PartialEq)]

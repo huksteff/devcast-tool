@@ -3,16 +3,16 @@
 //! рисунок» (`drawing clear`); strokes are drawn and erased on the preview (`stage/brush.rs`).
 //! «Сбросить» brings the pencil to blue 4 px and the opacity to 100 %.
 
-use dc_fx_drawing::{DrawingBody, PENCIL_WIDTH, WIDTH_MAX, WIDTH_MIN};
-use dc_ops::Step;
+use crate::{DrawingBody, PENCIL_WIDTH, WIDTH_MAX, WIDTH_MIN};
+use dc_core::Step;
 use dc_render::{BLUE, Rgba};
+use dc_ui_kit::egui::Ui;
 use dc_ui_kit::strings::{annotations as text, inspector as names};
 use dc_ui_kit::widgets::{Button, Kind};
-use eframe::egui::Ui;
 use serde_json::{Value, json};
 
-use super::annotation::{Edit, Section};
-use super::{Cx, rows};
+use dc_fx_annotations::panel::{Edit, Section};
+use dc_ui_kit::panel::{Cx, rows};
 
 const SET: &str = "drawing set";
 
@@ -22,22 +22,21 @@ impl Section for DrawingBody {
     fn basic(&self, ui: &mut Ui, cx: &mut Cx<'_>, edit: Edit) {
         let (color, width) = self.pencil();
         if let Some((_, color)) = rows::colors(ui, text::DRAWING_COLOR, &[(text::PENCIL, color)]) {
-            cx.actions.push(edit.apply(SET, [("color", json!(color))]));
+            edit.apply(cx, SET, [("color", json!(color))]);
         }
         let px = (1.0, text::PX);
         if let Some(v) = rows::slider(ui, text::THICKNESS, width, WIDTH_MIN..=WIDTH_MAX, px) {
-            cx.actions.push(edit.apply(SET, [("width", json!(v))]));
+            edit.apply(cx, SET, [("width", json!(v))]);
         }
         let percent = (1.0, names::PERCENT);
         let opacity = self.opacity * 100.0;
         if let Some(v) = rows::slider(ui, text::OPACITY, opacity, 0.0..=100.0, percent) {
-            cx.actions
-                .push(edit.apply(SET, [("opacity", json!(v / 100.0))]));
+            edit.apply(cx, SET, [("opacity", json!(v / 100.0))]);
         }
         rows::note(ui, &text::strokes(self.strokes.len()));
         let clear = Button::new(text::CLEAR).kind(Kind::Ghost).small();
         if ui.add_enabled(!self.strokes.is_empty(), clear).clicked() {
-            cx.actions.push(edit.apply("drawing clear", []));
+            edit.apply(cx, "drawing clear", []);
         }
         rows::note(ui, text::DRAWING_NOTE);
     }

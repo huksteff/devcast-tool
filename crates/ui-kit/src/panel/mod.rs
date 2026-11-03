@@ -68,6 +68,10 @@ pub enum Request {
     /// Ask for a font file, add it to the project and run this step with the file's family as
     /// its `font` argument, one undo step («Добавить шрифт…»).
     AddFont(Step),
+    /// Ask for a picture file, copy it into the project and show it in image annotation `id`
+    /// (as `devcast` writes it, `a3`): in the key at `at` of the output, or everywhere without
+    /// it — `devcast image set`, one undo step («Заменить…»).
+    Picture { id: String, at: Option<OutputTime> },
     /// Recognize the speech of the project (downloading the model first when needed); the cues
     /// replace all cues as one undo step when they come.
     Recognize,

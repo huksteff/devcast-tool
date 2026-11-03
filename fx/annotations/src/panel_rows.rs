@@ -1,22 +1,18 @@
 //! The common rows of an annotation panel: the key strip (mockup `.kfbar`), «Вход и выход» and
 //! the box, time, row and layer of «Тонкая настройка».
 
+use crate::panel::{Edit, Shown};
+use crate::{Animation, Annotation, ROTATION_LIMIT, STAGE_DEFAULT, Stage, same_moment};
 use dc_core::OutputTime;
-use dc_fx_annotations::{Animation, Annotation, ROTATION_LIMIT, STAGE_DEFAULT, Stage};
+use dc_ui_kit::egui::{self, Align, Layout, Rect, Sense, Shape, Stroke, Ui, UiBuilder, pos2, vec2};
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
+use dc_ui_kit::panel::{BUTTON, CHEVRON, Cx, Group, Request, bottom_line, padded, rows};
+use dc_ui_kit::strings::timeline::timecode;
 use dc_ui_kit::strings::{annotations as text, timeline as rows_text};
 use dc_ui_kit::tokens::{FS_M, KEYFRAME, S2, S3, SURFACE_2, TEXT, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind as ButtonKind, dropdown, dropdown_some};
-use eframe::egui::{self, Align, Layout, Rect, Sense, Shape, Stroke, Ui, UiBuilder, pos2, vec2};
 use serde_json::json;
-
-use super::annotation::{Edit, Shown};
-use super::{BUTTON, CHEVRON, Cx, Group, bottom_line, padded, rows};
-use crate::editor::Action;
-use crate::editor::actions::Transport;
-use crate::editor::selection::same_moment;
-use crate::editor::timeline::timecode;
 
 /// Height of the key strip, points (mockup `.kfbar`).
 const STRIP: f32 = 36.0;
@@ -52,8 +48,7 @@ const ANIMATIONS: [(Animation, &str, &str); 9] = [
     (Animation::Typewriter, text::ANIM_TYPE, text::ANIM_TYPE_ONLY),
 ];
 
-/// «Ключ 2 из 3 · 0:33.40» or «Ключа нет», and ‹ › to the neighbour keys; `at` — the key at
-/// the playhead.
+/// «Ключ 2 из 3 · 0:33.40» or «Ключа нет», and ‹ › to the neighbour keys (`Request::Seek`);
 /// `on` is the key at the playhead, `at` where edits go.
 pub fn keys_strip(
     ui: &mut Ui,
@@ -102,11 +97,11 @@ pub fn keys_strip(
         .iter()
         .rev()
         .copied()
-        .find(|k| *k < cx.base.playhead && !same_moment(*k, cx.base.playhead));
+        .find(|k| *k < cx.playhead && !same_moment(*k, cx.playhead));
     let next = keys
         .iter()
         .copied()
-        .find(|k| *k > cx.base.playhead && !same_moment(*k, cx.base.playhead));
+        .find(|k| *k > cx.playhead && !same_moment(*k, cx.playhead));
     let mut cell = ui.new_child(
         UiBuilder::new()
             .max_rect(rect.shrink2(vec2(S2, 0.0)))
@@ -124,7 +119,7 @@ pub fn keys_strip(
             .clicked()
             && let Some(to) = to
         {
-            cx.actions.push(Action::Transport(Transport::Scrub(to)));
+            cx.requests.push(Request::Seek(to));
         }
     }
     bottom_line(ui, rect);
@@ -186,8 +181,7 @@ pub fn motion_group(ui: &mut Ui, cx: &mut Cx<'_>, annotation: &Annotation, edit:
                     .then_some(chosen)
             });
             if let Some(animation) = picked {
-                cx.actions
-                    .push(edit.apply("annot anim", [(field, json!(animation))]));
+                edit.apply(cx, "annot anim", [(field, json!(animation))]);
             }
             if stage.animation == Animation::None {
                 continue;
@@ -200,8 +194,7 @@ pub fn motion_group(ui: &mut Ui, cx: &mut Cx<'_>, annotation: &Annotation, edit:
                 } else {
                     "exit_duration"
                 };
-                cx.actions
-                    .push(edit.apply("annot anim", [(name, json!(v))]));
+                edit.apply(cx, "annot anim", [(name, json!(v))]);
             }
         }
     });
@@ -214,8 +207,7 @@ pub fn fine_rows(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
     let turn = (1.0, text::DEGREES);
     let limit = -ROTATION_LIMIT..=ROTATION_LIMIT;
     if let Some(v) = rows::slider(ui, text::ROTATION, shown.rotation, limit, turn) {
-        cx.actions
-            .push(edit.apply("annot set", [("rotation", json!(v))]));
+        edit.apply(cx, "annot set", [("rotation", json!(v))]);
     }
     times(ui, cx, shown, edit.unkeyed());
     arrange(ui, cx, shown, edit.unkeyed());
@@ -236,8 +228,7 @@ fn place(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
     ];
     for (field, label, value, side, range) in places {
         if let Some(v) = rows::slider(ui, label, (value * side).round(), range, (1.0, "")) {
-            cx.actions
-                .push(edit.apply("annot set", [(field, json!(v / side))]));
+            edit.apply(cx, "annot set", [(field, json!(v / side))]);
         }
     }
     rows::note(ui, text::PLACE_NOTE);
@@ -265,7 +256,7 @@ fn times(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
                 })
                 .inner;
             if let Some(step) = typed {
-                cx.actions.push(Action::Apply(vec![step]));
+                cx.edits.push(vec![step]);
             }
         }
     });
@@ -285,8 +276,7 @@ fn arrange(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
             .then_some(track)
     });
     if let Some(track) = moved {
-        cx.actions
-            .push(edit.apply("annot move", [("track", json!(track))]));
+        edit.apply(cx, "annot move", [("track", json!(track))]);
     }
     let steps = [
         ("top", text::LAYER_TOP),
@@ -300,8 +290,7 @@ fn arrange(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
         for (step, label) in steps {
             let button = Button::new(label).kind(ButtonKind::Ghost).small();
             if ui.add(button).clicked() {
-                cx.actions
-                    .push(edit.apply("annot layer", [("step", json!(step))]));
+                edit.apply(cx, "annot layer", [("step", json!(step))]);
             }
         }
     });

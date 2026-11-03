@@ -8,7 +8,7 @@
 //! left outside the shown range after a trim is kept, as DaVinci keeps keyframes past a trimmed
 //! edge, and still steers the values near that edge.
 
-use dc_core::{Rect, SourceTime, TimeDelta};
+use dc_core::{OutputTime, Rect, SourceTime, TimeDelta};
 use dc_render::Rgba;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,11 @@ use crate::model::Annotation;
 
 /// Two keys closer than this are one moment (v1).
 pub const KEY_TOLERANCE: TimeDelta = TimeDelta::from_millis(1);
+
+/// Two output times of one key: closer than [`KEY_TOLERANCE`].
+pub fn same_moment(a: OutputTime, b: OutputTime) -> bool {
+    a.since(b).micros().abs() < KEY_TOLERANCE.micros()
+}
 
 /// Everything an annotation can animate, at one moment. Time, track and layer order are not
 /// keyed; neither are the entrance and exit.

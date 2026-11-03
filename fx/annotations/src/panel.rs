@@ -1,27 +1,40 @@
 //! The panel of a picked annotation (mockup 3c and the main window «Текст»): the key strip under
-//! the header, «Основное» of its kind (`annot_text.rs`, `annot_shape.rs`, `annot_image.rs`,
-//! `annot_drawing.rs`, `annot_blur.rs`), «Вход и выход» (`annot anim`) and «Тонкая настройка»:
-//! the kind's finer fields, the box and rotation (`annot set`), the time (`annot set --from
-//! --to`), the row (`annot move --track`) and the layer (`annot layer`).
+//! the header, «Основное» of its kind (a [`Section`] in the kind's crate: `fx/text`, `shape`,
+//! `image`, `drawing`, `blur`), «Вход и выход» (`annot anim`) and «Тонкая настройка»: the kind's
+//! finer fields, the box and rotation (`annot set`), the time (`annot set --from --to`), the
+//! row (`annot move --track`) and the layer (`annot layer`) — `panel_rows.rs`.
+//!
+//! This crate cannot name its kinds (they depend on it), so the editor picks the kind's
+//! [`Section`] by [`kind`] and calls [`ui`] with it. The facts of the timeline — where the
+//! annotation is shown, its keys on the output, the output frame — are a [`Region`].
 //!
 //! Keys (QUESTIONS «Ключи аннотаций» 2, the CLI rule): while the playhead stands on a key, the
 //! kind's fields, the box and the rotation change in that key (`--at` the key); elsewhere they
 //! change in the annotation and in every key, or with «Авто-ключи» (7.25, v1) in a new key at the
-//! playhead. The rows show what the playhead shows; the strip names the key and steps the
-//! playhead to the previous or the next one.
+//! playhead ([`target`], the preview's edits go there too). The rows show what the playhead
+//! shows; the strip names the key and steps the playhead to the previous or the next one.
 
 use dc_core::time::Output;
-use dc_core::{OutputTime, Range, TimeDelta};
-use dc_fx_annotations::{AnnotId, Annotation, Annotations, Kind, key_offset};
-use dc_ops::Step;
+use dc_core::{OutputTime, PixelSize, Project, Range, Step, TimeDelta};
+use dc_ui_kit::egui::Ui;
+use dc_ui_kit::panel::{Cx, Group, padded, rows, time_arg};
 use dc_ui_kit::strings::editor;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
-use super::annotation_rows::{fine_rows, keys_strip, motion_group};
-use super::{Cx, Group, padded, rows};
-use crate::editor::montage;
-use eframe::egui::Ui;
+use crate::panel_rows::{fine_rows, keys_strip, motion_group};
+use crate::{AnnotId, Annotation, Annotations, Kind, key_offset, same_moment};
+
+/// Where the timeline shows the picked annotation; the editor fills it.
+#[derive(Debug, Clone, Copy)]
+pub struct Region<'a> {
+    /// Its place on the output.
+    pub range: Range<Output>,
+    /// Its keys at these output times, in order.
+    pub keys: &'a [OutputTime],
+    /// The output frame the box is a part of (after the crop); `None` without clips.
+    pub canvas: Option<PixelSize>,
+}
 
 /// Where an edit of the kind's fields, the box and the rotation goes: the key at the playhead,
 /// or everywhere (`at` none).
@@ -40,18 +53,19 @@ impl Edit {
             args.insert(name.to_owned(), value);
         }
         if let Some(at) = self.at {
-            args.insert("at".to_owned(), json!(montage::arg(at)));
+            args.insert("at".to_owned(), json!(time_arg(at)));
         }
         Step::new(op, args)
     }
 
-    /// [`Edit::step`] as one undo step.
+    /// [`Edit::step`] as one undo step of the panel.
     pub fn apply(
         self,
+        cx: &mut Cx<'_>,
         op: &str,
         fields: impl IntoIterator<Item = (&'static str, Value)>,
-    ) -> crate::editor::Action {
-        crate::editor::Action::Apply(vec![self.step(op, fields)])
+    ) {
+        cx.edits.push(vec![self.step(op, fields)]);
     }
 
     /// The step that brings the fields `now` to `default`; nothing when they are the same.
@@ -92,7 +106,7 @@ pub trait Section: DeserializeOwned {
 }
 
 /// The annotation as the playhead shows it.
-pub struct Shown {
+pub(crate) struct Shown {
     pub annotation: Annotation,
     /// Its place on the output.
     pub range: Range<Output>,
@@ -101,33 +115,33 @@ pub struct Shown {
     pub body: Map<String, Value>,
     /// Annotation tracks there are: the rows it can move to.
     pub tracks: u32,
-    /// The output frame the box is a part of; `None` without clips.
-    pub canvas: Option<dc_core::PixelSize>,
+    pub canvas: Option<PixelSize>,
 }
 
-/// The strip, the kind's groups and the common ones of annotation `id`, shown at `range` with
-/// its keys at `keys` of the output.
-pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, id: AnnotId, range: Range<Output>, keys: &[OutputTime]) {
-    let Some(shown) = read(cx, id, range) else {
+/// The kind of annotation `id`: the editor gives [`ui`] its [`Section`].
+pub fn kind(project: &Project, id: AnnotId) -> Option<Kind> {
+    let state = project.state::<Annotations>().ok()?;
+    state
+        .annotations
+        .iter()
+        .find(|a| a.id == id)
+        .map(|a| a.kind)
+}
+
+/// The strip, the groups of kind `B` and the common ones of annotation `id` shown at `region`.
+pub fn ui<B: Section>(ui: &mut Ui, cx: &mut Cx<'_>, id: AnnotId, region: &Region<'_>) {
+    let Some(shown) = read(cx, id, region) else {
         return;
     };
-    let on = key_at(keys, cx.base.playhead);
-    let at = target(keys, cx.base.playhead, range, cx.base.auto_keys);
-    keys_strip(ui, cx, keys, on, at);
-    let edit = Edit { id, at };
-    match shown.annotation.kind {
-        Kind::Text => panel::<dc_fx_text::TextBody>(ui, cx, &shown, edit),
-        Kind::Shape => panel::<dc_fx_shape::ShapeBody>(ui, cx, &shown, edit),
-        Kind::Image => panel::<dc_fx_image::ImageBody>(ui, cx, &shown, edit),
-        Kind::Drawing => panel::<dc_fx_drawing::DrawingBody>(ui, cx, &shown, edit),
-        Kind::Blur => panel::<dc_fx_blur::BlurBody>(ui, cx, &shown, edit),
-    }
+    let on = key_at(region.keys, cx.playhead);
+    let at = target(region.keys, cx.playhead, region.range, cx.auto_keys);
+    keys_strip(ui, cx, region.keys, on, at);
+    section::<B>(ui, cx, &shown, Edit { id, at });
 }
 
 /// The key of `keys` (output times) at `playhead`.
 pub fn key_at(keys: &[OutputTime], playhead: OutputTime) -> Option<OutputTime> {
-    let same = |k: &OutputTime| crate::editor::selection::same_moment(*k, playhead);
-    keys.iter().copied().find(same)
+    keys.iter().copied().find(|k| same_moment(*k, playhead))
 }
 
 /// Where an edit of an annotation shown at `range` with keys at `keys` goes: the key at the
@@ -144,8 +158,8 @@ pub fn target(
 }
 
 /// Annotation `id` with what the playhead shows of it: before it — its start, after — its end.
-fn read(cx: &Cx<'_>, id: AnnotId, range: Range<Output>) -> Option<Shown> {
-    let state = cx.base.project.state::<Annotations>().ok()?;
+fn read(cx: &Cx<'_>, id: AnnotId, region: &Region<'_>) -> Option<Shown> {
+    let state = cx.project.state::<Annotations>().ok()?;
     let tracks = state
         .annotations
         .iter()
@@ -153,27 +167,25 @@ fn read(cx: &Cx<'_>, id: AnnotId, range: Range<Output>) -> Option<Shown> {
         .max()
         .unwrap_or(1);
     let annotation = state.annotations.into_iter().find(|a| a.id == id)?;
-    let offset = match key_offset(cx.base.project, &annotation, cx.base.playhead) {
+    let offset = match key_offset(cx.project, &annotation, cx.playhead) {
         Ok(offset) => offset,
-        Err(_) if cx.base.playhead <= range.start() => TimeDelta::ZERO,
+        Err(_) if cx.playhead <= region.range.start() => TimeDelta::ZERO,
         Err(_) => annotation.range.duration(),
     };
-    let crop = cx.base.project.state::<dc_fx_crop::Crop>().ok()?;
-    let canvas = dc_fx_crop::canvas(cx.base.project, &crop.settings);
     let (rect, rotation) = annotation.frame_at(offset);
     let body = annotation.body_at(offset);
     Some(Shown {
         annotation,
-        range,
+        range: region.range,
         rect,
         rotation,
         body,
         tracks,
-        canvas,
+        canvas: region.canvas,
     })
 }
 
-fn panel<B: Section>(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
+fn section<B: Section>(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
     let body: B = match serde_json::from_value(Value::Object(shown.body.clone())) {
         Ok(body) => body,
         Err(error) => {
@@ -181,7 +193,7 @@ fn panel<B: Section>(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
             return;
         }
     };
-    cx.base.groups.panel(B::ID);
+    cx.groups.panel(B::ID);
     let basic = Group {
         id: "basic",
         title: editor::BASIC,

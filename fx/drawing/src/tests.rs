@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// One 10 s recording with drawing annotation a1 and shape annotation a2, both output 1–2 s.
-fn project() -> Project {
+pub(crate) fn project() -> Project {
     let mut p = Project::default();
     let id = p.clip_ids.allocate();
     let duration = TimeDelta::from_secs_f64(10.0);
@@ -43,7 +43,7 @@ fn command<C: DeserializeOwned>(args: Value) -> C {
 }
 
 /// The diff `C` from `args` makes, as text.
-fn run<C: Command + DeserializeOwned>(p: &mut Project, args: Value) -> String {
+pub(crate) fn run<C: Command + DeserializeOwned>(p: &mut Project, args: Value) -> String {
     command::<C>(args).apply(p).unwrap().to_string()
 }
 
