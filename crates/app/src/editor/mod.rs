@@ -43,6 +43,8 @@ mod waves;
 mod window;
 
 #[cfg(test)]
+mod crop_tests;
+#[cfg(test)]
 mod editing_tests;
 #[cfg(test)]
 mod export_tests;

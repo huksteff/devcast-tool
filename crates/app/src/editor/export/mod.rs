@@ -20,13 +20,15 @@ use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{export as text, kit};
 use dc_ui_kit::tokens::{BG, CONTROL, FS_L, FS_M, FS_S, ICON, S1, S2, S4, TEXT, TEXT_2, TEXT_3};
-use dc_ui_kit::widgets::{Button, IconButton, Kind, Toggle, dropdown, panel_frame, segmented};
+use dc_ui_kit::widgets::{
+    Button, IconButton, Kind, Toggle, dropdown, modal_line as line, modal_section as section,
+    panel_frame, segmented,
+};
 use eframe::egui::{self, Align, Color32, Key, Layout, Margin, RichText, Ui};
 
 pub use queue::{ended, queue, queue_list};
 
 use super::EditorWindow;
-use super::crop::{line, section};
 use crate::exports::Encoder;
 
 /// Width of the dialog, points (mockup).

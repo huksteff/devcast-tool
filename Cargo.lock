@@ -1473,6 +1473,8 @@ name = "dc-fx-crop"
 version = "0.1.0"
 dependencies = [
  "dc-core",
+ "dc-ui-kit",
+ "egui_kittest",
  "insta",
  "schemars",
  "serde",

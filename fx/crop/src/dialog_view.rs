@@ -2,16 +2,16 @@
 //! thirds and 8 handles, the rest dimmed (mockup `.cropview`); dragging the frame, an edge or a
 //! handle, double click — the whole frame. The numeric fields of the frame under it.
 
-use dc_ui_kit::strings::crop as text;
-use dc_ui_kit::tokens::{CONTROL_S, FS_S, PREVIEW_BG, R2, S2, S5, TEXT_2, TEXT_3, WHITE};
-use eframe::egui::{
+use dc_core::PixelSize;
+use dc_ui_kit::egui::{
     self, Align2, Color32, CursorIcon, DragValue, FontId, Pos2, Rect, RichText, Sense, Stroke,
     StrokeKind, Ui, Vec2, WidgetInfo, pos2, vec2,
 };
+use dc_ui_kit::strings::crop as text;
+use dc_ui_kit::tokens::{CONTROL_S, FS_S, PREVIEW_BG, R2, S2, S5, TEXT_2, TEXT_3, WHITE};
 
-use super::CropDialog;
-use super::geom::{Field, Frame, Handle};
-use crate::editor::preview::Preview;
+use crate::dialog::{Dialog, Picture};
+use crate::dialog_geom::{Field, Frame, Handle};
 
 /// The tallest the view gets, and the room the rest of the dialog takes in the window, points.
 const MOST_HEIGHT: f32 = 460.0;
@@ -34,7 +34,7 @@ pub struct Drag {
 }
 
 /// The view with the picture and the frame; handles the pointer.
-pub fn picture(ui: &mut Ui, dialog: &mut CropDialog, preview: &mut Preview) {
+pub fn picture(ui: &mut Ui, dialog: &mut Dialog, source: &mut dyn FnMut(PixelSize) -> Picture) {
     let width = ui.available_width();
     let room = ui.ctx().content_rect().height() - CHROME;
     let height = (width * 9.0 / 16.0).min(room.clamp(4.0 * S5, MOST_HEIGHT));
@@ -56,17 +56,15 @@ pub fn picture(ui: &mut Ui, dialog: &mut CropDialog, preview: &mut Preview) {
         )
     };
     pointer(ui, &response, dialog, on_screen(&dialog.frame), scale);
-    let size = render_size(dialog.size, shown.size() * ui.pixels_per_point());
-    let source = preview.source(dialog.time, size);
+    let size = render_size(dialog.size(), shown.size() * ui.pixels_per_point());
     let painter = ui.painter_at(view);
     painter.rect_filled(view, R2, PREVIEW_BG);
-    match source.texture {
-        Some(texture) => {
+    match source(size) {
+        Ok(texture) => {
             let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
             painter.image(texture, shown, uv, Color32::WHITE);
         }
-        None => {
-            let error = source.error.unwrap_or_default();
+        Err(error) => {
             let wrap = (shown.width() - 2.0 * S5).max(1.0);
             let galley = painter.layout(error, FontId::proportional(FS_S), TEXT_2, wrap);
             let at = Align2::CENTER_CENTER.anchor_size(shown.center(), galley.size());
@@ -79,11 +77,11 @@ pub fn picture(ui: &mut Ui, dialog: &mut CropDialog, preview: &mut Preview) {
 }
 
 /// Pixels to render the source at: as many as it covers on screen, never more than it has.
-fn render_size(source: dc_core::PixelSize, on_screen: Vec2) -> dc_core::PixelSize {
+fn render_size(source: PixelSize, on_screen: Vec2) -> PixelSize {
     let (w, h) = (source.width.max(1) as f32, source.height.max(1) as f32);
     let k = (on_screen.x / w).min(on_screen.y / h).min(1.0);
     let side = |s: f32| (s * k).round().max(1.0) as u32;
-    dc_core::PixelSize {
+    PixelSize {
         width: side(w),
         height: side(h),
     }
@@ -91,7 +89,7 @@ fn render_size(source: dc_core::PixelSize, on_screen: Vec2) -> dc_core::PixelSiz
 
 /// Presses, drags and double clicks on the view; `frame` is the crop frame on screen, `scale`
 /// points per px of the source.
-fn pointer(ui: &Ui, response: &egui::Response, dialog: &mut CropDialog, frame: Rect, scale: f32) {
+fn pointer(ui: &Ui, response: &egui::Response, dialog: &mut Dialog, frame: Rect, scale: f32) {
     if response.double_clicked() {
         dialog.frame = Frame::full(dialog.area());
         dialog.drag = None;
@@ -200,7 +198,7 @@ fn paint_frame(painter: &egui::Painter, picture: Rect, frame: Rect) {
 }
 
 /// «X · Y · Ширина · Высота» of the frame, px of the source.
-pub fn fields(ui: &mut Ui, dialog: &mut CropDialog) {
+pub fn fields(ui: &mut Ui, dialog: &mut Dialog) {
     let row = egui::Layout::left_to_right(egui::Align::Center);
     ui.allocate_ui_with_layout(vec2(ui.available_width(), CONTROL_S), row, |ui| {
         ui.spacing_mut().item_spacing.x = S2;

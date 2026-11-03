@@ -6,8 +6,8 @@
 //! copy (`live.rs`). It is asked again when the project, the moment, or the size it is rendered
 //! at changes; nothing repaints while idle. «Вписать / 50% / 100%» size the frame (a frame larger
 //! than the area scrolls), «Полное / Быстрое» choose how many pixels are rendered (`fit.rs`).
-//! «Кроп и формат» opens its dialog (`editor/crop`); its source picture comes from a second render
-//! thread on the same device (`Preview::source`), so the frame behind the dialog stays.
+//! «Кроп и формат» opens its dialog (`editor/crop.rs`); its source picture comes from a second
+//! render thread on the same device (`Preview::source`), so the frame behind the dialog stays.
 
 mod fetch;
 mod fit;

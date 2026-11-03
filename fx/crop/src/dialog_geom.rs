@@ -282,5 +282,5 @@ fn fractions(start: f64, len: f64, total: f64) -> (f64, f64) {
 }
 
 #[cfg(test)]
-#[path = "geom_tests.rs"]
+#[path = "dialog_geom_tests.rs"]
 mod tests;

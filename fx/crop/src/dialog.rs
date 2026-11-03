@@ -1,93 +1,80 @@
 //! The crop and output format dialog (mockup section 4): modal over the editor, the whole source
 //! picture of one clip with its crop frame (8 handles, thirds, the rest dimmed), the output
 //! format over it with the size of the output frame, the frame in px of the source under it.
-//! Everything is a draft: «Применить» runs `crop` and `aspect` of the registry as one undo step
-//! (only those that changed), «Отмена», ✕ and Esc change nothing.
+//! Everything is a draft: «Применить» answers the `crop` and `aspect` steps of the registry as
+//! one undo step (only those that changed), «Отмена», ✕ and Esc change nothing.
 //!
-//! The clip is the picked one, otherwise the one under the playhead; the picture is its source
-//! frame at the playhead (at its start when the playhead is elsewhere), drawn by the preview's
-//! render path (`Preview::source`). A fixed format keeps the frame at its proportion: picking
-//! it fits the frame to it, the handles keep it; in «Свободный» Shift keeps the frame's own.
+//! The dialog context is minimal: the editor keeps the [`Dialog`] while it is open, gives the
+//! facts at [`Dialog::open`] (the clip and its name on the timeline) and, every frame, the
+//! clip's source picture through the `source` callback of [`show`] (only the editor renders);
+//! the [`Answer`] closes it. A fixed format keeps the frame at its proportion: picking it fits
+//! the frame to it, the handles keep it; in «Свободный» Shift keeps the frame's own.
 
-mod geom;
-mod view;
-
-#[cfg(test)]
-mod tests;
-
-use dc_core::{Clip, ClipId, OutputTime, PixelSize, Project, Rect};
-use dc_fx_crop::{Aspect, Crop, CropSettings};
-use dc_ops::Step;
+use dc_core::{Clip, ClipId, PixelSize, Project, Rect, Step};
+use dc_ui_kit::egui::{self, Align, Color32, Key, Layout, Margin, RichText, TextureId, Ui};
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{crop as text, editor as names, kit};
-use dc_ui_kit::tokens::{BG, BORDER, FS_L, FS_S, R3, S1, S2, S3, S4, TEXT, TEXT_3};
-use dc_ui_kit::widgets::{Button, IconButton, Kind, panel_frame, segmented};
-use eframe::egui::{self, Align, Color32, CornerRadius, Frame, Key, Layout, Margin, RichText, Ui};
+use dc_ui_kit::tokens::{BG, FS_L, FS_S, S1, S2, S3, S4, TEXT, TEXT_3};
+use dc_ui_kit::widgets::{
+    Button, IconButton, Kind, modal_line as line, modal_section as section, panel_frame, segmented,
+};
 use serde_json::{Value, json};
 
-use super::timeline::Row;
-use super::{Action, EditorWindow};
-use geom::{Area, Frame as CropFrame};
+use crate::dialog_geom::{Area, Frame as CropFrame};
+use crate::dialog_view as view;
+use crate::{Aspect, Crop, CropSettings};
 
 /// Width of the dialog, points (mockup).
 const WIDTH: f32 = 760.0;
 
+/// The source picture the editor gives: its texture, or the message shown instead (empty while
+/// the picture is coming).
+pub type Picture = Result<TextureId, String>;
+
 /// The dialog while it is open: the clip and the draft.
 #[derive(Debug)]
-pub struct CropDialog {
+pub struct Dialog {
     clip: ClipId,
     name: String,
-    /// The moment whose picture is shown (inside the clip).
-    time: OutputTime,
     /// The clip's source frame, px.
     size: PixelSize,
     /// The first clip: the output frame follows it.
     first: Clip,
     /// The crop and the format at the opening.
     was: (Rect, Aspect),
-    frame: CropFrame,
+    pub(crate) frame: CropFrame,
     aspect: Aspect,
-    drag: Option<view::Drag>,
+    pub(crate) drag: Option<view::Drag>,
 }
 
-/// What the user did in a frame of the dialog.
+/// How the dialog closed; the editor drops the [`Dialog`] on either.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Answer {
+    /// «Применить»: `crop` and `aspect`, each only when it changed, as one undo step (empty
+    /// when nothing changed).
+    Apply(Vec<Step>),
+    /// «Отмена», ✕ or Esc: nothing changes.
+    Cancel,
+}
+
+/// What the user pressed in a frame of the dialog.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Answer {
+enum Pressed {
     Apply,
     Cancel,
 }
 
-impl CropDialog {
-    /// The dialog of the picked clip, or of the one under the playhead; `None` without clips.
-    pub fn open(editor: &EditorWindow) -> Option<Self> {
-        let project = editor.doc.project();
-        let regions = editor
-            .tracks
-            .rows
-            .iter()
-            .find(|t| t.row == Row::Clips)
-            .map(|t| t.regions.as_slice())
-            .unwrap_or_default();
-        let picked: Vec<ClipId> = editor.view.selection.clips().collect();
-        let at = editor.view.playhead;
-        let region = match picked.as_slice() {
-            [one] => regions.iter().find(|r| r.clip == Some(*one)),
-            _ => None,
-        }
-        .or_else(|| regions.iter().find(|r| r.range.contains(at)))
-        .or_else(|| regions.first())?;
-        let clip = project.clip(region.clip?)?;
-        let time = match region.range.contains(at) {
-            true => at,
-            false => region.range.start(),
-        };
+impl Dialog {
+    /// The dialog of clip `clip` of `project`, `name` is its title on the timeline; `None`
+    /// without that clip.
+    pub fn open(project: &Project, clip: ClipId, name: String) -> Option<Self> {
+        let clip = project.clip(clip)?;
         let aspect = project.state::<Crop>().unwrap_or_default().settings.aspect;
         let area = Area::of(clip.media.size);
         Some(Self {
             clip: clip.id,
-            name: region.label.clone(),
-            time,
+            name,
             size: clip.media.size,
             first: project.clips.first()?.clone(),
             was: (clip.crop, aspect),
@@ -97,12 +84,22 @@ impl CropDialog {
         })
     }
 
-    fn area(&self) -> Area {
+    /// The clip the dialog crops.
+    pub fn clip(&self) -> ClipId {
+        self.clip
+    }
+
+    /// The clip's source frame, px.
+    pub fn size(&self) -> PixelSize {
+        self.size
+    }
+
+    pub(crate) fn area(&self) -> Area {
         Area::of(self.size)
     }
 
     /// The proportion the format keeps (w / h of the frame), `None` for «Свободный».
-    fn ratio(&self) -> Option<f64> {
+    pub(crate) fn ratio(&self) -> Option<f64> {
         let source = Area::of(self.first.media.size);
         match self.aspect {
             Aspect::Free => None,
@@ -113,9 +110,9 @@ impl CropDialog {
         }
     }
 
-    /// The output frame with the draft: of the first clip, with its draft crop when the dialog
-    /// crops it.
-    fn output(&self) -> Option<PixelSize> {
+    /// The output frame with the draft, px: of the first clip, with its draft crop when the
+    /// dialog crops it.
+    pub fn output(&self) -> Option<PixelSize> {
         let mut first = self.first.clone();
         if first.id == self.clip {
             first.crop = self.frame.rect(self.area());
@@ -124,7 +121,7 @@ impl CropDialog {
             clips: vec![first],
             ..Project::default()
         };
-        dc_fx_crop::canvas(
+        crate::canvas(
             &project,
             &CropSettings {
                 aspect: self.aspect,
@@ -154,52 +151,46 @@ fn step<const N: usize>(op: &str, args: [(&str, Value); N]) -> Step {
     )
 }
 
-/// Shows the open dialog; «Применить» queues its commands, the dialog closes on an answer.
-pub fn show(ui: &Ui, editor: &mut EditorWindow) {
-    let Some(dialog) = editor.crop.as_mut() else {
-        return;
-    };
-    let preview = &mut editor.preview;
+/// Shows the open dialog; the answer when it closes. `source` gives the clip's whole source
+/// picture `size` px large (the aspect of the source).
+pub fn show(
+    ui: &Ui,
+    dialog: &mut Dialog,
+    source: &mut dyn FnMut(PixelSize) -> Picture,
+) -> Option<Answer> {
     let modal = egui::Modal::new(egui::Id::unique("crop-dialog"))
         .frame(panel_frame().inner_margin(0))
         .show(ui.ctx(), |ui| {
             ui.set_width(WIDTH);
             ui.spacing_mut().item_spacing.y = 0.0;
-            let mut answer = header(ui, &dialog.name);
+            let mut pressed = header(ui, &dialog.name);
             section(ui, Color32::TRANSPARENT, Margin::same(S4 as i8), |ui| {
-                body(ui, dialog, preview);
+                body(ui, dialog, source);
             });
-            answer = answer.or(footer(ui, dialog));
-            answer
+            pressed = pressed.or(footer(ui, dialog));
+            pressed
         });
     let escape = ui.input(|i| i.key_pressed(Key::Escape));
-    let answer = match modal.inner {
-        Some(answer) => Some(answer),
-        None if escape => Some(Answer::Cancel),
+    let pressed = match modal.inner {
+        Some(pressed) => Some(pressed),
+        None if escape => Some(Pressed::Cancel),
         None => None,
     };
-    match answer {
-        Some(Answer::Apply) => {
-            let steps = dialog.steps();
-            if !steps.is_empty() {
-                editor.ask(Action::Apply(steps));
-            }
-            editor.crop = None;
-        }
-        Some(Answer::Cancel) => editor.crop = None,
-        None => {}
-    }
+    pressed.map(|pressed| match pressed {
+        Pressed::Apply => Answer::Apply(dialog.steps()),
+        Pressed::Cancel => Answer::Cancel,
+    })
 }
 
 /// «Кроп и формат — <клип>» and ✕, a line under them.
-fn header(ui: &mut Ui, name: &str) -> Option<Answer> {
+fn header(ui: &mut Ui, name: &str) -> Option<Pressed> {
     let margin = Margin {
         left: S4 as i8,
         right: S2 as i8,
         top: 10,
         bottom: 10,
     };
-    let mut answer = None;
+    let mut pressed = None;
     section(ui, Color32::TRANSPARENT, margin, |ui| {
         ui.horizontal(|ui| {
             let title = RichText::new(text::title(name))
@@ -208,17 +199,17 @@ fn header(ui: &mut Ui, name: &str) -> Option<Answer> {
             ui.label(title);
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if ui.add(IconButton::new(Icon::Close, kit::CLOSE)).clicked() {
-                    answer = Some(Answer::Cancel);
+                    pressed = Some(Pressed::Cancel);
                 }
             });
         });
     });
     line(ui);
-    answer
+    pressed
 }
 
 /// The format choice with the output size, the picture, the fields and the hint.
-fn body(ui: &mut Ui, dialog: &mut CropDialog, preview: &mut super::preview::Preview) {
+fn body(ui: &mut Ui, dialog: &mut Dialog, source: &mut dyn FnMut(PixelSize) -> Picture) {
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = S2;
         ui.label(RichText::new(text::FORMAT).size(FS_S).color(TEXT_3));
@@ -249,7 +240,7 @@ fn body(ui: &mut Ui, dialog: &mut CropDialog, preview: &mut super::preview::Prev
         }
     });
     ui.add_space(S3);
-    view::picture(ui, dialog, preview);
+    view::picture(ui, dialog, source);
     ui.add_space(S2);
     view::fields(ui, dialog);
     ui.add_space(S1);
@@ -257,9 +248,9 @@ fn body(ui: &mut Ui, dialog: &mut CropDialog, preview: &mut super::preview::Prev
 }
 
 /// A line, the note, «Сбросить», «Отмена», «Применить».
-fn footer(ui: &mut Ui, dialog: &mut CropDialog) -> Option<Answer> {
+fn footer(ui: &mut Ui, dialog: &mut Dialog) -> Option<Pressed> {
     line(ui);
-    let mut answer = None;
+    let mut pressed = None;
     let margin = Margin::symmetric(S4 as i8, 10);
     section(ui, BG, margin, |ui| {
         ui.horizontal(|ui| {
@@ -267,10 +258,10 @@ fn footer(ui: &mut Ui, dialog: &mut CropDialog) -> Option<Answer> {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let apply = Button::new(text::APPLY).kind(Kind::Primary).small();
                 if ui.add(apply).clicked() {
-                    answer = Some(Answer::Apply);
+                    pressed = Some(Pressed::Apply);
                 }
                 if ui.add(Button::new(text::CANCEL).small()).clicked() {
-                    answer = Some(Answer::Cancel);
+                    pressed = Some(Pressed::Cancel);
                 }
                 let reset = Button::new(text::RESET)
                     .kind(Kind::Ghost)
@@ -287,26 +278,5 @@ fn footer(ui: &mut Ui, dialog: &mut CropDialog) -> Option<Answer> {
             });
         });
     });
-    answer
-}
-
-/// A part of the dialog with its own fill and padding, the whole width.
-pub(super) fn section(ui: &mut Ui, fill: Color32, margin: Margin, add: impl FnOnce(&mut Ui)) {
-    // The footer is the last part: its fill keeps the round corners of the dialog.
-    let corners = CornerRadius {
-        sw: R3,
-        se: R3,
-        ..CornerRadius::ZERO
-    };
-    let frame = Frame::new().fill(fill).inner_margin(margin);
-    frame.corner_radius(corners).show(ui, |ui| {
-        ui.set_width(ui.available_width());
-        add(ui);
-    });
-}
-
-pub(super) fn line(ui: &mut Ui) {
-    let rect = ui.available_rect_before_wrap();
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(rect.width(), 1.0), egui::Sense::hover());
-    ui.painter().rect_filled(rect, 0, BORDER);
+    pressed
 }

@@ -1,6 +1,7 @@
-//! The crop dialog in the editor (7.20): it opens from the preview toolbar and the «Клипы»
-//! header, «Применить» is `devcast crop` + `devcast aspect` as one undo step, «Отмена», ✕ and
-//! Esc change nothing, the frame drags inside the source and keeps a fixed format.
+//! The crop dialog in the editor (7.20; the dialog is `dc_fx_crop::dialog`): it opens from the
+//! preview toolbar and the «Клипы» header, «Применить» is `devcast crop` + `devcast aspect` as
+//! one undo step, «Отмена», ✕ and Esc change nothing, the frame drags inside the source and
+//! keeps a fixed format.
 
 use std::time::Instant;
 
@@ -11,7 +12,6 @@ use eframe::egui::{self, Event, Key, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 
-use super::geom::Area;
 use crate::editor::editing_tests::json;
 use crate::editor::selection::Selected;
 use crate::editor::tests::{State, harness, project};
@@ -204,10 +204,10 @@ fn the_clips_header_opens_the_picked_clip() {
     harness.get_by_label(rows::CLIP_CROP).click();
     harness.run();
     harness.run();
-    let dialog = harness.state().editor.crop.as_ref().unwrap();
-    assert_eq!(dialog.clip, second);
-    let area = Area::of(dialog.size);
-    assert_eq!((area.w, area.h), (1920.0, 1080.0));
+    let dialog = &harness.state().editor.crop.as_ref().unwrap().dialog;
+    assert_eq!(dialog.clip(), second);
+    let size = dialog.size();
+    assert_eq!((size.width, size.height), (1920, 1080));
     // Picked 16:9 is the format of the project: the output follows the first clip.
     let output = dialog.output().unwrap();
     assert_eq!((output.width, output.height), (2560, 1440));

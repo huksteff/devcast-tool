@@ -2,7 +2,7 @@
 //! right. The caller puts them where they belong: a popover of the HUD (it is excluded from
 //! capture, a system dialog would get into the video) or an `egui::Modal` in other windows.
 
-use egui::{Frame, Key, Layout, Stroke, Ui};
+use egui::{Color32, CornerRadius, Frame, Key, Layout, Margin, Stroke, Ui};
 
 use crate::fonts::{self, Weight};
 use crate::strings::kit;
@@ -173,4 +173,26 @@ fn heading(ui: &mut Ui, title: &str, text: &str) {
 fn buttons(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
     let size = egui::vec2(ui.available_width(), CONTROL_S);
     ui.allocate_ui_with_layout(size, Layout::right_to_left(egui::Align::Center), add);
+}
+
+/// A part of a modal dialog (crop, export) with its own fill and padding, the whole width.
+pub fn modal_section(ui: &mut Ui, fill: Color32, margin: Margin, add: impl FnOnce(&mut Ui)) {
+    // The footer is the last part: its fill keeps the round corners of the dialog.
+    let corners = CornerRadius {
+        sw: R3,
+        se: R3,
+        ..CornerRadius::ZERO
+    };
+    let frame = Frame::new().fill(fill).inner_margin(margin);
+    frame.corner_radius(corners).show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        add(ui);
+    });
+}
+
+/// The line between the parts of a modal dialog, the whole width.
+pub fn modal_line(ui: &mut Ui) {
+    let rect = ui.available_rect_before_wrap();
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(rect.width(), 1.0), egui::Sense::hover());
+    ui.painter().rect_filled(rect, 0, BORDER);
 }

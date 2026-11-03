@@ -1,8 +1,12 @@
 //! Output aspect and the command that crops a clip (the crop itself is `Clip::crop` in dc-core).
-//! The size of the output frame (`canvas`); clips are fitted into it by their video layer.
+//! The size of the output frame (`canvas`); clips are fitted into it by their video layer. The
+//! «Кроп и формат» dialog (`dialog`), which the editor opens.
 
 mod canvas;
 mod commands;
+pub mod dialog;
+mod dialog_geom;
+mod dialog_view;
 mod state;
 
 pub use canvas::canvas;
@@ -34,5 +38,7 @@ pub fn effect() -> EffectInfo {
     EffectInfo::of::<Crop>(Vec::new())
 }
 
+#[cfg(test)]
+mod dialog_tests;
 #[cfg(test)]
 mod tests;
