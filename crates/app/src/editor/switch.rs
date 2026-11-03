@@ -26,6 +26,17 @@ impl Shared {
 
     /// [`Self::open_project`] telling why the project did not open instead of a toast.
     pub(super) fn try_open(&mut self, root: &Path, recover: bool) -> Result<(), String> {
+        let last = self.editor.as_ref().and_then(|e| e.preview.last());
+        self.open_keeping(root, recover, last)
+    }
+
+    /// [`Self::try_open`]; the new preview shows `last` until its first frame.
+    fn open_keeping(
+        &mut self,
+        root: &Path,
+        recover: bool,
+        last: Option<super::preview::Last>,
+    ) -> Result<(), String> {
         let opened = ProjectDir::open(root)
             .map_err(super::DocumentError::from)
             .and_then(|dir| EditorWindow::open(dir, Vec::new()));
@@ -35,6 +46,9 @@ impl Shared {
         editor.retrack();
         editor.recovery = recover && editor.doc.unsaved();
         self.start_editor(&mut editor);
+        if let Some(last) = last {
+            editor.preview.keep(last);
+        }
         for problem in problems {
             self.report(Err(problem));
         }
@@ -153,6 +167,7 @@ impl Shared {
         checked
             .and_then(|()| editor.doc.flush())
             .map_err(|e| e.to_string())?;
+        let last = editor.preview.last();
         timeline_window::remember(self);
         let Some(editor) = self.editor.take() else {
             return Err(text::NOTHING_OPEN.to_owned());
@@ -161,11 +176,12 @@ impl Shared {
         let root = match dir.rename(lock, name) {
             Ok(renamed) => renamed.root().to_path_buf(),
             Err(error) => {
-                self.open_project(&old, false);
+                let reopened = self.open_keeping(&old, false, last);
+                self.report(reopened);
                 return Err(error.to_string());
             }
         };
-        self.try_open(&root, false)?;
+        self.open_keeping(&root, false, last)?;
         self.remember_project(&root, Some(&old));
         Ok(root)
     }

@@ -27,12 +27,10 @@ pub struct Request {
     pub want: Want,
 }
 
-/// A frame drawn into `texture`; the thread draws into the same texture while the size stays,
-/// `serial` names the texture.
+/// A frame drawn into `texture`; the thread draws into the same texture while the size stays.
 #[derive(Debug, Clone)]
 pub struct Rendered {
     pub texture: wgpu::Texture,
-    pub serial: u64,
     /// The camera the frame was drawn with (px of the output frame): the preview maps the boxes
     /// it edits through it.
     pub camera: Camera,
@@ -140,7 +138,6 @@ struct Painter<'d> {
     sources: Sources<'d>,
     telemetry: Option<Telemetry>,
     target: Option<Rendered>,
-    serial: u64,
 }
 
 impl<'d> Painter<'d> {
@@ -153,7 +150,6 @@ impl<'d> Painter<'d> {
             sources: Sources::new(dir),
             telemetry: None,
             target: None,
-            serial: 0,
         }
     }
 
@@ -225,10 +221,8 @@ impl<'d> Painter<'d> {
                 target.clone()
             }
             _ => {
-                self.serial += 1;
                 let target = Rendered {
                     texture: gpu.target(size),
-                    serial: self.serial,
                     camera: Camera::IDENTITY,
                 };
                 self.target = Some(target.clone());

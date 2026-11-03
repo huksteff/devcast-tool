@@ -21,8 +21,9 @@ pub struct Live {
     gpu: PreviewGpu,
     worker: Worker,
     fetch: Fetch<Rendered>,
-    /// The egui texture of the shown frame and the serial of the texture it shows.
-    texture: Option<(TextureId, u64)>,
+    /// The egui texture of the shown frame and the texture it shows: a kept frame
+    /// (`keep`) is another thread's texture.
+    texture: Option<(TextureId, wgpu::Texture)>,
     news: Arc<AtomicBool>,
 }
 
@@ -57,6 +58,16 @@ impl Live {
         self.news.swap(false, Ordering::AcqRel)
     }
 
+    /// The frame shown now.
+    pub fn last(&self) -> Option<Rendered> {
+        self.fetch.shown().cloned()
+    }
+
+    /// Shows `frame` until the thread answers (`Fetch::keep`).
+    pub fn keep(&mut self, frame: Rendered) {
+        self.fetch.keep(frame);
+    }
+
     /// Asks for `want` of `project` if it is new and shows the newest answer.
     pub fn frame(&mut self, project: &Arc<Project>, want: Want) -> Shown {
         if let Some(generation) = self.fetch.want(want) {
@@ -79,10 +90,9 @@ impl Live {
                 camera: None,
             };
         };
-        let serial = rendered.serial;
         let camera = rendered.camera;
-        let id = match self.texture {
-            Some((id, shown)) if shown == serial => id,
+        let id = match &self.texture {
+            Some((id, shown)) if *shown == rendered.texture => *id,
             known => {
                 let view = rendered
                     .texture
@@ -92,14 +102,14 @@ impl Live {
                 let filter = wgpu::FilterMode::Linear;
                 match known {
                     Some((id, _)) => {
-                        renderer.update_egui_texture_from_wgpu_texture(device, &view, filter, id);
-                        id
+                        renderer.update_egui_texture_from_wgpu_texture(device, &view, filter, *id);
+                        *id
                     }
                     None => renderer.register_native_texture(device, &view, filter),
                 }
             }
         };
-        self.texture = Some((id, serial));
+        self.texture = Some((id, rendered.texture.clone()));
         Shown {
             texture: Some(id),
             error: None,
@@ -110,8 +120,8 @@ impl Live {
 
 impl Drop for Live {
     fn drop(&mut self) {
-        if let Some((id, _)) = self.texture {
-            self.gpu.renderer.write().free_texture(&id);
+        if let Some((id, _)) = &self.texture {
+            self.gpu.renderer.write().free_texture(id);
         }
     }
 }

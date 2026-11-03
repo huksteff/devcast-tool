@@ -138,14 +138,14 @@ fn the_texture_is_reused_while_the_size_stays() {
     assert_eq!((first.texture.width(), first.texture.height()), (640, 360));
     ask(&worker, 2, &project, 3.0, half);
     let second = next(&worker, &wakes).1.unwrap();
-    assert_eq!(second.serial, first.serial, "same size, same texture");
+    assert_eq!(second.texture, first.texture, "same size, same texture");
     let small = PixelSize {
         width: 320,
         height: 180,
     };
     ask(&worker, 3, &project, 3.0, small);
     let third = next(&worker, &wakes).1.unwrap();
-    assert_ne!(third.serial, first.serial);
+    assert_ne!(third.texture, first.texture);
     assert_eq!(third.texture.width(), 320);
 }
 

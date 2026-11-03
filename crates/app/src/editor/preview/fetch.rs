@@ -77,6 +77,13 @@ impl<F> Fetch<F> {
         true
     }
 
+    /// Shows `frame` until the first answer: the last frame of the editor that gave way to this
+    /// one (renaming, another project), so the preview does not go black while it waits.
+    pub fn keep(&mut self, frame: F) {
+        self.shown = Some(frame);
+        self.error = None;
+    }
+
     /// The thread could not take the request: the frame is lost, the next wish asks again.
     pub fn lost(&mut self, error: String) {
         self.asked = None;
@@ -178,6 +185,20 @@ mod tests {
         assert_eq!(thread.waiting.len(), 2);
         thread.render(&mut fetch);
         assert_eq!(fetch.shown(), Some(&want(1, 2.0, 640)), "1.0 was skipped");
+    }
+
+    #[test]
+    fn a_kept_frame_stays_until_the_first_answer() {
+        let (mut fetch, mut thread) = (Fetch::default(), FakeThread::default());
+        fetch.keep(want(7, 3.0, 640));
+        thread.ask(&mut fetch, want(1, 0.0, 640));
+        assert_eq!(
+            fetch.shown(),
+            Some(&want(7, 3.0, 640)),
+            "shown while waiting"
+        );
+        assert!(thread.render(&mut fetch));
+        assert_eq!(fetch.shown(), Some(&want(1, 0.0, 640)));
     }
 
     #[test]

@@ -43,6 +43,10 @@ pub use live::Shown;
 const BAR: f32 = 36.0;
 const TRANSPORT: f32 = 48.0;
 
+/// The frame a preview shows, handed to the editor that takes its place (`Preview::keep`).
+#[derive(Debug, Clone)]
+pub struct Last(worker::Rendered);
+
 /// The project the preview renders and its render thread (none without a GPU, as in tests).
 #[derive(Debug)]
 pub struct Preview {
@@ -85,6 +89,19 @@ impl Preview {
     /// The project it renders and its revision.
     pub fn project(&self) -> (Arc<Project>, u64) {
         (Arc::clone(&self.project), self.revision)
+    }
+
+    /// The frame shown now; none without a GPU or before the first frame.
+    pub fn last(&self) -> Option<Last> {
+        self.live.as_ref().and_then(Live::last).map(Last)
+    }
+
+    /// Shows the last frame of the editor that gave way until this one renders its own: the
+    /// texture stays alive with it after the old render thread ends.
+    pub fn keep(&mut self, last: Last) {
+        if let Some(live) = &mut self.live {
+            live.keep(last.0);
+        }
     }
 
     /// A frame came since the last call: the editor window repaints.
