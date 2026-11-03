@@ -42,6 +42,9 @@ pub struct Recognition {
     pub tracks: Tracks,
     /// The recordings have system sound: «Системный звук» and «Оба» can be chosen.
     pub system: bool,
+    /// The own silence threshold of the first recording with words, dBFS, once a recognition
+    /// told it: «Авто» shows it, the level by hand starts there.
+    pub auto_silence: Option<f64>,
 }
 
 /// Where the recognition is.
@@ -129,7 +132,9 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, recognizing: &mut Recognition, list: &Li
         reset: None,
     };
     let any = !state.cues.is_empty();
-    cx.group(ui, group, |ui, cx| recognition(ui, cx, recognizing, any));
+    cx.group(ui, group, |ui, cx| {
+        recognition(ui, cx, recognizing, any, state.settings.silence)
+    });
     if any {
         let group = Group {
             id: "cues",

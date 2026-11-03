@@ -65,6 +65,7 @@ fn idle() -> Recognition {
         language: Language::Auto,
         tracks: Tracks::Mic,
         system: false,
+        auto_silence: None,
     }
 }
 
@@ -243,4 +244,46 @@ fn the_look_is_captions_style_and_a_font_file_is_asked_for() {
     assert_eq!(harness.state().requests, vec![Request::AddFont(choose)]);
     let state = harness.state().project.state::<CaptionsEffect>().unwrap();
     assert!(state.settings.show, "the panel only asks");
+}
+
+#[test]
+fn the_silence_threshold_leaves_auto_at_the_recordings_own() {
+    let told = Recognition {
+        auto_silence: Some(-41.6),
+        ..idle()
+    };
+    let mut harness = harness(project(), told, list(None));
+    assert!(harness.query_by_label(&text::silence_auto(-41.6)).is_some());
+    assert!(
+        harness.query_by_label(text::SILENCE_LEVEL).is_none(),
+        "auto: no level"
+    );
+    click(&mut harness, egui::Role::Switch, text::SILENCE);
+    let leave = step("captions style", json!({"silence": -42.0}));
+    assert_eq!(harness.state().edits, vec![leave]);
+}
+
+#[test]
+fn a_threshold_by_hand_has_its_level_and_goes_back_to_auto() {
+    let mut by_hand = project();
+    let mut state = by_hand.state::<CaptionsEffect>().unwrap();
+    state.settings.silence = crate::Silence::Db(-50.0);
+    by_hand.set_state::<CaptionsEffect>(&state).unwrap();
+    let mut harness = harness(by_hand, idle(), list(None));
+    type_in(&mut harness, text::SILENCE_LEVEL, -55.0);
+    click(&mut harness, egui::Role::Switch, text::SILENCE);
+    let expected = vec![
+        step("captions style", json!({"silence": -55.0})),
+        step("captions style", json!({"silence": "auto"})),
+    ];
+    assert_eq!(harness.state().edits, expected);
+}
+
+#[test]
+fn without_a_recognition_the_level_starts_at_minus_45() {
+    let mut harness = harness(project(), idle(), list(None));
+    assert!(harness.query_by_label(text::SILENCE_UNKNOWN).is_some());
+    click(&mut harness, egui::Role::Switch, text::SILENCE);
+    let leave = step("captions style", json!({"silence": -45.0}));
+    assert_eq!(harness.state().edits, vec![leave]);
 }

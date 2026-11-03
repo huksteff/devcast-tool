@@ -63,6 +63,7 @@ pub fn recognition(generation: &Generation, sound: &[String]) -> Recognition {
             Listen::Both => Tracks::Both,
         },
         system: sound.iter().any(|s| s == "system"),
+        auto_silence: generation.auto_silence,
     }
 }
 

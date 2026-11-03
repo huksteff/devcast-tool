@@ -181,7 +181,7 @@ pub fn media_cues(
         Range::new(SourceTime::ZERO, SourceTime::from_micros(end.max(1))).map_err(failed)?;
     let db = match db {
         Some(db) => db,
-        None => silence::threshold(&media.track).map_err(failed)?,
+        None => auto_silence(media)?,
     };
     let quiet = silence::find(&media.track, whole, db, DEFAULT_MIN).map_err(failed)?;
     let quiet: Vec<(i64, i64)> = quiet
@@ -189,6 +189,18 @@ pub fn media_cues(
         .map(|r| (r.start().micros(), r.end().micros()))
         .collect();
     Ok(cues(words, &quiet))
+}
+
+/// The silence threshold of `media` from its own levels, dBFS.
+pub fn auto_silence(media: &MediaWords) -> Result<f64, OpsError> {
+    silence::threshold(&media.track).map_err(failed)
+}
+
+/// What [`generate`] found: the command, and the own silence threshold (dBFS) of the first
+/// recording with words while the project leaves it to `auto` — none when set by hand.
+pub struct Generated {
+    pub command: CaptionsGen,
+    pub auto_silence: Option<f64>,
 }
 
 /// The cues of `speech` in the project at `dir`, recognized as needed (`progress` gets the
@@ -199,13 +211,15 @@ pub fn generate(
     project: &Project,
     speech: &Speech,
     progress: &OnProgress,
-) -> Result<CaptionsGen, OpsError> {
+) -> Result<Generated, OpsError> {
     let names: Vec<Option<&String>> = if speech.tracks.is_empty() {
         vec![None]
     } else {
         speech.tracks.iter().map(Some).collect()
     };
     let count = names.len();
+    let by_hand = silence_db(project)?;
+    let mut first_auto = None;
     let mut tracks = Vec::with_capacity(count);
     for (done, name) in names.into_iter().enumerate() {
         let part = (done as f32, count as f32);
@@ -215,7 +229,16 @@ pub fn generate(
         let all = project_words(dir, project, model, name, Some(&track_progress))?;
         let mut cues = Vec::new();
         for media in &all {
-            for cue in media_cues(media, &media.words, silence_db(project)?)? {
+            let db = match by_hand {
+                Some(db) => Some(db),
+                None if media.words.is_empty() => None,
+                None => {
+                    let auto = auto_silence(media)?;
+                    first_auto.get_or_insert(auto);
+                    Some(auto)
+                }
+            };
+            for cue in media_cues(media, &media.words, db)? {
                 cues.push(new_cue(media, &cue).map_err(failed)?);
             }
         }
@@ -228,7 +251,10 @@ pub fn generate(
                 .to_owned(),
         ));
     }
-    Ok(CaptionsGen { cues })
+    Ok(Generated {
+        command: CaptionsGen { cues },
+        auto_silence: first_auto,
+    })
 }
 
 /// The silence threshold set by hand in the captions settings (`captions style --silence`).

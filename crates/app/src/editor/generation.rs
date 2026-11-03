@@ -38,6 +38,9 @@ pub struct Generation {
     pub model: SpeechModel,
     pub language: Language,
     pub listen: Listen,
+    /// The own silence threshold of the project's first recording with words, dBFS, as the
+    /// last recognition told it: where the panel's slider starts.
+    pub auto_silence: Option<f64>,
     running: Running,
     spawn: Spawn,
     news: Arc<AtomicBool>,
@@ -66,6 +69,7 @@ impl Generation {
             model: SpeechModel::default(),
             language: Language::default(),
             listen: Listen::default(),
+            auto_silence: None,
             running: Running::Idle,
             spawn,
             news: Arc::new(AtomicBool::new(false)),
@@ -153,6 +157,7 @@ impl Generation {
                         *done = Some(share);
                     }
                 }
+                Message::Silence(db) => self.auto_silence = Some(db),
                 Message::Cues(cues) => {
                     self.running = Running::Idle;
                     return Some(Ok(cues));

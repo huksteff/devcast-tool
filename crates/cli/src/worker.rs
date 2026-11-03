@@ -49,9 +49,12 @@ pub(crate) fn recognize(request: &Request) -> Result<Vec<NewCue>, String> {
             say(&Message::Progress(percent as f32 / 100.0));
         }
     });
-    crate::speech::generate(&dir, &request.project, &request.speech, &progress)
-        .map(|command| command.cues)
-        .map_err(|e| e.to_string())
+    let found = crate::speech::generate(&dir, &request.project, &request.speech, &progress)
+        .map_err(|e| e.to_string())?;
+    if let Some(db) = found.auto_silence {
+        say(&Message::Silence(db));
+    }
+    Ok(found.command.cues)
 }
 
 /// Writes `message` for the editor. A write fails only when the editor closed its end: there

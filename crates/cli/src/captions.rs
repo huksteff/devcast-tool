@@ -45,7 +45,7 @@ pub(crate) fn generate(ctx: &Ctx<'_>, args: &GenArgs) -> Result<Answer, CliError
     let silent: OnProgress = Rc::new(|_| {});
     let command = {
         let workspace = ctx.open(false)?;
-        crate::speech::generate(workspace.dir(), &workspace.project, &speech, &silent)?
+        crate::speech::generate(workspace.dir(), &workspace.project, &speech, &silent)?.command
     };
     let mut workspace = ctx.open(true)?;
     edit::apply_commands(ctx, &mut workspace, CaptionsGen::NAME, &[&command])

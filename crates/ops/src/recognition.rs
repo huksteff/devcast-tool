@@ -1,8 +1,9 @@
 //! The protocol of the recognition process (docs/decisions/018-recognition-process.md): the
 //! editor does not link Whisper, so it starts `devcast` with [`WORKER_ARG`] beside its own exe
 //! and cancels by killing it. The request is one JSON [`Request`] on the worker's stdin; the
-//! answer is lines of [`Message`] on its stdout: `progress <0..1>` while it works, then
-//! `cues <JSON>` or `error <text>`. Both sides link this module, so they speak the same lines.
+//! answer is lines of [`Message`] on its stdout: `progress <0..1>` while it works, `silence <dBFS>` (the
+//! recording's own threshold, while the project leaves it to `auto`), then `cues <JSON>` or
+//! `error <text>`. Both sides link this module, so they speak the same lines.
 
 use std::path::PathBuf;
 
@@ -37,6 +38,8 @@ pub struct Request {
 pub enum Message {
     /// Share of the work done, 0..1.
     Progress(f32),
+    /// The own silence threshold of the first recording with words, dBFS.
+    Silence(f64),
     /// The cues found: they replace all cues.
     Cues(Vec<NewCue>),
     /// Why it failed, for the user.
@@ -44,6 +47,7 @@ pub enum Message {
 }
 
 const PROGRESS: &str = "progress";
+const SILENCE: &str = "silence";
 const CUES: &str = "cues";
 const ERROR: &str = "error";
 
@@ -52,6 +56,7 @@ impl Message {
     pub fn line(&self) -> String {
         match self {
             Self::Progress(done) => format!("{PROGRESS} {done:.3}"),
+            Self::Silence(db) => format!("{SILENCE} {db:.1}"),
             Self::Cues(cues) => match serde_json::to_string(cues) {
                 Ok(json) => format!("{CUES} {json}"),
                 Err(error) => format!("{ERROR} ответ не собран: {error}"),
@@ -65,6 +70,7 @@ impl Message {
         let (word, rest) = line.trim_end().split_once(' ')?;
         match word {
             PROGRESS => rest.parse().ok().map(Self::Progress),
+            SILENCE => rest.parse().ok().map(Self::Silence),
             CUES => serde_json::from_str(rest).ok().map(Self::Cues),
             ERROR => Some(Self::Failed(rest.to_owned())),
             _ => None,
@@ -73,7 +79,7 @@ impl Message {
 
     /// The last message of an answer: nothing comes after it.
     pub fn is_last(&self) -> bool {
-        !matches!(self, Self::Progress(_))
+        !matches!(self, Self::Progress(_) | Self::Silence(_))
     }
 }
 
@@ -104,6 +110,7 @@ mod tests {
     fn lines_of_the_messages_read_back() {
         let messages = [
             Message::Progress(0.25),
+            Message::Silence(-42.5),
             Message::Cues(vec![cue("Привет")]),
             Message::Failed("нет звука".to_owned()),
         ];

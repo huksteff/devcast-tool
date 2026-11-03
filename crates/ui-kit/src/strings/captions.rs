@@ -13,6 +13,10 @@ pub const BOTH: &str = "Микрофон и система";
 pub const REMAKE: &str = "Пересоздать";
 pub const CLEAR: &str = "Очистить все";
 pub const CANCEL: &str = "Остановить";
+pub const SILENCE: &str = "Порог тишины";
+pub const SILENCE_LEVEL: &str = "Уровень";
+pub const DB: &str = " dB";
+pub const SILENCE_UNKNOWN: &str = "по записи";
 pub const CUES: &str = "Реплики";
 pub const EMPTY: &str = "Субтитров ещё нет";
 pub const EMPTY_READY: &str = "Речь распознаётся на этом компьютере, без интернета.";
@@ -106,4 +110,9 @@ pub fn no_worker(path: &std::path::Path) -> String {
 /// region of the cue on the timeline is named by its text alone).
 pub fn cue_line(at: &str, said: &str) -> String {
     format!("{at} {said}")
+}
+
+/// The hint of «Авто» once a recognition told the recording's own threshold, dBFS.
+pub fn silence_auto(db: f64) -> String {
+    format!("по записи: {db:.0} dB")
 }

@@ -9,8 +9,11 @@ use dc_ui_kit::tokens::{
     ACCENT_HI, BORDER, FS_M, FS_S, R2, S1, S2, S3, SURFACE_3, TEXT, TEXT_2, TEXT_3,
 };
 use dc_ui_kit::widgets::{Button, Kind, dropdown, dropdown_some};
+use serde_json::json;
 
 use crate::panel::{Language, Model, Phase, Recognition, Tracks};
+use crate::panel_style::OP;
+use crate::{SILENCE_MAX, SILENCE_MIN, Silence};
 
 /// Height of the progress bar, side of the icon of the empty card, points.
 const BAR: f32 = 4.0;
@@ -30,8 +33,19 @@ const TRACKS: [(Tracks, &str); 3] = [
     (Tracks::Both, text::BOTH),
 ];
 
-/// The group's rows; `any` — the project has cues («Пересоздать», «Очистить все»).
-pub fn recognition(ui: &mut Ui, cx: &mut Cx<'_>, facts: &mut Recognition, any: bool) {
+/// Where the slider of the threshold set by hand starts when no recognition told the
+/// recording's own, dBFS.
+const SILENCE_START: f64 = -45.0;
+
+/// The group's rows; `any` — the project has cues («Пересоздать», «Очистить все»), `silence` —
+/// the project's threshold.
+pub fn recognition(
+    ui: &mut Ui,
+    cx: &mut Cx<'_>,
+    facts: &mut Recognition,
+    any: bool,
+    silence: Silence,
+) {
     rows::row(ui, text::LANGUAGE, |ui| {
         let width = ui.available_width();
         dropdown(ui, text::LANGUAGE, &mut facts.language, &LANGUAGES, width)
@@ -45,6 +59,7 @@ pub fn recognition(ui: &mut Ui, cx: &mut Cx<'_>, facts: &mut Recognition, any: b
         let width = ui.available_width();
         dropdown_some(ui, text::TRACKS, &mut facts.tracks, &tracks, width)
     });
+    threshold(ui, cx, facts.auto_silence, silence);
     let phase = facts.phase;
     if any {
         ui.horizontal(|ui| {
@@ -67,6 +82,31 @@ pub fn recognition(ui: &mut Ui, cx: &mut Cx<'_>, facts: &mut Recognition, any: b
     progress(ui, &line, done.unwrap_or(0.0));
     if ui.add(Button::new(text::CANCEL).small()).clicked() {
         cx.requests.push(Request::StopRecognizing);
+    }
+}
+
+/// «Порог тишины»: «Авто» (the recording's own) or a level by hand, `captions style --silence`.
+/// Leaving «Авто» starts the level at the recording's own, as the last recognition told it.
+fn threshold(ui: &mut Ui, cx: &mut Cx<'_>, auto: Option<f64>, silence: Silence) {
+    let hint = match (silence, auto) {
+        (Silence::Auto(_), Some(db)) => text::silence_auto(db),
+        (Silence::Auto(_), None) => text::SILENCE_UNKNOWN.to_owned(),
+        (Silence::Db(_), _) => String::new(),
+    };
+    let by_hand = silence.db();
+    if let Some(on) = rows::toggle_hint(ui, text::SILENCE, by_hand.is_none(), &hint) {
+        let start = auto
+            .unwrap_or(SILENCE_START)
+            .round()
+            .clamp(SILENCE_MIN, SILENCE_MAX);
+        let value = if on { json!("auto") } else { json!(start) };
+        cx.apply(OP, [("silence", value)]);
+    }
+    if let Some(db) = by_hand {
+        let range = SILENCE_MIN..=SILENCE_MAX;
+        if let Some(v) = rows::slider(ui, text::SILENCE_LEVEL, db, range, (1.0, text::DB)) {
+            cx.apply(OP, [("silence", json!(v))]);
+        }
     }
 }
 
