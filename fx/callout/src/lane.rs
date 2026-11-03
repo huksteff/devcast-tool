@@ -1,10 +1,12 @@
-//! The callout events on the timeline (`dc_ui_kit::lane`): a moved event is `callout set --at`,
-//! a dragged edge changes its `--duration` (the start keeps the end), a copy is `callout add`
-//! with all of the event.
+//! The callout events on the «Курсор» row (`dc_ui_kit::lane`): a region per event that shows,
+//! «вкл», «выкл» or its text; a moved event is `callout set --at`, a dragged edge changes its
+//! `--duration` (the start keeps the end), a copy is `callout add` with all of the event, a new
+//! one (the ghost) `callout add --action on`.
 
 use dc_core::time::Output;
-use dc_core::{IdKind, Project, Range, Step, TimeDelta};
-use dc_ui_kit::lane::{self, Item, Lane, Moved, Resize, id_args, seconds, time};
+use dc_core::{IdKind, Project, Range, StateError, Step, TimeDelta, TimeMap};
+use dc_ui_kit::lane::{self, Item, Lane, Moved, Region, Resize, id_args, seconds, time};
+use dc_ui_kit::strings::timeline as text;
 
 use crate::{Action, Callout, EventKind};
 
@@ -50,4 +52,30 @@ fn copied(project: &Project, item: Item, _: TimeDelta) -> Option<Step> {
 
 fn duplicated(project: &Project, item: Item, range: Range<Output>) -> Option<Step> {
     lane::in_place(copied(project, item, range.duration()), range)
+}
+
+/// The regions of the events that show on the output.
+pub fn regions(project: &Project, map: &TimeMap) -> Result<Vec<Region>, StateError> {
+    let state = project.state::<Callout>()?;
+    let mut regions = Vec::new();
+    for event in &state.events {
+        let label = match &event.action {
+            Action::On => text::CALLOUT_ON.to_owned(),
+            Action::Off => text::CALLOUT_OFF.to_owned(),
+            Action::Text { text } => text.clone(),
+        };
+        regions.extend(event.output(map).map(|range| Region {
+            item: Some(Item::of(event.id)),
+            ..Region::new(range, label)
+        }));
+    }
+    Ok(regions)
+}
+
+/// `callout add --action on` at the start of `range`: the event keeps its own length.
+pub fn added(range: Range<Output>) -> Step {
+    let mut args = serde_json::Map::new();
+    args.insert("at".to_owned(), time(range.start()));
+    args.insert("action".to_owned(), serde_json::Value::from("on"));
+    Step::new("callout add", args)
 }

@@ -9,7 +9,6 @@ use dc_core::{
 };
 use dc_fx_annotations::{Annotations, Kind, TRACKS};
 use dc_fx_audio_tracks::{Audio, AudioState, Sound, TRACKS as AUDIO_TRACKS};
-use dc_fx_callout::{Action, Callout, CalloutState};
 use dc_fx_captions::CaptionsEffect;
 use dc_fx_keys::Keys;
 use dc_ui_kit::lane;
@@ -137,7 +136,7 @@ impl Tracks {
         let audio = tracks.read::<Audio>(project);
         let keys = tracks.read::<Keys>(project);
         let zooms = tracks.lane(lanes::zoom::regions(project, &map));
-        let callout = tracks.read::<Callout>(project);
+        let cursor = tracks.lane(lanes::callout::regions(project, &map));
         tracks.add(
             Row::Captions,
             captions_of(&map, &captions),
@@ -145,7 +144,6 @@ impl Tracks {
         );
         tracks.clips(project, &map);
         tracks.add(Row::Zooms, zooms, false);
-        let cursor = callouts_of(&map, &callout);
         tracks.add(Row::Cursor, cursor, false);
         tracks.add(Row::Keys, Vec::new(), !keys.settings.show);
         tracks.annotations(project, &map, least.annotations);
@@ -314,22 +312,6 @@ fn clip_span(map: &TimeMap, id: ClipId) -> Option<Range<Output>> {
     let first = segments.next()?;
     let end = segments.next_back().unwrap_or(first).output_end();
     Range::new(first.output_start, end).ok()
-}
-
-fn callouts_of(map: &TimeMap, state: &CalloutState) -> Vec<Region> {
-    let mut regions = Vec::new();
-    for event in &state.events {
-        let label = match &event.action {
-            Action::On => text::CALLOUT_ON.to_owned(),
-            Action::Off => text::CALLOUT_OFF.to_owned(),
-            Action::Text { text } => text.clone(),
-        };
-        regions.extend(event.output(map).map(|r| Region {
-            item: Some(Item::of(event.id)),
-            ..region(r, label)
-        }));
-    }
-    regions
 }
 
 /// The sound track `name` of every recording clip at its `levels`; pale where the clip is

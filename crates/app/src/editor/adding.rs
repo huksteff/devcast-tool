@@ -91,16 +91,14 @@ fn regions(tracks: &Tracks, row: Row) -> impl Iterator<Item = Range<Output>> + '
 
 /// The command that adds a region at `range` of `row` (a text annotation, a callout «on»).
 pub fn step(row: Row, range: Range<Output>) -> Option<Step> {
-    if row == Row::Zooms {
-        return Some(lanes::zoom::added(range));
+    match row {
+        Row::Zooms => return Some(lanes::zoom::added(range)),
+        Row::Cursor => return Some(lanes::callout::added(range)),
+        _ => {}
     }
     let mut args = Map::new();
     args.insert("at".to_owned(), Value::String(arg(range.start())));
     let op = match row {
-        Row::Cursor => {
-            args.insert("action".to_owned(), Value::from("on"));
-            "callout add"
-        }
         Row::Annotations(track) => {
             args.insert("kind".to_owned(), Value::from("text"));
             args.insert("track".to_owned(), track.into());
@@ -108,9 +106,7 @@ pub fn step(row: Row, range: Range<Output>) -> Option<Step> {
         }
         _ => return None,
     };
-    if row != Row::Cursor {
-        args.insert("duration".to_owned(), seconds(range.duration()));
-    }
+    args.insert("duration".to_owned(), seconds(range.duration()));
     Some(Step::new(op, args))
 }
 

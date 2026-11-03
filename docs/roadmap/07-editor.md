@@ -147,6 +147,7 @@
     - [x] Шов `dc_ui_kit::lane` (ARCHITECTURE «Дорожка эффекта»): `Item` редактора — id `devcast` без типов эффектов (`lane::Item`), команды перемещения, краёв, копии и «Дублировать» — `Lane` в `fx/{zoom,captions,callout,annotations,audio-tracks}/src/lane.rs` (были `editor/regions.rs`, `clipboard.rs`), регистрация — `editor/lanes.rs`.
     - [x] Зум: регионы, новый зум (призрак, Z) и подпись призрака — `dc_fx_zoom::lane` (`regions`, `added`, `ghost`); редактор зовёт его через `lanes::zoom`, Ctrl+A без выбора берёт строку зумов.
     - [x] Клики: точки строки «Курсор» — `dc_fx_cursor::lane::dots` (`Dot` = `Press` + `hidden`; были `timeline/dots.rs::placed`), нажатия и кнопку отдаёт регистрация `lanes::click_dots`; в `dots.rs` осталось рисование и выбор, `object.rs` берёт `dot.press`.
+    - [x] Облачко: регионы событий на «Курсоре» и новое событие призрака — `dc_fx_callout::lane` (`regions`, `added`).
   - [ ] Правило `xtask verify` «нет кода эффектов в редакторе» — после переноса всех.
 
 **Готово, когда:** все фичи из `features.json` в статусе pass на Windows.
