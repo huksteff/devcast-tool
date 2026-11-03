@@ -8,7 +8,6 @@ use std::time::Duration;
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeDelta};
-use dc_fx_annotations::AnnotId;
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::{self, ACCENT_HI, BG, SNAP};
 use eframe::egui::{Align2, Pos2, Rect, Stroke, StrokeKind, Ui, pos2, vec2};
@@ -21,6 +20,7 @@ use super::scale::{TimeScale, timecode};
 use super::snap;
 use super::tracks::{Region, Row};
 use super::viewport::Lanes;
+use crate::editor::lanes::annotations::AnnotId;
 use crate::editor::regions as commands;
 use crate::editor::selection::{Item, Selected, Selection, same_moment};
 use crate::editor::view::{Gesture, Target};

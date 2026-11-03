@@ -3,10 +3,10 @@
 //! it back, and what the project no longer has drops out of it.
 
 use dc_core::{ClipId, OutputTime};
-use dc_fx_annotations::AnnotId;
-pub use dc_fx_annotations::same_moment;
 pub use dc_ui_kit::lane::Item;
 
+use super::lanes::annotations::AnnotId;
+pub use super::lanes::annotations::same_moment;
 use super::timeline::Tracks;
 
 /// An object picked on the timeline.

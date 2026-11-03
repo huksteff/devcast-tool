@@ -8,6 +8,7 @@ mod commands;
 mod keyed;
 mod keys;
 pub mod lane;
+mod lane_tip;
 mod model;
 mod motion;
 pub mod panel;

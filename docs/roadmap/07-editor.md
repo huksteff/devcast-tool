@@ -150,6 +150,7 @@
     - [x] Облачко: регионы событий на «Курсоре» и новое событие призрака — `dc_fx_callout::lane` (`regions`, `added`).
     - [x] Показ клавиш: фишки строки «Клавиши» и факты панели — `dc_fx_keys::lane::chips`, показ — `lane::shown` (`timeline/shortcuts.rs` удалён; `Tracks::place_keys` только кладёт их на строку).
     - [x] Субтитры: строка реплик — `dc_fx_captions::lane::row` (`lane::Row`: регионы и «выключен»). Распознавание остаётся в редакторе (`generation.rs`, решение 018).
+    - [x] Аннотации: строки и ключи (`lane::rows`, было `tracks.rs`, `marks::shown`), новая (призрак, T), удаление и перестановка строк (`lane::retrack`, было `rows.rs`), вставка ключа (`key_copied`), подсказка ключа (`lane::tip`, было `key_tip.rs`; поля видов — регистрация `lanes::kind_fields`) — `dc_fx_annotations::lane`. Id аннотации и `same_moment` редактор берёт из `lanes::annotations`.
   - [ ] Правило `xtask verify` «нет кода эффектов в редакторе» — после переноса всех.
 
 **Готово, когда:** все фичи из `features.json` в статусе pass на Windows.

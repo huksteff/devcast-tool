@@ -8,12 +8,10 @@ use dc_core::{
     ChannelLevels, ClipId, Effect, KeyTracks, OutputTime, Project, Range, StateError, TimeDelta,
     TimeMap,
 };
-use dc_fx_annotations::{Annotations, Kind, TRACKS};
 use dc_fx_audio_tracks::{Audio, AudioState, Sound, TRACKS as AUDIO_TRACKS};
 use dc_ui_kit::lane;
 use dc_ui_kit::strings::timeline as text;
 
-use super::marks;
 use super::scale::length;
 use super::wave::{self, Source, Wave};
 use crate::editor::lanes;
@@ -236,37 +234,15 @@ impl Tracks {
 
     /// Annotation rows up to the highest used track, at least `least` and one.
     fn annotations(&mut self, project: &Project, map: &TimeMap, least: u32) {
-        let state = self.read::<Annotations>(project);
-        let count = state
-            .annotations
-            .iter()
-            .map(|a| a.track + 1)
-            .max()
-            .unwrap_or(1)
-            .max(least.clamp(1, TRACKS));
-        for track in 0..count {
-            let regions = state
-                .annotations
-                .iter()
-                .filter(|a| a.track == track)
-                .filter_map(|a| {
-                    let range = map.output_span(&a.media, a.range)?;
-                    Some(Region {
-                        item: Some(Item::of(a.id)),
-                        keys: marks::shown(map, a, range),
-                        ..region(range, kind_name(a.kind).to_owned())
-                    })
-                })
-                .collect();
+        let rows = lanes::annotations::rows(project, map, least).unwrap_or_else(|error| {
+            self.problems.push(error.to_string());
+            lanes::annotations::Rows::empty(least)
+        });
+        for (track, regions) in (0..).zip(rows.rows) {
+            let regions = regions.into_iter().map(Region::from).collect();
             self.add(Row::Annotations(track), regions, false);
         }
-        for annotation in &state.annotations {
-            if let Some(span) = map.output_span(&annotation.media, annotation.range) {
-                self.keys.extend(marks::shown(map, annotation, span));
-            }
-        }
-        self.keys.sort_unstable();
-        self.keys.dedup();
+        self.keys = rows.keys;
     }
 
     /// Extra sound rows up to the highest used track, at least `least`.
@@ -347,16 +323,6 @@ fn source_sound(
 
 fn muted(levels: Option<&ChannelLevels>) -> bool {
     levels.and_then(|l| l.muted).unwrap_or(false)
-}
-
-fn kind_name(kind: Kind) -> &'static str {
-    match kind {
-        Kind::Text => text::TEXT,
-        Kind::Shape => text::SHAPE,
-        Kind::Image => text::IMAGE,
-        Kind::Drawing => text::DRAWING,
-        Kind::Blur => text::BLUR,
-    }
 }
 
 /// «music.mp3» of «assets/audio/music.mp3».

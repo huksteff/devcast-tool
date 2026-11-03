@@ -6,6 +6,8 @@
 use dc_capture::input::{Button, Click};
 use dc_core::Project;
 use dc_core::project::Media;
+use dc_fx_annotations::Kind;
+pub use dc_fx_annotations::lane as annotations;
 pub use dc_fx_callout::lane as callout;
 pub use dc_fx_captions::lane as captions;
 pub use dc_fx_cursor::lane as cursor;
@@ -13,6 +15,7 @@ use dc_fx_cursor::panel::PressButton;
 pub use dc_fx_keys::lane as keys;
 pub use dc_fx_zoom::lane as zoom;
 use dc_ui_kit::lane::{Item, Lane};
+use serde_json::{Map, Value};
 
 const LANES: [&Lane; 5] = [
     &dc_fx_zoom::lane::LANE,
@@ -47,6 +50,18 @@ pub fn click_dots<'a>(
             (media.path.clone(), presses.collect())
         });
     cursor::dots(project, recordings.collect())
+}
+
+/// The fields of an annotation of `kind` with the defaults of its kind's crate (the key tips,
+/// `annotations::tip`).
+pub fn kind_fields(kind: Kind, body: &Map<String, Value>) -> Option<Map<String, Value>> {
+    match kind {
+        Kind::Text => annotations::fields::<dc_fx_text::TextBody>(body),
+        Kind::Shape => annotations::fields::<dc_fx_shape::ShapeBody>(body),
+        Kind::Image => annotations::fields::<dc_fx_image::ImageBody>(body),
+        Kind::Drawing => annotations::fields::<dc_fx_drawing::DrawingBody>(body),
+        Kind::Blur => annotations::fields::<dc_fx_blur::BlurBody>(body),
+    }
 }
 
 /// The lane of `item`.

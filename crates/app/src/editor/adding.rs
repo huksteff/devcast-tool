@@ -10,14 +10,13 @@ use std::time::Instant;
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeDelta};
-use dc_fx_annotations::TRACKS;
 use dc_fx_audio_tracks::AudioAdd;
 use dc_ops::{SoundPlace, Step};
-use dc_ui_kit::lane::seconds;
-use serde_json::{Map, Value};
 
-use super::lanes;
-use super::montage::arg;
+use super::lanes::{
+    self,
+    annotations::{AnnotId, TRACKS},
+};
 use super::selection::{Item, Selected};
 use super::timeline::{Row, Tracks};
 use super::{Action, EditorWindow};
@@ -39,7 +38,7 @@ pub struct SoundFile {
 /// A picture file for image annotation `id`: in the key at `at` of the output, or everywhere.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PictureFile {
-    pub id: dc_fx_annotations::AnnotId,
+    pub id: AnnotId,
     pub at: Option<OutputTime>,
     pub path: PathBuf,
 }
@@ -92,22 +91,11 @@ fn regions(tracks: &Tracks, row: Row) -> impl Iterator<Item = Range<Output>> + '
 /// The command that adds a region at `range` of `row` (a text annotation, a callout «on»).
 pub fn step(row: Row, range: Range<Output>) -> Option<Step> {
     match row {
-        Row::Zooms => return Some(lanes::zoom::added(range)),
-        Row::Cursor => return Some(lanes::callout::added(range)),
-        _ => {}
+        Row::Zooms => Some(lanes::zoom::added(range)),
+        Row::Cursor => Some(lanes::callout::added(range)),
+        Row::Annotations(track) => Some(lanes::annotations::added(range, track)),
+        _ => None,
     }
-    let mut args = Map::new();
-    args.insert("at".to_owned(), Value::String(arg(range.start())));
-    let op = match row {
-        Row::Annotations(track) => {
-            args.insert("kind".to_owned(), Value::from("text"));
-            args.insert("track".to_owned(), track.into());
-            "annot add"
-        }
-        _ => return None,
-    };
-    args.insert("duration".to_owned(), seconds(range.duration()));
-    Some(Step::new(op, args))
 }
 
 /// Z: a zoom at the playhead; where there is no room, the command says why.

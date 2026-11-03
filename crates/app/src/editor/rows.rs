@@ -3,18 +3,14 @@
 //! row to another place moves its annotations (the row order is the layer order); the sound
 //! button of a recording track mutes it for every clip. No new command: `annot rm`, `annot move
 //! --track`, `audio rm`, `audio set --track`, `audio channel --mute` as one undo step.
-//!
-//! `annot move --track` puts the annotation on top of the new track, so the annotations move in
-//! the order of the list and every annotation of a changed track moves: each track keeps its
-//! own order.
 
 use dc_core::Project;
-use dc_fx_annotations::Annotations;
 use dc_fx_audio_tracks::Audio;
 use dc_ops::Step;
 use serde_json::{Map, Value};
 
 use super::Action;
+use super::lanes;
 use super::regions::remove;
 use super::selection::Item;
 use super::timeline::Row;
@@ -41,20 +37,9 @@ pub fn move_annotations(project: &Project, from: u32, to: u32) -> Vec<Step> {
     })
 }
 
-/// Each annotation to the track `to` gives (`None` removes it), in the order of the list.
+/// Each annotation to the track `to` gives (`None` removes it).
 fn retrack(project: &Project, to: impl Fn(u32) -> Option<u32>) -> Vec<Step> {
-    let Ok(state) = project.state::<Annotations>() else {
-        return Vec::new();
-    };
-    state
-        .annotations
-        .iter()
-        .filter_map(|a| match to(a.track) {
-            None => remove(Item::of(a.id)),
-            Some(track) if track != a.track => Some(step("annot move", a.id.to_string(), track)),
-            Some(_) => None,
-        })
-        .collect()
+    lanes::annotations::retrack(project, to)
 }
 
 /// The commands that remove extra sound track `track` and move the tracks above one down,

@@ -6,13 +6,12 @@
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Project, Range};
-use dc_fx_annotations::AnnotId;
 use dc_ops::Step;
 pub use dc_ui_kit::lane::Moved;
 use dc_ui_kit::lane::Resize;
 use serde_json::{Map, Value};
 
-use super::lanes;
+use super::lanes::{self, annotations::AnnotId};
 use super::selection::Item;
 
 /// The commands that put each region of `moved` in its new place, one after another so that

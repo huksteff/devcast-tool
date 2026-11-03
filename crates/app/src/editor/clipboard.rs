@@ -7,11 +7,10 @@
 //! the picked annotation (else its own), and picks the pasted key.
 
 use dc_core::{OutputTime, Project, TimeDelta};
-use dc_fx_annotations::AnnotId;
 use dc_ops::Step;
-use serde_json::{Map, Value};
+use serde_json::Value;
 
-use super::lanes;
+use super::lanes::{self, annotations::AnnotId};
 use super::montage::arg;
 use super::regions::{key_remove, remove};
 use super::selection::{Item, Selected};
@@ -105,14 +104,7 @@ pub fn paste(editor: &mut EditorWindow) {
         Clipboard::Empty => return,
         Clipboard::Key { id, at: key } => {
             let into = super::stage::picked(editor).unwrap_or(*id);
-            let mut args = Map::new();
-            args.insert("id".to_owned(), serde_json::json!(id));
-            args.insert("at".to_owned(), Value::String(arg(*key)));
-            args.insert("to".to_owned(), Value::String(arg(at)));
-            if into != *id {
-                args.insert("into".to_owned(), serde_json::json!(into));
-            }
-            let step = Step::new("annot key copy", args);
+            let step = lanes::annotations::key_copied(*id, *key, at, into);
             editor.ask(Action::Keyed(vec![step], into));
             return;
         }

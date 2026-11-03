@@ -2,9 +2,9 @@
 //! inspector panel. Several controls only hold their state until the task named at the field
 //! makes it act.
 
+use super::lanes::annotations::AnnotId;
 use dc_core::time::Output;
 use dc_core::{ClipId, OutputTime, Range};
-use dc_fx_annotations::AnnotId;
 use dc_fx_drawing::{ERASER_WIDTH, StrokeTool};
 use eframe::egui::Pos2;
 

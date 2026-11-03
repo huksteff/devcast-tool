@@ -4,7 +4,7 @@
 
 use std::time::Instant;
 
-use dc_fx_annotations::AnnotId;
+use super::lanes::annotations::AnnotId;
 use dc_ops::Step;
 use eframe::egui::Ui;
 use serde_json::{Map, Value};

@@ -5,9 +5,7 @@
 //! (`snap::point`); the release is `annot key move`, Delete is `annot key rm`
 //! (`editor/clipboard.rs`). Hovering a marker shows what its key changes (`key_tip.rs`).
 
-use dc_core::time::Output;
-use dc_core::{OutputTime, Range, TimeMap};
-use dc_fx_annotations::{AnnotId, Annotation};
+use dc_core::OutputTime;
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::{BG, KEYFRAME, WHITE};
 use eframe::egui::{
@@ -18,6 +16,7 @@ use eframe::egui::{
 use super::scale::{TimeScale, timecode};
 use super::tracks::Row;
 use super::{key_tip, paint};
+use crate::editor::lanes::annotations::AnnotId;
 use crate::editor::selection::{Item, Selected};
 use crate::editor::view::{Gesture, Tool};
 use crate::editor::{Action, EditorWindow, Transport};
@@ -28,21 +27,6 @@ const HALF: f32 = 6.0;
 const RING: f32 = 2.0;
 /// Half the width of the grab zone of a marker, points.
 const GRAB: f32 = 6.0;
-
-/// Output times of the keys of `annotation`, which shows at `span`: a key past a trimmed edge or
-/// in a cut does not show; a key at the end is at the end of the span.
-pub fn shown(map: &TimeMap, annotation: &Annotation, span: Range<Output>) -> Vec<OutputTime> {
-    let range = annotation.range;
-    let times = annotation.keys.iter().filter_map(|key| {
-        let t = range.start() + key.at;
-        if t == range.end() {
-            return Some(span.end());
-        }
-        range.contains(t).then_some(())?;
-        map.locate(&annotation.media, t).map(|(_, at)| at)
-    });
-    times.collect()
-}
 
 /// The markers of the annotation rows of `rows` (each with its lane): picking, the start of a
 /// drag, and their drawing over the regions. Nothing while the markers are hidden.
