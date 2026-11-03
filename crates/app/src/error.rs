@@ -37,6 +37,8 @@ pub enum AppError {
     Window(String),
     #[error(transparent)]
     Store(#[from] dc_settings::StoreError),
+    #[error(transparent)]
+    Update(#[from] dc_update::UpdateError),
     #[error("не удалось записать или прочитать {path}: {source}. Проверь права на папку")]
     SettingsFile {
         path: std::path::PathBuf,

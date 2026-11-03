@@ -8,10 +8,17 @@ use crate::error::{ProjectError, Result};
 /// File of the app defaults ([`crate::Defaults`]) in [`dir`].
 pub const DEFAULTS_FILE: &str = "defaults.json";
 
+/// Folder of the app's log files in [`dir`]: «Открыть папку логов», `devcast app feedback`.
+pub const LOGS_DIR: &str = "logs";
+
 pub fn dir() -> Result<PathBuf> {
     std::env::var_os("APPDATA")
         .map(|appdata| PathBuf::from(appdata).join("DevCast"))
         .ok_or(ProjectError::NoSettingsDir)
+}
+
+pub fn logs_dir() -> Result<PathBuf> {
+    Ok(dir()?.join(LOGS_DIR))
 }
 
 pub fn defaults_file() -> Result<PathBuf> {

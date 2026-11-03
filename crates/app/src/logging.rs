@@ -8,9 +8,6 @@ use tracing_subscriber::EnvFilter;
 
 use crate::error::AppError;
 
-/// Folder of the logs inside the app settings folder.
-pub const FOLDER: &str = "logs";
-
 /// Days of logs kept; older files are deleted at rotation.
 const KEEP_FILES: usize = 7;
 

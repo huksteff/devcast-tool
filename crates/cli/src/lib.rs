@@ -19,6 +19,7 @@ mod export;
 mod export_app;
 mod export_args;
 mod export_queue;
+mod feedback;
 pub mod find;
 mod font;
 pub mod globals;

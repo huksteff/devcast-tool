@@ -274,6 +274,10 @@ pub mod settings {
     pub const FACTORY_NOW: &str = "сейчас заводские";
     pub const OWN_NOW: &str = "сейчас сохранённые из проекта";
     pub const ABOUT_TEXT: &str = "Запись и монтаж видео с экрана";
+    pub const FEEDBACK: &str = "Обратная связь";
+    pub const FEEDBACK_TEXT: &str = "Нашли баг или есть идея — напишите:";
+    pub const REPOSITORY: &str = "Репозиторий";
+    pub const OPEN_LOGS: &str = "Открыть папку логов";
 
     /// «Скачивается… 42 %».
     pub fn downloading(percent: u32) -> String {
@@ -283,6 +287,11 @@ pub mod settings {
     /// «настройки эффектов проекта «Демо-запись»».
     pub fn of_project(name: &str) -> String {
         format!("настройки эффектов проекта «{name}»")
+    }
+
+    /// «Telegram: @devcast_team».
+    pub fn contact(name: &str, value: &str) -> String {
+        format!("{name}: {value}")
     }
 
     /// «Версия 2.0.0».

@@ -33,6 +33,7 @@ mod recorder;
 mod remote;
 mod session;
 mod settings;
+mod settings_about;
 mod settings_captions;
 mod settings_defaults;
 mod settings_hotkeys;
@@ -56,7 +57,7 @@ pub fn run() -> Result<(), AppError> {
         return crash::serve(std::path::Path::new(socket), dir.into(), std::io::stdin());
     }
     let settings = dc_project::settings::dir()?;
-    let _log = logging::init(&settings.join(logging::FOLDER))?;
+    let _log = logging::init(&settings.join(dc_project::settings::LOGS_DIR))?;
     let store = settings::Store::load(&settings.join(settings::FILE))?;
     let listener = match instance::claim()? {
         Claim::First(listener) => listener,
@@ -112,6 +113,11 @@ pub(crate) fn open_folder(path: &std::path::Path) -> Result<(), AppError> {
             path: path.to_path_buf(),
             source,
         })
+}
+
+/// Opens the folder of the logs (`%APPDATA%\DevCast\logs`) in Explorer.
+pub(crate) fn open_logs() -> Result<(), AppError> {
+    open_folder(&dc_project::settings::logs_dir()?)
 }
 
 /// The Win32 handle of the main window (the HUD).

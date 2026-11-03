@@ -6,9 +6,9 @@ use dc_capture::Fps;
 use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::{hud, settings as text};
-use dc_ui_kit::tokens::{BG, BORDER, CONTROL, FS_M, FS_S, R1, S2, S4, S5, SURFACE_2, TEXT, TEXT_2};
+use dc_ui_kit::tokens::{BG, BORDER, CONTROL, FS_S, R1, S2, S4, S5, SURFACE_2, TEXT, TEXT_2};
 use dc_ui_kit::widgets::{Button, LevelBar, Toggle, dropdown, segmented};
-use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Stroke, StrokeKind, Ui, vec2};
+use eframe::egui::{self, Align, Color32, Layout, Sense, Stroke, StrokeKind, Ui, vec2};
 
 use std::sync::{Arc, Mutex};
 
@@ -118,10 +118,7 @@ impl SettingsWindow {
                     self.updates(ui, &mut next);
                     Ok(())
                 }
-                Page::About => {
-                    about(ui);
-                    Ok(())
-                }
+                Page::About => crate::settings_about::about(ui),
             })
             .inner;
         store.update(|settings| *settings = next)?;
@@ -282,17 +279,6 @@ pub fn countdown(ui: &mut Ui, countdown: &mut Countdown) {
         .map(|(c, label)| (*c, label.as_str(), true))
         .collect();
     segmented(ui, countdown, &options);
-}
-
-fn about(ui: &mut Ui) {
-    heading(ui, text::ABOUT);
-    ui.label(
-        RichText::new(crate::APP_NAME)
-            .font(fonts::text(FS_M, Weight::Semibold))
-            .color(TEXT),
-    );
-    ui.label(RichText::new(text::ABOUT_TEXT).color(TEXT_2));
-    ui.label(RichText::new(text::version(env!("CARGO_PKG_VERSION"))).color(TEXT_2));
 }
 
 /// Viewport of the settings window.

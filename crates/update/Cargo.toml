@@ -1,6 +1,6 @@
 [package]
 name = "dc-update"
-description = "Velopack updates, What's new window data, announcements."
+description = "Velopack updates, What's new window data, announcements, feedback contacts."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,5 +11,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 # The same version as the `vpk` tool that packs the installer (decision 013).
 velopack = "=1.2.161"

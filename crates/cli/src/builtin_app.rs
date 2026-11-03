@@ -8,7 +8,7 @@ use dc_settings::SpeechModel;
 use crate::edit::Ctx;
 use crate::error::CliError;
 use crate::run::Answer;
-use crate::{app_control, config, hotkeys, models};
+use crate::{app_control, config, feedback, hotkeys, models};
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum ConfigCommand {
@@ -142,6 +142,11 @@ pub(crate) enum AppCommand {
         after_help = "app quit"
     )]
     Quit,
+    #[command(
+        about = "Куда написать о баге или идее (как «О программе» в настройках) и папка логов, которую приложить",
+        after_help = "app feedback"
+    )]
+    Feedback,
 }
 
 impl AppCommand {
@@ -150,6 +155,7 @@ impl AppCommand {
             Self::Status => app_control::status(ctx),
             Self::Show => app_control::show(ctx),
             Self::Quit => app_control::quit(ctx),
+            Self::Feedback => feedback::feedback(ctx),
         }
     }
 }

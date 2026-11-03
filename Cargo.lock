@@ -1368,6 +1368,7 @@ dependencies = [
  "dc-render",
  "dc-settings",
  "dc-transcribe",
+ "dc-update",
  "insta",
  "schemars",
  "serde",
@@ -1746,6 +1747,9 @@ dependencies = [
 name = "dc-update"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
  "velopack",
 ]
 

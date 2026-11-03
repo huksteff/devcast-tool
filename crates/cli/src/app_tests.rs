@@ -144,3 +144,17 @@ fn show_and_quit_the_app() {
     assert_eq!(run(&f, "app quit", &app.channel).stdout, "DevCast закрыт\n");
     app.gone();
 }
+
+#[test]
+fn feedback_lists_contacts_and_the_logs_folder() {
+    let f = Fixture::new();
+    let text = f.run("app feedback");
+    assert_eq!(text.code, 0, "{}", text.stderr);
+    assert!(text.stdout.starts_with("Нашли баг или есть идея"));
+    assert!(text.stdout.contains("Репозиторий: https://"));
+    let json: serde_json::Value =
+        serde_json::from_str(&f.run("app feedback --json").stdout).unwrap();
+    assert!(!json["contacts"].as_array().unwrap().is_empty());
+    let logs = std::path::PathBuf::from(json["logs"].as_str().unwrap());
+    assert!(logs.ends_with("logs") && !logs.starts_with(std::env::var("APPDATA").unwrap()));
+}

@@ -1,4 +1,10 @@
-//! Velopack updates, What's new window data, announcements.
+//! Velopack updates, What's new window data, announcements, feedback contacts.
+
+mod error;
+mod feedback;
+
+pub use error::UpdateError;
+pub use feedback::{Contact, Feedback, feedback};
 
 /// Handles the Velopack installer hooks (`--veloapp-install`, `--veloapp-uninstall`, …): during
 /// a hook the process does its part and exits here. Must be the first call of `main` of the

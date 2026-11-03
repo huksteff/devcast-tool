@@ -130,3 +130,14 @@ fn model_card_while_downloading() {
     harness.run();
     harness.snapshot("settings_model_downloading");
 }
+
+#[test]
+fn about_page_with_feedback() {
+    let mut harness = harness();
+    harness.get_by_label(text::ABOUT).click();
+    harness.run();
+    harness.get_by_label(text::OPEN_LOGS);
+    let feedback = dc_update::feedback().unwrap();
+    harness.get_by_label(&text::contact(text::REPOSITORY, &feedback.repository));
+    harness.snapshot("settings_about");
+}

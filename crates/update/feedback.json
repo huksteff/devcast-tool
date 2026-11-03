@@ -1,0 +1,10 @@
+{
+  "contacts": [
+    {
+      "name": "Задачи",
+      "value": "github.com/huksteff/recordy-fork/issues",
+      "url": "https://github.com/huksteff/recordy-fork/issues"
+    }
+  ],
+  "repository": "https://github.com/huksteff/recordy-fork"
+}
