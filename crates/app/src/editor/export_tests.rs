@@ -22,7 +22,7 @@ use crate::exports::{Encoder, Exports, Probe, Runner};
 
 /// A queue whose jobs write nothing: each takes its spec into `taken` and is done at once, or
 /// fails when its file is named `сбой.mp4`. Its encoder check finds NVENC.
-fn stand_in() -> (Exports, Arc<Mutex<Vec<Spec>>>) {
+pub(super) fn stand_in() -> (Exports, Arc<Mutex<Vec<Spec>>>) {
     stand_in_with(Arc::new(|| Ok(Codec::Nvenc)))
 }
 

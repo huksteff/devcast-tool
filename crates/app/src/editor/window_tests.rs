@@ -14,7 +14,7 @@ use crate::editor::closing::Closing;
 use crate::settings::Store;
 
 /// A pass of the editor window in which the user closes it.
-fn close(ctx: &egui::Context, shared: &mut Shared) -> egui::FullOutput {
+pub(in crate::editor) fn close(ctx: &egui::Context, shared: &mut Shared) -> egui::FullOutput {
     let mut input = egui::RawInput::default();
     input.viewports.insert(
         egui::ViewportId::ROOT,

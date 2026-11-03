@@ -46,6 +46,10 @@ mod window;
 #[cfg(test)]
 mod crop_tests;
 #[cfg(test)]
+mod e2e_recovery_tests;
+#[cfg(test)]
+mod e2e_tests;
+#[cfg(test)]
 mod editing_tests;
 #[cfg(test)]
 mod export_tests;

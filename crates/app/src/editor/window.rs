@@ -208,4 +208,4 @@ pub(super) fn save_layout(shared: &mut Shared, ui: &Ui, was: EditorLayout, now: 
 
 #[cfg(test)]
 #[path = "window_tests.rs"]
-mod tests;
+pub(super) mod tests;
