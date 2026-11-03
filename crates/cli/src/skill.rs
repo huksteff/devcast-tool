@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::error::CliError;
 use crate::run::Answer;
 
-pub(crate) const SKILL: &str = include_str!("../../../skill/SKILL.md");
+pub(crate) const SKILL: &str = dc_agent::prompt::SKILL;
 
 /// `~/.claude/skills/devcast/SKILL.md`, where Claude Code looks for personal skills.
 pub(crate) fn target() -> Result<PathBuf, CliError> {

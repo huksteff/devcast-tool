@@ -33,6 +33,30 @@ pub struct Change {
     pub summary: String,
     pub before: Parts,
     pub after: Parts,
+    /// The run this step belongs to (one «Сделать красиво» of the user's AI agent): consecutive
+    /// steps of the same group are one undo step.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+}
+
+impl Change {
+    /// `next` (a later step of the same state) folded into this one: the parts as they were
+    /// before both, and as they are after both.
+    pub fn join(&mut self, next: Change) {
+        if self.before.clips.is_none() {
+            self.before.clips = next.before.clips;
+        }
+        for (id, state) in next.before.effects {
+            self.before.effects.entry(id).or_insert(state);
+        }
+        if next.after.clips.is_some() {
+            self.after.clips = next.after.clips;
+        }
+        self.after.effects.extend(next.after.effects);
+        if !next.summary.is_empty() && !self.summary.contains(&next.summary) {
+            self.summary = format!("{}; {}", self.summary, next.summary);
+        }
+    }
 }
 
 impl Parts {
@@ -98,6 +122,8 @@ pub struct History {
     undo: Vec<Change>,
     redo: Vec<Change>,
     limit: usize,
+    /// The group new steps get ([`Self::group`]).
+    group: Option<String>,
 }
 
 impl Default for History {
@@ -112,7 +138,14 @@ impl History {
             undo: Vec::new(),
             redo: Vec::new(),
             limit: limit.max(1),
+            group: None,
         }
+    }
+
+    /// The group of the steps applied from now on: consecutive steps of one group are one undo
+    /// step (`DEVCAST_GROUP` of a `devcast` run the AI agent started).
+    pub fn group(&mut self, group: Option<String>) {
+        self.group = group;
     }
 
     /// Restores stacks loaded from disk: `undo` oldest first, `redo` with the next step to redo last.
@@ -181,14 +214,13 @@ impl History {
             return Ok(summary);
         }
         *project = draft;
-        self.undo.push(Change {
+        self.record(Change {
             name: name.to_owned(),
             summary: summary.to_string(),
             before,
             after,
+            group: self.group.clone(),
         });
-        self.redo.clear();
-        self.trim();
         Ok(summary)
     }
 
@@ -197,7 +229,15 @@ impl History {
     /// redo is cleared, as if [`Self::apply_batch`] had made it here.
     pub fn push(&mut self, project: &mut Project, change: Change) {
         change.after.restore(project);
-        self.undo.push(change);
+        self.record(change);
+    }
+
+    /// `change` becomes the step to undo: joined with the top one when both are of one group.
+    fn record(&mut self, change: Change) {
+        match self.undo.last_mut() {
+            Some(top) if top.group.is_some() && top.group == change.group => top.join(change),
+            _ => self.undo.push(change),
+        }
         self.redo.clear();
         self.trim();
     }

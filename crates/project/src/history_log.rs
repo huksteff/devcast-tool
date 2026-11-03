@@ -198,7 +198,10 @@ fn json_line(value: &impl Serialize) -> Result<String> {
 fn replay(undo: &mut Vec<Change>, redo: &mut Vec<Change>, event: Event) {
     match event {
         Event::Do(change) => {
-            undo.push(change);
+            match undo.last_mut() {
+                Some(top) if top.group.is_some() && top.group == change.group => top.join(change),
+                _ => undo.push(change),
+            }
             redo.clear();
         }
         // An undo/redo of a step dropped earlier has nothing to move; snapshots stay correct.

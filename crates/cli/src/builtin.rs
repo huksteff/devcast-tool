@@ -6,11 +6,11 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use crate::builtin_app::{AppCommand, ConfigCommand, HotkeysCommand, ModelsCommand};
 use crate::builtin_groups::{
     AudioCommand, CaptionsCommand, ClipCommand, DefaultsCommand, FontCommand, ImageCommand,
     StyleCommand, ZoomCommand,
 };
+use crate::builtin_program::Program;
 use crate::edit::{self, Ctx, Way};
 use crate::error::CliError;
 use crate::export::{self, Action};
@@ -220,30 +220,9 @@ enum Builtin {
         #[command(subcommand)]
         command: StyleCommand,
     },
-    /// `config show|set|reset`: the settings of the app.
-    #[command(disable_help_subcommand = true)]
-    Config {
-        #[command(subcommand)]
-        command: ConfigCommand,
-    },
-    /// `hotkeys ls|set|reset`: the global and the editor shortcuts.
-    #[command(disable_help_subcommand = true)]
-    Hotkeys {
-        #[command(subcommand)]
-        command: HotkeysCommand,
-    },
-    /// `models ls|download`: the speech recognition models.
-    #[command(disable_help_subcommand = true)]
-    Models {
-        #[command(subcommand)]
-        command: ModelsCommand,
-    },
-    /// `app show|quit|status`: the running app.
-    #[command(disable_help_subcommand = true)]
-    App {
-        #[command(subcommand)]
-        command: AppCommand,
-    },
+    /// `config`, `hotkeys`, `models`, `app`, `recipes`, `beautify` (`builtin_program.rs`).
+    #[command(flatten)]
+    Program(Program),
     #[command(
         about = "Одна команда в нескольких проектах: у каждого своя запись истории; ошибка в одном не останавливает другие",
         after_help = "batch *.devcast -- set captions.size=36"
@@ -353,10 +332,7 @@ impl Cli {
             Builtin::Set { assignments } => style::set(ctx, &assignments),
             Builtin::Defaults { command } => command.execute(ctx),
             Builtin::Style { command } => command.execute(ctx),
-            Builtin::Config { command } => command.execute(ctx),
-            Builtin::Hotkeys { command } => command.execute(ctx),
-            Builtin::Models { command } => command.execute(ctx),
-            Builtin::App { command } => command.execute(ctx),
+            Builtin::Program(program) => program.execute(ctx),
             Builtin::Batch(args) => batch::batch(ctx, &args),
             Builtin::Frame(args) => still::frame(ctx, &args),
             Builtin::Sheet(args) => still::sheet(ctx, &args),

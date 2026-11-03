@@ -286,3 +286,47 @@ fn undo_and_redo_never_lower_id_counters() {
     h.redo(&mut p);
     assert_eq!(p.clip_ids.next_number(), 3);
 }
+
+#[test]
+fn steps_of_one_group_are_one_undo_step() {
+    let mut p = Project::default();
+    let mut h = History::default();
+    h.apply(&mut p, &Push(1)).unwrap();
+    h.group(Some("ai-1".to_owned()));
+    h.apply(&mut p, &Push(2)).unwrap();
+    h.apply(&mut p, &Push(3)).unwrap();
+    h.group(Some("ai-2".to_owned()));
+    h.apply(&mut p, &Push(4)).unwrap();
+    h.group(None);
+    h.apply(&mut p, &Push(5)).unwrap();
+    h.apply(&mut p, &Push(6)).unwrap();
+    assert_eq!(h.changes().len(), 5, "1, the group 2+3, the group 4, 5, 6");
+    assert_eq!(h.changes()[1].summary, "+2; +3");
+    for left in [
+        vec![1, 2, 3, 4, 5],
+        vec![1, 2, 3, 4],
+        vec![1, 2, 3],
+        vec![1],
+    ] {
+        h.undo(&mut p);
+        assert_eq!(items(&p), left);
+    }
+    h.redo(&mut p);
+    assert_eq!(items(&p), vec![1, 2, 3], "the group comes back whole");
+}
+
+#[test]
+fn a_pushed_step_joins_its_group_even_when_it_already_holds_it() {
+    let (mut here, mut there) = (Project::default(), Project::default());
+    let (mut mine, mut theirs) = (History::default(), History::default());
+    theirs.group(Some("ai".to_owned()));
+    theirs.apply(&mut there, &Push(1)).unwrap();
+    mine.push(&mut here, theirs.changes()[0].clone());
+    theirs.apply(&mut there, &Push(2)).unwrap();
+    // Another writer sends its top step, which already folds the first one in.
+    mine.push(&mut here, theirs.changes()[0].clone());
+    assert_eq!(items(&here), vec![1, 2]);
+    assert_eq!(mine.changes().len(), 1);
+    mine.undo(&mut here);
+    assert!(here.effects.is_empty());
+}

@@ -73,8 +73,14 @@ pub struct Local<'a> {
     pub app_channel: Option<&'a str>,
     /// The channel of a `devcast record` process; `None` — the real `devcast-record-<user>`.
     pub record_channel: Option<&'a str>,
-    /// Where progress lines of a long command go (`models download`); `None` — nowhere.
+    /// Where progress lines of a long command go (`models download`, `beautify`); `None` —
+    /// nowhere.
     pub progress: Option<fn(&str)>,
+    /// The run of the AI agent this `devcast` belongs to (`DEVCAST_GROUP`): its edits join
+    /// that run's undo step.
+    pub group: Option<&'a str>,
+    /// The AI agent of `beautify`; `None` — the one found on this computer.
+    pub agent: Option<&'a dc_agent::Found>,
 }
 
 /// [`run`] with `local` instead of the real files and channels (tests).

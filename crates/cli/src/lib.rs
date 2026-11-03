@@ -5,9 +5,11 @@ mod app_settings;
 mod audio;
 mod autozoom;
 mod batch;
+mod beautify;
 mod builtin;
 mod builtin_app;
 mod builtin_groups;
+mod builtin_program;
 mod captions;
 mod changelog;
 mod config;
@@ -35,6 +37,7 @@ mod ls;
 mod models;
 mod open;
 mod projects;
+mod recipes;
 mod record;
 mod record_app;
 mod record_args;
@@ -145,8 +148,10 @@ pub fn main_outcome(args: Vec<OsString>) -> Outcome {
         });
     match prepared {
         Ok((args, cwd, registry)) => {
+            let group = std::env::var(dc_agent::GROUP_ENV).ok();
             let local = Local {
                 progress: Some(progress),
+                group: group.as_deref(),
                 ..Local::default()
             };
             run_with(args, &cwd, &registry, local)

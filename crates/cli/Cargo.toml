@@ -12,6 +12,7 @@ name = "devcast"
 path = "src/main.rs"
 
 [dependencies]
+dc-agent = { path = "../agent" }
 clap.workspace = true
 dc-audio = { path = "../audio" }
 dc-capture = { path = "../capture" }

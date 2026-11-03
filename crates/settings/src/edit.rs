@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use dc_capture::{Fps, Source};
 use serde::{Deserialize, Serialize};
 
+use crate::ai::{AiEdit, RecipeError};
 use crate::keymap::{Binding, taken_by};
 use crate::model::{AppSettings, Countdown, Language, Listen, SpeechModel};
 use crate::shortcut::Shortcut;
@@ -161,6 +162,8 @@ pub enum Edit {
     },
     /// `hotkeys reset`: these shortcuts to their defaults; none — all of them.
     ResetKeys(Vec<Binding>),
+    /// `recipes add|rm`, the «Нейронка» tab: the agent, its model and the recipes.
+    Ai(AiEdit),
 }
 
 /// The settings after an edit and what it changed.
@@ -169,6 +172,8 @@ pub struct Applied {
     pub settings: AppSettings,
     pub keys: Vec<Key>,
     pub bindings: Vec<Binding>,
+    /// The choices of «Сделать красиво» changed.
+    pub ai: bool,
 }
 
 /// An edit that is refused; nothing changed.
@@ -183,6 +188,8 @@ pub enum EditError {
         "глобальному сочетанию {binding} нужен Ctrl или Alt (иначе клавиша пропадёт во всех программах): например Ctrl+Shift+R"
     )]
     NeedsModifier { binding: String },
+    #[error(transparent)]
+    Recipe(#[from] RecipeError),
 }
 
 /// `edit` of `settings`; refused — nothing changes.
@@ -213,6 +220,7 @@ pub fn apply(settings: &AppSettings, edit: Edit) -> Result<Applied, EditError> {
             };
             all.into_iter().for_each(|b| b.reset(&mut next));
         }
+        Edit::Ai(edit) => next.ai.edit(edit)?,
     }
     Ok(Applied {
         keys: Key::ALL
@@ -222,6 +230,7 @@ pub fn apply(settings: &AppSettings, edit: Edit) -> Result<Applied, EditError> {
         bindings: Binding::all()
             .filter(|b| b.keys(settings) != b.keys(&next))
             .collect(),
+        ai: settings.ai != next.ai,
         settings: next,
     })
 }

@@ -180,3 +180,18 @@ fn a_log_of_another_schema_version_starts_anew() {
         assert!(loaded.warnings[0].contains(&found), "{:?}", loaded.warnings);
     }
 }
+
+#[test]
+fn steps_of_one_group_replay_as_one() {
+    let mut f = Fixture::new();
+    f.set(1);
+    f.history.group(Some("ai".to_owned()));
+    f.set(2);
+    f.set(3);
+    let loaded = f.reload();
+    assert_eq!(loaded.history.changes().len(), 2);
+    let mut project = f.project.clone();
+    let mut history = loaded.history;
+    history.undo(&mut project);
+    assert_eq!(Fixture::value(&project), Some(&1.into()));
+}

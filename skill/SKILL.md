@@ -250,6 +250,8 @@ devcast app status                                  # запись, проект
 ```
 `devcast app show` — показать HUD; `devcast app quit` — закрыть программу, как «Выход» в трее, без вопроса (идущая запись остановится и сохранится, редактор запишет несохранённое для восстановления). `devcast captions stop` — остановить «Создать субтитры», идущее в редакторе с проектом. `devcast app feedback` — куда написать о баге или идее и папка логов, которую приложить. `devcast app changelog --since 0.1.0` — что нового в выпусках после этой версии. `devcast skill install` — поставить этот skill для Claude Code в `~/.claude/skills/devcast`.
 
+«Сделать красиво» (нейронка пользователя — Claude Code или Codex — монтирует проект этим skill): `devcast recipes ls` — рецепты (отмеченные — `[x]`), найденные нейронки и модель; `devcast recipes add "Лого" "Вставь лого в угол"` — свой рецепт, `--replace <старое>` — заменить, `devcast recipes rm "Лого"`; `devcast recipes check slips keys` (`--off` — снять); `devcast recipes agent claude|codex|auto`, `devcast recipes model sonnet|default`. `devcast beautify` — запустить по отмеченным рецептам (`--recipe pauses`, `--ask "…"` — что ещё попросить, `--agent`, `--model` на этот раз); всё сделанное — один шаг `devcast undo`; продолжить разговор — `devcast beautify --resume <сессия из ответа> --ask "…"`.
+
 ## Экспорт
 
 Формат — по расширению `-o` (`.mp4` или `.gif`). MP4: `--res 720p|1080p|1440p|4k|source` (по короткой стороне, по умолчанию 1080p), `--fps 30|60` (120 — только для записей 120; по умолчанию 60), `--quality low|medium|high` (high). GIF: `--res 720p|1080p|source`, `--fps 15|20|25|30` (15), `--loop on|off` (on).

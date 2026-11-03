@@ -2,6 +2,7 @@
 //! table of shortcuts and the edits of `devcast config` and `devcast hotkeys`. Shared by the app
 //! (its one `Store` for all windows) and `devcast` (the file when the app is not running).
 
+pub mod ai;
 pub mod edit;
 pub mod export;
 pub mod keymap;
@@ -10,6 +11,7 @@ pub mod placement;
 pub mod shortcut;
 pub mod store;
 
+pub use ai::{Agent, AiChoices, AiEdit, OwnRecipe, Recipe, RecipeError};
 pub use edit::{Applied, Edit, EditError, Key, Setting, apply};
 pub use export::ExportChoices;
 pub use keymap::{Binding, Command, EditorKey, EditorKeys, Group, taken_by};

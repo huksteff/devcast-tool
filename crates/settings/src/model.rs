@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use dc_capture::{RecordingConfig, Source};
 use serde::{Deserialize, Serialize};
 
+use crate::ai::AiChoices;
 use crate::export::ExportChoices;
 use crate::keymap::EditorKeys;
 use crate::placement::HudPlacement;
@@ -234,6 +235,8 @@ pub struct AppSettings {
     /// The version of the app that ran last: a newer one at its first start shows «Что нового»
     /// for the releases in between (`CHANGELOG.md`). None — not run yet, nothing to tell.
     pub version_seen: Option<String>,
+    /// «Сделать красиво»: the agent, its model and the recipes.
+    pub ai: AiChoices,
 }
 
 impl Default for AppSettings {
@@ -259,6 +262,7 @@ impl Default for AppSettings {
             export: ExportChoices::default(),
             crash_seen: 0,
             version_seen: None,
+            ai: AiChoices::default(),
         }
     }
 }

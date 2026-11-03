@@ -27,7 +27,10 @@ impl Ctx<'_> {
     pub(crate) fn open(&self, write: bool) -> Result<Workspace, CliError> {
         let dir = find_project(self.globals.project.as_deref(), self.cwd)?;
         let write = write && !self.globals.dry_run;
-        Workspace::open(dir, write, self.globals.dry_run, self.local.app_channel)
+        let mut workspace =
+            Workspace::open(dir, write, self.globals.dry_run, self.local.app_channel)?;
+        workspace.history.group(self.local.group.map(str::to_owned));
+        Ok(workspace)
     }
 
     /// The app settings folder: `Local::settings` of the tests, else `%APPDATA%\DevCast`.

@@ -158,6 +158,13 @@ fn help_lists_every_command_on_one_line() {
             "app quit               Закрыть программу, как «Выход» в трее, без вопроса: идущая запись остановится и сохранится, редактор запишет рабочее состояние",
             "app feedback           Куда написать о баге или идее (как «О программе» в настройках) и папка логов, которую приложить",
             "app changelog          Что нового: выпуски из CHANGELOG.md до версии этой программы, новые сверху (как окно при первом запуске новой версии)",
+            "recipes ls             Рецепты «Сделать красиво» (отмеченные — [x]), найденные нейронки, выбранная нейронка и модель",
+            "recipes add            Добавить свой рецепт (сразу отмечен) или заменить свой: название и что попросить у нейронки",
+            "recipes rm             Удалить свой рецепт",
+            "recipes check          Отметить рецепты для «Сделать красиво» (--off — снять отметку)",
+            "recipes agent          Какую нейронку звать, если найдены обе: claude, codex или auto (первую найденную)",
+            "recipes model          Модель нейронки (sonnet, opus, gpt-5 …) или default — какая у неё по умолчанию",
+            "beautify               «Сделать красиво»: нейронка пользователя (Claude Code или Codex) монтирует проект командами devcast по отмеченным рецептам; всё одним шагом отмены",
             "batch                  Одна команда в нескольких проектах: у каждого своя запись истории; ошибка в одном не останавливает другие",
             "frame                  Кадр готового видео в PNG; --grid — сетка долей кадра для --rect и фокуса",
             "sheet                  Раскадровка: n кадров отрезка готового видео в одном PNG, время кадров — в ответе",
@@ -227,65 +234,14 @@ fn help_json_has_schemas_of_ops_project_and_effects() {
         .iter()
         .map(|c| c["name"].as_str().unwrap())
         .collect();
-    assert_eq!(
-        names,
-        [
-            "help",
-            "apply",
-            "undo",
-            "redo",
-            "history",
-            "save",
-            "discard",
-            "open",
-            "close",
-            "rename",
-            "trash",
-            "info",
-            "ls",
-            "transcript",
-            "silences",
-            "events",
-            "new",
-            "clip add",
-            "zoom suggest",
-            "captions gen",
-            "captions stop",
-            "captions export",
-            "captions import",
-            "audio add",
-            "image set",
-            "font add",
-            "font ls",
-            "set",
-            "defaults show",
-            "defaults set",
-            "defaults from-project",
-            "defaults reset",
-            "style copy",
-            "config show",
-            "config set",
-            "config reset",
-            "hotkeys ls",
-            "hotkeys set",
-            "hotkeys reset",
-            "models ls",
-            "models download",
-            "app status",
-            "app show",
-            "app quit",
-            "app feedback",
-            "app changelog",
-            "batch",
-            "frame",
-            "sheet",
-            "record",
-            "export",
-            "skill",
-            "test add",
-            "test rm"
-        ]
-    );
+    // The same commands, in the same order, as the list `help` prints (checked above).
+    let listed = f.run("help").stdout;
+    let listed: Vec<&str> = listed
+        .lines()
+        .filter_map(|line| line.split("  ").next())
+        .filter(|name| !name.starts_with("Подробнее"))
+        .collect();
+    assert_eq!(names, listed);
     assert!(json["project"]["properties"]["clips"].is_object());
     assert!(json["effects"].is_object());
 }
