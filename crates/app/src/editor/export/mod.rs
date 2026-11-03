@@ -26,7 +26,7 @@ use dc_ui_kit::widgets::{
 };
 use eframe::egui::{self, Align, Color32, Key, Layout, Margin, RichText, Ui};
 
-pub use queue::{ended, queue, queue_list};
+pub use queue::{ended, progress, queue, queue_list};
 
 use super::EditorWindow;
 use crate::exports::Encoder;

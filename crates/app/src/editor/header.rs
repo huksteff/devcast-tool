@@ -53,10 +53,12 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
         let jobs = editor
             .exports
             .as_ref()
-            .is_some_and(|x| !x.status().is_empty());
-        if jobs {
+            .map(crate::exports::Exports::status)
+            .unwrap_or_default();
+        if !jobs.is_empty() {
+            let ring = IconButton::ring(super::export::progress(&jobs), export_text::QUEUE);
             let queue = ui
-                .add(IconButton::new(Icon::Export, export_text::QUEUE).on(editor.queue_open))
+                .add(ring.held(editor.queue_open))
                 .on_hover_text(export_text::QUEUE);
             if queue.clicked() {
                 editor.queue_open = !editor.queue_open;

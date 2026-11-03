@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use dc_core::PixelSize;
-use dc_encode::export::{Exported, Stages};
+use dc_encode::export::{Exported, Progress, Stages};
 use dc_encode::{Codec, EncodeError, Job};
 use dc_ops::Step;
 use dc_ops::export::{Format, Res, Settings, Spec};
@@ -212,4 +212,43 @@ fn queued_exports_run_and_end_in_a_toast_and_the_list() {
     harness.snapshot("editor_export_queue");
     harness.run();
     assert_eq!(harness.state().done.len(), 1, "each export is told once");
+}
+
+/// The header's queue button is a ring of the queue's progress: a job half done next to one
+/// waiting is a quarter of the ring.
+#[test]
+fn the_queue_button_rings_the_progress_of_the_queue() {
+    let (reported, at_half) = std::sync::mpsc::channel();
+    let (release, released) = std::sync::mpsc::channel::<()>();
+    let released = Arc::new(Mutex::new(released));
+    let runner: Runner = Arc::new(move |_spec: Spec| -> Job {
+        let reported = reported.clone();
+        let released = Arc::clone(&released);
+        Box::new(move |progress| {
+            let _ = progress(Progress {
+                done: 50,
+                total: 100,
+            });
+            let _ = reported.send(());
+            let _ = released.lock().unwrap().recv();
+            Err(EncodeError::NothingLeft)
+        })
+    });
+    let exports = Exports::with_probe(runner, Arc::new(|| Ok(Codec::Nvenc)), || {}).unwrap();
+    let mut harness = harness(SIZE);
+    harness.state_mut().errors = Some(Vec::new());
+    harness.state_mut().editor.exports = Some(exports.clone());
+    let folder = harness.state().editor.doc.dir().root().to_path_buf();
+    let settings = Settings::default_for(Format::Mp4);
+    let editor = &mut harness.state_mut().editor;
+    queue(editor, settings, folder.join("первый.mp4"));
+    queue(editor, settings, folder.join("второй.mp4"));
+    editor.queue_open = false;
+    at_half.recv().unwrap();
+    assert_eq!(super::export::progress(&exports.status()), 0.25);
+    harness.run();
+    harness.snapshot("editor_export_ring");
+    drop(release);
+    exports.wait_idle();
+    assert_eq!(super::export::progress(&exports.status()), 1.0);
 }

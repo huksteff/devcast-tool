@@ -1,5 +1,5 @@
-//! Square 32 px button with an icon or a short text (`.ib` of the mockup): grey, lit blue when
-//! «on», a small badge in the corner (the countdown seconds).
+//! Square 32 px button with an icon, a short text or a progress ring (`.ib` of the mockup):
+//! grey, lit blue when «on», a small badge in the corner (the countdown seconds).
 
 use egui::{Color32, Rect, Response, Sense, Ui, Widget, WidgetInfo, pos2, vec2};
 
@@ -14,7 +14,13 @@ use crate::tokens::{
 enum Face<'a> {
     Icon(Icon),
     Text(&'a str),
+    /// Share done, 0..1, clockwise from the top (`.qbtn .ring` of the editor mockup).
+    Ring(f32),
 }
+
+/// Outer diameter and width of the progress ring, points (editor mockup).
+const RING: f32 = 18.0;
+const RING_WIDTH: f32 = 3.0;
 
 #[must_use = "add it with `ui.add(...)`"]
 pub struct IconButton<'a> {
@@ -49,6 +55,14 @@ impl<'a> IconButton<'a> {
     pub fn text(text: &'a str, label: &'a str) -> Self {
         Self {
             face: Face::Text(text),
+            ..Self::new(Icon::More, label)
+        }
+    }
+
+    /// A progress ring, `share` 0..1 done, like the export queue in the editor header.
+    pub fn ring(share: f32, label: &'a str) -> Self {
+        Self {
+            face: Face::Ring(share),
             ..Self::new(Icon::More, label)
         }
     }
@@ -127,11 +141,31 @@ impl Widget for IconButton<'_> {
                 let font = fonts::text(FS_S, Weight::Semibold);
                 painter.text(rect.center(), egui::Align2::CENTER_CENTER, text, font, fg);
             }
+            Face::Ring(share) => paint_ring(painter, rect.center(), share),
         }
         if let Some(badge) = self.badge {
             paint_badge(ui, rect, badge, self.on);
         }
         response
+    }
+}
+
+/// The grey ring and its blue arc of `share`, from 12 o'clock clockwise.
+fn paint_ring(painter: &egui::Painter, center: egui::Pos2, share: f32) {
+    let radius = (RING - RING_WIDTH) / 2.0;
+    painter.circle_stroke(center, radius, egui::Stroke::new(RING_WIDTH, SURFACE_3));
+    let steps = (share * 48.0).ceil() as usize;
+    let points: Vec<_> = (0..=steps)
+        .map(|i| {
+            let angle = (i as f32 / steps as f32 * share - 0.25) * std::f32::consts::TAU;
+            center + radius * vec2(angle.cos(), angle.sin())
+        })
+        .collect();
+    if steps > 0 {
+        painter.add(egui::Shape::line(
+            points,
+            egui::Stroke::new(RING_WIDTH, ACCENT_HI),
+        ));
     }
 }
 

@@ -4,7 +4,8 @@
 
 use std::path::PathBuf;
 
-use dc_encode::JobState;
+use dc_encode::export::Progress;
+use dc_encode::{JobState, JobStatus};
 use dc_ops::export::Settings;
 use dc_ui_kit::strings::export as text;
 use dc_ui_kit::tokens::{S1, S3, TEXT_2, TEXT_3};
@@ -16,6 +17,31 @@ use super::spec;
 
 /// Width of the queue list, points (mockup).
 const QUEUE_WIDTH: f32 = 340.0;
+
+/// Share of the queue done, 0..1, for the ring of the header: the mean progress of the jobs
+/// waiting or running; 1 when none is left.
+pub fn progress(jobs: &[JobStatus]) -> f32 {
+    let left: Vec<f32> = jobs
+        .iter()
+        .filter_map(|job| match &job.state {
+            JobState::Queued => Some(0.0),
+            JobState::Running { progress, .. } => Some(share(*progress)),
+            _ => None,
+        })
+        .collect();
+    if left.is_empty() {
+        return 1.0;
+    }
+    left.iter().sum::<f32>() / left.len() as f32
+}
+
+/// Share of the frames of a running job done, 0..1.
+fn share(progress: Progress) -> f32 {
+    match progress.total {
+        0 => 0.0,
+        total => progress.done as f32 / total as f32,
+    }
+}
 
 /// Queues the export of the current state into `out`.
 pub fn queue(editor: &mut EditorWindow, settings: Settings, out: PathBuf) {
@@ -54,10 +80,7 @@ pub fn queue_list(ui: &Ui, editor: &mut EditorWindow, button: egui::Rect) {
                             cancel(ui, &exports, job.id);
                         }
                         JobState::Running { progress, .. } => {
-                            let share = match progress.total {
-                                0 => 0.0,
-                                total => progress.done as f32 / total as f32,
-                            };
+                            let share = share(*progress);
                             let percent = (share * 100.0) as u64;
                             ui.add(egui::ProgressBar::new(share).text(text::running(percent)));
                             cancel(ui, &exports, job.id);
