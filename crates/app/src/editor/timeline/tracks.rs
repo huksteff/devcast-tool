@@ -5,12 +5,12 @@ use dc_capture::audio::{MIC_TRACK, SYSTEM_TRACK};
 use dc_core::project::MediaKind;
 use dc_core::time::Output;
 use dc_core::{
-    ChannelLevels, ClipId, Effect, OutputTime, Project, Range, StateError, TimeDelta, TimeMap,
+    ChannelLevels, ClipId, Effect, KeyTracks, OutputTime, Project, Range, StateError, TimeDelta,
+    TimeMap,
 };
 use dc_fx_annotations::{Annotations, Kind, TRACKS};
 use dc_fx_audio_tracks::{Audio, AudioState, Sound, TRACKS as AUDIO_TRACKS};
 use dc_fx_captions::CaptionsEffect;
-use dc_fx_keys::Keys;
 use dc_ui_kit::lane;
 use dc_ui_kit::strings::timeline as text;
 
@@ -112,7 +112,7 @@ pub struct Tracks {
     pub clicks: Vec<lanes::cursor::Dot>,
     /// What the shortcuts of the recordings give the panel «Показ клавиш» (7.16), set with the
     /// chips of the «Клавиши» row by `place_keys`.
-    pub shortcuts: dc_fx_keys::panel::Shortcuts,
+    pub shortcuts: lanes::keys::Shortcuts,
     /// Broken effect states: their rows stay empty, the text says what to do.
     pub problems: Vec<String>,
 }
@@ -134,7 +134,7 @@ impl Tracks {
         };
         let captions = tracks.read::<CaptionsEffect>(project);
         let audio = tracks.read::<Audio>(project);
-        let keys = tracks.read::<Keys>(project);
+        let keys = tracks.problem(lanes::keys::shown(project));
         let zooms = tracks.lane(lanes::zoom::regions(project, &map));
         let cursor = tracks.lane(lanes::callout::regions(project, &map));
         tracks.add(
@@ -145,7 +145,7 @@ impl Tracks {
         tracks.clips(project, &map);
         tracks.add(Row::Zooms, zooms, false);
         tracks.add(Row::Cursor, cursor, false);
-        tracks.add(Row::Keys, Vec::new(), !keys.settings.show);
+        tracks.add(Row::Keys, Vec::new(), !keys);
         tracks.annotations(project, &map, least.annotations);
         // A broken sound state is a problem already (read above): its rows draw no levels.
         let levels = dc_fx_audio_tracks::sound(project).unwrap_or_default();
@@ -168,15 +168,28 @@ impl Tracks {
         })
     }
 
+    /// The chips of the «Клавиши» row and the panel's facts from the shortcuts `keys` of the
+    /// recordings of `project` read so far.
+    pub fn place_keys(&mut self, project: &Project, keys: &KeyTracks) {
+        let (chips, shortcuts) = lanes::keys::chips(project, keys);
+        self.shortcuts = shortcuts;
+        if let Some(track) = self.rows.iter_mut().find(|t| t.row == Row::Keys) {
+            track.regions = chips.into_iter().map(Region::from).collect();
+        }
+    }
+
+    /// What an effect's lane read; a broken state is a problem and reads as the default.
+    fn problem<T: Default>(&mut self, read: Result<T, StateError>) -> T {
+        read.unwrap_or_else(|error| {
+            self.problems.push(error.to_string());
+            T::default()
+        })
+    }
+
     /// The regions of an effect's lane; a broken state is a problem and shows nothing.
     fn lane(&mut self, regions: Result<Vec<lane::Region>, StateError>) -> Vec<Region> {
-        match regions {
-            Ok(regions) => regions.into_iter().map(Region::from).collect(),
-            Err(error) => {
-                self.problems.push(error.to_string());
-                Vec::new()
-            }
-        }
+        let regions = self.problem(regions);
+        regions.into_iter().map(Region::from).collect()
     }
 
     fn add(&mut self, row: Row, regions: Vec<Region>, off: bool) {

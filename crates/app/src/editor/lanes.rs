@@ -9,6 +9,7 @@ use dc_core::project::Media;
 pub use dc_fx_callout::lane as callout;
 pub use dc_fx_cursor::lane as cursor;
 use dc_fx_cursor::panel::PressButton;
+pub use dc_fx_keys::lane as keys;
 pub use dc_fx_zoom::lane as zoom;
 use dc_ui_kit::lane::{Item, Lane};
 

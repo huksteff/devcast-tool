@@ -28,7 +28,6 @@ mod pointer;
 mod range;
 mod regions;
 mod scale;
-mod shortcuts;
 mod snap;
 mod tracks;
 mod viewport;

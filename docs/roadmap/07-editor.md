@@ -148,6 +148,7 @@
     - [x] Зум: регионы, новый зум (призрак, Z) и подпись призрака — `dc_fx_zoom::lane` (`regions`, `added`, `ghost`); редактор зовёт его через `lanes::zoom`, Ctrl+A без выбора берёт строку зумов.
     - [x] Клики: точки строки «Курсор» — `dc_fx_cursor::lane::dots` (`Dot` = `Press` + `hidden`; были `timeline/dots.rs::placed`), нажатия и кнопку отдаёт регистрация `lanes::click_dots`; в `dots.rs` осталось рисование и выбор, `object.rs` берёт `dot.press`.
     - [x] Облачко: регионы событий на «Курсоре» и новое событие призрака — `dc_fx_callout::lane` (`regions`, `added`).
+    - [x] Показ клавиш: фишки строки «Клавиши» и факты панели — `dc_fx_keys::lane::chips`, показ — `lane::shown` (`timeline/shortcuts.rs` удалён; `Tracks::place_keys` только кладёт их на строку).
   - [ ] Правило `xtask verify` «нет кода эффектов в редакторе» — после переноса всех.
 
 **Готово, когда:** все фичи из `features.json` в статусе pass на Windows.
