@@ -183,6 +183,10 @@ devcast clip rm c1
 - Вид: `devcast captions style --size 36 --rows 2 --animation pop` — шрифт (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono или шрифт проекта из `font ls`), размер в px при 1080p, `--color` сказанных слов, `--highlight` текущего, `--inactive` несказанных (#rrggbbaa), `--shadow`, `--bottom` и `--width` в % кадра, `--radius`, `--background` (прозрачность плашки 0–1), `--show false` — скрыть.
 - Перевод: `devcast captions export -o субтитры.txt` → в файле строка `s3 текст` на реплику; переведи текст, id не трогай → `devcast captions import субтитры.txt`. Время реплик не меняется, реплики не из файла остаются как были.
 
+Копия в другое время: `devcast captions paste`, `devcast annot paste`, `devcast audio paste` — `--item` с JSON объекта, как он лежит в `project.json` (`ls … --json`), и `--at` по готовому видео; у реплики и аннотации ещё `--duration`. Id, запись и время копии новые.
+
+Эффект одного клика: `devcast click set --at 12.4 --style off` — выключить или перенастроить этот клик (время — из `events clicks`), `devcast click reset --at 12.4` — вернуть общий эффект кликов (`clicks`).
+
 ## План: много правок одним шагом отмены
 
 `plan.json` — массив шагов; `op` — имя команды, остальное — её аргументы (имена как в `devcast help <команда>`, без `--`). Шаги идут по порядку и видят результат предыдущих, поэтому вырезы ставь последними. Ошибка в любом шаге — не меняется ничего.
@@ -244,7 +248,7 @@ devcast redo                     # вернуть отменённый
 ```
 devcast app status                                  # запись, проект редактора, распознавание, экспорт обеих очередей
 ```
-`devcast app show` — показать HUD; `devcast app quit` — закрыть программу, как «Выход» в трее, без вопроса (идущая запись остановится и сохранится, редактор запишет несохранённое для восстановления). `devcast captions stop` — остановить «Создать субтитры», идущее в редакторе с проектом. `devcast app feedback` — куда написать о баге или идее и папка логов, которую приложить. `devcast app changelog --since 0.1.0` — что нового в выпусках после этой версии.
+`devcast app show` — показать HUD; `devcast app quit` — закрыть программу, как «Выход» в трее, без вопроса (идущая запись остановится и сохранится, редактор запишет несохранённое для восстановления). `devcast captions stop` — остановить «Создать субтитры», идущее в редакторе с проектом. `devcast app feedback` — куда написать о баге или идее и папка логов, которую приложить. `devcast app changelog --since 0.1.0` — что нового в выпусках после этой версии. `devcast skill install` — поставить этот skill для Claude Code в `~/.claude/skills/devcast`.
 
 ## Экспорт
 

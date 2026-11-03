@@ -23,7 +23,7 @@
 - Автозумы (`autozoom.rs`): предложения — `dc_ops::click_zooms` (общие с редактором). Запись, добавленная в проект (стоп `record`, восстановление), идёт через `dc_ops::autozoom::after_recording` (тот же путь у записи из программы): автозумы одной записью, если `zoom.auto`; ошибка — предупреждение.
 - `record` (`record.rs`, решение 011): процесс записи сам пишет проект и до старта занимает канал `devcast-record-<пользователь>` (`record_control::Server`); `record stop|pause|resume|cancel` шлёт туда `Control` и ждёт ответа; процесса нет — записи программы (`record_app.rs`, `Request::RecordControl`); `record --app` — `Request::Record`, ответ после первого кадра. Ctrl+C и закрытие консоли — тот же стоп. Имя канала — параметр, тесты берут своё.
 - `export` (`export.rs`, решение 011): вызов отдаёт снимок проекта в очередь `dc_encode::ExportQueue` процесса с каналом `devcast-export-<пользователь>`; канала нет — вызов сам становится очередью; проект держит редактор — очередь программы (`export_app.rs`, id `p2`), `status`/`cancel` — обе. Сцена `export`, `frame`, `sheet` готовится одной `scene.rs`; звук — `dc_ops::sound::levels`.
-- `skill install` (`skill.rs`) кладёт вшитый `skill/SKILL.md` в `~/.claude/skills/devcast/`; его примеры прогоняет `skill_tests`: меняешь команды или аргументы — правь SKILL.md.
+- `skill install` (`skill.rs`) кладёт вшитый `skill/SKILL.md` в `~/.claude/skills/devcast/`; `skill_tests` прогоняет его примеры и ищет в нём каждую команду: правь SKILL.md.
 
 ## Как тестировать
 

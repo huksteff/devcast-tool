@@ -52,3 +52,38 @@ fn install_writes_skill_and_dry_run_does_not() {
     assert_eq!(std::fs::read_to_string(&target).unwrap(), SKILL);
     install(&target, false).unwrap();
 }
+
+/// Every command of `devcast help` (the clap tree and the registry of the editor) is in
+/// SKILL.md as `devcast <команда>` or inline code: a new command reaches the agents' instructions.
+#[test]
+fn skill_mentions_every_command() {
+    let registry = dc_ops::Registry::devcast().unwrap();
+    let help = crate::help::help(&[], &registry).unwrap();
+    let missing: Vec<String> = help.json["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|command| command["name"].as_str().unwrap().to_owned())
+        .filter(|name| !mentioned(name))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "в skill/SKILL.md нет команд: {}. Добавь каждую в skill/SKILL.md: пример `devcast <команда> …` или упоминание `<команда>` в тексте, в том же стиле",
+        missing.join(", ")
+    );
+}
+
+/// `devcast <name>` or `` `<name> `` (inline code), followed by a space, a backtick, a quote or the
+/// end of the line.
+fn mentioned(name: &str) -> bool {
+    [format!("devcast {name}"), format!("`{name}")]
+        .iter()
+        .any(|needle| {
+            SKILL.match_indices(needle.as_str()).any(|(at, _)| {
+                SKILL[at + needle.len()..]
+                    .chars()
+                    .next()
+                    .is_none_or(|next| matches!(next, ' ' | '`' | '\n' | '\r' | '"' | '»'))
+            })
+        })
+}
