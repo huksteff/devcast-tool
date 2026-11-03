@@ -12,6 +12,7 @@ mod panel_recognition;
 mod panel_style;
 mod paste;
 mod retime;
+mod silence;
 mod span;
 mod style;
 mod style_diff;
@@ -23,6 +24,7 @@ pub use generate::{CaptionsGen, NewCue, merge_tracks};
 pub use layout::Prepared;
 pub use model::{CaptionsEffect, CaptionsState, Cue, CueId, CueKind, Word};
 pub use paste::CaptionsPaste;
+pub use silence::{Auto, SILENCE_MAX, SILENCE_MIN, Silence};
 pub use style::{
     Animation, BOTTOM_MAX, CaptionsSettings, CaptionsStyle, RADIUS_MAX, ROWS_MAX, SIZE_MAX,
     SIZE_MIN, WIDTH_MAX, WIDTH_MIN,

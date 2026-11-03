@@ -127,3 +127,28 @@ fn errors_say_what_to_do() {
         out.stderr
     );
 }
+
+/// A threshold set by hand in the project (`captions style --silence`) replaces the recording's
+/// own: v1's −30 dBFS ends the cues where the synthesized words end.
+#[test]
+fn silence_threshold_by_hand() {
+    let speech = Speech::new();
+    assert_eq!(
+        speech.ok("captions style --silence -30"),
+        "субтитры: порог тишины auto→-30 dB"
+    );
+    speech.ok("captions gen");
+    assert_eq!(
+        speech.ok("ls captions"),
+        "s1  0:00.260–0:00.680  text=Привет!
+s2  0:01.800–0:06.630  text=Сегодня я покажу, как записать видео с экрана и вырезать паузы.
+s3  0:07.360–0:09.130  text=Это занимает пару минут."
+    );
+    let wrong = speech.run("captions style --silence -10");
+    assert_eq!(wrong.code, 1, "{}", wrong.stderr);
+    assert!(wrong.stderr.contains("порог тишины"), "{}", wrong.stderr);
+    assert_eq!(
+        speech.ok("captions style --silence auto"),
+        "субтитры: порог тишины -30 dB→auto"
+    );
+}

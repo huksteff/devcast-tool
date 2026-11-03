@@ -167,14 +167,22 @@ fn recognize_track(
     .map_err(failed)
 }
 
-/// Cues of `words` (the shown words of one recording), split also at its silences.
-pub fn media_cues(media: &MediaWords, words: &[Word]) -> Result<Vec<Cue>, OpsError> {
+/// Cues of `words` (the shown words of one recording), split also at its silences: quieter
+/// than `db` dBFS, none — the recording's own threshold (`captions style --silence`).
+pub fn media_cues(
+    media: &MediaWords,
+    words: &[Word],
+    db: Option<f64>,
+) -> Result<Vec<Cue>, OpsError> {
     let Some(end) = media.words.last().map(|w| w.end) else {
         return Ok(Vec::new());
     };
     let whole: Range<Source> =
         Range::new(SourceTime::ZERO, SourceTime::from_micros(end.max(1))).map_err(failed)?;
-    let db = silence::threshold(&media.track).map_err(failed)?;
+    let db = match db {
+        Some(db) => db,
+        None => silence::threshold(&media.track).map_err(failed)?,
+    };
     let quiet = silence::find(&media.track, whole, db, DEFAULT_MIN).map_err(failed)?;
     let quiet: Vec<(i64, i64)> = quiet
         .iter()
@@ -207,7 +215,7 @@ pub fn generate(
         let all = project_words(dir, project, model, name, Some(&track_progress))?;
         let mut cues = Vec::new();
         for media in &all {
-            for cue in media_cues(media, &media.words)? {
+            for cue in media_cues(media, &media.words, silence_db(project)?)? {
                 cues.push(new_cue(media, &cue).map_err(failed)?);
             }
         }
@@ -221,6 +229,14 @@ pub fn generate(
         ));
     }
     Ok(CaptionsGen { cues })
+}
+
+/// The silence threshold set by hand in the captions settings (`captions style --silence`).
+pub(crate) fn silence_db(project: &Project) -> Result<Option<f64>, OpsError> {
+    let state = project
+        .state::<dc_fx_captions::CaptionsEffect>()
+        .map_err(failed)?;
+    Ok(state.settings.silence.db())
 }
 
 fn new_cue(media: &MediaWords, cue: &Cue) -> Result<NewCue, CommandError> {

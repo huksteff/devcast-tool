@@ -27,6 +27,7 @@ pub(crate) fn changes(old: &CaptionsSettings, new: &CaptionsSettings) -> String 
         .value("ширина (%)", old.width, new.width)
         .value("радиус", old.radius, new.radius)
         .value("плашка", old.background, new.background)
-        .value("анимация", old.animation.name(), new.animation.name());
+        .value("анимация", old.animation.name(), new.animation.name())
+        .value("порог тишины", old.silence.name(), new.silence.name());
     format!("субтитры: {}", changes.join())
 }

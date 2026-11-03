@@ -20,7 +20,9 @@ use crate::error::CliError;
 use crate::ls::time;
 use crate::round::thousandths;
 use crate::run::Answer;
-use crate::speech::{MediaWords, OnProgress, chosen, media_cues, project_words, word_track};
+use crate::speech::{
+    MediaWords, OnProgress, chosen, media_cues, project_words, silence_db, word_track,
+};
 use crate::workspace::Workspace;
 
 #[derive(Debug, Clone, clap::Args)]
@@ -107,7 +109,7 @@ pub(crate) fn transcript(ctx: &Ctx<'_>, args: &Args) -> Result<Answer, CliError>
             }
         } else {
             let words: Vec<Word> = shown.iter().map(|s| s.word.clone()).collect();
-            for cue in media_cues(media, &words)? {
+            for cue in media_cues(media, &words, silence_db(&workspace.project)?)? {
                 let (Some(&a), Some(&b)) = (cue.words.first(), cue.words.last()) else {
                     continue;
                 };

@@ -7,6 +7,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::model::CaptionsEffect;
+use crate::silence::Silence;
 
 pub const SIZE_MIN: f64 = 16.0;
 pub const SIZE_MAX: f64 = 72.0;
@@ -74,6 +75,9 @@ pub struct CaptionsSettings {
     pub background: f64,
     /// How a page comes and goes.
     pub animation: Animation,
+    /// Silence threshold of `captions gen`: `auto` — each recording's own, or dBFS
+    /// `SILENCE_MIN..=SILENCE_MAX` set by hand.
+    pub silence: Silence,
 }
 
 impl Default for CaptionsSettings {
@@ -92,6 +96,7 @@ impl Default for CaptionsSettings {
             radius: 17.5,
             background: 0.9,
             animation: Animation::Fade,
+            silence: Silence::AUTO,
         }
     }
 }
@@ -126,6 +131,8 @@ pub struct CaptionsStyle {
     pub background: Option<f64>,
     /// none, fade, rise or pop.
     pub animation: Option<Animation>,
+    /// Silence threshold of `captions gen`: auto (the recording's own) or dBFS, −70..−20.
+    pub silence: Option<Silence>,
 }
 
 impl CaptionsStyle {
@@ -145,6 +152,7 @@ impl CaptionsStyle {
             radius: Some(settings.radius),
             background: Some(settings.background),
             animation: Some(settings.animation),
+            silence: Some(settings.silence),
         }
     }
 }
@@ -167,6 +175,9 @@ impl Command for CaptionsStyle {
         new.inactive = self.inactive.unwrap_or(new.inactive);
         new.shadow = self.shadow.unwrap_or(new.shadow);
         new.animation = self.animation.unwrap_or(new.animation);
+        if let Some(silence) = self.silence {
+            new.silence = silence.checked()?;
+        }
         if let Some(rows) = self.rows {
             new.rows = within("строк субтитров", f64::from(rows), 1.0, f64::from(ROWS_MAX))? as u32;
         }
@@ -211,8 +222,7 @@ impl Command for CaptionsStyle {
 
 impl Op for CaptionsStyle {
     const NAME: &'static str = "captions style";
-    const ABOUT: &'static str =
-        "Вид субтитров: показ, шрифт, размер, цвета слов, тень, строки, место, плашка, анимация";
+    const ABOUT: &'static str = "Вид субтитров: показ, шрифт, размер, цвета слов, тень, строки, место, плашка, анимация; порог тишины распознавания";
     const EXAMPLE: &'static str = "captions style --size 36 --rows 2 --animation pop";
     const SETTINGS: Option<&'static str> = Some("captions");
 }
