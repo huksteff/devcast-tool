@@ -21,6 +21,10 @@ const PACKAGES: [&str; 2] = ["dc-app", "dc-cli"];
 /// The folder next to the exe the programs load the built-in fonts from
 /// (`dc_render::text::fonts::BUILTIN_FONTS`).
 const FONTS_DIR: &str = "fonts";
+/// Files copied verbatim into the package folder (`xtask/package/`).
+const PACKAGE_FILES: &str = "xtask/package";
+/// The FFmpeg licence under a name that says whose it is (GPL v3, decision 018).
+const FFMPEG_LICENSE: &str = "FFmpeg-LICENSE.txt";
 /// The same version as the `velopack` crate in `crates/update` (decision 013).
 const VPK_VERSION: &str = "1.2.161";
 
@@ -74,13 +78,38 @@ fn build_release() -> Result<(), String> {
     run_tool(&mut command)
 }
 
-/// A fresh package folder: the programs from `release`, the DLLs and the fonts from `.deps/`.
+/// A fresh package folder: the programs from `release`, the DLLs, their licences and the fonts
+/// from `.deps/`, the files of `xtask/package/`.
 fn stage(root: &Path, release: &Path, pack: &Path) -> Result<(), String> {
     remove_dir(pack)?;
     let exes: Vec<PathBuf> = EXES.iter().map(|exe| release.join(exe)).collect();
     copy_files(&exes, pack)?;
     copy_files(&crate::native::runtime_dlls(root)?, pack)?;
+    copy_files(&package_files(root)?, pack)?;
+    copy_files(&[crate::native::vulkan_license(root)], pack)?;
+    let ffmpeg = ffmpeg_license(root);
+    std::fs::copy(&ffmpeg, pack.join(FFMPEG_LICENSE)).map_err(|e| {
+        format!(
+            "не удалось скопировать {}: {e}.
+  → Запусти `cargo xtask deps`.",
+            ffmpeg.display()
+        )
+    })?;
     crate::fonts::copy_into(&root.join(".deps"), &pack.join(FONTS_DIR))
+}
+
+fn ffmpeg_license(root: &Path) -> PathBuf {
+    root.join(".deps").join("ffmpeg").join("LICENSE")
+}
+
+/// The files of `xtask/package/` (the third-party notices).
+fn package_files(root: &Path) -> Result<Vec<PathBuf>, String> {
+    let dir = root.join(PACKAGE_FILES);
+    let entries =
+        std::fs::read_dir(&dir).map_err(|e| format!("нет папки {}: {e}", dir.display()))?;
+    let mut files: Vec<PathBuf> = entries.filter_map(Result::ok).map(|e| e.path()).collect();
+    files.sort();
+    Ok(files)
 }
 
 /// Arguments of `vpk pack`: a per-user install (Velopack's only mode on Windows) with shortcuts
@@ -166,6 +195,64 @@ mod tests {
         assert!(
             manifest.is_ok_and(|text| text.contains(&format!("velopack = \"={VPK_VERSION}\""))),
             "версия vpk должна совпадать с крейтом velopack (решение 013)"
+        );
+    }
+
+    fn root() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("..")
+    }
+
+    fn names(files: &[PathBuf]) -> Vec<String> {
+        files
+            .iter()
+            .filter_map(|file| file.file_name())
+            .map(|name| name.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn the_package_gets_the_third_party_notices() {
+        let files = package_files(&root());
+        assert!(
+            files.is_ok_and(|files| names(&files).contains(&"THIRD-PARTY-NOTICES.txt".to_owned())),
+            "xtask/package/THIRD-PARTY-NOTICES.txt должен попадать в пакет"
+        );
+    }
+
+    #[test]
+    fn notices_name_the_bundled_ffmpeg_and_its_licence_files() {
+        let notices =
+            std::fs::read_to_string(root().join(PACKAGE_FILES).join("THIRD-PARTY-NOTICES.txt"))
+                .unwrap_or_default();
+        let url = crate::native::archive_url("ffmpeg").unwrap_or_default();
+        assert!(
+            url.contains("/9.0.2/"),
+            "обнови версию FFmpeg в THIRD-PARTY-NOTICES.txt"
+        );
+        for needed in [
+            "FFmpeg 9.0.2",
+            "GPL v3",
+            "https://github.com/FFmpeg/FFmpeg/commit/946fcce07b",
+            FFMPEG_LICENSE,
+            "VulkanRT-License.txt",
+            "Open Font License",
+        ] {
+            assert!(
+                notices.contains(needed),
+                "в THIRD-PARTY-NOTICES.txt нет «{needed}»"
+            );
+        }
+    }
+
+    #[test]
+    fn licences_come_from_the_deps_folder() {
+        let root = Path::new("D:/repo");
+        assert_eq!(ffmpeg_license(root), root.join(".deps/ffmpeg/LICENSE"));
+        assert_eq!(
+            crate::native::vulkan_license(root),
+            root.join(".deps")
+                .join("vulkan")
+                .join("VulkanRT-License.txt")
         );
     }
 

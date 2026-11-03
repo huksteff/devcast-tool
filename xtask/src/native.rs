@@ -9,8 +9,8 @@ use sha2::{Digest, Sha256};
 enum Unpack {
     /// The archive has one top-level folder; its contents become the destination folder.
     StripTopDir,
-    /// Only one member of the archive is needed; it is placed into the destination folder.
-    SingleFile { member: &'static str },
+    /// Only these members of the archive are needed; they are placed into the destination folder.
+    Files { members: &'static [&'static str] },
 }
 
 struct Archive {
@@ -34,8 +34,8 @@ const ARCHIVES: [Archive; 4] = [
         url: "https://files.pythonhosted.org/packages/0b/2d/3f480b1e1d31eb3d6de5e3ef641954e5c67430d5ac93b7fa7e07589576c7/libclang-18.1.1-py2.py3-none-win_amd64.whl",
         file: "libclang-18.1.1-py2.py3-none-win_amd64.whl",
         sha256: "4dd2d3b82fab35e2bf9ca717d7b63ac990a3519c7e312f19fa8e86dcc712f7fb",
-        unpack: Unpack::SingleFile {
-            member: "libclang-18.1.1.data/platlib/clang/native/libclang.dll",
+        unpack: Unpack::Files {
+            members: &["libclang-18.1.1.data/platlib/clang/native/libclang.dll"],
         },
     },
     // Builds whisper.cpp inside whisper-rs (decision 010); hash from the official
@@ -49,17 +49,31 @@ const ARCHIVES: [Archive; 4] = [
     },
     // The Vulkan loader, shipped next to the exe: without it a PC with no Vulkan driver (and
     // CI) cannot even start an exe that links whisper.cpp; with it whisper falls back to the CPU
-    // (decision 010).
+    // (decision 010). Its licence goes into the installer package (`xtask package`).
     Archive {
         name: "vulkan",
         url: "https://sdk.lunarg.com/sdk/download/1.4.363.0/windows/VulkanRT-X64-1.4.363.0-Components.zip",
         file: "VulkanRT-X64-1.4.363.0-Components.zip",
         sha256: "a25a927aa8b9f0371048f1861cf88ac3b9bc9b1fb332c42d897c8ab32695769a",
-        unpack: Unpack::SingleFile {
-            member: "VulkanRT-X64-1.4.363.0-Components/x64/vulkan-1.dll",
+        unpack: Unpack::Files {
+            members: &[
+                "VulkanRT-X64-1.4.363.0-Components/x64/vulkan-1.dll",
+                VULKAN_LICENSE_MEMBER,
+            ],
         },
     },
 ];
+
+const VULKAN_LICENSE_MEMBER: &str = "VulkanRT-X64-1.4.363.0-Components/VulkanRT-License.txt";
+
+/// The Vulkan Runtime licence in `.deps/vulkan` (Apache 2.0 and MIT).
+pub fn vulkan_license(root: &Path) -> PathBuf {
+    let name = VULKAN_LICENSE_MEMBER
+        .rsplit('/')
+        .next()
+        .unwrap_or(VULKAN_LICENSE_MEMBER);
+    root.join(".deps").join("vulkan").join(name)
+}
 
 /// Marker inside a ready destination folder: the SHA-256 of the archive it came from.
 const MARKER: &str = ".sha256";
@@ -82,8 +96,9 @@ pub fn run(root: &Path) -> Result<(), String> {
 
 fn ensure(deps: &Path, archive: &Archive) -> Result<(), String> {
     let dest = deps.join(archive.name);
-    let ready =
-        std::fs::read_to_string(dest.join(MARKER)).is_ok_and(|s| s.trim() == archive.sha256);
+    let ready = std::fs::read_to_string(dest.join(MARKER))
+        .is_ok_and(|s| s.trim() == archive.sha256)
+        && members(archive).all(|name| dest.join(name).exists());
     if ready {
         println!("{}: уже есть", archive.name);
         return Ok(());
@@ -120,8 +135,8 @@ fn unpack(deps: &Path, archive: &Archive, download: &Path, dest: &Path) -> Resul
     create_dir(&staging)?;
     let mut tar = Command::new("tar");
     tar.arg("-xf").arg(download).arg("-C").arg(&staging);
-    if let Unpack::SingleFile { member } = archive.unpack {
-        tar.arg(member);
+    if let Unpack::Files { members } = archive.unpack {
+        tar.args(members);
     }
     run_tool(&mut tar)?;
     remove_dir(dest)?;
@@ -131,15 +146,28 @@ fn unpack(deps: &Path, archive: &Archive, download: &Path, dest: &Path) -> Resul
             std::fs::rename(&top, dest)
                 .map_err(|e| format!("не удалось переместить {}: {e}", top.display()))?;
         }
-        Unpack::SingleFile { member } => {
+        Unpack::Files { members } => {
             create_dir(dest)?;
-            let from = staging.join(member);
-            let name = from.file_name().ok_or("пустое имя файла в архиве")?;
-            std::fs::rename(&from, dest.join(name))
-                .map_err(|e| format!("не удалось переместить {}: {e}", from.display()))?;
+            for member in members {
+                let from = staging.join(member);
+                let name = from.file_name().ok_or("пустое имя файла в архиве")?;
+                std::fs::rename(&from, dest.join(name))
+                    .map_err(|e| format!("не удалось переместить {}: {e}", from.display()))?;
+            }
         }
     }
     remove_dir(&staging)
+}
+
+/// File names the unpacked folder must hold besides the marker (none for a whole archive).
+fn members(archive: &Archive) -> impl Iterator<Item = &'static str> {
+    let members: &[&str] = match archive.unpack {
+        Unpack::StripTopDir => &[],
+        Unpack::Files { members } => members,
+    };
+    members
+        .iter()
+        .map(|member| member.rsplit('/').next().unwrap_or(member))
 }
 
 /// FFmpeg and Vulkan loader DLLs next to the built executables, so `cargo run` / tests start
@@ -224,6 +252,12 @@ pub(crate) fn remove_dir(path: &Path) -> Result<(), String> {
             .map_err(|e| format!("не удалось удалить {}: {e}", path.display()))?;
     }
     Ok(())
+}
+
+/// The download URL of the archive `name` (tests compare versions with it).
+#[cfg(test)]
+pub fn archive_url(name: &str) -> Option<&'static str> {
+    ARCHIVES.iter().find(|a| a.name == name).map(|a| a.url)
 }
 
 #[cfg(test)]

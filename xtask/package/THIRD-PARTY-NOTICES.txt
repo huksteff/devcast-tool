@@ -1,0 +1,21 @@
+DevCast — сторонние компоненты в этой папке
+============================================
+
+FFmpeg 9.0.2 (avcodec-63.dll, avdevice-63.dll, avfilter-12.dll, avformat-63.dll,
+avutil-61.dll, swresample-7.dll, swscale-10.dll)
+  Сборка: GyanD, «full_build-shared» 9.0.2 для Windows x64, https://www.gyan.dev/ffmpeg/builds/
+  Архив сборки: https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2
+  Лицензия: GNU GPL v3, полный текст — FFmpeg-LICENSE.txt рядом.
+  Исходный код FFmpeg этой сборки: https://github.com/FFmpeg/FFmpeg/commit/946fcce07b
+  Исходники FFmpeg 9.0.2: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz
+  Сборка не менялась: DLL лежат в том виде, в каком их выпустил GyanD.
+
+Vulkan Runtime 1.4.363.0 (vulkan-1.dll)
+  Источник: LunarG, https://vulkan.lunarg.com/sdk/home
+  Лицензия: Apache 2.0 и MIT, полный текст — VulkanRT-License.txt рядом.
+
+Шрифты в папке fonts (Inter, Montserrat, Roboto, PT Serif, JetBrains Mono, Noto Color Emoji)
+  Лицензия: SIL Open Font License 1.1, текст — файлы *-OFL.txt в папке fonts.
+
+Velopack (установщик и обновления, Update.exe)
+  Лицензия: MIT, https://github.com/velopack/velopack/blob/master/LICENSE
