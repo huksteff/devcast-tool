@@ -1,6 +1,6 @@
 //! Minidumps of native crashes (crash-handler + minidumper): the app starts a copy of itself
 //! with `--crash-server`, and a crash of the app asks that process to write the dump of the
-//! crashed one into `%APPDATA%\DevCast\crashes`. The only module of dc-app with `unsafe`
+//! crashed one into `%APPDATA%\DevCast\logs\crashes`. The only module of dc-app with `unsafe`
 //! (owner's decision): crash-handler's crash callback is an `unsafe` contract.
 //!
 //! The server lives exactly as long as its parent: the parent holds the write end of the
@@ -19,8 +19,6 @@ use crate::error::AppError;
 
 /// Argument that turns the program into the dump writer.
 pub const SERVER_ARG: &str = "--crash-server";
-/// Folder of the dumps inside the app settings folder.
-pub const FOLDER: &str = "crashes";
 /// What the server prints once it listens.
 const READY: &str = "ready";
 
@@ -31,15 +29,15 @@ pub struct Guard {
     _server: Child,
 }
 
-/// Starts the dump writer and attaches the crash handler.
-pub fn install(settings: &Path) -> Result<Guard, AppError> {
+/// Starts the dump writer into the folder `crashes` and attaches the crash handler.
+pub fn install(crashes: &Path) -> Result<Guard, AppError> {
     let error = |e: &dyn std::fmt::Display| AppError::Crash(e.to_string());
     let socket = std::env::temp_dir().join(format!("devcast-crash-{}", std::process::id()));
     let exe = std::env::current_exe().map_err(|e| error(&e))?;
     let mut server = Command::new(exe)
         .arg(SERVER_ARG)
         .arg(&socket)
-        .arg(settings.join(FOLDER))
+        .arg(crashes)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()

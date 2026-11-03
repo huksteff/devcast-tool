@@ -10,6 +10,7 @@ mod countdown;
     reason = "crash-handler's crash callback is an unsafe contract; the only unsafe of dc-app"
 )]
 mod crash;
+mod crashes;
 mod downloads;
 #[cfg(test)]
 mod e2e_tests;
@@ -57,7 +58,9 @@ pub fn run() -> Result<(), AppError> {
         return crash::serve(std::path::Path::new(socket), dir.into(), std::io::stdin());
     }
     let settings = dc_project::settings::dir()?;
-    let _log = logging::init(&settings.join(dc_project::settings::LOGS_DIR))?;
+    let logs = settings.join(dc_project::settings::LOGS_DIR);
+    let crashes = logs.join(dc_project::settings::CRASHES_DIR);
+    let _log = logging::init(&logs, &crashes)?;
     let store = settings::Store::load(&settings.join(settings::FILE))?;
     let listener = match instance::claim()? {
         Claim::First(listener) => listener,
@@ -67,7 +70,7 @@ pub fn run() -> Result<(), AppError> {
         }
     };
     // Only the first instance writes dumps: a second start must not leave a dump writer behind.
-    let _crash = crash::install(&settings)
+    let _crash = crash::install(&crashes)
         .inspect_err(|e| tracing::error!("дампы падений не будут записаны: {e}"));
     let gpu = gpu::device()?;
     let options = eframe::NativeOptions {
@@ -95,6 +98,8 @@ pub fn run() -> Result<(), AppError> {
             shared.refresh_sources();
             // Ready before the sound popover first opens: it then opens at its height.
             shared.mic_refresh.start(&cc.egui_ctx);
+            let told = hud::notices::at_start(&mut shared, &crashes);
+            shared.report(told);
             let tray = tray::Tray::new(&cc.egui_ctx)?;
             let keys = hotkeys::GlobalKeys::new(&cc.egui_ctx)?;
             Ok(Box::new(app::App::new(calls, shared, hwnd, tray, keys)))

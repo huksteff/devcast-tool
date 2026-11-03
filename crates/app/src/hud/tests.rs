@@ -338,6 +338,7 @@ fn every_popover_has_its_own_title() {
         popover::Kind::Cancel,
         popover::Kind::Quit,
         popover::Kind::Failed,
+        popover::Kind::Crashed,
     ];
     let mut titles: Vec<&str> = kinds.iter().map(|k| k.title()).collect();
     titles.sort_unstable();

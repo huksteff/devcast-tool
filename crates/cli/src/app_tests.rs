@@ -157,4 +157,13 @@ fn feedback_lists_contacts_and_the_logs_folder() {
     assert!(!json["contacts"].as_array().unwrap().is_empty());
     let logs = std::path::PathBuf::from(json["logs"].as_str().unwrap());
     assert!(logs.ends_with("logs") && !logs.starts_with(std::env::var("APPDATA").unwrap()));
+    assert_eq!(json["crashes"], serde_json::json!([]));
+    let crashes = logs.join("crashes");
+    std::fs::create_dir_all(&crashes).unwrap();
+    std::fs::write(crashes.join("devcast-app-1-panic.txt"), "паника").unwrap();
+    assert!(
+        f.run("app feedback")
+            .stdout
+            .contains("Отчётов о падениях в логах: 1")
+    );
 }

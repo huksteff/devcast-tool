@@ -11,6 +11,10 @@ pub const DEFAULTS_FILE: &str = "defaults.json";
 /// Folder of the app's log files in [`dir`]: «Открыть папку логов», `devcast app feedback`.
 pub const LOGS_DIR: &str = "logs";
 
+/// Folder of the crash reports in [`LOGS_DIR`]: minidumps and panics of `devcast-app`, sent
+/// along with the logs.
+pub const CRASHES_DIR: &str = "crashes";
+
 pub fn dir() -> Result<PathBuf> {
     std::env::var_os("APPDATA")
         .map(|appdata| PathBuf::from(appdata).join("DevCast"))
@@ -19,6 +23,10 @@ pub fn dir() -> Result<PathBuf> {
 
 pub fn logs_dir() -> Result<PathBuf> {
     Ok(dir()?.join(LOGS_DIR))
+}
+
+pub fn crashes_dir() -> Result<PathBuf> {
+    Ok(logs_dir()?.join(CRASHES_DIR))
 }
 
 pub fn defaults_file() -> Result<PathBuf> {

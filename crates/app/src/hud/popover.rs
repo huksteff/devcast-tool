@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use dc_ui_kit::strings::{hud, picker as picker_text, tray};
+use dc_ui_kit::strings::{hud, notices, picker as picker_text, tray};
 use dc_ui_kit::theme::WINDOW_SHADOW;
 use dc_ui_kit::tokens::{S2, S3};
 use dc_ui_kit::widgets::{
@@ -36,6 +36,8 @@ pub enum Kind {
     Quit,
     /// «Запись не подготовлена» with «Открыть папку записи» (mockup 7).
     Failed,
+    /// «DevCast в прошлый раз упал» at the start (8.5).
+    Crashed,
 }
 
 impl Kind {
@@ -49,6 +51,7 @@ impl Kind {
             Self::Cancel => hud::CANCEL_TITLE,
             Self::Quit => tray::QUIT_TITLE,
             Self::Failed => hud::PREPARE_FAILED,
+            Self::Crashed => notices::CRASHED,
         }
     }
 
@@ -127,7 +130,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::Timing => super::menus::TIMING_WIDTH,
         Kind::More => 260.0,
         Kind::Cancel | Kind::Quit => 280.0,
-        Kind::Failed => 360.0,
+        Kind::Failed | Kind::Crashed => 360.0,
     };
     let shared = Arc::clone(shared);
     let builder = builder(open, width, bar);
@@ -185,6 +188,7 @@ fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
                         Kind::Cancel => cancel(ui, shared),
                         Kind::Quit => quit(ui, shared),
                         Kind::Failed => failed(ui, shared),
+                        Kind::Crashed => super::notices::crashed(ui, shared),
                     }
                 })
                 .response

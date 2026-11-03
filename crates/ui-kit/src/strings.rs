@@ -14,6 +14,13 @@ pub mod kit {
     pub const COPIED: &str = "Скопировано";
 }
 
+/// Notices of the HUD at the start: the last run crashed, what is new in this version.
+pub mod notices {
+    pub const CRASHED: &str = "DevCast в прошлый раз упал";
+    pub const CRASHED_TEXT: &str =
+        "Отчёт о падении сохранён. Отправьте папку логов команде — так быстрее починим.";
+}
+
 /// The HUD bar and its popovers.
 pub mod hud {
     pub const GRIP: &str = "Перетащить панель";

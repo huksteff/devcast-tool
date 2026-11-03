@@ -4,7 +4,7 @@
 
 ## Инварианты
 
-- Один экземпляр на пользователя (`instance.rs`, канал dc-ipc `devcast-app-<пользователь>`, `dc_ops::live`); правка из CLI — `editor/live.rs` (`Document::take`). Журнал — `logging.rs` (`%APPDATA%\DevCast\logs`, `RUST_LOG`). Дампы падений — `crash.rs`, единственный `unsafe` dc-app.
+- Один экземпляр на пользователя (`instance.rs`, канал dc-ipc `devcast-app-<пользователь>`, `dc_ops::live`); правка из CLI — `editor/live.rs` (`Document::take`). Журнал — `logging.rs` (`%APPDATA%\DevCast\logs`, `RUST_LOG`); дампы (`crash.rs`, единственный `unsafe`) и паники — в `logs\crashes`, новый отчёт при старте — поповер (`hud/notices.rs`).
 - Распознавание речи — процесс `devcast --captions-worker` рядом с exe (решение 018): dc-app не линкует whisper и Vulkan (dc-transcribe запрещён `xtask verify`), отмена — убийство процесса (`recognition/job.rs`), протокол — `dc_ops::recognition`.
 - GPU одно: `dc_render::Gpu` (`gpu.rs`) создаётся до eframe, eframe получает его клоны (`WgpuSetup::Existing`); бэкенд — `dc_render::BACKEND` (DX12, решение 004).
 - Перерисовка только по событию (решение 002): безусловный `request_repaint()` запрещён, анимации — `request_repaint_after`. Потоки будят только главное окно (`request_repaint_of(ROOT)`), оно передаёт перерисовку открытым окнам (`app::show_windows`): `request_repaint_of` несуществующего окна открывает пустое окно egui. Кадр другого окна идёт через `app::other_window`.
@@ -24,9 +24,9 @@
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-app`: логика окон и снимки egui_kittest (`tests/snapshots`, тесты — `*_tests.rs` рядом с кодом). Редактор — `editor/tests.rs` (проект `editor/test_project.rs`); правка = проект `devcast` тех же команд (`editing_tests::by_cli`), undo с выросшими id — `editing_tests::undone`; сквозные сценарии на фикстуре — `e2e_tests.rs` (`Twin`).
-- Превью на WARP = кадр `devcast frame` побайтно (`preview/worker_tests.rs`); распознавание — поддельные процессы (`recognition/job_tests.rs`); замер потока превью — `preview/speed_tests.rs` (`--run-ignored only`).
-- Живой прогон: `EGUI_INSPECTION=1 cargo run -p dc-app`, затем egui-mcp. Из Claude desktop (MSIX) сокет дампов не работает: запускать через `explorer.exe <путь к exe>`.
+- `cargo nextest run -p dc-app`: логика окон и снимки egui_kittest (`tests/snapshots`, тесты — `*_tests.rs`). Редактор — `editor/tests.rs` (проект `editor/test_project.rs`); правка = проект `devcast` тех же команд (`editing_tests::by_cli`), undo с выросшими id — `editing_tests::undone`; сквозные сценарии на фикстуре — `e2e_tests.rs` (`Twin`).
+- Превью на WARP = кадр `devcast frame` побайтно (`preview/worker_tests.rs`); распознавание — поддельные процессы (`recognition/job_tests.rs`); замер превью — `preview/speed_tests.rs` (ignored).
+- Живой прогон: `EGUI_INSPECTION=1 cargo run -p dc-app`, затем egui-mcp. Из Claude desktop (MSIX) — через `explorer.exe <exe>` (сокет дампов).
 
 ## Куда не лезть
 

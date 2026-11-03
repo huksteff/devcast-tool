@@ -228,6 +228,9 @@ pub struct AppSettings {
     pub recent_projects: Vec<PathBuf>,
     /// The last choices of the editor's export dialog.
     pub export: ExportChoices,
+    /// Unix seconds of the newest crash report the app has told about (`logs\crashes`): a newer
+    /// one at the start shows «DevCast в прошлый раз упал».
+    pub crash_seen: u64,
 }
 
 impl Default for AppSettings {
@@ -251,6 +254,7 @@ impl Default for AppSettings {
             inspector: InspectorGroups::default(),
             recent_projects: Vec::new(),
             export: ExportChoices::default(),
+            crash_seen: 0,
         }
     }
 }
