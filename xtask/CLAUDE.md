@@ -1,6 +1,6 @@
 # xtask (`xtask`)
 
-Служебные команды: `cargo xtask verify` (все проверки «готово») и `cargo xtask hook-stop` (Stop-хук Claude Code: `verify --quick` — без сборки и тестов, полную проверку агент запускает сам после порции правок).
+Служебные команды: `cargo xtask verify` (все проверки «готово») и `cargo xtask hook-stop` (Stop-хук Claude Code: `verify --quick` — без сборки и тестов, полную проверку агент запускает сам после порции правок). Ещё `golden update` (эталонные кадры), `deps` (FFmpeg, libclang, CMake, Vulkan, шрифты в `.deps/`, `src/native.rs`, `src/fonts.rs`) и `package` (установщик Velopack, `src/package.rs`); справка — `cargo xtask help`.
 
 ## Инварианты
 

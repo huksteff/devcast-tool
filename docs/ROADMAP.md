@@ -3,6 +3,8 @@
 Около 200 мелких задач. Одна задача — одна сессия Claude Code и один коммит. Как выполняется задача и что значит «готово» — в [PROCESS.md](PROCESS.md).
 Объём работ — [SCOPE.md](SCOPE.md), устройство — [ARCHITECTURE.md](ARCHITECTURE.md).
 
+**Статус (2026-11-03):** этапы 0–7 сделаны в коде; открытые пункты в них ждут живых проверок, роликов v1 или push (CI). Идёт этап 8. Что делать дальше — [HANDOFF.md](HANDOFF.md).
+
 | Этап | Файл | Задач | Результат |
 |---|---|---|---|
 | 0. Подготовка | [roadmap/00-prep.md](roadmap/00-prep.md) | 16 | Репозиторий, проверки, CI, выжимки v1, эталоны |
@@ -12,7 +14,7 @@
 | 4. Медиа и анализ | [roadmap/04-media.md](roadmap/04-media.md) | 18 | Декодирование, звук, тишина, транскрипт, автозумы |
 | 5. Рендер и экспорт | [roadmap/05-render.md](roadmap/05-render.md) | 41 | Все эффекты, кадры, MP4 и GIF из CLI |
 | 6. Окна записи | [roadmap/06-recording-ui.md](roadmap/06-recording-ui.md) | 15 | UI-кит, HUD, выбор источника, трей, хоткеи |
-| 7. Редактор | [roadmap/07-editor.md](roadmap/07-editor.md) | 34 | Полный редактор, живые правки из CLI |
+| 7. Редактор | [roadmap/07-editor.md](roadmap/07-editor.md) | 35 | Полный редактор, живые правки из CLI |
 | 8. Выпуск на Windows | [roadmap/08-release.md](roadmap/08-release.md) | 9 | Установщик, обновления, пилот, замена v1 |
 | 9. macOS | [roadmap/09-macos.md](roadmap/09-macos.md) | 9 | Паритет на macOS |
 | 10. Linux | [roadmap/10-linux.md](roadmap/10-linux.md) | 7 | Паритет на Linux |

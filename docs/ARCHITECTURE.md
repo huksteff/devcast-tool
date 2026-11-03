@@ -56,7 +56,7 @@
 | Тема | Решение |
 |---|---|
 | [001](decisions/001-hud-window.md) HUD | HUD — окно без рамки поверх всех, исключённое из захвата. Выбор области — по стоп-кадру. Прозрачность — решение 020. |
-| [002](decisions/002-multi-window.md) Окна | Deferred viewports eframe, перерисовка только по запросу (в простое CPU 0%). Баг egui #8466 проверяется в 7.26. |
+| [002](decisions/002-multi-window.md) Окна | Deferred viewports eframe, перерисовка только по запросу (в простое CPU 0%). Баг egui #8466 в живом прогоне 7.26 не проявился. |
 | [003](decisions/003-video-decode.md) Видео | FFmpeg 9 shared (проба на BtbN; `xtask deps` качает GyanD 9.0.2) + ffmpeg-next 9. Декодирование программное. **Наши записи пишутся с GOP 1 с.** Пока тянут указатель — ближайший ключевой кадр, на отпускании — точный кадр. |
 | [004](decisions/004-overlays-wgsl.md) Эффекты | Свои WGSL-шейдеры: SDF-фигуры, двухпроходное размытие с уменьшением разрешения, свечение. 4K-кадр — 0,5 мс на RTX 3060 Ti. |
 | [005](decisions/005-text.md) Текст | glyphon + cosmic-text. В `FontSystem` загружаются **только наши шрифты** (`assets/fonts`: Inter, Montserrat, Roboto, PT Serif, JetBrains Mono, Noto Color Emoji) и шрифты проекта (`assets/fonts/` проекта, `devcast font add`), чтобы кадры совпадали на всех ПК. |
@@ -91,8 +91,7 @@ crates/
   render/        wgpu-устройство, проходы (видео, SDF-фигуры, blur/glow, текст, спрайты, кисть,
                  motion blur), рендер без окна
   encode/        H.264 и FLAC на лету при записи, самопроверка кодеков, MP4, кадры сцены в PNG
-                 (frame, sheet); позже экспорт MP4 и GIF,
-                 очередь
+                 (frame, sheet), экспорт MP4 и GIF, очередь экспорта
   models/        модели Whisper: список, пути, загрузка с докачкой и SHA-256 (без whisper, решение 018)
   settings/      настройки программы settings.json: модель и умолчания, файл, таблица сочетаний, правки
                  devcast config и hotkeys (одни для app и cli; место HUD на мониторах)
@@ -100,15 +99,17 @@ crates/
   capture/       модель записи, видео, звук, ввод (cursor.bin, keys.bin), пауза, сегменты и manifest,
                  восстановление, проект из записи; win/, позже mac/ и linux/
   ops/           реестр команд, пакетное применение, dry-run, однострочный diff, подсказки в ошибках;
-                 evaluate проекта: сцена кадра из всех эффектов (решение 015);
-                 протокол процесса распознавания редактора (`recognition`, решение 018)
+                 evaluate проекта: сцена кадра из всех эффектов (решение 015); задание экспорта,
+                 автозумы, импорт; протокол правок открытого редактора (`live`, решение 011)
+                 и процесса распознавания (`recognition`, решение 018)
   ipc/           local socket и сообщения JSON с длиной; типы сообщений у отправителя
-                 (сейчас управление записью в cli, позже команды редактору)
+                 (управление записью и очередь экспорта — cli, правки редактора — `dc_ops::live`)
   cli/           бинарник `devcast`; субтитры из речи (whisper) и `devcast --captions-worker`
-  ui-kit/        тема, шрифты, виджеты, тексты окон (GUI) на русском, набор панели эффекта (panel)
+  ui-kit/        тема, шрифты, виджеты, тексты окон (GUI) на русском, швы эффектов: панель (panel),
+                 дорожка таймлайна (lane), жест на превью (stage)
   app/           бинарник редактора: HUD, выбор области, отсчёт, трей, хоткеи, редактор, таймлайн,
-                 библиотека, настройки, обновления
-  update/        Velopack, «Что нового», анонсы
+                 библиотека, настройки
+  update/        Velopack: хуки установщика; позже обновления, «Что нового», анонсы (этап 8)
 fx/              эффекты, каждый в своём крейте (пакеты dc-fx-*):
   cut/             клипы, вырезы, скорость
   crop/            кроп клипа, формат выхода
@@ -136,7 +137,7 @@ third_party/     исправленные копии чужих крейтов (
 
 ## Панель эффекта
 
-Панель инспектора живёт в крейте своего эффекта (решение 5, решение владельца 2026-11-02); образец — `fx/keys/src/panel.rs`, перенос остальных — задача 7.35.
+Панель инспектора живёт в крейте своего эффекта (решение 5, решение владельца 2026-11-02); образец — `fx/keys/src/panel.rs`; все панели перенесены в задаче 7.35.
 
 - **Шов.** Эффект экспортирует модуль `panel`: `pub const ID` (первая часть ключа групп, обычно `Effect::ID`) и `pub fn ui(ui, cx: &mut dc_ui_kit::panel::Cx, факты…)`. Рисует только через `dc_ui_kit` (egui — его реэкспорт `dc_ui_kit::egui`, строки — `dc_ui_kit::strings`).
 - **Что даёт редактор** — `dc_ui_kit::panel::Cx`: проект, проект умолчаний (`defaults_of::<E>()` для «Сбросить»), указатель, «Авто-ключи», шрифты пикеров, память групп `Groups` (открыта/свёрнута, `settings.json`). То, что знает только редактор (телеметрия записей, распознавание, дорожки звука), панель получает отдельным аргументом-фактами своего типа, посчитанным кодом эффекта (`dc_fx_keys::panel::Shortcuts::of`); редактор только хранит его. Состояние, которого нет у эффекта, редактор переводит в типы фактов эффекта сам (`dc_fx_captions::panel::Recognition`: фаза распознавания — общий тип редактора и панели, модель, язык, дорожки). Выбор панели, который не правка проекта, а настройка программы (язык и дорожки субтитров), панель пишет в факты (`&mut`), редактор забирает его после раскладки.
@@ -187,7 +188,10 @@ devcast config show | config set recording.fps=30 captions.language=ru | config 
 devcast hotkeys ls | hotkeys set start_stop Ctrl+Alt+R [--swap] | hotkeys set pause --clear | hotkeys reset save|--all
 devcast models ls | models download fast|accurate
 devcast new [video...] [-o name.devcast] [--open] | clip add <video|project.devcast...> | clip move c2 --to 1 | clip split --at 12.5 | clip rm c2
-devcast info | save
+devcast info | save [--as имя [--open]] | discard | open | close [--save|--discard] | rename <имя>
+devcast trash <проект.devcast...> [--restore]          # в корзину Windows и обратно
+devcast app status|show|quit                     # запущенная программа DevCast
+devcast image set a3 --file x.png | font add <файл> | font ls
 devcast ls <zooms|clips|annots|captions|audio|tracks|clicks> [--from --to] [--fields]
 devcast transcript [--from --to] [--words] [--model fast|accurate] [--language ru] [--track mic]   # реплики или слова с id
 devcast silences [--min 0.5] [--db -30] [--track mic] [--from --to]   # паузы по готовому видео
