@@ -8,6 +8,8 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+/// Where the generation is: the type of the captions panel's facts, which the editor fills.
+pub use dc_fx_captions::panel::Phase;
 use dc_fx_captions::{CaptionsGen, NewCue};
 use dc_ui_kit::strings::captions as text;
 use eframe::egui;
@@ -17,16 +19,6 @@ use crate::models::{ModelState, Models};
 use crate::recognition::job::{Job, Spawn, cli_worker};
 use crate::recognition::{Message, Request, Speech};
 use crate::settings::{Language, Listen, SpeechModel};
-
-/// What the captions panel shows of the generation.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Phase {
-    Idle,
-    /// The model is being downloaded: its share, once the size is known.
-    Downloading(Option<f32>),
-    /// The worker recognizes: its share, once it said.
-    Recognizing(Option<f32>),
-}
 
 enum Running {
     Idle,

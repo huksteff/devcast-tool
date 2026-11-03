@@ -7,7 +7,8 @@
 //! group's fields back to the defaults with one registry command), and its rows with the
 //! helpers of [`rows`]. Every committed edit is a registry [`Step`] list in [`Cx::edits`] — one
 //! undo step each; the editor runs them after the layout, as `devcast` would. A list that adds
-//! objects the editor picks afterwards goes to [`Cx::adds`].
+//! objects the editor picks afterwards goes to [`Cx::adds`]; what is not a change of the project
+//! (a pick, the playhead, a file dialog, recognition) is a [`Request`] in [`Cx::requests`].
 
 mod head;
 pub mod rows;
@@ -22,7 +23,7 @@ use crate::fonts::{self, Weight};
 use crate::icons::Icon;
 use crate::strings::{editor as text, inspector as names};
 use crate::tokens::{BORDER, FS_M, S2, S3, TEXT, TEXT_2, TEXT_3};
-use crate::widgets::IconButton;
+use crate::widgets::{Button, IconButton, Kind, dropdown};
 pub use head::{Header, header, header_button};
 
 /// Height of the panel and group headers, points (mockup).
@@ -51,6 +52,27 @@ pub struct Cx<'a> {
     /// Registry changes that add objects (one undo step each); the editor picks what they
     /// added («Подобрать зумы по кликам»).
     pub adds: Vec<Vec<Step>>,
+    /// What the panel asked of the editor besides the project; the editor turns each into its
+    /// own action after the layout.
+    pub requests: Vec<Request>,
+}
+
+/// A panel's request that is not a registry command, named for what the editor does.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Request {
+    /// Pick the object with this id, as `devcast` writes it (`s3`), alone; the open panel stays
+    /// (a line of the panel's list).
+    Pick(String),
+    /// Move the playhead here, as a drag of it does.
+    Seek(OutputTime),
+    /// Ask for a font file, add it to the project and run this step with the file's family as
+    /// its `font` argument, one undo step («Добавить шрифт…»).
+    AddFont(Step),
+    /// Recognize the speech of the project (downloading the model first when needed); the cues
+    /// replace all cues as one undo step when they come.
+    Recognize,
+    /// Stop the recognition (or the wait for its model).
+    StopRecognizing,
 }
 
 impl Cx<'_> {
@@ -63,6 +85,29 @@ impl Cx<'_> {
     pub fn apply(&mut self, op: &str, args: impl IntoIterator<Item = (&'static str, Value)>) {
         let args = args.into_iter().map(|(k, v)| (k.to_owned(), v)).collect();
         self.edits.push(vec![Step::new(op, args)]);
+    }
+
+    /// The font row `label` with family `now`: the family picked from [`Cx::fonts`] (and `now`
+    /// when it is not there). «Добавить шрифт…» under it asks for a file
+    /// ([`Request::AddFont`]) that `then` chooses.
+    pub fn font(&mut self, ui: &mut Ui, label: &str, now: &str, then: Step) -> Option<String> {
+        let mut families: Vec<(String, &str)> =
+            self.fonts.iter().map(|f| (f.clone(), f.as_str())).collect();
+        if !self.fonts.iter().any(|f| f == now) {
+            families.push((now.to_owned(), now));
+        }
+        let picked = rows::row(ui, label, |ui| {
+            let mut chosen = now.to_owned();
+            let width = ui.available_width();
+            dropdown(ui, label, &mut chosen, &families, width)
+                .changed()
+                .then_some(chosen)
+        });
+        let button = Button::new(names::ADD_FONT).kind(Kind::Secondary).small();
+        if ui.add(button).clicked() {
+            self.requests.push(Request::AddFont(then));
+        }
+        picked
     }
 
     /// A group: its header (chevron, title, «Сбросить») and, when open, `body`.

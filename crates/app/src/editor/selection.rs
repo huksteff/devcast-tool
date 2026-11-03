@@ -23,6 +23,17 @@ pub enum Item {
 }
 
 impl Item {
+    /// The item whose id `devcast` writes as `text` (`s3`); the prefixes of the kinds differ.
+    pub fn parse(text: &str) -> Option<Self> {
+        text.parse()
+            .map(Self::Zoom)
+            .or_else(|_| text.parse().map(Self::Cue))
+            .or_else(|_| text.parse().map(Self::Callout))
+            .or_else(|_| text.parse().map(Self::Annotation))
+            .or_else(|_| text.parse().map(Self::Sound))
+            .ok()
+    }
+
     /// Items of one kind lie on the same rows: Ctrl+A picks them all.
     pub fn same_kind(self, other: Self) -> bool {
         std::mem::discriminant(&self) == std::mem::discriminant(&other)

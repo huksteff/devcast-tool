@@ -5,8 +5,9 @@
 //! A panel draws with the kit of `dc_ui_kit::panel` (header, groups, rows) over its
 //! `panel::Cx`. A panel that lives in its effect's crate (docs/ARCHITECTURE.md, «Панель
 //! эффекта») gets [`Cx::base`] and the facts of the timeline it needs; one not moved yet works
-//! with the whole [`Cx`]. Every committed edit is a registry command — one undo step. A tab gets
-//! its panel in [`tab`], an object kind in `object.rs`.
+//! with the whole [`Cx`]. Every committed edit is a registry command — one undo step; what a
+//! panel asks besides the project (`panel::Request`) becomes an [`Action`] in [`action`]. A tab
+//! gets its panel in [`tab`], an object kind in `object.rs`.
 
 mod annot_blur;
 mod annot_drawing;
@@ -16,9 +17,6 @@ mod annot_text;
 mod annotation;
 mod annotation_rows;
 mod captions;
-mod captions_style;
-mod cue;
-mod font;
 mod object;
 
 #[cfg(test)]
@@ -41,22 +39,24 @@ pub(crate) mod tests;
 mod zoom_tests;
 
 use dc_core::project::MediaKind;
-use dc_core::{ClipId, Effect, Project, StateError};
+use dc_core::{ClipId, Project};
 use dc_fx_audio_tracks::panel::Sources;
+use dc_fx_captions::panel::Recognition;
 use dc_ui_kit::icons::Icon;
-use dc_ui_kit::panel::{self, Groups};
-use dc_ui_kit::strings::editor as text;
+use dc_ui_kit::panel::{self, Groups, Request};
+use dc_ui_kit::strings::{editor as text, inspector as names};
 use dc_ui_kit::tokens::{self, BG, SURFACE};
 use dc_ui_kit::widgets::IconButton;
 use eframe::egui::{self, Frame, Margin, ScrollArea, Ui};
 
+use super::fonts::FontFile;
 use super::selection::{Item, Selected};
 use super::streams::{Imported, Streams};
 use super::view::{Panel, View};
-use super::{Action, EditorWindow};
+use super::{Action, EditorWindow, Transport};
 pub use annotation::{Edit, target};
 pub use dc_ui_kit::panel::{
-    BUTTON, CHEVRON, Group, Header, args, bottom_line, header, header_button, padded, reset, rows,
+    BUTTON, CHEVRON, Group, Header, bottom_line, header, header_button, padded, rows,
 };
 
 /// Width of the tab rail, side of a tab (mockup).
@@ -80,7 +80,7 @@ fn tab(panel: Panel) -> (&'static str, PanelUi) {
         Panel::Keys => (dc_fx_keys::panel::ID, keys),
         Panel::Zoom => (dc_fx_zoom::panel::ID, zoom),
         Panel::Cursor => (dc_fx_cursor::panel::ID, cursor),
-        Panel::Captions => (captions::ID, captions::ui),
+        Panel::Captions => (dc_fx_captions::panel::ID, captions::tab),
         Panel::Sound => (dc_fx_audio_tracks::panel::ID, sound),
     }
 }
@@ -136,8 +136,11 @@ pub struct Cx<'a> {
     pub base: panel::Cx<'a>,
     /// What the timeline shows of it: the shortcuts of the recordings for «Показ клавиш».
     pub tracks: &'a super::Tracks,
-    /// The generation and the cue list of the captions panel (7.17).
-    pub captioning: captions::Captioning<'a>,
+    /// The object picked alone on the timeline: the line of the cue list that opens its editor.
+    pub picked: Option<Selected>,
+    /// The recognition for «Субтитры» (7.17); the language and the tracks the panel chose go
+    /// back to the editor after the layout.
+    pub recognition: Recognition,
     /// Sound tracks the recordings have (`mic`, `system`): the groups of the sound panels.
     pub sound: &'a [String],
     /// Sound tracks of the imported videos, as they come: the groups of their clips' panel.
@@ -147,11 +150,6 @@ pub struct Cx<'a> {
 }
 
 impl<'a> Cx<'a> {
-    /// The default state of effect `E`: its settings from the defaults, the rest factory.
-    pub fn defaults_of<E: Effect>(&self) -> Result<E::State, StateError> {
-        self.base.defaults_of::<E>()
-    }
-
     /// A group: its header (chevron, title, «Сбросить») and, when open, `body`.
     pub fn group(&mut self, ui: &mut Ui, group: Group<'_>, body: impl FnOnce(&mut Ui, &mut Self)) {
         let mut head = self.base.groups.head(ui, group);
@@ -196,17 +194,11 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
             groups: Groups::new(&mut editor.groups.0),
             edits: Vec::new(),
             adds: Vec::new(),
+            requests: Vec::new(),
         },
         tracks: &editor.tracks,
-        captioning: captions::Captioning {
-            generation: &mut editor.captions,
-            playhead: editor.view.playhead,
-            sound: &editor.sound,
-            picked: match editor.view.selection.single() {
-                Some(Selected::Region(Item::Cue(id))) => Some(id),
-                _ => None,
-            },
-        },
+        picked: editor.view.selection.single(),
+        recognition: captions::recognition(&editor.captions, &editor.sound),
         sound: &editor.sound,
         streams: &editor.streams,
         actions: Vec::new(),
@@ -232,10 +224,34 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
     if let Some(typed) = rows::flush(ui) {
         cx.actions.push(Action::Apply(vec![typed]));
     }
+    let requests = std::mem::take(&mut cx.base.requests);
+    cx.actions.extend(requests.into_iter().filter_map(action));
     let toggled = cx.base.groups.toggled();
-    let actions = cx.actions;
+    let (actions, recognition) = (cx.actions, cx.recognition);
+    captions::take(&mut editor.captions, &recognition);
     editor.actions.extend(actions);
     toggled
+}
+
+/// What the editor does for a panel's request; nothing for a font dialog closed without a file.
+fn action(request: Request) -> Option<Action> {
+    match request {
+        Request::Pick(id) => {
+            let item = Item::parse(&id);
+            if item.is_none() {
+                tracing::warn!("a panel asked to pick {id}, which is not an object of the rows");
+            }
+            item.map(|item| Action::ListPick(Selected::Region(item)))
+        }
+        Request::Seek(at) => Some(Action::Transport(Transport::Scrub(at))),
+        Request::AddFont(then) => rfd::FileDialog::new()
+            .set_title(names::PICK_FONT)
+            .add_filter(names::FONT_FILES, &dc_render::FONT_EXTENSIONS)
+            .pick_file()
+            .map(|path| Action::Font(FontFile { path, then })),
+        Request::Recognize => Some(Action::Generate),
+        Request::StopRecognizing => Some(Action::StopGenerating),
+    }
 }
 
 /// A newly picked single object opens its panel; no single object goes back to the tab.

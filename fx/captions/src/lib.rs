@@ -1,10 +1,14 @@
-//! Captions: cues, style, animation.
+//! Captions: cues, style, animation; the inspector panels of the captions are [`panel`].
 
 mod edit;
 mod evaluate;
 mod generate;
 mod layout;
 mod model;
+pub mod panel;
+mod panel_cue;
+mod panel_recognition;
+mod panel_style;
 mod paste;
 mod retime;
 mod span;
@@ -44,6 +48,8 @@ pub fn effect() -> EffectInfo {
     EffectInfo::of::<CaptionsEffect>(vec![CueKind::PREFIX])
 }
 
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod retime_tests;
 #[cfg(test)]

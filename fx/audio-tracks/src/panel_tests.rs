@@ -63,6 +63,7 @@ fn draw(ui: &mut egui::Ui, state: &mut State) {
         groups: Groups::new(&mut state.groups),
         edits: Vec::new(),
         adds: Vec::new(),
+        requests: Vec::new(),
     };
     let sources = Sources {
         recorded: &state.recorded,

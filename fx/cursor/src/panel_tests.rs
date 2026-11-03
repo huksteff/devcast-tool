@@ -51,6 +51,7 @@ fn draw(ui: &mut egui::Ui, state: &mut State) {
         groups: Groups::new(&mut state.groups),
         edits: Vec::new(),
         adds: Vec::new(),
+        requests: Vec::new(),
     };
     match &state.press {
         Some(press) => panel::click(ui, &mut cx, press, "0:01.50"),

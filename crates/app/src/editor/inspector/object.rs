@@ -3,7 +3,7 @@
 //! `dc_fx_cursor::panel::click`, with the press of its dot as [`Press`]). The frame gives each
 //! its header — the colour of its row, its name, where it is — and «Удалить» (the same command
 //! as Delete); a zoom gets its parameters (`dc_fx_zoom::panel::region`), a callout event its own
-//! (`dc_fx_callout::panel`), a cue its text and times (`cue.rs`), an
+//! (`dc_fx_callout::panel`), a cue its text and times (`dc_fx_captions::panel::cue`), an
 //! annotation its key strip and groups (`annotation.rs`) and «Дублировать» (`annot paste` of a
 //! copy where it is, on top of its row; the copy gets picked), a clip its sound and an extra
 //! sound its levels and place (`dc_fx_audio_tracks::panel::clip`, `extra`, with the facts of
@@ -14,12 +14,13 @@ use dc_core::Range;
 use dc_core::time::Output;
 use dc_fx_audio_tracks::panel as sound;
 use dc_fx_callout::panel as callout;
+use dc_fx_captions::panel as cue;
 use dc_fx_cursor::panel::{self as cursor, Press, PressButton};
 use dc_fx_zoom::panel as zoom;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{annotations, editor as text, inspector as names, timeline as rows_text};
 
-use super::{Cx, Header, annotation, cue, header, header_button, padded, rows};
+use super::{Cx, Header, annotation, header, header_button};
 use crate::editor::selection::{Item, Selected, same_moment};
 use crate::editor::timeline::{self, Dot, Region, Row, Tracks, timecode};
 use crate::editor::{Action, clipboard, montage, regions};
@@ -75,7 +76,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
     match picked {
         Selected::Region(Item::Zoom(id)) => zoom::region(ui, &mut cx.base, id),
         Selected::Region(Item::Callout(id)) => callout::ui(ui, &mut cx.base, id),
-        Selected::Region(Item::Cue(id)) => cue_panel(ui, cx, id, region.range),
+        Selected::Region(Item::Cue(id)) => cue::cue(ui, &mut cx.base, id, region.range),
         Selected::Region(Item::Annotation(id)) => {
             annotation::ui(ui, cx, id, region.range, &region.keys);
         }
@@ -147,21 +148,6 @@ fn delete(picked: Selected) -> Option<Action> {
         Selected::Region(item) => Some(Action::Apply(vec![regions::remove(item)])),
         Selected::Key { .. } | Selected::Click(_) => None,
     }
-}
-
-/// The panel of a cue picked on the timeline: its text and times, split, merge (`cue.rs`).
-fn cue_panel(ui: &mut Ui, cx: &mut Cx<'_>, id: dc_fx_captions::CueId, at: Range<Output>) {
-    let Ok(state) = cx.base.project.state::<dc_fx_captions::CaptionsEffect>() else {
-        return;
-    };
-    let Some(found) = state.cues.iter().find(|c| c.id == id) else {
-        return;
-    };
-    padded(ui, |ui| {
-        ui.spacing_mut().item_spacing.y = 4.0;
-        cue::editor(ui, cx, (&state, found), at, false);
-        rows::note(ui, dc_ui_kit::strings::captions::CUE_NOTE);
-    });
 }
 
 /// The facts of the click panel from the dot of a press.

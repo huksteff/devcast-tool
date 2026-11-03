@@ -2,16 +2,16 @@
 //! size, word colours, shadow, animation; «Тонкая настройка» — lines, place, width and the plate.
 //! Every edit and «Сбросить» is `captions style` (the settings key `captions`).
 
-use dc_fx_captions::{
+use dc_core::Step;
+use dc_ui_kit::egui::Ui;
+use dc_ui_kit::panel::{Cx, Group, args, reset, rows};
+use dc_ui_kit::strings::{captions as text, editor, inspector as names};
+use serde_json::{Map, Value, json};
+
+use crate::{
     Animation, BOTTOM_MAX, CaptionsSettings, RADIUS_MAX, ROWS_MAX, SIZE_MAX, SIZE_MIN, WIDTH_MAX,
     WIDTH_MIN,
 };
-use dc_ui_kit::strings::{captions as text, editor, inspector as names};
-use eframe::egui::Ui;
-use serde_json::{Map, Value, json};
-
-use super::{Cx, Group, args, reset, rows};
-use crate::editor::Action;
 
 /// The command of the look.
 pub const OP: &str = "captions style";
@@ -50,14 +50,13 @@ pub fn groups(ui: &mut Ui, cx: &mut Cx<'_>, now: &CaptionsSettings, default: &Ca
 }
 
 fn style_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &CaptionsSettings) {
-    let choose = dc_ops::Step::new(OP, Map::new());
-    let font = super::font::font(ui, cx, text::FONT, &now.font, choose);
-    if let Some(font) = font {
-        cx.actions.push(set("font", json!(font)));
+    let choose = Step::new(OP, Map::new());
+    if let Some(font) = cx.font(ui, text::FONT, &now.font, choose) {
+        cx.apply(OP, [("font", json!(font))]);
     }
     let size = (1.0, text::PX);
     if let Some(v) = rows::slider(ui, text::SIZE, now.size, SIZE_MIN..=SIZE_MAX, size) {
-        cx.actions.push(set("size", json!(v)));
+        cx.apply(OP, [("size", json!(v))]);
     }
     let colors = [
         (text::COLOR, now.color),
@@ -66,14 +65,14 @@ fn style_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &CaptionsSettings) {
     ];
     if let Some((i, color)) = rows::colors(ui, text::WORDS, &colors) {
         let field = ["color", "highlight", "inactive"][i];
-        cx.actions.push(set(field, json!(color)));
+        cx.apply(OP, [(field, json!(color))]);
     }
     if let Some(on) = rows::toggle(ui, text::SHADOW, now.shadow) {
-        cx.actions.push(set("shadow", json!(on)));
+        cx.apply(OP, [("shadow", json!(on))]);
     }
     let animation = Some(now.animation);
     if let Some(a) = rows::choice_under(ui, text::ANIMATION, animation, &ANIMATIONS) {
-        cx.actions.push(set("animation", json!(a)));
+        cx.apply(OP, [("animation", json!(a))]);
     }
 }
 
@@ -81,30 +80,25 @@ fn fine_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &CaptionsSettings) {
     let lines: Vec<(u32, String)> = (1..=ROWS_MAX).map(|n| (n, n.to_string())).collect();
     let options: Vec<(u32, &str)> = lines.iter().map(|(n, s)| (*n, s.as_str())).collect();
     if let Some(n) = rows::choice(ui, text::ROWS, Some(now.rows), &options) {
-        cx.actions.push(set("rows", json!(n)));
+        cx.apply(OP, [("rows", json!(n))]);
     }
     let percent = (0.5, names::PERCENT);
     if let Some(v) = rows::slider(ui, text::BOTTOM, now.bottom, 0.0..=BOTTOM_MAX, percent) {
-        cx.actions.push(set("bottom", json!(v)));
+        cx.apply(OP, [("bottom", json!(v))]);
     }
     let width = (1.0, names::PERCENT);
     if let Some(v) = rows::slider(ui, text::WIDTH, now.width, WIDTH_MIN..=WIDTH_MAX, width) {
-        cx.actions.push(set("width", json!(v)));
+        cx.apply(OP, [("width", json!(v))]);
     }
     // The plate's opacity is 0..1 in the project and percent on the panel.
     let plate = now.background * 100.0;
     if let Some(v) = rows::slider(ui, text::PLATE, plate, 0.0..=100.0, (1.0, names::PERCENT)) {
-        cx.actions.push(set("background", json!(v / 100.0)));
+        cx.apply(OP, [("background", json!(v / 100.0))]);
     }
     let radius = (0.5, text::PX);
     if let Some(v) = rows::slider(ui, text::RADIUS, now.radius, 0.0..=RADIUS_MAX, radius) {
-        cx.actions.push(set("radius", json!(v)));
+        cx.apply(OP, [("radius", json!(v))]);
     }
-}
-
-/// `captions style --<field> <value>`.
-pub fn set(field: &'static str, value: Value) -> Action {
-    Action::op(OP, [(field, value)])
 }
 
 /// The fields of «Стиль» as arguments of `captions style`.

@@ -45,6 +45,7 @@ fn harness(project: Project, shortcuts: Shortcuts) -> Harness<'static, State> {
                     groups: Groups::new(&mut state.groups),
                     edits: Vec::new(),
                     adds: Vec::new(),
+                    requests: Vec::new(),
                 };
                 panel::ui(ui, &mut cx, &state.shortcuts);
                 let edits = cx.edits;

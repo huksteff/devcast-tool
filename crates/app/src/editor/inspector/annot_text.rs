@@ -29,7 +29,7 @@ impl Section for TextBody {
         if let Some(step) = rows::text_area(ui, text::TEXT_HINT, edit.id, &self.text, apply) {
             cx.actions.push(crate::editor::Action::Apply(vec![step]));
         }
-        let font = super::font::font(ui, cx, text::FONT, &self.font, edit.step(SET, []));
+        let font = cx.base.font(ui, text::FONT, &self.font, edit.step(SET, []));
         if let Some(font) = font {
             cx.actions.push(edit.apply(SET, [("font", json!(font))]));
         }
