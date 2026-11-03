@@ -1,5 +1,6 @@
 //! The cursor of the recordings: the captured system pictures on a smoothed or exact path,
-//! sized to the clip. Telemetry comes from `dc_ops::Evaluator` as `dc_core::CursorTracks`.
+//! sized to the clip. Telemetry comes from `dc_ops::Evaluator` as `dc_core::CursorTracks`. The
+//! inspector panels of the cursor and of a click are [`panel`].
 
 mod click_commands;
 mod click_state;
@@ -7,6 +8,9 @@ mod clicks;
 mod commands;
 mod effects;
 mod evaluate;
+pub mod panel;
+mod panel_click;
+mod panel_style;
 mod path;
 mod pointer;
 mod pose;
@@ -60,6 +64,8 @@ pub fn effect() -> EffectInfo {
 
 #[cfg(test)]
 mod click_tests;
+#[cfg(test)]
+mod panel_tests;
 #[cfg(test)]
 mod test_util;
 #[cfg(test)]

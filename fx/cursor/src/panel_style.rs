@@ -3,17 +3,17 @@
 //! the colour (the first five of the v1 palette and an own colour), the size — and the timing —
 //! opacity and duration. Both commands take the same fields.
 
-use dc_fx_cursor::{
-    CLICK_SCALE_MAX, CLICK_SCALE_MIN, CLICK_TIME_MAX, CLICK_TIME_MIN, ClickKind, ClickStyle,
-};
 use dc_render::{BLUE, Rgba};
+use dc_ui_kit::egui::{Color32, Painter, Pos2, Rect, Stroke, Ui, vec2};
 use dc_ui_kit::icons::Icon;
+use dc_ui_kit::panel::{args, rows};
 use dc_ui_kit::strings::inspector as names;
 use dc_ui_kit::tokens::{ACCENT_HI, PAUSE, TEXT_3, WHITE};
-use eframe::egui::{Color32, Painter, Rect, Stroke, vec2};
 use serde_json::{Map, Value, json};
 
-use super::{args, rows};
+use crate::{
+    CLICK_SCALE_MAX, CLICK_SCALE_MIN, CLICK_TIME_MAX, CLICK_TIME_MIN, ClickKind, ClickStyle,
+};
 
 const KINDS: [(ClickKind, &str); 5] = [
     (ClickKind::Off, names::CLICK_OFF),
@@ -36,7 +36,7 @@ const COLORS: [(Rgba, &str); 5] = [
 const RAYS: usize = 8;
 
 /// Tiles, colour, size of `style`; `edit` gets the field and the new value of a committed edit.
-pub fn look(ui: &mut eframe::egui::Ui, style: &ClickStyle, mut edit: impl FnMut(&str, Value)) {
+pub(crate) fn look(ui: &mut Ui, style: &ClickStyle, mut edit: impl FnMut(&str, Value)) {
     if let Some(kind) = rows::tiles(ui, style.kind, &KINDS, picture) {
         edit("style", json!(kind));
     }
@@ -52,7 +52,7 @@ pub fn look(ui: &mut eframe::egui::Ui, style: &ClickStyle, mut edit: impl FnMut(
 }
 
 /// Opacity in percent and duration of `style`.
-pub fn timing(ui: &mut eframe::egui::Ui, style: &ClickStyle, mut edit: impl FnMut(&str, Value)) {
+pub(crate) fn timing(ui: &mut Ui, style: &ClickStyle, mut edit: impl FnMut(&str, Value)) {
     let percent = (1.0, names::PERCENT);
     let opacity = style.opacity * 100.0;
     if let Some(v) = rows::slider(ui, names::CLICK_OPACITY, opacity, 0.0..=100.0, percent) {
@@ -67,7 +67,7 @@ pub fn timing(ui: &mut eframe::egui::Ui, style: &ClickStyle, mut edit: impl FnMu
 }
 
 /// The fields of [`look`] as arguments of `clicks` and `click set`.
-pub fn look_args(style: &ClickStyle) -> Map<String, Value> {
+pub(crate) fn look_args(style: &ClickStyle) -> Map<String, Value> {
     args([
         ("style", json!(style.kind)),
         ("color", json!(style.color)),
@@ -76,7 +76,7 @@ pub fn look_args(style: &ClickStyle) -> Map<String, Value> {
 }
 
 /// The fields of [`timing`] as arguments of `clicks` and `click set`.
-pub fn timing_args(style: &ClickStyle) -> Map<String, Value> {
+pub(crate) fn timing_args(style: &ClickStyle) -> Map<String, Value> {
     args([
         ("opacity", json!(style.opacity)),
         ("duration", json!(style.duration.as_secs_f64())),
@@ -111,7 +111,7 @@ fn picture(painter: &Painter, rect: Rect, kind: ClickKind) {
     }
 }
 
-fn flash(painter: &Painter, centre: eframe::egui::Pos2, r: f32) {
+fn flash(painter: &Painter, centre: Pos2, r: f32) {
     let amber: Color32 = PAUSE;
     painter.circle_filled(centre, r * 0.3, amber);
     for i in 0..RAYS {

@@ -253,6 +253,12 @@ pub fn args<const N: usize>(fields: [(&str, Value); N]) -> Map<String, Value> {
         .collect()
 }
 
+/// `t` as a time argument of a command: `12.500000` (seconds with microseconds, not below 0).
+pub fn time_arg(t: OutputTime) -> String {
+    let micros = t.micros().max(0);
+    format!("{}.{:06}", micros / 1_000_000, micros % 1_000_000)
+}
+
 /// `op` with the default fields of a group; nothing when the fields are the defaults already.
 pub fn reset(op: &str, now: &Map<String, Value>, default: Map<String, Value>) -> Option<Step> {
     (*now != default).then(|| Step::new(op, default))

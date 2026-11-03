@@ -17,10 +17,7 @@ mod annotation;
 mod annotation_rows;
 mod captions;
 mod captions_style;
-mod click;
-mod click_style;
 mod cue;
-mod cursor;
 mod font;
 mod object;
 
@@ -82,7 +79,7 @@ fn tab(panel: Panel) -> (&'static str, PanelUi) {
     match panel {
         Panel::Keys => (dc_fx_keys::panel::ID, keys),
         Panel::Zoom => (dc_fx_zoom::panel::ID, zoom),
-        Panel::Cursor => (cursor::ID, cursor::ui),
+        Panel::Cursor => (dc_fx_cursor::panel::ID, cursor),
         Panel::Captions => (captions::ID, captions::ui),
         Panel::Sound => (dc_fx_audio_tracks::panel::ID, sound),
     }
@@ -91,6 +88,11 @@ fn tab(panel: Panel) -> (&'static str, PanelUi) {
 /// «Зум» of `dc_fx_zoom`: no facts, the zooms are in the project.
 fn zoom(ui: &mut Ui, cx: &mut Cx<'_>) {
     dc_fx_zoom::panel::ui(ui, &mut cx.base);
+}
+
+/// «Курсор и клики» of `dc_fx_cursor`: no facts, the settings are in the project.
+fn cursor(ui: &mut Ui, cx: &mut Cx<'_>) {
+    dc_fx_cursor::panel::ui(ui, &mut cx.base);
 }
 
 /// «Показ клавиш» of `dc_fx_keys` with the shortcuts the «Клавиши» row placed.

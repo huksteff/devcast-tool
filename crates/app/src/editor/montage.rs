@@ -11,10 +11,9 @@ use serde_json::{Map, Value};
 use super::view::RangeMenu;
 use super::{Action, EditorWindow};
 
-/// `t` as a time argument: `12.500000`.
+/// `t` as a time argument: `12.500000` (`dc_ui_kit::panel::time_arg`, as the panels write it).
 pub fn arg(t: OutputTime) -> String {
-    let micros = t.micros().max(0);
-    format!("{}.{:06}", micros / 1_000_000, micros % 1_000_000)
+    dc_ui_kit::panel::time_arg(t)
 }
 
 /// `range` as a range argument: `10.000000-12.500000`.

@@ -2,7 +2,7 @@
 //! output time of every press of the recordings (`editor/presses.rs`); a press in a cut or past a
 //! trimmed edge does not show. A click whose own change turns its effect off is an empty ring.
 //! In «Выбор» a click on a dot picks it (`Selected::Click`, Ctrl adds or takes it out) and opens
-//! its panel (`inspector/click.rs`).
+//! its panel (`dc_fx_cursor::panel::click`).
 
 use dc_capture::input::{Button, Click};
 use dc_core::project::Media;

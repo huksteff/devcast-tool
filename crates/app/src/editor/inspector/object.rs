@@ -1,24 +1,27 @@
 //! The panel of the object picked on the timeline: a zoom, a cue, a callout event, an annotation
-//! (also through one of its keys), an extra sound, a clip or a click (its own panel, `click.rs`).
-//! The frame gives each its header — the colour of its row, its name, where it is — and
-//! «Удалить» (the same command as Delete); a zoom gets its parameters
-//! (`dc_fx_zoom::panel::region`), a callout event its own (`dc_fx_callout::panel`), a cue its text and times (`cue.rs`), an
+//! (also through one of its keys), an extra sound, a clip or a click (its own panel,
+//! `dc_fx_cursor::panel::click`, with the press of its dot as [`Press`]). The frame gives each
+//! its header — the colour of its row, its name, where it is — and «Удалить» (the same command
+//! as Delete); a zoom gets its parameters (`dc_fx_zoom::panel::region`), a callout event its own
+//! (`dc_fx_callout::panel`), a cue its text and times (`cue.rs`), an
 //! annotation its key strip and groups (`annotation.rs`) and «Дублировать» (`annot paste` of a
 //! copy where it is, on top of its row; the copy gets picked), a clip its sound and an extra
 //! sound its levels and place (`dc_fx_audio_tracks::panel::clip`, `extra`, with the facts of
 //! [`Cx::sources`]) and «Дублировать» (`audio paste` on the first free row).
 
+use dc_capture::input::Button;
 use dc_core::Range;
 use dc_core::time::Output;
 use dc_fx_audio_tracks::panel as sound;
 use dc_fx_callout::panel as callout;
+use dc_fx_cursor::panel::{self as cursor, Press, PressButton};
 use dc_fx_zoom::panel as zoom;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::strings::{annotations, editor as text, inspector as names, timeline as rows_text};
 
-use super::{Cx, Header, annotation, click, cue, header, header_button, padded, rows};
+use super::{Cx, Header, annotation, cue, header, header_button, padded, rows};
 use crate::editor::selection::{Item, Selected, same_moment};
-use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
+use crate::editor::timeline::{self, Dot, Region, Row, Tracks, timecode};
 use crate::editor::{Action, clipboard, montage, regions};
 use eframe::egui::Ui;
 
@@ -28,7 +31,7 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
         Selected::Click(at) => {
             let dot = tracks.clicks.iter().find(|d| same_moment(d.at, at));
             if let Some(dot) = dot {
-                click::ui(ui, cx, dot);
+                cursor::click(ui, &mut cx.base, &press(dot), &timecode(dot.at));
             }
             return;
         }
@@ -159,4 +162,21 @@ fn cue_panel(ui: &mut Ui, cx: &mut Cx<'_>, id: dc_fx_captions::CueId, at: Range<
         cue::editor(ui, cx, (&state, found), at, false);
         rows::note(ui, dc_ui_kit::strings::captions::CUE_NOTE);
     });
+}
+
+/// The facts of the click panel from the dot of a press.
+fn press(dot: &Dot) -> Press {
+    Press {
+        at: dot.at,
+        media: dot.media.clone(),
+        source: dot.source,
+        button: match dot.button {
+            Button::Left => PressButton::Left,
+            Button::Right => PressButton::Right,
+            Button::Middle => PressButton::Middle,
+            Button::X1 => PressButton::Back,
+            Button::X2 => PressButton::Forward,
+        },
+        double: dot.double,
+    }
 }
