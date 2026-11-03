@@ -68,6 +68,34 @@ fn paused_bar() {
     assert_eq!(*harness.state(), Some(Clicked::Pause));
 }
 
+fn bar_width(paused: bool) -> f32 {
+    let view = super::LiveView {
+        timer: "12:47".to_owned(),
+        paused,
+        mic: Some(0.6),
+        asking: false,
+    };
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(egui::vec2(380.0, 48.0))
+        .build_ui_state(
+            move |ui, width: &mut f32| {
+                *width = ui
+                    .horizontal_centered(|ui| super::live_bar(ui, &view))
+                    .response
+                    .rect
+                    .width();
+            },
+            0.0,
+        );
+    harness.run();
+    *harness.state()
+}
+
+#[test]
+fn bar_keeps_its_width_when_paused() {
+    assert_eq!(bar_width(false), bar_width(true));
+}
+
 #[test]
 fn cancel_question() {
     let mut harness = dc_ui_kit::testing::harness()

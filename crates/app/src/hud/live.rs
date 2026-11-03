@@ -102,16 +102,25 @@ fn stop_button(ui: &mut Ui, timer: &str, paused: bool) -> Response {
     response
 }
 
-/// «● REC» with the dot blinking, or a steady «● ПАУЗА».
+/// «● REC» with the dot blinking, or a steady «● ПАУЗА»; both take the width of the longer one,
+/// so the bar keeps its width when paused.
 fn status(ui: &mut Ui, paused: bool, color: egui::Color32) {
+    let font = fonts::text(FS_S, Weight::Semibold);
     let text = if paused { hud::PAUSED } else { hud::REC };
-    let galley =
-        ui.painter()
-            .layout_no_wrap(text.to_owned(), fonts::text(FS_S, Weight::Semibold), color);
-    let (rect, _) = ui.allocate_exact_size(
-        vec2(S2 + 8.0 + 6.0 + galley.size().x + S2, CONTROL),
-        Sense::hover(),
-    );
+    let galley = ui
+        .painter()
+        .layout_no_wrap(text.to_owned(), font.clone(), color);
+    let widest = [hud::REC, hud::PAUSED]
+        .map(|label| {
+            ui.painter()
+                .layout_no_wrap(label.to_owned(), font.clone(), color)
+                .size()
+                .x
+        })
+        .into_iter()
+        .fold(0.0, f32::max);
+    let (rect, _) =
+        ui.allocate_exact_size(vec2(S2 + 8.0 + 6.0 + widest + S2, CONTROL), Sense::hover());
     let dot = if paused {
         color
     } else {
