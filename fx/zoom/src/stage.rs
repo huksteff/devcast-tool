@@ -1,31 +1,38 @@
-//! The frame of the picked zoom on the preview (7.21, docs/porting/zoom.md §3): the part of the
-//! project frame the zoom fills the output with, drawn over the whole picture (the preview asks
-//! the frame without the camera meanwhile). Dragging it moves the focus — a zoom that followed
-//! the cursor then stands on that point (mode «Точка», as v1 and the mockup's hint); dragging a
-//! corner sets the scale, the frame keeping the output's proportions and the opposite corner
-//! (`dc_fx_zoom::resize`). One `zoom set` per gesture; the preview shows the draft meanwhile.
+//! The frame of the picked zoom on the preview (7.21, `dc_ui_kit::stage`, docs/porting/zoom.md
+//! §3): the part of the project frame the zoom fills the output with, drawn over the whole picture
+//! (the editor asks the frame without the camera meanwhile), the rest dimmed, the scale in the
+//! corner. Dragging it moves the focus — a zoom that followed the cursor then stands on that
+//! point (mode «Точка», as v1 and the mockup's hint); dragging a corner sets the scale, the frame
+//! keeping the output's proportions and the opposite corner ([`resize`]). One `zoom set` per
+//! gesture; the preview shows the draft meanwhile.
 
-use dc_core::Point;
-use dc_fx_zoom::{Corner, Mode, Zoom, ZoomEffect, ZoomId, frame, reachable, resize};
-use dc_ops::Step;
-use eframe::egui::{CursorIcon, Pos2, Rect, Response, Ui, pos2};
+use dc_core::{Point, Project, Step};
+use dc_ui_kit::egui::{Color32, CursorIcon, FontId, Pos2, Rect, Response, Stroke, StrokeKind, Ui};
+use dc_ui_kit::egui::{pos2, vec2};
+use dc_ui_kit::stage::Answer;
+use dc_ui_kit::stage::geom::{GRAB, Mapping};
+use dc_ui_kit::stage::paint::{HANDLE, canvas, handle};
+use dc_ui_kit::strings::editor as text;
+use dc_ui_kit::tokens::{FS_S, HUE_ZOOM, WHITE};
 use serde_json::{Map, json};
 
-use super::geom::{GRAB, Mapping};
-use super::{Drag, finish, paint, show_draft};
-use crate::editor::EditorWindow;
+pub use crate::ZoomId;
+use crate::{Corner, Mode, Zoom, ZoomEffect, frame, reachable, resize};
+
+/// Outside the zoom frame: black 45 %.
+const DIM: Color32 = Color32::from_black_alpha(115);
 
 /// What a press on the zoom frame holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Grip {
+enum Grip {
     Move,
     Corner(Corner),
 }
 
 /// A drag of the zoom frame: the zoom as pressed, the press (canvas px) and the zoom now.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ZoomDrag {
-    pub id: ZoomId,
+pub struct Drag {
+    id: ZoomId,
     grip: Grip,
     from: (f64, Point),
     follows: bool,
@@ -42,22 +49,21 @@ const CORNERS: [(Corner, (f32, f32)); 4] = [
     (Corner::BottomRight, (1.0, 1.0)),
 ];
 
-/// The zoom frame of `id` over the frame mapped by `map`; true when the pointer works on it (a
-/// press inside it or on a corner, or its drag).
+/// The zoom frame of `id` of `project` over the frame mapped by `map`; `drag` — the gesture
+/// going on, the editor keeps it. `ours` when the pointer works on it (a press inside it or on a
+/// corner, or its drag).
 pub fn ui(
     ui: &Ui,
-    editor: &mut EditorWindow,
-    response: &Response,
-    map: Mapping,
+    project: &Project,
+    (response, map): (&Response, Mapping),
     id: ZoomId,
-) -> bool {
-    let Some(zoom) = find(editor, id) else {
-        return false;
+    drag: &mut Option<Drag>,
+) -> Answer {
+    let mut answer = Answer::default();
+    let Some(zoom) = find(project, id) else {
+        return answer;
     };
-    let dragging = match &editor.view.stage {
-        Some(Drag::Zoom(drag)) if drag.id == id => Some(drag.clone()),
-        _ => None,
-    };
+    let dragging = drag.clone().filter(|d| d.id == id);
     let (scale, focus) = dragging
         .as_ref()
         .map_or((zoom.scale, zoom.focus), |d| d.now);
@@ -66,12 +72,12 @@ pub fn ui(
     if let Some(grip) = dragging.as_ref().map(|d| d.grip).or(hovered) {
         ui.ctx().set_cursor_icon(cursor(grip));
     }
-    let mut ours = dragging.is_some();
+    answer.ours = dragging.is_some();
     if response.drag_started()
         && let Some(press) = ui.input(|i| i.pointer.press_origin())
         && let Some(grip) = grip(on_screen, press)
     {
-        editor.view.stage = Some(Drag::Zoom(ZoomDrag {
+        *drag = Some(Drag {
             id,
             grip,
             from: (zoom.scale, zoom.focus),
@@ -79,10 +85,10 @@ pub fn ui(
             at: map.canvas(press),
             now: (zoom.scale, zoom.focus),
             drafted: false,
-        }));
-        ours = true;
+        });
+        answer.ours = true;
     }
-    if let Some(Drag::Zoom(drag)) = &mut editor.view.stage
+    if let Some(drag) = drag.as_mut()
         && let Some(pointer) = response.interact_pointer_pos()
         && response.dragged()
     {
@@ -90,26 +96,27 @@ pub fn ui(
         if now != drag.now {
             drag.now = now;
             drag.drafted = true;
-            let steps = vec![step(drag)];
-            show_draft(ui, editor, &steps);
+            answer.draft = Some(vec![step(drag)]);
         }
     }
     if response.drag_stopped()
-        && let Some(Drag::Zoom(drag)) = editor.view.stage.clone()
+        && let Some(ended) = drag.take()
     {
-        let changed = drag.now != drag.from;
-        finish(editor, drag.drafted, changed.then(|| vec![step(&drag)]));
+        let changed = ended.now != ended.from;
+        answer.done = Some(changed.then(|| vec![step(&ended)]));
+        *drag = Some(ended);
     }
-    let (scale, focus) = match &editor.view.stage {
-        Some(Drag::Zoom(drag)) => drag.now,
+    let (scale, focus) = match (&answer.done, drag.as_ref()) {
+        (None, Some(drag)) => drag.now,
         _ => (zoom.scale, zoom.focus),
     };
-    paint::zoom(ui, map, screen(map, scale, focus), scale);
-    ours || (response.clicked() && hovered.is_some())
+    paint(ui, map, screen(map, scale, focus), scale);
+    answer.ours |= response.clicked() && hovered.is_some();
+    answer
 }
 
-fn find(editor: &EditorWindow, id: ZoomId) -> Option<Zoom> {
-    let state = editor.doc.project().state::<ZoomEffect>().ok()?;
+fn find(project: &Project, id: ZoomId) -> Option<Zoom> {
+    let state = project.state::<ZoomEffect>().ok()?;
     state.zooms.into_iter().find(|z| z.id == id)
 }
 
@@ -124,7 +131,7 @@ fn screen(map: Mapping, scale: f64, focus: Point) -> Rect {
 /// What the pointer at `p` holds: a corner, the inside.
 fn grip(frame: Rect, p: Pos2) -> Option<Grip> {
     let corner = CORNERS.into_iter().find(|(_, (ax, ay))| {
-        let spot = frame.min + frame.size() * eframe::egui::vec2(*ax, *ay);
+        let spot = frame.min + frame.size() * vec2(*ax, *ay);
         spot.distance(p) <= GRAB
     });
     match corner {
@@ -142,7 +149,7 @@ fn cursor(grip: Grip) -> CursorIcon {
 }
 
 /// Scale and focus with the pointer at `p` (canvas px).
-fn dragged(drag: &ZoomDrag, map: Mapping, p: Pos2) -> (f64, Point) {
+fn dragged(drag: &Drag, map: Mapping, p: Pos2) -> (f64, Point) {
     let fraction = |p: Pos2| Point {
         x: f64::from(p.x / map.canvas.x),
         y: f64::from(p.y / map.canvas.y),
@@ -174,7 +181,7 @@ fn round_point(p: Point) -> Point {
 }
 
 /// `zoom set <id> --scale … --x … --y …`, and `--mode fixed` when a following zoom is moved.
-fn step(drag: &ZoomDrag) -> Step {
+fn step(drag: &Drag) -> Step {
     let (scale, focus) = drag.now;
     let mut args = Map::new();
     args.insert("id".to_owned(), json!(drag.id));
@@ -185,4 +192,40 @@ fn step(drag: &ZoomDrag) -> Step {
         args.insert("mode".to_owned(), json!(Mode::Fixed));
     }
     Step::new("zoom set", args)
+}
+
+/// The zoom frame `frame` (screen) of a zoom with `scale`.
+fn paint(ui: &Ui, map: Mapping, frame: Rect, scale: f64) {
+    let painter = ui.painter();
+    let whole = canvas(map);
+    let outside = [
+        Rect::from_min_max(whole.min, pos2(whole.right(), frame.top())),
+        Rect::from_min_max(pos2(whole.left(), frame.bottom()), whole.max),
+        Rect::from_min_max(pos2(whole.left(), frame.top()), frame.left_bottom()),
+        Rect::from_min_max(frame.right_top(), pos2(whole.right(), frame.bottom())),
+    ];
+    for part in outside.into_iter().filter(|r| r.is_positive()) {
+        painter.rect_filled(part, 0, DIM);
+    }
+    painter.rect_stroke(
+        frame,
+        0,
+        Stroke::new(2.0, HUE_ZOOM.line),
+        StrokeKind::Middle,
+    );
+    for corner in [
+        frame.left_top(),
+        frame.right_top(),
+        frame.left_bottom(),
+        frame.right_bottom(),
+    ] {
+        handle(ui, corner, HUE_ZOOM.line);
+    }
+    let label = text::zoom_scale(scale);
+    let galley = painter.layout_no_wrap(label, FontId::proportional(FS_S), WHITE);
+    let pad = vec2(6.0, 3.0);
+    let at = frame.min + vec2(HANDLE, HANDLE);
+    let plate = Rect::from_min_size(at, galley.size() + 2.0 * pad);
+    painter.rect_filled(plate, 4, HUE_ZOOM.fill);
+    painter.galley(plate.min + pad, galley, WHITE);
 }

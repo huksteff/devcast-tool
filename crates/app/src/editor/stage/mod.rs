@@ -1,7 +1,7 @@
-//! Editing on the preview (7.21–7.24): the frame of the picked zoom (`zoom.rs`) and the boxes of
-//! the annotations (`annot.rs`) follow the pointer over the output frame, with guides and
-//! snapping (`snap.rs`); the brush draws in the picked drawing (`brush.rs`); the math is
-//! `geom.rs`, the drawing `paint.rs`.
+//! Editing on the preview (7.21–7.24): the frame of the picked zoom (`lanes::zoom_frame`) and the
+//! boxes of the annotations (`annot.rs`) follow the pointer over the output frame, with guides and
+//! snapping; the brush draws in the picked drawing (`brush.rs`); the math, snapping and drawing
+//! are the kit `dc_ui_kit::stage`.
 //!
 //! A gesture is one registry command on release (`Action::Apply`, one undo step, the same as
 //! `devcast`). While it goes on, the preview renders the draft: the project as that command would
@@ -10,35 +10,30 @@
 
 mod annot;
 mod brush;
-mod geom;
-mod paint;
-mod snap;
-mod zoom;
 
 #[cfg(test)]
 mod brush_tests;
-#[cfg(test)]
-mod geom_tests;
 #[cfg(test)]
 mod tests;
 
 pub use annot::picked;
 pub use brush::bar as brush_bar;
 
-use dc_fx_zoom::ZoomId;
 use dc_ops::Step;
 use dc_render::Camera;
+use dc_ui_kit::stage::Answer;
+use dc_ui_kit::stage::geom::Mapping;
 use dc_ui_kit::strings::editor as text;
 use eframe::egui::{self, Rect, Response, Sense, Ui, WidgetInfo};
 
+use super::lanes::zoom_frame::{self, ZoomId};
 use super::selection::Selected;
 use super::{Action, EditorWindow};
-use geom::Mapping;
 
 /// A gesture on the preview.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Drag {
-    Zoom(zoom::ZoomDrag),
+    Zoom(zoom_frame::Drag),
     Annot(annot::AnnotDrag),
     Brush(brush::BrushDrag),
 }
@@ -79,12 +74,36 @@ pub fn ui(
     if let Some(id) = picked_zoom(editor) {
         // The frame is asked without the camera while a zoom is picked.
         let map = Mapping::new(frame, canvas, Camera::IDENTITY);
-        if zoom::ui(ui, editor, response, map, id) {
+        let mut drag = match &editor.view.stage {
+            Some(Drag::Zoom(drag)) => Some(drag.clone()),
+            _ => None,
+        };
+        let project = editor.doc.project();
+        let answer = zoom_frame::ui(ui, project, (response, map), id, &mut drag);
+        let ours = answer.ours;
+        settle(ui, editor, drag.map(Drag::Zoom), answer);
+        if ours {
             return;
         }
     }
     let map = Mapping::new(frame, canvas, camera.unwrap_or(Camera::IDENTITY));
     annot::ui(ui, editor, response, map);
+}
+
+/// What an effect's gesture answered: its state `drag` is kept while it goes on, its draft
+/// shows, its end applies its commands.
+fn settle(ui: &Ui, editor: &mut EditorWindow, drag: Option<Drag>, answer: Answer) {
+    if let Some(steps) = answer.done {
+        let drafted = drag.is_some_and(|d| d.drafted());
+        finish(editor, drafted, steps);
+        return;
+    }
+    if drag.is_some() {
+        editor.view.stage = drag;
+    }
+    if let Some(steps) = answer.draft {
+        show_draft(ui, editor, &steps);
+    }
 }
 
 /// Shows the project as `steps` make it on the preview. A draft the commands refuse is not

@@ -8,7 +8,7 @@
 
 use dc_core::{PixelSize, Rect as Fractions};
 use dc_render::Camera;
-use eframe::egui::{Pos2, Rect, Vec2, pos2, vec2};
+use egui::{Pos2, Rect, Vec2, pos2, vec2};
 
 /// Points the rotation knob stands above the top edge (mockup: 22).
 pub const KNOB: f32 = 22.0;

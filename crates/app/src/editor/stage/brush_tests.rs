@@ -12,12 +12,12 @@ use eframe::egui::{Event, Modifiers, pos2};
 use egui_kittest::kittest::Queryable;
 
 use super::brush::diameter;
-use super::geom::Mapping;
 use super::tests::{at, drafted, drag, frame, hold, on_screen, release, started};
 use crate::editor::Action;
 use crate::editor::editing_tests::json;
 use crate::editor::inspector::tests::{H, cli, pick, project_json, step, undo};
 use crate::editor::selection::{Item, Selected};
+use dc_ui_kit::stage::geom::Mapping;
 
 /// A drawing over the frame's middle half at 0:23.5–0:25.5, on top.
 const ADD: &str = "annot add drawing --at 23.5 --duration 2 --track 3 --rect 0.25,0.25,0.5,0.5";

@@ -13,13 +13,14 @@ use dc_ops::Step;
 use eframe::egui::{CursorIcon, PointerButton, Pos2, Response, Ui, Vec2};
 use serde_json::json;
 
-use super::geom::{Boxed, GRAB, Grip, KNOB, Mapping, Resize};
-use super::snap::{Guide, Lines, PULL, axes};
-use super::{Drag, brush, finish, paint, show_draft};
+use super::{Drag, brush, finish, show_draft};
 use crate::editor::EditorWindow;
 use crate::editor::selection::{Item, Selected};
 use crate::editor::timeline::Row;
 use dc_fx_annotations::panel::{Edit, target};
+use dc_ui_kit::stage::geom::{Boxed, GRAB, Grip, KNOB, Mapping, Resize};
+use dc_ui_kit::stage::paint;
+use dc_ui_kit::stage::snap::{Guide, Lines, PULL, axes};
 
 /// An annotation the playhead shows: where its edits go and its box now.
 #[derive(Debug, Clone, PartialEq)]

@@ -7,6 +7,7 @@ pub mod icons;
 pub mod lane;
 pub mod panel;
 pub mod settings_rows;
+pub mod stage;
 pub mod strings;
 #[cfg(feature = "kittest")]
 pub mod testing;

@@ -16,6 +16,7 @@ mod region;
 mod shot;
 mod span;
 mod spring;
+pub mod stage;
 mod suggest;
 mod track;
 

@@ -20,10 +20,10 @@ use eframe::egui::{
 use serde_json::{Value, json};
 
 use super::annot::{OnFrame, picked};
-use super::geom::{Boxed, Mapping};
 use super::{Drag, finish, show_draft};
 use crate::editor::EditorWindow;
 use dc_fx_annotations::panel::Edit;
+use dc_ui_kit::stage::geom::{Boxed, Mapping};
 
 /// Thinnest stroke on the canvas, px (as `dc_fx_drawing::evaluate`).
 const MIN_PX: f32 = 1.0;

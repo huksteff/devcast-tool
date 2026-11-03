@@ -3,7 +3,7 @@
 //! threshold; a guide line shows each line it stuck to. Canvas px; the caller turns the
 //! on-screen threshold into px (`Mapping::length`).
 
-use eframe::egui::{Pos2, Rect, Vec2, vec2};
+use egui::{Pos2, Rect, Vec2, vec2};
 
 /// How near on screen a line pulls an edge or a centre, points.
 pub const PULL: f32 = 6.0;

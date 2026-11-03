@@ -3,7 +3,7 @@
 
 use dc_core::{PixelSize, Rect as Fractions};
 use dc_render::Camera;
-use eframe::egui::{Pos2, Rect, Vec2, pos2, vec2};
+use egui::{Pos2, Rect, Vec2, pos2, vec2};
 
 use super::geom::{Boxed, Grip, Handle, Mapping, Resize};
 use super::snap::{Lines, axes};
