@@ -100,6 +100,14 @@ impl Region {
     }
 }
 
+/// What a row of an effect shows: its regions and whether the effect is switched off (captions
+/// not shown, sound muted).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Row {
+    pub regions: Vec<Region>,
+    pub off: bool,
+}
+
 /// A region after a move: its new place and, between the rows of an effect with tracks, its new
 /// track.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

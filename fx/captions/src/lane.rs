@@ -1,10 +1,11 @@
-//! The cues on the timeline (`dc_ui_kit::lane`): a moved cue and a dragged edge are `captions
-//! set --from --to` (a cue stays in its recording, the command says why), a copy is `captions
-//! paste` with its JSON.
+//! The cues on the timeline (`dc_ui_kit::lane`): a region per cue that shows, its text, pale
+//! while the captions are not shown; a moved cue and a dragged edge are `captions set --from
+//! --to` (a cue stays in its recording, the command says why), a copy is `captions paste` with
+//! its JSON.
 
 use dc_core::time::Output;
-use dc_core::{IdKind, Project, Range, Step, TimeDelta};
-use dc_ui_kit::lane::{self, Item, Lane, Moved, Resize, id_args, seconds, time};
+use dc_core::{IdKind, Project, Range, StateError, Step, TimeDelta, TimeMap};
+use dc_ui_kit::lane::{self, Item, Lane, Moved, Region, Resize, Row, id_args, seconds, time};
 
 use crate::{CaptionsEffect, CueKind};
 
@@ -43,4 +44,22 @@ fn copied(project: &Project, item: Item, length: TimeDelta) -> Option<Step> {
 
 fn duplicated(project: &Project, item: Item, range: Range<Output>) -> Option<Step> {
     lane::in_place(copied(project, item, range.duration()), range)
+}
+
+/// The captions row: the cues that show on the output; off while the captions are not shown.
+pub fn row(project: &Project, map: &TimeMap) -> Result<Row, StateError> {
+    let state = project.state::<CaptionsEffect>()?;
+    let off = !state.settings.show;
+    let regions = state.cues.iter().filter_map(|cue| {
+        let range = map.output_span(&cue.media, cue.range)?;
+        Some(Region {
+            faded: off,
+            item: Some(Item::of(cue.id)),
+            ..Region::new(range, cue.text())
+        })
+    });
+    Ok(Row {
+        regions: regions.collect(),
+        off,
+    })
 }

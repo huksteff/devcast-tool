@@ -10,7 +10,6 @@ use dc_core::{
 };
 use dc_fx_annotations::{Annotations, Kind, TRACKS};
 use dc_fx_audio_tracks::{Audio, AudioState, Sound, TRACKS as AUDIO_TRACKS};
-use dc_fx_captions::CaptionsEffect;
 use dc_ui_kit::lane;
 use dc_ui_kit::strings::timeline as text;
 
@@ -132,16 +131,12 @@ impl Tracks {
             duration: map.duration(),
             ..Self::default()
         };
-        let captions = tracks.read::<CaptionsEffect>(project);
+        let captions = tracks.problem(lanes::captions::row(project, &map));
         let audio = tracks.read::<Audio>(project);
         let keys = tracks.problem(lanes::keys::shown(project));
         let zooms = tracks.lane(lanes::zoom::regions(project, &map));
         let cursor = tracks.lane(lanes::callout::regions(project, &map));
-        tracks.add(
-            Row::Captions,
-            captions_of(&map, &captions),
-            !captions.settings.show,
-        );
+        tracks.add_lane(Row::Captions, captions);
         tracks.clips(project, &map);
         tracks.add(Row::Zooms, zooms, false);
         tracks.add(Row::Cursor, cursor, false);
@@ -190,6 +185,11 @@ impl Tracks {
     fn lane(&mut self, regions: Result<Vec<lane::Region>, StateError>) -> Vec<Region> {
         let regions = self.problem(regions);
         regions.into_iter().map(Region::from).collect()
+    }
+
+    fn add_lane(&mut self, row: Row, lane: lane::Row) {
+        let regions = lane.regions.into_iter().map(Region::from).collect();
+        self.add(row, regions, lane.off);
     }
 
     fn add(&mut self, row: Row, regions: Vec<Region>, off: bool) {
@@ -301,22 +301,6 @@ pub(super) fn region(range: Range<Output>, label: String) -> Region {
         wave: None,
         keys: Vec::new(),
     }
-}
-
-fn captions_of(map: &TimeMap, state: &dc_fx_captions::CaptionsState) -> Vec<Region> {
-    let faded = !state.settings.show;
-    state
-        .cues
-        .iter()
-        .filter_map(|cue| {
-            let range = map.output_span(&cue.media, cue.range)?;
-            Some(Region {
-                faded,
-                item: Some(Item::of(cue.id)),
-                ..region(range, cue.text())
-            })
-        })
-        .collect()
 }
 
 /// Where clip `id` plays: its segments follow each other on the output.

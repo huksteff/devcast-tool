@@ -7,6 +7,7 @@ use dc_capture::input::{Button, Click};
 use dc_core::Project;
 use dc_core::project::Media;
 pub use dc_fx_callout::lane as callout;
+pub use dc_fx_captions::lane as captions;
 pub use dc_fx_cursor::lane as cursor;
 use dc_fx_cursor::panel::PressButton;
 pub use dc_fx_keys::lane as keys;
