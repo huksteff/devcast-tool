@@ -16,6 +16,7 @@ workspace = true
 
 [build-dependencies]
 embed-resource = "3"
+png = "0.18"
 
 [dependencies]
 crash-handler = "0.6"

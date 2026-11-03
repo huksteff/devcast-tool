@@ -1,7 +1,7 @@
 //! The tray icon (mockup 6): the system menu of Windows with the status line, «Остановить»,
 //! «Показать панель», «Настройки» (inactive while recording), «Выход». A left click shows the HUD, the right one the menu
-//! (a stray click must not end a recording). The icon is the logo at rest and a red dot while
-//! recording. Its events come through the tray-icon handlers and wake the UI.
+//! (a stray click must not end a recording). The icon is the DevCast icon (`logo.rs`), with a red dot
+//! while recording. Its events come through the tray-icon handlers and wake the UI.
 
 use std::sync::mpsc::{self, Receiver};
 
@@ -150,7 +150,7 @@ impl Tray {
     }
 }
 
-/// The logo at rest, a red dot while recording.
+/// The DevCast icon, with a red dot while recording.
 fn picture(recording: bool) -> Result<Icon, tray_icon::BadIcon> {
     Icon::from_rgba(logo::pixels(recording), logo::SIDE, logo::SIDE)
 }

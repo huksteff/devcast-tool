@@ -1296,6 +1296,7 @@ dependencies = [
  "embed-resource",
  "global-hotkey",
  "minidumper",
+ "png",
  "raw-window-handle",
  "rfd",
  "serde",
