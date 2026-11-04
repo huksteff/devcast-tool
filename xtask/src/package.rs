@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::native::{copy_files, create_dir, remove_dir, run_tool};
+use crate::release::Options;
 
 /// The installed app's id: Velopack finds the installation and its updates by it, never change it.
 const PACK_ID: &str = "DevCast";
@@ -32,7 +33,7 @@ const VPK_VERSION: &str = "1.2.161";
 const SETUP_EXE: &str = "DevCast-Setup.exe";
 const SETUP_ENV: &str = "DEVCAST_VELOPACK_SETUP";
 
-pub fn run(root: &Path) -> Result<(), String> {
+pub fn run(root: &Path, options: &Options) -> Result<(), String> {
     check_vpk()?;
     crate::native::run(root)?;
     let target = crate::metadata::Workspace::load()?.target;
@@ -42,15 +43,10 @@ pub fn run(root: &Path) -> Result<(), String> {
     let releases = out.join("releases");
     stage(root, &target.join("release"), &pack)?;
     create_dir(&releases)?;
-    drop_version(&releases, env!("CARGO_PKG_VERSION"))?;
+    drop_version(&releases, &options.index(), &options.version)?;
     let icon = root.join("branding").join("devcast.ico");
-    run_tool(Command::new("vpk").args(pack_args(
-        env!("CARGO_PKG_VERSION"),
-        &pack,
-        &releases,
-        &icon,
-    )))?;
-    let setup = setup_window(&target, &releases)?;
+    run_tool(Command::new("vpk").args(pack_args(options, &pack, &releases, &icon)))?;
+    let setup = setup_window(&target, &releases, &options.velopack_setup(PACK_ID))?;
     println!(
         "package: OK — установщик {} (с выбором папки), DevCast-win-Setup.exe и пакеты обновлений в {}",
         setup.display(),
@@ -61,8 +57,8 @@ pub fn run(root: &Path) -> Result<(), String> {
 
 /// `DevCast-Setup.exe`: the program that asks where to install (`dc-setup`), built with the
 /// Velopack installer of `releases` inside it.
-fn setup_window(target: &Path, releases: &Path) -> Result<PathBuf, String> {
-    let velopack = releases.join(format!("{PACK_ID}-win-Setup.exe"));
+fn setup_window(target: &Path, releases: &Path, velopack: &str) -> Result<PathBuf, String> {
+    let velopack = releases.join(velopack);
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
     run_tool(
         Command::new(cargo)
@@ -145,14 +141,15 @@ fn package_files(root: &Path) -> Result<Vec<PathBuf>, String> {
 
 /// Arguments of `vpk pack`: a per-user install (Velopack's only mode on Windows) with shortcuts
 /// on the desktop and in the Start menu.
-fn pack_args(version: &str, pack: &Path, releases: &Path, icon: &Path) -> Vec<OsString> {
+fn pack_args(options: &Options, pack: &Path, releases: &Path, icon: &Path) -> Vec<OsString> {
     let mut args: Vec<OsString> = Vec::new();
     let mut push = |key: &str, value: OsString| {
         args.push(key.into());
         args.push(value);
     };
     push("--packId", PACK_ID.into());
-    push("--packVersion", version.into());
+    push("--packVersion", options.version.as_str().into());
+    push("--channel", options.channel.as_str().into());
     push("--packTitle", TITLE.into());
     push("--packAuthors", AUTHORS.into());
     push("--packDir", pack.into());
@@ -165,13 +162,10 @@ fn pack_args(version: &str, pack: &Path, releases: &Path, icon: &Path) -> Vec<Os
     command
 }
 
-/// The release index of Velopack (`releases.win.json`).
-const INDEX: &str = "releases.win.json";
-
-/// Removes an earlier pack of `version` from `releases`, so a version is packed again (`vpk`
+/// Removes an earlier pack of `version` from `releases` and its `index` file, so a version is packed again (`vpk`
 /// refuses a version it already has); older versions stay for the update deltas.
-fn drop_version(releases: &Path, version: &str) -> Result<(), String> {
-    let index = releases.join(INDEX);
+fn drop_version(releases: &Path, index: &str, version: &str) -> Result<(), String> {
+    let index = releases.join(index);
     let Ok(text) = std::fs::read_to_string(&index) else {
         return Ok(());
     };
@@ -223,15 +217,20 @@ mod tests {
 
     #[test]
     fn packs_the_app_with_its_icon_and_shortcuts() {
+        let options = Options {
+            version: "0.1.0-beta.3".to_owned(),
+            channel: "beta".to_owned(),
+        };
         let args = pack_args(
-            "0.1.0",
+            &options,
             Path::new("D:/dct/velopack/pack"),
             Path::new("D:/dct/velopack/releases"),
             Path::new("D:/repo/branding/devcast.ico"),
         );
         assert_eq!(args.first().map(OsString::as_os_str), Some("pack".as_ref()));
         assert_eq!(value(&args, "--packId"), Some(&"DevCast".into()));
-        assert_eq!(value(&args, "--packVersion"), Some(&"0.1.0".into()));
+        assert_eq!(value(&args, "--packVersion"), Some(&"0.1.0-beta.3".into()));
+        assert_eq!(value(&args, "--channel"), Some(&"beta".into()));
         assert_eq!(value(&args, "--mainExe"), Some(&"devcast-app.exe".into()));
         assert_eq!(
             value(&args, "--packDir"),
@@ -350,15 +349,15 @@ mod tests {
             std::fs::write(dir.join(name), b"x").unwrap();
         }
         let index = r#"{"Assets":[{"Version":"0.0.9","FileName":"DevCast-0.0.9-full.nupkg"},{"Version":"0.1.0","FileName":"DevCast-0.1.0-full.nupkg"}]}"#;
-        std::fs::write(dir.join(INDEX), index).unwrap();
-        drop_version(dir, "0.1.0").unwrap();
+        std::fs::write(dir.join("releases.win.json"), index).unwrap();
+        drop_version(dir, "releases.win.json", "0.1.0").unwrap();
         assert!(!dir.join("DevCast-0.1.0-full.nupkg").exists());
         assert!(
             dir.join("DevCast-0.0.9-full.nupkg").exists(),
             "older ones stay for deltas"
         );
-        let left = std::fs::read_to_string(dir.join(INDEX)).unwrap();
+        let left = std::fs::read_to_string(dir.join("releases.win.json")).unwrap();
         assert!(left.contains("0.0.9") && !left.contains("0.1.0"));
-        drop_version(&dir.join("нет"), "0.1.0").unwrap();
+        drop_version(&dir.join("нет"), "releases.win.json", "0.1.0").unwrap();
     }
 }

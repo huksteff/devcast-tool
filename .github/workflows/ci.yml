@@ -1,58 +1,43 @@
 name: CI
 
+# Проверка каждого MR и каждой ветки, куда вливают (CONTRIBUTING.md). Без зелёного CI MR не вливается.
 on:
   push:
+    branches: [main, develop]
   pull_request:
-  # Ночной прогон с долгими тестами (#[ignore]). GitHub запускает расписание только на ветке по умолчанию.
+  # Ночной прогон с долгими тестами (#[ignore]). GitHub запускает расписание только на ветке по умолчанию (develop).
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
+
+# Новый пуш в тот же MR отменяет старую проверку.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
+
+      # Фикстуры в Git LFS: трафик LFS ограничен, поэтому они берутся из кэша, пока не изменились.
+      - name: LFS file list
+        run: git lfs ls-files --long | Out-File -Encoding utf8 .lfs-files
+
+      - uses: actions/cache@v4
         with:
-          lfs: true
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-files') }}
 
-      # Ставит версию из rust-toolchain.toml.
-      - name: Rust toolchain
-        run: rustup toolchain install
+      - name: LFS pull
+        run: git lfs pull
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/build-deps
 
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-
-      # FFmpeg и libclang (решение 003); архивы проверяются по SHA-256 внутри xtask.
-      - uses: actions/cache@v4
-        with:
-          path: .deps
-          key: deps-${{ hashFiles('xtask/src/native.rs', 'xtask/src/fonts.rs') }}
-
-      # Vulkan SDK для сборки whisper.cpp с GPU (решение 010); видеокарты в CI нет, тесты идут на CPU.
-      - uses: actions/cache@v4
-        id: vulkan-sdk
-        with:
-          path: C:\VulkanSDK
-          key: vulkan-sdk-1.4.363.0
-
-      - name: Vulkan SDK
-        if: steps.vulkan-sdk.outputs.cache-hit != 'true'
-        run: |
-          curl.exe -fsSL --retry 3 -o vulkan-sdk.exe https://sdk.lunarg.com/sdk/download/1.4.363.0/windows/vulkansdk-windows-X64-1.4.363.0.exe
-          $hash = (Get-FileHash vulkan-sdk.exe -Algorithm SHA256).Hash.ToLower()
-          if ($hash -ne '94a82d378f7a5e3e54c9db7d2fb7016af136e14ac0a18dbf0f2f67a36352d141') { throw "Vulkan SDK: SHA-256 не совпал ($hash)" }
-          Start-Process -Wait -FilePath .\vulkan-sdk.exe -ArgumentList '--root','C:\VulkanSDK','--accept-licenses','--default-answer','--confirm-command','install'
-          Remove-Item vulkan-sdk.exe
-
-      - name: VULKAN_SDK
-        run: echo "VULKAN_SDK=C:\VulkanSDK" >> $env:GITHUB_ENV
-
-      - name: native deps
-        run: cargo xtask deps
 
       - name: verify
         if: github.event_name != 'schedule'

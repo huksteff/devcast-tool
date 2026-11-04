@@ -28,6 +28,8 @@
 
   Сделано (2026-11-04, решение владельца): скилл для всех нейронок — папка `%APPDATA%DevCastgent-skill` (`SKILL.md`, `AGENTS.md`, `README.md` с тем, как поставить себе Claude Code, Codex, Gemini, Cursor и другим); во вкладке «Нейронка» — группа «Своя нейронка»: путь, «Копировать просьбу» («Установи себе скилл DevCast из папки …»), «Открыть папку»; CLI — `devcast skill files`. `devcast skill install` для Claude Code остался.
 - [ ] **8.6** Конвейер релиза: тег → сборка в CI → GitHub Releases → проверка установки на чистой машине.
+
+  Сделано в коде (2026-11-04, процесс владельца — CONTRIBUTING.md): `.github/workflows/release.yml` — пуш в `develop` собирает бету `<version>-beta.<номер>` в канале `beta`, тег `vX.Y.Z` на `main` — выпуск в обычном канале (тег сверяется с `version`); `vpk download github` берёт прошлые выпуски для дельт, `vpk upload github` и `DevCast-Setup.exe` — в GitHub Releases. `cargo xtask package --version --channel` (`xtask/src/release.rs`). Не проверено: ни одного прогона — ждёт push и публичного репозитория; проверка установки на чистой машине — за владельцем.
 - [ ] **8.7** Полный прогон `features.json` и ручной чек-лист на двух разных ПК (NVIDIA и Intel/AMD).
 - [ ] **8.8** Пилот: 1–2 недели у коллег параллельно с v1. Каждый баг — регрессионный тест и исправление по PROCESS.md.
 - [ ] **8.9** Переключение: v1 заморожена, вся работа идёт в v2.

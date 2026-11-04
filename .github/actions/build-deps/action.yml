@@ -1,0 +1,43 @@
+name: Build dependencies
+description: Rust из rust-toolchain.toml, кэш сборки, Vulkan SDK и нативные зависимости (`cargo xtask deps`).
+
+runs:
+  using: composite
+  steps:
+    # Ставит версию из rust-toolchain.toml.
+    - name: Rust toolchain
+      shell: pwsh
+      run: rustup toolchain install
+
+    - uses: Swatinem/rust-cache@v2
+
+    # FFmpeg и libclang (решение 003); архивы проверяются по SHA-256 внутри xtask.
+    - uses: actions/cache@v4
+      with:
+        path: .deps
+        key: deps-${{ hashFiles('xtask/src/native.rs', 'xtask/src/fonts.rs') }}
+
+    # Vulkan SDK для сборки whisper.cpp с GPU (решение 010); видеокарты в CI нет, тесты идут на CPU.
+    - uses: actions/cache@v4
+      id: vulkan-sdk
+      with:
+        path: C:\VulkanSDK
+        key: vulkan-sdk-1.4.363.0
+
+    - name: Vulkan SDK
+      if: steps.vulkan-sdk.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        curl.exe -fsSL --retry 3 -o vulkan-sdk.exe https://sdk.lunarg.com/sdk/download/1.4.363.0/windows/vulkansdk-windows-X64-1.4.363.0.exe
+        $hash = (Get-FileHash vulkan-sdk.exe -Algorithm SHA256).Hash.ToLower()
+        if ($hash -ne '94a82d378f7a5e3e54c9db7d2fb7016af136e14ac0a18dbf0f2f67a36352d141') { throw "Vulkan SDK: SHA-256 не совпал ($hash)" }
+        Start-Process -Wait -FilePath .\vulkan-sdk.exe -ArgumentList '--root','C:\VulkanSDK','--accept-licenses','--default-answer','--confirm-command','install'
+        Remove-Item vulkan-sdk.exe
+
+    - name: VULKAN_SDK
+      shell: pwsh
+      run: echo "VULKAN_SDK=C:\VulkanSDK" >> $env:GITHUB_ENV
+
+    - name: native deps
+      shell: pwsh
+      run: cargo xtask deps

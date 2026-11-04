@@ -11,6 +11,7 @@ mod limits;
 mod metadata;
 mod native;
 mod package;
+mod release;
 mod run;
 mod schema_docs;
 mod seams;
@@ -39,9 +40,10 @@ const USAGE: &str = "\
   deps
       Скачать и проверить по SHA-256 нативные зависимости сборки (FFmpeg, libclang) и шрифты в .deps/
       и скопировать DLL FFmpeg рядом с собираемыми exe.
-  package
+  package [--version 1.2.3-beta.4] [--channel beta]
       Установщик Velopack: deps, release-сборка devcast-app и devcast, папка пакета и `vpk pack`.
-      Результат — в <папка сборки>/velopack/releases. Нужен vpk (docs/SETUP.md).";
+      Результат — в <папка сборки>/velopack/releases. Нужен vpk (docs/SETUP.md).
+      Без флагов — версия из Cargo.toml в обычном канале; бету собирает CI (CONTRIBUTING.md).";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -82,8 +84,12 @@ fn main() -> ExitCode {
             }
         }
         "package" => {
+            let options = match release::Options::parse(rest) {
+                Ok(options) => options,
+                Err(message) => return usage_error(&message),
+            };
             let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent();
-            match root.map(package::run) {
+            match root.map(|root| package::run(root, &options)) {
                 Some(Ok(())) => ExitCode::SUCCESS,
                 Some(Err(message)) => {
                     eprintln!("package: {message}");

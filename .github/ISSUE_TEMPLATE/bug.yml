@@ -1,0 +1,30 @@
+name: Ошибка
+description: Что-то работает не так, как должно
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Что случилось
+      description: Что делал, что ожидал увидеть и что получилось.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как повторить
+      placeholder: |
+        1. Открыть проект…
+        2. Нажать…
+  - type: input
+    id: version
+    attributes:
+      label: Версия DevCast
+      description: Окно «О программе».
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Журнал и отчёт о падении
+      description: Папка `%APPDATA%\DevCast\logs` (отчёты о падениях — в `crashes`). Перетащи файлы сюда.

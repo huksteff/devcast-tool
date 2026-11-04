@@ -1,0 +1,61 @@
+name: Release
+
+# Установщик и обновления (CONTRIBUTING.md, «Выпуск»): каждое вливание в develop — бета
+# `<версия>-beta.<номер>` в канале beta, тег vX.Y.Z на main — выпуск в обычном канале.
+# Код уже проверен CI в MR, здесь только сборка и публикация в GitHub Releases.
+on:
+  push:
+    branches: [develop]
+    tags: ["v*"]
+
+# Выпуски идут по одному, иначе дельты обновлений строятся от неверной версии.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: version
+        id: version
+        run: |
+          $crate = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            if ('${{ github.ref_name }}' -ne "v$crate") { throw "Тег ${{ github.ref_name }} не совпадает с версией v$crate в Cargo.toml: поправь версию в develop и поставь тег заново." }
+            $version = $crate; $channel = 'win'; $pre = ''
+          } else {
+            $version = "$crate-beta.${{ github.run_number }}"; $channel = 'beta'; $pre = '--pre'
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "channel=$channel" >> $env:GITHUB_OUTPUT
+          "pre=$pre" >> $env:GITHUB_OUTPUT
+
+      - uses: ./.github/actions/build-deps
+
+      # vpk той же версии, что крейт velopack (решение 013, xtask/src/package.rs VPK_VERSION).
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: vpk
+        run: dotnet tool install -g vpk --version 1.2.161
+
+      # Прошлые выпуски канала: из них vpk строит дельты обновлений.
+      - name: previous releases
+        run: vpk download github --repoUrl "${{ github.server_url }}/${{ github.repository }}" --token "${{ github.token }}" --channel ${{ steps.version.outputs.channel }} ${{ steps.version.outputs.pre }} --outputDir target/velopack/releases
+
+      - name: package
+        run: cargo xtask package --version ${{ steps.version.outputs.version }} --channel ${{ steps.version.outputs.channel }}
+
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          vpk upload github --repoUrl "${{ github.server_url }}/${{ github.repository }}" --token "${{ github.token }}" --channel ${{ steps.version.outputs.channel }} ${{ steps.version.outputs.pre }} --publish --merge --tag "v${{ steps.version.outputs.version }}" --releaseName "DevCast ${{ steps.version.outputs.version }}" --targetCommitish "${{ github.sha }}" --outputDir target/velopack/releases
+          gh release upload "v${{ steps.version.outputs.version }}" target/velopack/releases/DevCast-Setup.exe --clobber

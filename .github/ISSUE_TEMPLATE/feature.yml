@@ -1,0 +1,15 @@
+name: Идея
+description: Новая функция или улучшение
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Что хочется сделать
+      description: Задача, которую сейчас неудобно или нельзя решить. Как это сделано у других (DaVinci, Screen Studio)?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Как это могло бы работать
