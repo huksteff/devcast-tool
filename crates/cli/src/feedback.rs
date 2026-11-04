@@ -20,6 +20,15 @@ pub(crate) fn feedback(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
             .iter()
             .map(|c| format!("{}: {}", c.name, c.value)),
     );
+    if !feedback.authors.is_empty() {
+        lines.push("Авторы:".to_owned());
+        lines.extend(
+            feedback
+                .authors
+                .iter()
+                .map(|a| format!("  {} {}", a.name, a.tag)),
+        );
+    }
     lines.push(format!("Репозиторий: {}", feedback.repository));
     lines.push(format!("Логи (приложите к письму): {}", logs.display()));
     let crashes = reports(&logs.join(dc_project::settings::CRASHES_DIR))?;
@@ -33,6 +42,11 @@ pub(crate) fn feedback(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         .collect();
     let json = json!({
         "contacts": contacts,
+        "authors": feedback
+            .authors
+            .iter()
+            .map(|a| json!({"name": a.name, "tag": a.tag}))
+            .collect::<Vec<_>>(),
         "repository": feedback.repository,
         "logs": logs,
         "crashes": crashes,

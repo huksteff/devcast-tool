@@ -6,5 +6,9 @@
       "url": "https://github.com/huksteff/recordy-fork/issues"
     }
   ],
+  "authors": [
+    { "name": "Данила Новиков", "tag": "@d.novikov" },
+    { "name": "Максим Третьяков", "tag": "@m.tretyakov" }
+  ],
   "repository": "https://github.com/huksteff/recordy-fork"
 }

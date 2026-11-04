@@ -297,6 +297,9 @@ pub mod settings {
     pub const FEEDBACK: &str = "Обратная связь";
     pub const FEEDBACK_TEXT: &str = "Нашли баг или есть идея — напишите:";
     pub const REPOSITORY: &str = "Репозиторий";
+    pub const AUTHORS: &str = "Авторы";
+    pub const COPY_TAG: &str = "Скопировать тег";
+    pub const TAG_COPIED: &str = "Тег скопирован";
     pub const OPEN_LOGS: &str = "Открыть папку логов";
 
     /// «Скачивается… 42 %».

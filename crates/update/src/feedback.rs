@@ -13,6 +13,9 @@ const FILE: &str = include_str!("../feedback.json");
 #[serde(deny_unknown_fields)]
 pub struct Feedback {
     pub contacts: Vec<Contact>,
+    /// Who makes DevCast, as v1 showed them (`contacts.yaml` of v1): a click copies the tag.
+    #[serde(default)]
+    pub authors: Vec<Author>,
     /// Link to the repository of DevCast.
     pub repository: String,
 }
@@ -27,6 +30,15 @@ pub struct Contact {
     /// The link a click opens (`mailto:`, `https:`); none — the value is only shown.
     #[serde(default)]
     pub url: Option<String>,
+}
+
+/// An author of DevCast.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Author {
+    pub name: String,
+    /// The handle in the studio messenger: `@d.novikov`.
+    pub tag: String,
 }
 
 /// The contacts of `feedback.json`.
@@ -47,6 +59,8 @@ mod tests {
         let feedback = feedback().unwrap();
         assert!(!feedback.contacts.is_empty());
         assert!(feedback.repository.starts_with("https://"));
+        assert_eq!(feedback.authors.len(), 2, "the authors of v1");
+        assert!(feedback.authors.iter().all(|a| a.tag.starts_with('@')));
         for contact in &feedback.contacts {
             assert!(!contact.name.is_empty() && !contact.value.is_empty());
         }

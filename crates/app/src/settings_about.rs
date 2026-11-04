@@ -35,6 +35,7 @@ pub fn about(ui: &mut Ui) -> Result<(), AppError> {
     let repository = text::contact(text::REPOSITORY, &feedback.repository);
     ui.hyperlink_to(repository, &feedback.repository);
     ui.add_space(S2);
+    authors(ui, &feedback.authors);
     if ui
         .add(Button::new(text::OPEN_LOGS).small().icon(Icon::Folder))
         .clicked()
@@ -43,3 +44,34 @@ pub fn about(ui: &mut Ui) -> Result<(), AppError> {
     }
     Ok(())
 }
+
+/// «Авторы», as v1 showed them: the name and the tag; a click copies the tag.
+fn authors(ui: &mut Ui, authors: &[dc_update::Author]) {
+    if authors.is_empty() {
+        return;
+    }
+    ui.add_space(S2);
+    heading(ui, text::AUTHORS);
+    for author in authors {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(&author.name).color(TEXT));
+            let tag = Button::new(&author.tag).small();
+            let response = ui.add(tag).on_hover_text(text::COPY_TAG);
+            let copied = ui.scope_id().with(("tag-copied", &author.tag));
+            if response.clicked() {
+                ui.ctx().copy_text(author.tag.clone());
+                ui.data_mut(|d| d.insert_temp(copied, ui.input(|i| i.time)));
+            }
+            let since = ui.data(|d| d.get_temp::<f64>(copied));
+            if since.is_some_and(|t| ui.input(|i| i.time) - t < TAG_SHOWN) {
+                ui.label(RichText::new(text::TAG_COPIED).color(TEXT_2));
+                ui.ctx()
+                    .request_repaint_after(std::time::Duration::from_millis(250));
+            }
+        });
+    }
+    ui.add_space(S2);
+}
+
+/// How long «Тег скопирован» stays, s.
+const TAG_SHOWN: f64 = 2.0;

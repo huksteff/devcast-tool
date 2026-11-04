@@ -6,7 +6,7 @@ mod feedback;
 
 pub use changelog::{Group, Release, news};
 pub use error::UpdateError;
-pub use feedback::{Contact, Feedback, feedback};
+pub use feedback::{Author, Contact, Feedback, feedback};
 
 /// Handles the Velopack installer hooks (`--veloapp-install`, `--veloapp-uninstall`, …): during
 /// a hook the process does its part and exits here. Must be the first call of `main` of the
