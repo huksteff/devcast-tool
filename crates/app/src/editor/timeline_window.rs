@@ -20,6 +20,7 @@ use eframe::egui::{self, Frame, Ui, Vec2, pos2, vec2};
 use super::timeline::{self, Place};
 use super::{EditorWindow, View, actions, keys, playback};
 use crate::app::{Shared, lock, other_window};
+use crate::borderless::show_when_drawn;
 use crate::settings::{EditorLayout, WindowPlace};
 
 pub const ID: &str = "editor-timeline";
@@ -154,6 +155,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, repaint: bool) {
     };
     let mut builder = egui::ViewportBuilder::default()
         .with_icon(crate::logo::window_icon())
+        .with_visible(false)
         .with_title(title)
         .with_inner_size(size)
         .with_min_inner_size(MIN_SIZE);
@@ -162,7 +164,10 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, repaint: bool) {
     }
     let id = egui::ViewportId::from_hash_of(ID);
     let window = Arc::clone(shared);
-    ctx.show_viewport_deferred(id, builder, move |ui, _| other_window(ui, &window, frame));
+    ctx.show_viewport_deferred(id, builder, move |ui, _| {
+        show_when_drawn(ui.ctx());
+        other_window(ui, &window, frame)
+    });
     if repaint {
         ctx.request_repaint_of(id);
     }

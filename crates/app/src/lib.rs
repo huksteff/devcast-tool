@@ -57,6 +57,7 @@ pub fn run() -> Result<(), AppError> {
     {
         return crash::serve(std::path::Path::new(socket), dir.into(), std::io::stdin());
     }
+    let started = std::time::Instant::now();
     let settings = dc_project::settings::dir()?;
     let logs = settings.join(dc_project::settings::LOGS_DIR);
     let crashes = logs.join(dc_project::settings::CRASHES_DIR);
@@ -72,7 +73,13 @@ pub fn run() -> Result<(), AppError> {
     // Only the first instance writes dumps: a second start must not leave a dump writer behind.
     let _crash = crash::install(&crashes)
         .inspect_err(|e| tracing::error!("дампы падений не будут записаны: {e}"));
+    tracing::debug!(ms = started.elapsed().as_millis(), "старт: дампы падений");
+    // Listing windows asks WinRT about each (~0.35 s): it runs while the GPU starts.
+    let sources = std::thread::Builder::new()
+        .name("devcast-sources".to_owned())
+        .spawn(dc_capture::win::list_sources);
     let gpu = gpu::device()?;
+    tracing::debug!(ms = started.elapsed().as_millis(), "старт: GPU");
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: gpu::options(&gpu),
@@ -95,13 +102,17 @@ pub fn run() -> Result<(), AppError> {
                 .ok_or_else(|| AppError::Window("окна рисуются без wgpu".to_owned()))?;
             shared.gpu = Some(gpu::PreviewGpu::new(gpu, state));
             // The real screens and windows: `Shared::new` lists none, so tests never ask the system.
-            shared.refresh_sources();
+            match sources.ok().and_then(|thread| thread.join().ok()) {
+                Some(listed) => shared.take_sources(listed),
+                None => shared.refresh_sources(),
+            }
             // Ready before the sound popover first opens: it then opens at its height.
             shared.mic_refresh.start(&cc.egui_ctx);
             let told = hud::notices::at_start(&mut shared, &crashes, env!("CARGO_PKG_VERSION"));
             shared.report(told);
             let tray = tray::Tray::new(&cc.egui_ctx)?;
             let keys = hotkeys::GlobalKeys::new(&cc.egui_ctx)?;
+            tracing::debug!(ms = started.elapsed().as_millis(), "старт: готово");
             Ok(Box::new(app::App::new(calls, shared, hwnd, tray, keys)))
         }),
     )

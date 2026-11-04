@@ -16,6 +16,7 @@ use dc_capture::audio::AudioSource;
 use dc_ui_kit::widgets::ToastKind;
 
 use crate::app::{Shared, lock, other_window};
+use crate::borderless::show_when_drawn;
 use crate::error::AppError;
 use crate::hotkeys::Command;
 use crate::models::Models;
@@ -288,6 +289,7 @@ pub const ID: &str = "settings";
 pub fn show(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
     let mut builder = egui::ViewportBuilder::default()
         .with_icon(crate::logo::window_icon())
+        .with_visible(false)
         .with_title(text::TITLE)
         .with_inner_size(SIZE)
         .with_min_inner_size(MIN_SIZE)
@@ -296,6 +298,7 @@ pub fn show(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
         builder = builder.with_position(corner);
     }
     ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
+        show_when_drawn(ui.ctx());
         other_window(ui, &shared, settings_frame)
     });
 }
@@ -303,6 +306,11 @@ pub fn show(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
 /// One frame of the settings window.
 fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
     crate::borderless::opaque(ui);
+    if let Some(fresh) = shared.fresh_microphones().map(<[String]>::to_vec)
+        && let Some(window) = shared.settings.as_mut()
+    {
+        window.microphones = fresh;
+    }
     let Shared {
         ctx,
         store,

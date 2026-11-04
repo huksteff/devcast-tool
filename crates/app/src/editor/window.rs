@@ -11,6 +11,7 @@ use eframe::egui::{self, Ui};
 use super::timeline_window::{self, Side};
 use super::{EditorWindow, MIN_SIZE, SIZE, editor_ui};
 use crate::app::{Shared, lock, on_hud_monitor, other_window};
+use crate::borderless::show_when_drawn;
 use crate::settings::EditorLayout;
 
 impl Shared {
@@ -74,6 +75,7 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     };
     let mut builder = egui::ViewportBuilder::default()
         .with_icon(crate::logo::window_icon())
+        .with_visible(false)
         .with_title(title)
         .with_inner_size(SIZE)
         .with_min_inner_size(MIN_SIZE);
@@ -82,7 +84,10 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     }
     let id = egui::ViewportId::from_hash_of("editor");
     let window = Arc::clone(shared);
-    ctx.show_viewport_deferred(id, builder, move |ui, _| other_window(ui, &window, frame));
+    ctx.show_viewport_deferred(id, builder, move |ui, _| {
+        show_when_drawn(ui.ctx());
+        other_window(ui, &window, frame)
+    });
     let (news, wake_editor, wake_timeline) = {
         let mut shared = lock(shared);
         let Some(e) = shared.editor.as_mut() else {

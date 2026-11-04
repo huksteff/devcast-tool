@@ -121,7 +121,12 @@ impl Shared {
     }
 
     pub fn refresh_sources(&mut self) {
-        match dc_capture::win::list_sources() {
+        self.take_sources(dc_capture::win::list_sources());
+    }
+
+    /// Screens and windows listed elsewhere (at start, on a thread of their own).
+    pub fn take_sources(&mut self, listed: Result<SourceList, dc_capture::CaptureError>) {
+        match listed {
             Ok(sources) => self.sources = sources,
             Err(error) => self.report(Err(error)),
         }
@@ -136,21 +141,26 @@ impl Shared {
         }
     }
 
-    pub fn refresh_microphones(&mut self) {
-        match dc_capture::audio::list_microphones() {
-            Ok(list) => self.microphones = list.into_iter().map(|m| m.name).collect(),
+    /// The microphones the last listing found, if it came; listing them takes Windows some
+    /// 100–200 ms, so a window opens with the list known and a fresh one follows.
+    pub fn fresh_microphones(&mut self) -> Option<&[String]> {
+        match self.mic_refresh.take()? {
+            Ok(names) => self.microphones = names,
             Err(error) => self.report(Err(error)),
         }
+        Some(&self.microphones)
     }
 
-    /// Opens the settings window with the current microphones.
+    /// Opens the settings window with the microphones known; a fresh list follows.
     pub fn open_settings(&mut self) {
         self.open_settings_at(crate::settings_window::Page::default());
     }
 
     /// Opens the settings window on `page`.
     pub fn open_settings_at(&mut self, page: crate::settings_window::Page) {
-        self.refresh_microphones();
+        self.fresh_microphones();
+        let ctx = self.ctx.clone();
+        self.mic_refresh.start(&ctx);
         let defaults = match DefaultsFile::of_app() {
             Ok(file) => file,
             Err(error) => return self.report(Err(error)),

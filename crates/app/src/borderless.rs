@@ -79,6 +79,15 @@ pub fn opaque(ui: &Ui) {
     ui.painter().rect_filled(ui.max_rect(), 0, SURFACE);
 }
 
+/// Shows a window made hidden (`with_visible(false)`) once its first frame is drawn: winit shows a
+/// new window before it gives it its size and place, a flash at the system's default place on
+/// the main screen. egui counts frames per window from zero again after it closes.
+pub fn show_when_drawn(ctx: &eframe::egui::Context) {
+    if ctx.cumulative_frame_nr() == 0 {
+        ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Visible(true));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use eframe::egui::{Rect, WindowLevel, pos2, vec2};
