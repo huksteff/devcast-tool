@@ -92,13 +92,13 @@ fn a_dry_run_shows_the_request_without_starting_the_agent() {
     let args = [
         "beautify",
         "--recipe",
-        "captions",
+        "slips",
         "--ask",
         "не трогай 0:42",
         "--dry-run",
     ];
     let shown = ok(run(&f, &args, Some(&agent), None));
-    assert!(shown.contains("devcast captions gen") && shown.contains("не трогай 0:42"));
+    assert!(shown.contains("devcast transcript") && shown.contains("не трогай 0:42"));
     assert!(!shown.contains("Убери паузы"), "only the recipe named");
     let nothing = run(&f, &["beautify", "--recipe", "нет"], Some(&agent), None);
     assert_eq!(nothing.code, 2);

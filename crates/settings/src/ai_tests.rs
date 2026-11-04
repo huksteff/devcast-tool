@@ -23,9 +23,9 @@ fn ids(c: &AiChoices) -> Vec<String> {
 #[test]
 fn the_list_is_the_built_in_recipes_then_the_own_ones() {
     let mut choices = AiChoices::default();
-    assert_eq!(ids(&choices), ["pauses", "zooms", "captions"]);
+    assert_eq!(ids(&choices), ["pauses", "zooms"]);
     put(&mut choices, None, " Лого ", "Вставь лого в угол").unwrap();
-    assert_eq!(ids(&choices), ["pauses", "zooms", "captions", "Лого"]);
+    assert_eq!(ids(&choices), ["pauses", "zooms", "Лого"]);
     assert_eq!(
         choices.recipes().last().unwrap().prompt,
         "Вставь лого в угол"
@@ -33,11 +33,7 @@ fn the_list_is_the_built_in_recipes_then_the_own_ones() {
     check(&mut choices, "zooms", false);
     check(&mut choices, "slips", true);
     check(&mut choices, "нет такого", true);
-    assert_eq!(
-        ids(&choices),
-        ["pauses", "captions", "slips", "Лого"],
-        "list order"
-    );
+    assert_eq!(ids(&choices), ["pauses", "slips", "Лого"], "list order");
     assert!(!choices.checked.contains(&"нет такого".to_owned()));
 }
 
@@ -47,8 +43,8 @@ fn own_recipes_are_renamed_and_removed_with_their_check() {
     put(&mut choices, None, "Лого", "Вставь лого").unwrap();
     let taken = |name: &str| Err(RecipeError::Taken(name.to_owned()));
     assert_eq!(
-        put(&mut choices, None, "Субтитры", "x"),
-        taken("Субтитры"),
+        put(&mut choices, None, "Зумы по кликам", "x"),
+        taken("Зумы по кликам"),
         "a built-in title"
     );
     assert_eq!(put(&mut choices, None, "Лого", "x"), taken("Лого"));
