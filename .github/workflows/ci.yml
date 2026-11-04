@@ -15,6 +15,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Short build folder: MSBuild of whisper.cpp fails on paths over 260 characters (docs/SETUP.md, step 6).
+env:
+  CARGO_TARGET_DIR: D:/t
+
 jobs:
   verify:
     runs-on: windows-latest
