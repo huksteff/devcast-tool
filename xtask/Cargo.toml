@@ -18,3 +18,6 @@ sha2 = "0.11"
 # span-locations gives line numbers for the report.
 proc-macro2 = { version = "1", features = ["span-locations"] }
 syn = { version = "2", default-features = false, features = ["full", "parsing"] }
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -42,6 +42,7 @@ pub fn run(root: &Path) -> Result<(), String> {
     let releases = out.join("releases");
     stage(root, &target.join("release"), &pack)?;
     create_dir(&releases)?;
+    drop_version(&releases, env!("CARGO_PKG_VERSION"))?;
     let icon = root.join("branding").join("devcast.ico");
     run_tool(Command::new("vpk").args(pack_args(
         env!("CARGO_PKG_VERSION"),
@@ -162,6 +163,53 @@ fn pack_args(version: &str, pack: &Path, releases: &Path, icon: &Path) -> Vec<Os
     let mut command: Vec<OsString> = vec!["pack".into()];
     command.extend(args);
     command
+}
+
+/// The release index of Velopack (`releases.win.json`).
+const INDEX: &str = "releases.win.json";
+
+/// Removes an earlier pack of `version` from `releases`, so a version is packed again (`vpk`
+/// refuses a version it already has); older versions stay for the update deltas.
+fn drop_version(releases: &Path, version: &str) -> Result<(), String> {
+    let index = releases.join(INDEX);
+    let Ok(text) = std::fs::read_to_string(&index) else {
+        return Ok(());
+    };
+    let broken = |e: &dyn std::fmt::Display| {
+        format!(
+            "{} не читается ({e}).\n  → Удали папку {} и повтори `cargo xtask package`.",
+            index.display(),
+            releases.display()
+        )
+    };
+    let mut json: serde_json::Value = serde_json::from_str(&text).map_err(|e| broken(&e))?;
+    let assets = json["Assets"]
+        .as_array_mut()
+        .ok_or_else(|| broken(&"нет Assets"))?;
+    let (same, kept): (Vec<_>, Vec<_>) = std::mem::take(assets)
+        .into_iter()
+        .partition(|asset| asset["Version"] == version);
+    if same.is_empty() {
+        *assets = kept;
+        return Ok(());
+    }
+    for asset in &same {
+        if let Some(name) = asset["FileName"].as_str() {
+            remove_file(&releases.join(name))?;
+        }
+    }
+    *assets = kept;
+    std::fs::write(&index, json.to_string()).map_err(|e| broken(&e))
+}
+
+fn remove_file(path: &Path) -> Result<(), String> {
+    match std::fs::remove_file(path) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(format!(
+            "не удалось удалить {} ({e}).\n  → Закрой программы, которые его держат, и повтори.",
+            path.display()
+        )),
+        _ => Ok(()),
+    }
 }
 
 #[cfg(test)]
@@ -292,5 +340,25 @@ mod tests {
         let message = vpk_missing(&error);
         assert!(message.contains("dotnet tool install -g vpk --version 1.2.161"));
         assert!(message.contains("docs/SETUP.md"));
+    }
+
+    #[test]
+    fn a_version_packed_again_replaces_its_earlier_pack_only() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path();
+        for name in ["DevCast-0.0.9-full.nupkg", "DevCast-0.1.0-full.nupkg"] {
+            std::fs::write(dir.join(name), b"x").unwrap();
+        }
+        let index = r#"{"Assets":[{"Version":"0.0.9","FileName":"DevCast-0.0.9-full.nupkg"},{"Version":"0.1.0","FileName":"DevCast-0.1.0-full.nupkg"}]}"#;
+        std::fs::write(dir.join(INDEX), index).unwrap();
+        drop_version(dir, "0.1.0").unwrap();
+        assert!(!dir.join("DevCast-0.1.0-full.nupkg").exists());
+        assert!(
+            dir.join("DevCast-0.0.9-full.nupkg").exists(),
+            "older ones stay for deltas"
+        );
+        let left = std::fs::read_to_string(dir.join(INDEX)).unwrap();
+        assert!(left.contains("0.0.9") && !left.contains("0.1.0"));
+        drop_version(&dir.join("нет"), "0.1.0").unwrap();
     }
 }
