@@ -1724,6 +1724,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dc-setup"
+version = "0.1.0"
+dependencies = [
+ "dc-ui-kit",
+ "dirs 6.0.0",
+ "embed-resource",
+ "rfd",
+ "tempfile",
+]
+
+[[package]]
 name = "dc-transcribe"
 version = "0.1.0"
 dependencies = [

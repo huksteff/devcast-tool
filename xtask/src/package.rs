@@ -27,6 +27,10 @@ const PACKAGE_FILES: &str = "xtask/package";
 const FFMPEG_LICENSE: &str = "FFmpeg-LICENSE.txt";
 /// The same version as the `velopack` crate in `crates/update` (decision 013).
 const VPK_VERSION: &str = "1.2.161";
+/// The installer that asks where to install (`dc-setup`), and the variable its build reads the
+/// Velopack installer from (`crates/setup/build.rs`).
+const SETUP_EXE: &str = "DevCast-Setup.exe";
+const SETUP_ENV: &str = "DEVCAST_VELOPACK_SETUP";
 
 pub fn run(root: &Path) -> Result<(), String> {
     check_vpk()?;
@@ -45,11 +49,37 @@ pub fn run(root: &Path) -> Result<(), String> {
         &releases,
         &icon,
     )))?;
+    let setup = setup_window(&target, &releases)?;
     println!(
-        "package: OK — установщик DevCast-win-Setup.exe и пакеты обновлений в {}",
+        "package: OK — установщик {} (с выбором папки), DevCast-win-Setup.exe и пакеты обновлений в {}",
+        setup.display(),
         releases.display()
     );
     Ok(())
+}
+
+/// `DevCast-Setup.exe`: the program that asks where to install (`dc-setup`), built with the
+/// Velopack installer of `releases` inside it.
+fn setup_window(target: &Path, releases: &Path) -> Result<PathBuf, String> {
+    let velopack = releases.join(format!("{PACK_ID}-win-Setup.exe"));
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    run_tool(
+        Command::new(cargo)
+            .args(["build", "--release", "--locked", "-p", "dc-setup"])
+            .env(SETUP_ENV, &velopack),
+    )?;
+    let setup = releases.join(SETUP_EXE);
+    copy_files(
+        &[target.join("release").join("devcast-setup.exe")],
+        releases,
+    )?;
+    std::fs::rename(releases.join("devcast-setup.exe"), &setup).map_err(|e| {
+        format!(
+            "не удалось назвать установщик {} ({e}).\n  → Закрой запущенный {SETUP_EXE} и повтори `cargo xtask package`.",
+            setup.display()
+        )
+    })?;
+    Ok(setup)
 }
 
 /// Fails before the long release build when `vpk` cannot be started.

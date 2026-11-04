@@ -252,6 +252,9 @@ pub mod export;
 /// Projects of the editor: the «Проекты» menu, saving, closing, recovery, renaming.
 pub mod projects;
 
+/// `DevCast-Setup.exe`: where to install.
+pub mod setup;
+
 /// The «Нейронка» tab: «Сделать красиво» by the user's AI agent.
 pub mod ai;
 

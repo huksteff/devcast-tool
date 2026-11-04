@@ -1,0 +1,26 @@
+[package]
+name = "dc-setup"
+description = "DevCast-Setup.exe: asks where to install DevCast and runs the Velopack installer built into it."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "devcast-setup"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+dc-ui-kit = { path = "../ui-kit" }
+dirs = "6"
+rfd = "0.15"
+
+[build-dependencies]
+embed-resource = "3"
+
+[dev-dependencies]
+tempfile.workspace = true

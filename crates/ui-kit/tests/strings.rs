@@ -25,6 +25,7 @@ fn every_string_has_glyphs() {
     texts.extend(literals(include_str!("../src/strings/projects.rs")));
     texts.extend(literals(include_str!("../src/strings/timeline.rs")));
     texts.extend(literals(include_str!("../src/strings/ai.rs")));
+    texts.extend(literals(include_str!("../src/strings/setup.rs")));
     assert!(texts.iter().any(|t| t == "Горячие клавиши"));
     assert!(texts.len() > 80, "strings found: {}", texts.len());
     assert!(texts.iter().any(|t| t == "Отменить запись?"));

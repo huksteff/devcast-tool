@@ -64,7 +64,7 @@ fn layer(name: &str) -> Option<Layer> {
     match name {
         "dc-core" => Some(Layer::Core),
         "dc-ops" => Some(Layer::Ops),
-        "dc-cli" | "dc-app" => Some(Layer::Top),
+        "dc-cli" | "dc-app" | "dc-setup" => Some(Layer::Top),
         _ if BASE.contains(&name) => Some(Layer::Base),
         _ if name.starts_with("dc-fx-") => Some(Layer::Effect),
         _ => None,
