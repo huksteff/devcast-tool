@@ -111,7 +111,13 @@ pub fn run_with(args: Vec<String>, cwd: &Path, registry: &Registry, local: Local
 
 /// The built-in command or op `rest` names, run in `ctx`.
 pub(crate) fn dispatch(rest: Vec<String>, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
-    parse(rest)?.execute(ctx)
+    let cli = parse(rest)?;
+    if let (Some(_), Some(why)) = (ctx.local.group, cli.not_for_agent()) {
+        return Err(CliError::Usage(format!(
+            "во время «Сделать красиво» эта команда закрыта: {why}"
+        )));
+    }
+    cli.execute(ctx)
 }
 
 pub(crate) fn parse(rest: Vec<String>) -> Result<Cli, CliError> {

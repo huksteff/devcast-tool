@@ -43,6 +43,24 @@ fn the_edits_of_one_agent_run_are_one_undo_step() {
 }
 
 #[test]
+fn the_agent_may_not_undo_nor_touch_the_project_as_a_whole() {
+    let f = Fixture::new();
+    ok(run(&f, &["test", "add", "--secs", "2"], None, None));
+    for line in [
+        &["undo"][..],
+        &["redo"],
+        &["save"],
+        &["discard"],
+        &["config", "show"],
+    ] {
+        let out = run(&f, line, None, Some("ai-1"));
+        assert_eq!(out.code, 2, "{line:?}");
+        assert!(out.stderr.contains("«Сделать красиво»"), "{}", out.stderr);
+    }
+    assert_eq!(f.clips(), 1, "the user's step is still there");
+}
+
+#[test]
 fn own_recipes_are_added_checked_and_listed() {
     let f = Fixture::new();
     let added = ok(run(

@@ -1,4 +1,5 @@
-//! Which built-in commands `batch` refuses and the registry op a command line names.
+//! Which built-in commands `batch` and an AI agent run refuse, and the registry op a command
+//! line names.
 
 use super::{Builtin, Cli};
 use crate::builtin_groups::{AudioCommand, CaptionsCommand, ClipCommand, ZoomCommand};
@@ -38,6 +39,31 @@ impl Cli {
             } => Some(
                 "пишет один файл -o на все проекты; запусти её для каждого проекта с --project",
             ),
+            _ => None,
+        }
+    }
+
+    /// Why the user's AI agent may not run this command during «Сделать красиво»
+    /// (`DEVCAST_GROUP`): the whole run is one undo step that is the user's, and the project as a
+    /// whole, the program and files outside it are theirs too. `None` when it may.
+    pub(crate) fn not_for_agent(&self) -> Option<&'static str> {
+        match &self.command {
+            Builtin::Undo { .. } | Builtin::Redo => Some(
+                "весь запуск — один шаг, отменяет его пользователь; ошибку исправь новой командой (вырез вернёт только пользователь — скажи об этом в ответе)",
+            ),
+            Builtin::Save(_)
+            | Builtin::Discard
+            | Builtin::Open
+            | Builtin::Close(_)
+            | Builtin::Rename { .. }
+            | Builtin::Trash(_)
+            | Builtin::New(_)
+            | Builtin::Batch(_)
+            | Builtin::Record { .. }
+            | Builtin::Export { .. }
+            | Builtin::Program(_)
+            | Builtin::Defaults { .. }
+            | Builtin::Skill { .. } => Some("это делает сам пользователь"),
             _ => None,
         }
     }
