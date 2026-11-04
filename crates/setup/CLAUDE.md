@@ -6,6 +6,7 @@
 
 - Окон своих нет: системные диалоги Windows (`rfd`: сообщение с тремя кнопками и выбор папки), строки — `dc_ui_kit::strings::setup`. Консоли нет (`windows_subsystem`).
 - Установщик Velopack вшит при сборке: `build.rs` копирует файл из `DEVCAST_VELOPACK_SETUP` в `OUT_DIR`; без переменной (check, тесты) вшито пусто, и программа говорит «соберите `cargo xtask package`». Собирает её только `cargo xtask package` после `vpk pack` (`xtask/src/package.rs`, `setup_window`) и кладёт как `DevCast-Setup.exe` рядом с `DevCast-win-Setup.exe`.
+- Velopack очищает папку, в которую ставит: папку с чужими файлами выбрать нельзя (`may_install`: пустая, нет её или там уже DevCast — `Update.exe` и `current`), иначе предупреждение и вопрос снова.
 - Выбранная папка `X` → установка в `X\DevCast` (папка с именем DevCast — как есть, `app_folder`). Вшитый установщик пишется во временную папку и удаляется после.
 
 ## Как тестировать

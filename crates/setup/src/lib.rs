@@ -65,18 +65,43 @@ fn ask(default: &Path) -> Result<Choice, String> {
             ))
             .show();
         match Answer::of(answer) {
-            Answer::Install => return Ok(Choice::Install(default.to_path_buf())),
+            Answer::Install if may_install(default) => {
+                return Ok(Choice::Install(default.to_path_buf()));
+            }
+            Answer::Install => warn(&text::taken(default)),
             Answer::OtherFolder => {
                 let picked = rfd::FileDialog::new()
                     .set_title(text::PICK_FOLDER)
                     .pick_folder();
-                if let Some(picked) = picked {
-                    return Ok(Choice::Install(app_folder(&picked)));
+                let folder = picked.map(|p| app_folder(&p));
+                match folder {
+                    Some(folder) if may_install(&folder) => return Ok(Choice::Install(folder)),
+                    Some(folder) => warn(&text::taken(&folder)),
+                    None => {}
                 }
             }
             Answer::Cancel => return Ok(Choice::Cancel),
         }
     }
+}
+
+/// Velopack empties the folder it installs to: only an empty or missing folder, or one that
+/// already holds a DevCast installation (`Update.exe` beside `current`), may be chosen.
+pub fn may_install(folder: &Path) -> bool {
+    let Ok(mut entries) = std::fs::read_dir(folder) else {
+        return true;
+    };
+    let installed = folder.join("Update.exe").is_file() && folder.join("current").is_dir();
+    installed || entries.next().is_none()
+}
+
+fn warn(said: &str) {
+    MessageDialog::new()
+        .set_level(MessageLevel::Warning)
+        .set_title(text::TITLE)
+        .set_description(said)
+        .set_buttons(MessageButtons::Ok)
+        .show();
 }
 
 /// A button of the question. The task dialog answers with the caption of a button; the plain
@@ -164,6 +189,20 @@ mod tests {
         assert_eq!(Answer::of(MessageDialogResult::Yes), Answer::Install);
         assert_eq!(Answer::of(MessageDialogResult::No), Answer::OtherFolder);
         assert_eq!(Answer::of(MessageDialogResult::Cancel), Answer::Cancel);
+    }
+
+    #[test]
+    fn a_folder_with_other_files_is_never_chosen() {
+        let tmp = tempfile::tempdir().unwrap();
+        let folder = tmp.path().join("DevCast");
+        assert!(may_install(&folder), "missing");
+        std::fs::create_dir(&folder).unwrap();
+        assert!(may_install(&folder), "empty");
+        std::fs::write(folder.join("мои заметки.txt"), b"x").unwrap();
+        assert!(!may_install(&folder), "someone else's files");
+        std::fs::write(folder.join("Update.exe"), b"x").unwrap();
+        std::fs::create_dir(folder.join("current")).unwrap();
+        assert!(may_install(&folder), "an earlier DevCast");
     }
 
     #[test]

@@ -22,3 +22,11 @@ pub fn failed(error: &dyn std::fmt::Display) -> String {
         "Установка не удалась ({error}). Попробуйте другую папку или запустите установщик ещё раз."
     )
 }
+
+/// The picked folder holds other files: the installer would empty it.
+pub fn taken(folder: &std::path::Path) -> String {
+    format!(
+        "В папке {} уже есть другие файлы, а установка очищает свою папку. Выберите пустую папку или другое место.",
+        folder.display()
+    )
+}
