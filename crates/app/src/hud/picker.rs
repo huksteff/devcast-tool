@@ -1,10 +1,10 @@
 //! Source picker (mockup 2): a grid of previews of monitors and windows, four in a row, the
 //! chosen one outlined in blue. The popover opens at once with the sources known; the worker
-//! thread lists them anew (asking WGC about every window takes a few hundred ms), then takes the
-//! previews one by one (one WGC frame each, as the recording takes them); both appear as they
-//! come.
+//! thread takes their previews one by one (one WGC frame each, as the recording takes them), then
+//! lists the sources anew (asking WGC about every window takes a few hundred ms) and takes the
+//! previews of the new ones; all appear as they come.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{self, Receiver};
 
 use dc_capture::{Preview, Source, SourceList};
@@ -80,7 +80,46 @@ pub fn cards(sources: &SourceList) -> (Vec<Card>, Vec<Card>) {
     (screens, windows)
 }
 
-/// What the worker sends: the fresh list first, then the previews.
+/// The sources of the cards of `list`, screens first.
+fn card_sources(list: &SourceList) -> Vec<Source> {
+    let (screens, windows) = cards(list);
+    screens
+        .iter()
+        .chain(&windows)
+        .map(|card| card.source)
+        .collect()
+}
+
+/// Takes and sends the previews of `sources` not `taken` yet; `false` once nobody listens.
+fn send_previews(
+    sources: &[Source],
+    taken: &mut HashSet<Source>,
+    sender: &mpsc::Sender<Arrival>,
+    wake: &dyn Fn(),
+) -> bool {
+    for &source in sources {
+        if !taken.insert(source) {
+            continue;
+        }
+        let preview = match source {
+            Source::Monitor(index) => dc_capture::win::preview_monitor(index, PREVIEW_SIDE),
+            Source::Window(id) => dc_capture::win::preview_window(id, PREVIEW_SIDE),
+            Source::Area(_) => continue,
+        };
+        match preview {
+            Ok(preview) => {
+                if sender.send(Arrival::Preview(source, preview)).is_err() {
+                    return false;
+                }
+                wake();
+            }
+            Err(error) => tracing::info!("нет превью {source}: {error}"),
+        }
+    }
+    true
+}
+
+/// What the worker sends: previews of the known sources, the fresh list, previews of new ones.
 enum Arrival {
     Listed(Result<SourceList, String>),
     Preview(Source, Preview),
@@ -95,46 +134,27 @@ pub struct Previews {
 }
 
 impl Previews {
-    /// Lists the sources anew, then takes the previews of their cards; each arrival wakes the UI.
-    /// A failed preview leaves its card grey (a window can close meanwhile).
-    pub fn start(ctx: &egui::Context) -> Self {
+    /// Takes the previews of the cards of `known` (the list the popover opens with), then lists
+    /// the sources anew and takes the previews of the cards that list adds; each arrival wakes the
+    /// UI. A failed preview leaves its card grey (a window can close meanwhile).
+    pub fn start(ctx: &egui::Context, known: &SourceList) -> Self {
         let (sender, receiver) = mpsc::channel();
         let ctx = ctx.clone();
+        let known = card_sources(known);
         std::thread::spawn(move || {
             // The main window passes the repaint on to the popover with the cards.
             let wake = || ctx.request_repaint_of(egui::ViewportId::ROOT);
+            let mut taken = HashSet::new();
+            if !send_previews(&known, &mut taken, &sender, &wake) {
+                return;
+            }
             let listed = dc_capture::win::list_sources().map_err(|e| e.to_string());
-            let sources: Vec<Source> = match &listed {
-                Ok(list) => {
-                    let (screens, windows) = cards(list);
-                    screens
-                        .iter()
-                        .chain(&windows)
-                        .map(|card| card.source)
-                        .collect()
-                }
-                Err(_) => Vec::new(),
-            };
+            let fresh = listed.as_ref().map(card_sources).unwrap_or_default();
             if sender.send(Arrival::Listed(listed)).is_err() {
                 return;
             }
             wake();
-            for source in sources {
-                let preview = match source {
-                    Source::Monitor(index) => dc_capture::win::preview_monitor(index, PREVIEW_SIDE),
-                    Source::Window(id) => dc_capture::win::preview_window(id, PREVIEW_SIDE),
-                    Source::Area(_) => continue,
-                };
-                match preview {
-                    Ok(preview) => {
-                        if sender.send(Arrival::Preview(source, preview)).is_err() {
-                            return;
-                        }
-                        wake();
-                    }
-                    Err(error) => tracing::info!("нет превью {source}: {error}"),
-                }
-            }
+            send_previews(&fresh, &mut taken, &sender, &wake);
         });
         Self {
             receiver,

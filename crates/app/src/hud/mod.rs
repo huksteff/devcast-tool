@@ -205,7 +205,7 @@ fn toggle(shared: &mut Shared, kind: popover::Kind, anchor: f32) {
         shared.mic_refresh.start(&ctx);
     }
     if !open && kind == popover::Kind::Source {
-        shared.previews = Some(picker::Previews::start(&shared.ctx));
+        shared.previews = Some(picker::Previews::start(&shared.ctx, &shared.sources));
     }
 }
 
