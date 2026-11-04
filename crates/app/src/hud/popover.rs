@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use dc_ui_kit::strings::{hud, notices, picker as picker_text, tray};
 use dc_ui_kit::theme::WINDOW_SHADOW;
-use dc_ui_kit::tokens::{S2, S3};
+use dc_ui_kit::tokens::{CONTROL, S2, S3};
 use dc_ui_kit::widgets::{
     Answer, Confirm, ErrorAction, ErrorPanel, Kind as ButtonKind, panel_frame,
 };
@@ -160,7 +160,13 @@ pub fn builder(open: Open, width: f32, bar: Rect) -> egui::ViewportBuilder {
 /// `bar` is the HUD's window rectangle.
 pub fn window_rect(open: Open, panel: Vec2, bar: Rect) -> Rect {
     let top = borderless::panel_rect(bar).top();
-    let corner = pos2(bar.left() + open.anchor - S2, top - GAP - panel.y);
+    // «Ещё» is the last button: its menu ends where the button ends, as menus at the right
+    // edge do, instead of reaching past the HUD.
+    let left = match open.kind {
+        Kind::More => open.anchor + CONTROL + S2 - panel.x,
+        _ => open.anchor - S2,
+    };
+    let corner = pos2(bar.left() + left, top - GAP - panel.y);
     Rect::from_min_size(corner, panel) + borderless::margin()
 }
 

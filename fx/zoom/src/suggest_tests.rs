@@ -110,7 +110,9 @@ fn the_strongest_click_gives_the_focus() {
 
 #[test]
 fn zooms_stay_inside_the_video() {
-    let p = project(&[10.0]);
+    let mut p = project(&[10.0]);
+    // The recording goes on after the clip: 9.9 s is not its last second.
+    p.clips[0].media.duration = TimeDelta::from_secs_f64(12.0);
     let pointer = vec![press(0.2, 0.5, 0.5), press(9.9, 0.5, 0.5)];
     assert_eq!(
         zooms(&p, &[recording(&p, 0, pointer)]),
@@ -169,7 +171,9 @@ fn speed_changes_the_gaps_on_the_output() {
 
 #[test]
 fn a_zoom_never_crosses_into_another_clip() {
-    let p = project(&[10.0, 10.0]);
+    let mut p = project(&[10.0, 10.0]);
+    // The recording goes on after the clip: 9.8 s is not its last second.
+    p.clips[0].media.duration = TimeDelta::from_secs_f64(12.0);
     let first = recording(&p, 0, vec![press(9.8, 0.5, 0.5)]);
     let second = recording(&p, 1, vec![press(0.3, 0.2, 0.8)]);
     assert_eq!(
@@ -242,4 +246,16 @@ fn what_follows_a_press_sets_its_strength() {
         }))
         .collect();
     assert_eq!(at(&around), 900, "diagonal away: a plain click");
+}
+
+#[test]
+fn the_click_that_stopped_the_recording_gives_no_zoom() {
+    let p = project(&[30.0]);
+    let clicks = [10.0, 29.2].map(|t| press(t, 0.5, 0.95));
+    let found = zooms(&p, &[recording(&p, 0, clicks.to_vec())]);
+    assert_eq!(
+        found,
+        [(9.5, 10.5, 0.5, 0.95, 1)],
+        "29.2 s is in the last second of 30"
+    );
 }

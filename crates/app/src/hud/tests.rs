@@ -373,3 +373,19 @@ fn popover_window_is_transparent_and_its_panel_sits_above_the_bar() {
         "the window ends at the bar, not over it"
     );
 }
+
+#[test]
+fn the_more_menu_ends_where_its_button_ends() {
+    let bar = egui::Rect::from_min_size(egui::pos2(500.0, 900.0), egui::vec2(400.0, 62.0));
+    let anchor = 360.0;
+    let more = popover::Open::new(popover::Kind::More, anchor);
+    let window = popover::window_rect(more, egui::vec2(260.0, 120.0), bar);
+    let panel = crate::borderless::panel_rect(window);
+    let button_right = bar.left() + anchor + dc_ui_kit::tokens::CONTROL;
+    assert_eq!(
+        panel.right(),
+        button_right + 8.0,
+        "the button's right edge and the gap"
+    );
+    assert!(panel.right() <= crate::borderless::panel_rect(bar).right() + 8.0);
+}

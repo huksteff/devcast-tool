@@ -21,6 +21,9 @@ use crate::span::{self, timeline};
 pub const CLUSTER_GAP: TimeDelta = TimeDelta::from_millis(2500);
 /// A cluster's zoom starts this long before its first press and ends this long after the last.
 pub const CLUSTER_PAD: TimeDelta = TimeDelta::from_millis(500);
+/// Presses this close to the end of a recording are the click that stopped it (the HUD's
+/// «Стоп», a shortcut): never a zoom.
+pub const STOP_TAIL: TimeDelta = TimeDelta::from_millis(1000);
 /// The value of `zoom add --at` that places the suggested zooms. A command is a pure function of
 /// the project and the clicks lie in the recordings' files, so `dc_ops::autozoom` resolves it.
 pub const AT_CLICKS: &str = "clicks";
@@ -108,8 +111,9 @@ pub fn suggest(project: &Project, recordings: &[Recording]) -> Result<Suggestion
     let mut found = Suggestions::default();
     let mut presses = Vec::new();
     for recording in recordings {
+        let stopping = stop_tail(project, &recording.media);
         for (index, p) in recording.pointer.iter().enumerate() {
-            if !matches!(p.action, Action::Press { .. }) {
+            if !matches!(p.action, Action::Press { .. }) || stopping.is_some_and(|s| p.at >= s) {
                 continue;
             }
             match place(project, &map, &runs, &recording.media, p) {
@@ -153,6 +157,19 @@ pub fn suggest(project: &Project, recordings: &[Recording]) -> Result<Suggestion
         });
     }
     Ok(found)
+}
+
+/// Where the last [`STOP_TAIL`] of the recording `media` begins; none for a media not in the
+/// project.
+fn stop_tail(project: &Project, media: &str) -> Option<SourceTime> {
+    let length = project
+        .clips
+        .iter()
+        .find(|c| c.media.path == media)?
+        .media
+        .duration;
+    let end = SourceTime::ZERO + length;
+    Some(end.checked_sub(STOP_TAIL)?.max(SourceTime::ZERO))
 }
 
 /// Output range of each clip on the track. An auto zoom stays within one clip: there its source
