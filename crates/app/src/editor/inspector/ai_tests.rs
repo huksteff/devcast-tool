@@ -71,14 +71,14 @@ fn the_recipes_and_the_request_are_the_choices_of_the_settings() {
     let tmp = tempfile::tempdir().unwrap();
     let mut harness = ai_tab(vec![pretend(tmp.path(), ANSWER)]);
     harness.snapshot("inspector_ai");
-    click(&mut harness, egui::Role::CheckBox, "Показ клавиш");
+    click(&mut harness, egui::Role::CheckBox, "Убрать оговорки и «ээ»");
     click(&mut harness, egui::Role::CheckBox, "Убрать паузы");
     let edits = std::mem::take(&mut harness.state_mut().editor.ai.edits);
     let check = |id: &str, on| AiEdit::Check {
         id: id.to_owned(),
         on,
     };
-    assert_eq!(edits, vec![check("keys", true), check("pauses", false)]);
+    assert_eq!(edits, vec![check("slips", true), check("pauses", false)]);
     harness.state_mut().editor.ai.choices.checked.clear();
     harness.run();
     let run = harness.get_by_role_and_label(egui::Role::Button, text::RUN);

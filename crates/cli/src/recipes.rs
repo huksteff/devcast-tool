@@ -44,7 +44,7 @@ pub(crate) enum RecipesCommand {
     },
     #[command(
         about = "Отметить рецепты для «Сделать красиво» (--off — снять отметку)",
-        after_help = "recipes check slips keys"
+        after_help = "recipes check slips zooms"
     )]
     Check {
         #[arg(

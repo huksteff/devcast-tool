@@ -1,9 +1,9 @@
-//! Readable names of recorded shortcuts: `Ctrl+Shift+P`, `Alt+Tab`, `F5`.
+//! Readable names of recorded key presses: `Ctrl+Shift+P`, `Alt+Tab`, `F5`, `A`, `Ctrl`.
 
 use super::keys::KeyEvent;
 
 /// Names of keys that are not a letter, digit or F-key, by Windows virtual-key code.
-const NAMES: [(u16, &str); 34] = [
+const NAMES: [(u16, &str); 37] = [
     (0x08, "Backspace"),
     (0x09, "Tab"),
     (0x0D, "Enter"),
@@ -38,6 +38,9 @@ const NAMES: [(u16, &str); 34] = [
     (0xDD, "]"),
     (0xDE, "'"),
     (0x5D, "Menu"),
+    (0x14, "CapsLock"),
+    (0x90, "NumLock"),
+    (0x91, "ScrollLock"),
 ];
 
 /// The name of key `code` alone; an unknown key is `VK_<hex code>`.
@@ -54,9 +57,10 @@ fn key(code: u16) -> String {
 }
 
 impl KeyEvent {
-    /// Modifiers in the order Ctrl, Alt, Shift, Win, then the key, joined by `+`.
+    /// Modifiers in the order Ctrl, Alt, Shift, Win, then the key, joined by `+`; a tapped
+    /// modifier is only the modifiers (`Ctrl+Shift`).
     pub fn name(&self) -> String {
-        let m = self.modifiers;
+        let (m, modifier) = self.modifiers.with_key(self.key);
         let held = [
             (m.ctrl, "Ctrl"),
             (m.alt, "Alt"),
@@ -68,7 +72,9 @@ impl KeyEvent {
             .filter(|(down, _)| *down)
             .map(|(_, name)| (*name).to_owned())
             .collect();
-        parts.push(key(self.key));
+        if !modifier {
+            parts.push(key(self.key));
+        }
         parts.join("+")
     }
 }
@@ -103,5 +109,11 @@ mod tests {
         assert_eq!(name(0x65, true, false, false, false), "Ctrl+Num5");
         assert_eq!(name(0xBF, true, false, false, false), "Ctrl+/");
         assert_eq!(name(0xE7, true, false, false, false), "Ctrl+VK_E7");
+        assert_eq!(name(u16::from(b'A'), false, false, false, false), "A");
+        assert_eq!(name(0x20, false, true, false, false), "Shift+Space");
+        assert_eq!(name(0xA2, false, false, false, false), "Ctrl");
+        assert_eq!(name(0xA0, true, false, false, false), "Ctrl+Shift");
+        assert_eq!(name(0xA3, false, true, false, false), "Ctrl+Shift");
+        assert_eq!(name(0x5B, false, false, false, false), "Win");
     }
 }

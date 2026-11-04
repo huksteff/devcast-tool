@@ -1,6 +1,6 @@
-//! `keys.bin`: shortcuts pressed during a recording, and the privacy filter that decides what
-//! is a shortcut (decision 009). Typed text never passes the filter: it runs inside the hook,
-//! before anything is queued or written.
+//! `keys.bin`: every key pressed during a recording, typed text too (decision 009, changed by
+//! the owner 2026-11-04), and the filter of the keyboard hook that turns key strokes into
+//! presses.
 //!
 //! Record, 12 bytes little-endian: time (i64 µs on the host clock), key (u16, Windows
 //! virtual-key code), modifiers (u8: 1 Ctrl, 2 Shift, 4 Alt, 8 Win), 0.
@@ -30,28 +30,16 @@ pub struct Stroke {
     pub key: u16,
     /// Hardware scan code.
     pub scan: u32,
-    /// The extended-key flag: the grey navigation keys have it, their Numpad twins do not.
-    pub extended: bool,
     pub down: bool,
 }
 
-/// A key pressed as part of a shortcut: `key` is a Windows virtual-key code.
+/// A key pressed with the modifiers held: `key` is a Windows virtual-key code. A modifier tapped
+/// alone is a press of its own key (`Ctrl`, `Ctrl+Shift`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeyEvent {
     pub key: u16,
     pub modifiers: Modifiers,
 }
-
-/// Keys kept even without Ctrl, Alt or Win: Backspace, Tab, Enter, Esc, Page Up/Down, End,
-/// Home, the arrows, Print Screen, Insert, Delete, F1–F24.
-const SPECIAL: [(u16, u16); 6] = [
-    (0x08, 0x09),
-    (0x0D, 0x0D),
-    (0x1B, 0x1B),
-    (0x21, 0x28),
-    (0x2C, 0x2E),
-    (0x70, 0x87),
-];
 
 /// Modifier keys (generic, left, right) and the modifier each one is.
 const MODIFIER_KEYS: [(u16, usize); 11] = [
@@ -75,39 +63,24 @@ const RMENU: u16 = 0xA5;
 /// where it types characters) goes down or up.
 const ALTGR_CONTROL_SCAN: u32 = 0x21D;
 
-/// Numpad keys that type a character code while Alt is held: the digits with Num Lock on,
-/// and without it Insert, End, ↓, Page Down, ←, Clear, →, Home, ↑, Page Up (without the
-/// extended flag, unlike the grey keys of the same codes).
-const NUMPAD_DIGITS: (u16, u16) = (0x60, 0x69);
-const NUMPAD_NAVIGATION: [u16; 10] = [0x2D, 0x23, 0x28, 0x22, 0x25, 0x0C, 0x27, 0x24, 0x26, 0x21];
-
-fn is_numpad_code(stroke: Stroke) -> bool {
-    (NUMPAD_DIGITS.0..=NUMPAD_DIGITS.1).contains(&stroke.key)
-        || (!stroke.extended && NUMPAD_NAVIGATION.contains(&stroke.key))
-}
-
-fn is_special(key: u16) -> bool {
-    SPECIAL
-        .iter()
-        .any(|&(first, last)| (first..=last).contains(&key))
-}
-
-/// The privacy filter of the keyboard hook. It keeps which modifier keys are down itself:
-/// in a low-level hook `GetKeyState` is not updated yet.
+/// The filter of the keyboard hook. It keeps which modifier keys are down itself: in a
+/// low-level hook `GetKeyState` is not updated yet.
 #[derive(Debug, Default)]
 pub struct KeyFilter {
     /// Modifier keys down, one bit per entry of `MODIFIER_KEYS`.
     down: u16,
     /// The left Ctrl that Windows adds for AltGr is down: the right Alt is AltGr, it types
-    /// characters and is not a modifier of a shortcut.
+    /// characters and is not a modifier.
     altgr: bool,
+    /// The modifier key that went down last with no other key since: released, it is a press
+    /// of its own.
+    tapped: Option<u16>,
 }
 
 impl KeyFilter {
-    /// A key went down or up. Returns the event to record: a key pressed with Ctrl, Alt or Win
-    /// held, or a special key. Anything else — letters, digits, Shift+letter, characters typed
-    /// with AltGr, Alt + Numpad character codes, modifiers alone — gives `None` and is
-    /// forgotten.
+    /// A key went down or up. Returns the press to record: any other key going down, with the
+    /// modifiers held, or a modifier released with no other key pressed since it went down.
+    /// The left Ctrl Windows adds for AltGr is not a key of its own and gives `None`.
     pub fn key(&mut self, stroke: Stroke) -> Option<KeyEvent> {
         let Stroke { key, down, .. } = stroke;
         if key == LCONTROL && stroke.scan == ALTGR_CONTROL_SCAN {
@@ -115,16 +88,29 @@ impl KeyFilter {
             return None;
         }
         if let Some(bit) = MODIFIER_KEYS.iter().position(|&(k, _)| k == key) {
-            match down {
-                true => self.down |= 1 << bit,
-                false => self.down &= !(1 << bit),
+            return self.modifier(bit, key, down);
+        }
+        self.tapped = None;
+        down.then(|| KeyEvent {
+            key,
+            modifiers: self.modifiers(),
+        })
+    }
+
+    fn modifier(&mut self, bit: usize, key: u16, down: bool) -> Option<KeyEvent> {
+        if down {
+            // Auto-repeat of a held modifier keeps its tap.
+            if self.down & (1 << bit) == 0 {
+                self.tapped = Some(key);
             }
+            self.down |= 1 << bit;
             return None;
         }
-        let modifiers = self.modifiers();
-        let alt_code = modifiers.alt && !modifiers.ctrl && !modifiers.win && is_numpad_code(stroke);
-        let shortcut = modifiers.ctrl || modifiers.alt || modifiers.win || is_special(key);
-        (down && shortcut && !alt_code).then_some(KeyEvent { key, modifiers })
+        self.down &= !(1 << bit);
+        (self.tapped.take() == Some(key)).then(|| KeyEvent {
+            key,
+            modifiers: self.modifiers(),
+        })
     }
 
     fn modifiers(&self) -> Modifiers {
@@ -145,6 +131,22 @@ impl KeyFilter {
 }
 
 impl Modifiers {
+    /// These modifiers plus the one `key` is, if it is a modifier key: a tapped `Ctrl` reads as
+    /// the modifier, not as a key after it.
+    pub(crate) fn with_key(self, key: u16) -> (Self, bool) {
+        let Some(&(_, modifier)) = MODIFIER_KEYS.iter().find(|&&(k, _)| k == key) else {
+            return (self, false);
+        };
+        let mut all = self;
+        match modifier {
+            0 => all.ctrl = true,
+            1 => all.shift = true,
+            2 => all.alt = true,
+            _ => all.win = true,
+        }
+        (all, true)
+    }
+
     fn bits(self) -> u8 {
         u8::from(self.ctrl)
             | u8::from(self.shift) << 1
@@ -189,7 +191,7 @@ impl Record for Timed<KeyEvent> {
     }
 }
 
-/// Shortcuts of the recording in folder `dir`, in time order.
+/// Key presses of the recording in folder `dir`, in time order.
 pub fn read_keys(dir: &Path) -> Result<Vec<Timed<KeyEvent>>, CaptureError> {
     read_records(&dir.join(KEYS_FILE))
 }

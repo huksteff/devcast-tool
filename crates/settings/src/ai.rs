@@ -49,7 +49,7 @@ impl Default for AiChoices {
 }
 
 /// The built-in recipes: id, title, request to the agent.
-pub const BUILT_IN: [(&str, &str, &str); 5] = [
+pub const BUILT_IN: [(&str, &str, &str); 4] = [
     (
         "pauses",
         "Убрать паузы",
@@ -69,11 +69,6 @@ pub const BUILT_IN: [(&str, &str, &str); 5] = [
         "slips",
         "Убрать оговорки и «ээ»",
         "По `devcast transcript` найди оговорки, повторы, фальстарты и слова-паразиты («ээ», «ну», «как бы») и вырежи их по словам (`devcast cut w…`). Смысл сказанного не меняй.",
-    ),
-    (
-        "keys",
-        "Показ клавиш",
-        "Если в записи нажимались сочетания клавиш (`devcast events keys`), включи их показ: `devcast keys --show`.",
     ),
 ];
 

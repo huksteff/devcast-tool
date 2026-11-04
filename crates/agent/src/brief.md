@@ -40,6 +40,6 @@ devcast clip split --at 10
 - Речь: `devcast transcript` — реплики с id слов, `--words` — по слову. Оговорки вырезай по словам, все одной командой: `devcast cut w5-w9,w14,w20-w21`; границы сами уходят в тишину между словами. Id слов после выреза не меняются, вырезанное слово пропадает из `transcript`, повторный вырез — ошибка «пустой диапазон». Режь только лишнее: из повтора «видос, видос» — одно слово.
 - Зумы: `--at clicks` ставит по зуму на группу кликов; где зум уже есть, новый не ставится. `--mode follow` (по умолчанию) — камера за курсором, `fixed` — стоит на `--x --y` (доли кадра 0..1). `devcast ls zooms`.
 - Субтитры: `devcast captions gen` — заново из речи, заменяет все. `devcast ls captions`, `devcast captions set s3 --text "…"`, `devcast captions split s3 --at 14.2`, `devcast captions merge s3`, `devcast captions rm s3`.
-- Клавиши: `devcast events keys` — какие сочетания нажимались.
+- Клавиши: `devcast events keys` — какие клавиши нажимались.
 - Звук: `devcast audio channel mic --normalize --denoise`.
 - Аннотации: виды text, shape, image, drawing, blur; `devcast ls annots`; подробности — `devcast help annot add`.

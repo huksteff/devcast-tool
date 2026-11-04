@@ -31,11 +31,11 @@ fn the_list_is_the_built_in_recipes_then_the_own_ones() {
         "Вставь лого в угол"
     );
     check(&mut choices, "zooms", false);
-    check(&mut choices, "keys", true);
+    check(&mut choices, "slips", true);
     check(&mut choices, "нет такого", true);
     assert_eq!(
         ids(&choices),
-        ["pauses", "captions", "keys", "Лого"],
+        ["pauses", "captions", "slips", "Лого"],
         "list order"
     );
     assert!(!choices.checked.contains(&"нет такого".to_owned()));
