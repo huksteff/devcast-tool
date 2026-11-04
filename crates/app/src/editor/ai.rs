@@ -87,6 +87,11 @@ pub struct Ai {
     pub edits: Vec<AiEdit>,
     /// The undo step of the last run: «Отменить всё» undoes it while it is on top.
     pub group: Option<String>,
+    /// What the last run cost, as the agent counted it.
+    pub usage: Option<dc_agent::Usage>,
+    /// How full the subscription's limits were at the first and the last word of the run about
+    /// them.
+    pub limits: Option<(dc_agent::Limits, dc_agent::Limits)>,
     /// Signed in to the user's account: none until checked, or when the agent cannot tell.
     pub signed_in: Option<bool>,
     /// The agents were looked for.
@@ -122,6 +127,8 @@ impl Ai {
             draft: None,
             edits: Vec::new(),
             group: None,
+            usage: None,
+            limits: None,
             signed_in: None,
             looked: true,
             skill: None,
@@ -191,6 +198,8 @@ impl Ai {
         }
         self.job = Some(job);
         self.group = Some(group);
+        self.usage = None;
+        self.limits = None;
         self.phase = Phase::Running {
             since: Instant::now(),
         };
@@ -231,6 +240,11 @@ impl Ai {
                 }
             }
             Event::Said(said) => self.log.push(Line::Said(said)),
+            Event::Usage(usage) => self.usage = Some(usage),
+            Event::Limits(now) => {
+                let first = self.limits.map_or(now, |(first, _)| first);
+                self.limits = Some((first, now));
+            }
             Event::Finished(end) => {
                 let secs = self.secs(now);
                 self.job = None;

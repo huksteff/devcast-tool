@@ -6,7 +6,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use clap::Args;
-use dc_agent::{Ask, Event, Found, Job, Places, find, launch, pick, prompt};
+use dc_agent::{Ask, Event, Found, Job, Limits, Places, find, launch, model_name, pick, prompt};
 use dc_settings::Agent;
 use serde_json::json;
 
@@ -91,6 +91,8 @@ pub(crate) fn beautify(ctx: &Ctx<'_>, args: &BeautifyArgs) -> Result<Answer, Cli
 /// Reads the run to its end; the commands go to the progress lines.
 fn follow(ctx: &Ctx<'_>, agent: &Found, job: &Job) -> Result<Answer, CliError> {
     let (mut session, mut commands) = (None, 0);
+    let mut model = None;
+    let mut limits: Option<(Limits, Limits)> = None;
     while let Some(event) = job.next() {
         match event {
             Event::Session(id) => session = Some(id),
@@ -101,6 +103,8 @@ fn follow(ctx: &Ctx<'_>, agent: &Found, job: &Job) -> Result<Answer, CliError> {
                 }
             }
             Event::Done { .. } | Event::Said(_) => {}
+            Event::Usage(usage) => model = usage.model.as_deref().map(model_name),
+            Event::Limits(now) => limits = Some((limits.map_or(now, |(first, _)| first), now)),
             Event::Finished(Err(why)) => {
                 return Err(CliError::Failed(format!(
                     "{}: {why}",
@@ -111,8 +115,18 @@ fn follow(ctx: &Ctx<'_>, agent: &Found, job: &Job) -> Result<Answer, CliError> {
                 let more = session.as_ref().map_or(String::new(), |id| {
                     format!("\nпродолжить: devcast beautify --resume {id} --ask \"…\"; отменить всё — devcast undo")
                 });
-                let text = format!("{said}\nкоманд: {commands}{more}");
-                let json = json!({ "said": said, "commands": commands, "session": session });
+                let spent = spent(model.as_deref(), limits);
+                let text = format!("{said}\nкоманд: {commands}{spent}{more}");
+                let json = json!({
+                    "said": said,
+                    "commands": commands,
+                    "session": session,
+                    "model": model,
+                    "limits": limits.map(|(before, after)| json!({
+                        "five_hour": [before.five_hour, after.five_hour],
+                        "seven_day": [before.seven_day, after.seven_day],
+                    })),
+                });
                 return Ok(Answer::new(text, json));
             }
         }
@@ -120,6 +134,27 @@ fn follow(ctx: &Ctx<'_>, agent: &Found, job: &Job) -> Result<Answer, CliError> {
     Err(CliError::Failed(
         "нейронка закончила работу без ответа: попробуй ещё раз".to_owned(),
     ))
+}
+
+/// «, Opus 5.5, лимит 5 ч 19 % → 21 %, неделя 35 %»: the model and how the subscription's limits
+/// moved during the run (Claude Code tells them).
+fn spent(model: Option<&str>, limits: Option<(Limits, Limits)>) -> String {
+    let mut parts: Vec<String> = model.map(str::to_owned).into_iter().collect();
+    if let Some((before, after)) = limits {
+        let window = |name: &str, b: Option<f64>, a: Option<f64>| {
+            let percent = |s: f64| format!("{:.0} %", s * 100.0);
+            match (b, a) {
+                (Some(b), Some(a)) if percent(b) != percent(a) => {
+                    Some(format!("{name} {} → {}", percent(b), percent(a)))
+                }
+                (_, Some(a)) => Some(format!("{name} {}", percent(a))),
+                _ => None,
+            }
+        };
+        parts.extend(window("лимит 5 ч", before.five_hour, after.five_hour));
+        parts.extend(window("неделя", before.seven_day, after.seven_day));
+    }
+    parts.iter().map(|p| format!(", {p}")).collect()
 }
 
 /// The recipes named, by id or title; none named — the checked ones.

@@ -53,7 +53,10 @@ impl Change {
             self.after.clips = next.after.clips;
         }
         self.after.effects.extend(next.after.effects);
-        if !next.summary.is_empty() && !self.summary.contains(&next.summary) {
+        // Another writer sends its whole step of the group, which starts with what this one holds.
+        if next.summary.starts_with(&self.summary) {
+            self.summary = next.summary;
+        } else if !next.summary.is_empty() && !self.summary.ends_with(&next.summary) {
             self.summary = format!("{}; {}", self.summary, next.summary);
         }
     }

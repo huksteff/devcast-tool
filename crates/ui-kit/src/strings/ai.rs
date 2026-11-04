@@ -11,7 +11,10 @@ pub const ASK: &str = "Ещё попросить";
 pub const ASK_HINT: &str = "например: «не режь паузу на 0:42»";
 pub const AGENT: &str = "Нейронка";
 pub const MODEL: &str = "Модель";
-pub const MODEL_HINT: &str = "по умолчанию";
+pub const MODEL_DEFAULT: &str = "По умолчанию";
+pub const OPUS: &str = "Opus — сильнее, тратит больше";
+pub const SONNET: &str = "Sonnet — быстрее и экономнее";
+pub const HAIKU: &str = "Haiku — самый быстрый";
 pub const RUN: &str = "Сделать красиво";
 pub const NOTHING: &str = "Отметь рецепт или напиши, что попросить.";
 pub const LOG: &str = "Ход работы";
@@ -94,6 +97,30 @@ pub fn skill_not_written(error: &dyn std::fmt::Display) -> String {
     )
 }
 
+/// «Лимит 5 ч: 19 % → 21 % · неделя: 35 % → 36 %»: how full the subscription's limits were
+/// before and after a run, shares 0..1; one number when they did not change.
+pub fn limits(five_hour: (Option<f64>, Option<f64>), week: (Option<f64>, Option<f64>)) -> String {
+    let part = |name: &str, (before, after): (Option<f64>, Option<f64>)| {
+        let percent = |share: f64| format!("{:.0} %", share * 100.0);
+        match (before, after) {
+            (Some(b), Some(a)) if percent(b) != percent(a) => {
+                Some(format!("{name}: {} → {}", percent(b), percent(a)))
+            }
+            (_, Some(a)) => Some(format!("{name}: {}", percent(a))),
+            _ => None,
+        }
+    };
+    let parts: Vec<String> = [part("лимит 5 ч", five_hour), part("неделя", week)]
+        .into_iter()
+        .flatten()
+        .collect();
+    let line = parts.join(" · ");
+    let mut chars = line.chars();
+    chars
+        .next()
+        .map_or(line.clone(), |c| c.to_uppercase().chain(chars).collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,5 +141,7 @@ mod tests {
         assert_eq!(counts, expected);
         assert_eq!(done(92, 9), "готово · 1:32 · 9 команд");
         assert_eq!(running(48), "работает · 0:48");
+        let both = limits((Some(0.19), Some(0.21)), (Some(0.35), Some(0.35)));
+        assert_eq!(both, "Лимит 5 ч: 19 % → 21 % · неделя: 35 %");
     }
 }

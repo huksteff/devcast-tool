@@ -66,6 +66,10 @@ fn a_codex_run_is_its_commands_words_and_end() {
         Event::Command(s("devcast cut 1-2")),
         Event::Done { ok: false },
         Event::Said(s("Готово.")),
+        Event::Usage(crate::usage::Usage {
+            input: 10,
+            ..Default::default()
+        }),
         Event::Finished(Ok(s("Готово."))),
     ];
     assert_eq!(read(Agent::Codex, lines), expected);
@@ -74,4 +78,15 @@ fn a_codex_run_is_its_commands_words_and_end() {
         read(Agent::Codex, failed),
         vec![Event::Finished(Err(s("квота")))]
     );
+}
+
+#[test]
+fn claude_code_tells_how_full_the_limits_are() {
+    // As Claude Code 2.1.309 writes it (2026-11-04).
+    let line = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"allowed","rateLimitType":"five_hour","unifiedWindows":{"five_hour":{"utilization":0.19,"status":"allowed"},"seven_day":{"utilization":0.35,"status":"allowed"}}}}"#;
+    let limits = crate::usage::Limits {
+        five_hour: Some(0.19),
+        seven_day: Some(0.35),
+    };
+    assert_eq!(read(Agent::Claude, line), vec![Event::Limits(limits)]);
 }

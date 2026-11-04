@@ -4,8 +4,10 @@
 use dc_settings::Agent;
 use serde_json::Value;
 
+use crate::usage::{Limits, Usage};
+
 /// What the agent did, in order.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Event {
     /// The conversation's id, to go on with it (`--resume`).
     Session(String),
@@ -15,6 +17,10 @@ pub enum Event {
     Done { ok: bool },
     /// Its words to the user.
     Said(String),
+    /// What the run cost; comes right before [`Event::Finished`] when the agent says.
+    Usage(Usage),
+    /// How full the subscription's limits are now (Claude Code says it during a run).
+    Limits(Limits),
     /// The run ended: the agent's last words, or why it failed. Nothing comes after it.
     Finished(Result<String, String>),
 }
@@ -62,7 +68,11 @@ impl Reader {
                 vec![Event::Done { ok }]
             }
             ("item.completed", "agent_message") => opt(text(&item["text"]), Event::Said),
-            ("turn.completed", _) => vec![Event::Finished(Ok(self.last_said.clone()))],
+            ("turn.completed", _) => {
+                let usage = Usage::codex(value).map(Event::Usage);
+                let end = Event::Finished(Ok(self.last_said.clone()));
+                usage.into_iter().chain([end]).collect()
+            }
             ("turn.failed", _) => vec![failed(text(&value["error"]["message"]))],
             ("error", _) => vec![failed(text(&value["message"]))],
             _ => Vec::new(),
@@ -90,6 +100,10 @@ fn claude(value: &Value) -> Vec<Event> {
             })
             .filter(|e| !matches!(e, Event::Said(s) | Event::Command(s) if s.is_empty()))
             .collect(),
+        "rate_limit_event" => Limits::claude(value)
+            .map(Event::Limits)
+            .into_iter()
+            .collect(),
         "user" => content()
             .iter()
             .filter(|part| text(&part["type"]) == "tool_result")
@@ -99,10 +113,12 @@ fn claude(value: &Value) -> Vec<Event> {
             .collect(),
         "result" => {
             let said = text(&value["result"]).trim().to_owned();
-            match value["is_error"].as_bool().unwrap_or(false) {
-                false => vec![Event::Finished(Ok(said))],
-                true => vec![failed(&said)],
-            }
+            let end = match value["is_error"].as_bool().unwrap_or(false) {
+                false => Event::Finished(Ok(said)),
+                true => failed(&said),
+            };
+            let usage = Usage::claude(value).map(Event::Usage);
+            usage.into_iter().chain([end]).collect()
         }
         _ => Vec::new(),
     }

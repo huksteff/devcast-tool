@@ -17,7 +17,10 @@ use crate::stream::{Event, Reader};
 pub const GROUP_ENV: &str = "DEVCAST_GROUP";
 
 /// The only tool calls the agent may make without asking: `devcast` commands.
-const ALLOWED: &str = "Bash(devcast *)";
+/// Claude Code runs commands with Bash or, on Windows since 2.1.317, PowerShell: either may run
+/// `devcast` and nothing else.
+const TOOLS: &str = "Bash,PowerShell";
+const ALLOWED: [&str; 2] = ["Bash(devcast *)", "PowerShell(devcast *)"];
 
 /// What to start.
 #[derive(Debug, Clone)]
@@ -61,12 +64,16 @@ pub fn launch(ask: &Ask<'_>) -> Launch {
                 &mut args,
                 &["-p", "--output-format", "stream-json", "--verbose"],
             );
-            add(&mut args, &["--tools", "Bash", "--allowedTools", ALLOWED]);
+            add(&mut args, &["--tools", TOOLS, "--allowedTools"]);
+            add(&mut args, &ALLOWED);
             add(
                 &mut args,
                 &["--permission-prompts", "none", "--strict-mcp-config"],
             );
-            add(&mut args, &["--append-system-prompt-file"]);
+            add(
+                &mut args,
+                &["--disable-slash-commands", "--append-system-prompt-file"],
+            );
             args.push(ask.system.as_os_str().to_owned());
             if let Some(model) = ask.model {
                 add(&mut args, &["--model", model]);

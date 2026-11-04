@@ -87,3 +87,16 @@ fn mentioned(name: &str) -> bool {
             })
         })
 }
+
+/// Every `devcast …` line of the brief of «Сделать красиво» (`dc_agent::prompt::BRIEF`, the short
+/// editing part of the skill) runs, in order, on a 30 s project of two recordings.
+#[test]
+fn brief_examples_run() {
+    let f = Recordings::with_telemetry(&[20.0, 10.0]);
+    for block in dc_agent::prompt::BRIEF.split("```").skip(1).step_by(2) {
+        for line in block.lines().filter_map(|l| l.strip_prefix("devcast ")) {
+            let out = f.run(line);
+            assert_eq!(out.code, 0, "{line}: {}", out.stderr);
+        }
+    }
+}

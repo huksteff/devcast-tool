@@ -108,6 +108,9 @@ fn ended(ui: &mut Ui, base: &mut panel::Cx<'_>, ai: &mut Ai, actions: &mut Vec<A
             }
             _ => {}
         }
+        if let Some(line) = spent(ai) {
+            rows::note(ui, &line);
+        }
         ui.add_space(S1);
         let undo = Button::new(text::UNDO_ALL).icon(Icon::Undo).small();
         if ai.commands() > 0 && ui.add(undo).clicked() {
@@ -176,6 +179,28 @@ fn recipes(ui: &mut Ui, ai: &mut Ai) {
     }
 }
 
+/// «Opus 5.5 · Лимит 5 ч: 19 % → 21 % · неделя: 35 %» after a run: the model and how the
+/// subscription's limits moved, as the agent told them.
+fn spent(ai: &Ai) -> Option<String> {
+    let model = ai
+        .usage
+        .as_ref()
+        .and_then(|u| u.model.as_deref())
+        .map(dc_agent::model_name);
+    let limits = ai.limits.map(|(before, after)| {
+        text::limits(
+            (before.five_hour, after.five_hour),
+            (before.seven_day, after.seven_day),
+        )
+    });
+    let parts: Vec<String> = model
+        .into_iter()
+        .chain(limits)
+        .filter(|p| !p.is_empty())
+        .collect();
+    (!parts.is_empty()).then(|| parts.join(" · "))
+}
+
 /// The agent when both are found, and the model.
 fn agent(ui: &mut Ui, ai: &mut Ai) {
     let found: Vec<(Agent, &str)> = ai
@@ -193,15 +218,34 @@ fn agent(ui: &mut Ui, ai: &mut Ai) {
             ai.edits.push(AiEdit::Agent(Some(chosen)));
         }
     }
-    let mut model = ai.choices.model.clone().unwrap_or_default();
-    let typed = rows::row(ui, text::MODEL, |ui| {
+    let chosen = ai.choices.model.clone();
+    let mut models: Vec<(Option<String>, &str)> = vec![(None, text::MODEL_DEFAULT)];
+    if ai.agent().is_some_and(|f| f.agent == Agent::Claude) {
+        models.extend(CLAUDE_MODELS.map(|(id, title)| (Some(id.to_owned()), title)));
+    }
+    // A model set by `devcast recipes model` stays on the list.
+    if let Some(own) = chosen
+        .as_deref()
+        .filter(|m| !models.iter().any(|(id, _)| id.as_deref() == Some(*m)))
+    {
+        models.push((Some(own.to_owned()), own));
+    }
+    let mut model = chosen.clone();
+    let picked = rows::row(ui, text::MODEL, |ui| {
         let width = ui.available_width();
-        text_field(ui, &mut model, text::MODEL_HINT, width).lost_focus()
+        dropdown(ui, text::MODEL, &mut model, &models, width).changed()
     });
-    if typed && Some(model.as_str()) != ai.choices.model.as_deref() {
-        ai.edits.push(AiEdit::Model(Some(model)));
+    if picked && model != chosen {
+        ai.edits.push(AiEdit::Model(model));
     }
 }
+
+/// The models of Claude Code by the aliases it takes (`--model sonnet`): the newest of each.
+const CLAUDE_MODELS: [(&str, &str); 3] = [
+    ("opus", text::OPUS),
+    ("sonnet", text::SONNET),
+    ("haiku", text::HAIKU),
+];
 
 /// «Сделать красиво» / «Отправить»: grey while there is nothing to ask.
 fn run_button(ui: &mut Ui, ai: &Ai, actions: &mut Vec<Action>, title: &str) {

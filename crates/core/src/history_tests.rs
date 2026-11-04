@@ -325,7 +325,14 @@ fn a_pushed_step_joins_its_group_even_when_it_already_holds_it() {
     theirs.apply(&mut there, &Push(2)).unwrap();
     // Another writer sends its top step, which already folds the first one in.
     mine.push(&mut here, theirs.changes()[0].clone());
-    assert_eq!(items(&here), vec![1, 2]);
+    theirs.apply(&mut there, &Push(3)).unwrap();
+    mine.push(&mut here, theirs.changes()[0].clone());
+    assert_eq!(
+        mine.changes()[0].summary,
+        "+1; +2; +3",
+        "each once, however often it came"
+    );
+    assert_eq!(items(&here), vec![1, 2, 3]);
     assert_eq!(mine.changes().len(), 1);
     mine.undo(&mut here);
     assert!(here.effects.is_empty());

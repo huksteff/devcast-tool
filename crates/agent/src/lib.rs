@@ -9,10 +9,12 @@ pub mod run;
 pub mod sign_in;
 pub mod skills;
 pub mod stream;
+pub mod usage;
 
 pub use find::{Found, Places, find, pick};
 pub use run::{Ask, GROUP_ENV, Job, Launch, launch};
 pub use stream::{Event, Reader};
+pub use usage::{Limits, Usage, model_name};
 
 /// Writes [`prompt::system`] where the agent reads it (`--append-system-prompt-file`): the
 /// temp folder of the user.

@@ -40,7 +40,11 @@ fn claude_code_may_only_run_devcast_and_gets_the_skill_as_a_file() {
     let claude = found(Agent::Claude);
     let launch = launch(&ask(&claude, Some("5a1e")));
     let args = strings(&launch);
-    assert!(has(&args, ["--tools", "Bash"]) && has(&args, ["--allowedTools", ALLOWED]));
+    assert!(has(&args, ["--tools", TOOLS]) && has(&args, ["--allowedTools", ALLOWED[0]]));
+    assert!(
+        has(&args, [ALLOWED[0], ALLOWED[1]]),
+        "PowerShell may run devcast too"
+    );
     assert!(
         has(&args, ["--permission-prompts", "none"]),
         "nothing waits for a person"
@@ -81,7 +85,7 @@ fn codex_writes_only_the_project_and_carries_the_skill_in_its_first_request() {
         Some("-"),
         "the request from stdin"
     );
-    assert!(first.input.starts_with(crate::prompt::SKILL) && first.input.ends_with("Убери паузы."));
+    assert!(first.input.starts_with(crate::prompt::BRIEF) && first.input.ends_with("Убери паузы."));
     let more = launch(&ask(&codex, Some("th-1")));
     assert!(has(&strings(&more), ["resume", "th-1"]));
     assert_eq!(more.input, "Убери паузы.");

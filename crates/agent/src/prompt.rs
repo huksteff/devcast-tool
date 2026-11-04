@@ -1,31 +1,19 @@
-//! What the agent is told: the system part — the skill `skill/SKILL.md` and the rules of the
-//! editor — and the request — the checked recipes and the user's own words. The skill goes with
-//! every run, so nothing needs to be installed.
+//! What the agent is told: the system part — the brief `brief.md`, the editing part of the skill
+//! `skill/SKILL.md` with the rules of a run, short because the agent reads it again on every
+//! step (owner's decision 2026-11-04: as few tokens as the work allows) — and the request — the
+//! checked recipes and the user's own words. Nothing needs to be installed.
 
 use dc_settings::Recipe;
 
 /// The skill of `devcast`, the same file `devcast skill install` puts for Claude Code.
 pub const SKILL: &str = include_str!("../../../skill/SKILL.md");
 
-/// The rules of a run inside the editor, after the skill.
-const RULES: &str = "\
-## Тебя запустило «Сделать красиво»
-
-Текущая папка — проект `*.devcast`. Если он открыт в редакторе DevCast, каждая команда \
-`devcast` сразу видна пользователю. Всё, что ты сделаешь за этот запуск, отменяется одним шагом \
-(Ctrl+Z в редакторе, `devcast undo` в консоли).
-
-- Меняй и смотри проект только командами `devcast`. Файлы проекта не читай и не правь руками.
-- Не экспортируй, не сохраняй (`devcast save`), не закрывай и не переименовывай проект и не \
-трогай программу (`record`, `app`, `config`, `hotkeys`, `recipes`, `beautify`): это решает \
-пользователь.
-- Перед вырезами и пачками — `--dry-run`, как сказано выше.
-- Команда отказала — прочитай ошибку и исправь вызов; не получается — пропусти этот шаг.
-- В конце одним-двумя предложениями по-русски напиши, что сделал (без списка команд).";
+/// The brief of a run: how to edit a project with `devcast` and the rules of «Сделать красиво».
+pub const BRIEF: &str = include_str!("brief.md");
 
 /// The system part of every run.
 pub fn system() -> String {
-    format!("{SKILL}\n\n{RULES}\n")
+    BRIEF.to_owned()
 }
 
 /// The first request of a conversation: the recipes in order, then `ask`. `None` when there is
@@ -84,9 +72,12 @@ mod tests {
     }
 
     #[test]
-    fn the_system_part_is_the_skill_and_the_rules() {
+    fn the_system_part_is_the_short_brief() {
         let system = system();
-        assert!(system.starts_with(SKILL));
         assert!(system.contains("только командами `devcast`"));
+        assert!(
+            system.len() * 4 < SKILL.len(),
+            "a quarter of the skill at most"
+        );
     }
 }
