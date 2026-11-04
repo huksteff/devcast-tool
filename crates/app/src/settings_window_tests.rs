@@ -141,3 +141,21 @@ fn about_page_with_feedback() {
     harness.get_by_label(&text::contact(text::REPOSITORY, &feedback.repository));
     harness.snapshot("settings_about");
 }
+
+#[test]
+fn a_click_on_a_tag_copies_it_and_says_so() {
+    let mut harness = harness();
+    harness.get_by_label(text::ABOUT).click();
+    harness.run();
+    harness.get_by_label("@d.novikov").click();
+    harness.step();
+    let copied = harness
+        .output()
+        .platform_output
+        .commands
+        .iter()
+        .any(|c| matches!(c, eframe::egui::OutputCommand::CopyText(t) if t == "@d.novikov"));
+    assert!(copied, "the tag is on the clipboard");
+    harness.run();
+    assert!(harness.query_by_label(text::TAG_COPIED).is_some());
+}

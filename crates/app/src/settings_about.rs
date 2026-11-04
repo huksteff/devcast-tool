@@ -60,7 +60,8 @@ fn authors(ui: &mut Ui, authors: &[dc_update::Author]) {
             let copied = ui.scope_id().with(("tag-copied", &author.tag));
             if response.clicked() {
                 ui.ctx().copy_text(author.tag.clone());
-                ui.data_mut(|d| d.insert_temp(copied, ui.input(|i| i.time)));
+                let now = ui.input(|i| i.time);
+                ui.data_mut(|d| d.insert_temp(copied, now));
             }
             let since = ui.data(|d| d.get_temp::<f64>(copied));
             if since.is_some_and(|t| ui.input(|i| i.time) - t < TAG_SHOWN) {
