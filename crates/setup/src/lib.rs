@@ -64,11 +64,9 @@ fn ask(default: &Path) -> Result<Choice, String> {
                 text::CANCEL.to_owned(),
             ))
             .show();
-        match answer {
-            MessageDialogResult::Custom(pick) if pick == text::INSTALL => {
-                return Ok(Choice::Install(default.to_path_buf()));
-            }
-            MessageDialogResult::Custom(pick) if pick == text::OTHER_FOLDER => {
+        match Answer::of(answer) {
+            Answer::Install => return Ok(Choice::Install(default.to_path_buf())),
+            Answer::OtherFolder => {
                 let picked = rfd::FileDialog::new()
                     .set_title(text::PICK_FOLDER)
                     .pick_folder();
@@ -76,7 +74,28 @@ fn ask(default: &Path) -> Result<Choice, String> {
                     return Ok(Choice::Install(app_folder(&picked)));
                 }
             }
-            _ => return Ok(Choice::Cancel),
+            Answer::Cancel => return Ok(Choice::Cancel),
+        }
+    }
+}
+
+/// A button of the question. The task dialog answers with the caption of a button; the plain
+/// message box Windows falls back to answers «Да» / «Нет» / «Отмена» in the same places.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Answer {
+    Install,
+    OtherFolder,
+    Cancel,
+}
+
+impl Answer {
+    fn of(result: MessageDialogResult) -> Self {
+        match result {
+            MessageDialogResult::Custom(pick) if pick == text::INSTALL => Self::Install,
+            MessageDialogResult::Custom(pick) if pick == text::OTHER_FOLDER => Self::OtherFolder,
+            MessageDialogResult::Yes => Self::Install,
+            MessageDialogResult::No => Self::OtherFolder,
+            _ => Self::Cancel,
         }
     }
 }
@@ -134,6 +153,17 @@ mod tests {
         let args = setup_args(Path::new(r"D:\Мои программы\DevCast"));
         assert_eq!(args[0], "--installto");
         assert_eq!(args[1], r"D:\Мои программы\DevCast");
+    }
+
+    #[test]
+    fn the_buttons_mean_the_same_in_both_kinds_of_dialog() {
+        let custom = |text: &str| Answer::of(MessageDialogResult::Custom(text.to_owned()));
+        assert_eq!(custom(text::INSTALL), Answer::Install);
+        assert_eq!(custom(text::OTHER_FOLDER), Answer::OtherFolder);
+        assert_eq!(custom(text::CANCEL), Answer::Cancel);
+        assert_eq!(Answer::of(MessageDialogResult::Yes), Answer::Install);
+        assert_eq!(Answer::of(MessageDialogResult::No), Answer::OtherFolder);
+        assert_eq!(Answer::of(MessageDialogResult::Cancel), Answer::Cancel);
     }
 
     #[test]

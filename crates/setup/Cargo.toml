@@ -17,7 +17,7 @@ workspace = true
 [dependencies]
 dc-ui-kit = { path = "../ui-kit" }
 dirs = "6"
-rfd = "0.15"
+rfd = { version = "0.15", features = ["common-controls-v6"] }
 
 [build-dependencies]
 embed-resource = "3"

@@ -11,6 +11,7 @@ const SETUP_ENV: &str = "DEVCAST_VELOPACK_SETUP";
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=../../branding/devcast.ico");
+    println!("cargo:rerun-if-changed=devcast-setup.manifest");
     println!("cargo:rerun-if-env-changed={SETUP_ENV}");
     embed_resource::compile("devcast-setup.rc", embed_resource::NONE).manifest_optional()?;
     let out = Path::new(&std::env::var("OUT_DIR")?).join("velopack-setup.exe");
