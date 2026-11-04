@@ -178,3 +178,28 @@ fn word_ids_must_exist_and_be_recognized_first() {
         out.stderr
     );
 }
+
+#[test]
+fn every_short_word_cuts_on_its_own() {
+    let speech = Speech::new();
+    let each: Vec<String> = (2..=12).map(|n| format!("w{n}")).collect();
+    speech.ok(&format!("cut {}", each.join(",")));
+    let after = speech.ok("transcript");
+    assert!(
+        after.ends_with("вырезано и не показано слов: 11"),
+        "{after}"
+    );
+}
+
+#[test]
+fn a_word_whose_edges_snap_together_keeps_its_own_bounds() {
+    use dc_core::SourceTime;
+    let at = SourceTime::from_micros;
+    let word = (25_880_000, 25_960_000);
+    let together = crate::transcript::cut_bounds((at(25_982_000), at(25_982_000)), word);
+    assert_eq!(together, (at(word.0), at(word.1)));
+    let crossed = crate::transcript::cut_bounds((at(25_990_000), at(25_900_000)), word);
+    assert_eq!(crossed, (at(word.0), at(word.1)));
+    let snapped = (at(25_800_000), at(26_000_000));
+    assert_eq!(crate::transcript::cut_bounds(snapped, word), snapped);
+}

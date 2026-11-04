@@ -11,12 +11,14 @@ use std::sync::atomic::AtomicBool;
 use dc_audio::silence::{self, DEFAULT_MIN};
 use dc_audio::{SourceTrack, frame_at, tracks};
 use dc_core::time::Source;
-use dc_core::{CommandError, Project, Range, SourceTime};
+use dc_core::{CommandError, Project, Range, SourceTime, TimeMap};
 use dc_fx_captions::{CaptionsGen, NewCue, merge_tracks};
 use dc_ops::OpsError;
 use dc_ops::recognition::Speech;
 use dc_project::ProjectDir;
 use dc_transcribe::{Cue, Model, Recognized, Word, cues};
+
+use crate::transcript::placed;
 
 /// The microphone track of a recording: the default track to listen to.
 pub const MIC: &str = "mic";
@@ -221,6 +223,7 @@ pub fn generate(
     let by_hand = silence_db(project)?;
     let mut first_auto = None;
     let mut tracks = Vec::with_capacity(count);
+    let map = TimeMap::build(project);
     for (done, name) in names.into_iter().enumerate() {
         let part = (done as f32, count as f32);
         let inner = Rc::clone(progress);
@@ -238,8 +241,15 @@ pub fn generate(
                     Some(auto)
                 }
             };
-            for cue in media_cues(media, &media.words, db)? {
-                cues.push(new_cue(media, &cue).map_err(failed)?);
+            // Words cut out of the output say nothing in the captions.
+            let words: Vec<Word> = media
+                .words
+                .iter()
+                .filter(|w| placed(&map, &media.media, w).is_some())
+                .cloned()
+                .collect();
+            for cue in media_cues(media, &words, db)? {
+                cues.push(new_cue(media, &words, &cue).map_err(failed)?);
             }
         }
         tracks.push(cues);
@@ -265,7 +275,7 @@ pub(crate) fn silence_db(project: &Project) -> Result<Option<f64>, OpsError> {
     Ok(state.settings.silence.db())
 }
 
-fn new_cue(media: &MediaWords, cue: &Cue) -> Result<NewCue, CommandError> {
+fn new_cue(media: &MediaWords, all: &[Word], cue: &Cue) -> Result<NewCue, CommandError> {
     let range = |start: i64, end: i64| -> Result<Range<Source>, CommandError> {
         Range::new(SourceTime::from_micros(start), SourceTime::from_micros(end))
             .map_err(|e| CommandError::new(e.to_string()))
@@ -273,7 +283,7 @@ fn new_cue(media: &MediaWords, cue: &Cue) -> Result<NewCue, CommandError> {
     let words = cue
         .words
         .iter()
-        .filter_map(|&i| media.words.get(i))
+        .filter_map(|&i| all.get(i))
         .map(|w| {
             Ok(dc_fx_captions::Word {
                 text: w.text.clone(),

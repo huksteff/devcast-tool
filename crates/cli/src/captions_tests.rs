@@ -152,3 +152,16 @@ s3  0:07.360–0:09.130  text=Это занимает пару минут."
         "субтитры: порог тишины -30 dB→auto"
     );
 }
+
+#[test]
+fn gen_after_a_word_cut_leaves_the_word_out() {
+    let speech = Speech::new();
+    speech.ok("cut w7");
+    speech.ok("captions gen");
+    let listed = speech.ok("ls captions --fields text");
+    assert!(
+        listed.contains("text=Сегодня я покажу, как записать "),
+        "{listed}"
+    );
+    assert!(!listed.contains("видео"), "{listed}");
+}

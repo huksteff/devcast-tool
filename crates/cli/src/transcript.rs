@@ -48,7 +48,7 @@ pub(crate) struct Args {
 }
 
 /// Where a word of `media` sounds on the output; `None` if it is cut out.
-fn placed(map: &TimeMap, media: &str, word: &Word) -> Option<(OutputTime, OutputTime)> {
+pub(crate) fn placed(map: &TimeMap, media: &str, word: &Word) -> Option<(OutputTime, OutputTime)> {
     let start = SourceTime::from_micros(word.start);
     let (segment, from) = map.locate(media, start)?;
     // The last microsecond of the word, then its end: a word ending at a cut still places.
@@ -239,7 +239,10 @@ fn word_range(all: &[MediaWords], map: &TimeMap, item: &str) -> Result<String, C
         silence::quietest(&media.track, SourceTime::from_micros(t), SNAP)
             .map_err(|e| CliError::Failed(e.to_string()))
     };
-    let (start, end) = (snap(start_word.start)?, snap(end_word.end)?);
+    let (start, end) = cut_bounds(
+        (snap(start_word.start)?, snap(end_word.end)?),
+        (start_word.start, end_word.end),
+    );
     let start = map
         .locate(&media.media, start)
         .or_else(|| map.locate(&media.media, SourceTime::from_micros(start_word.start)))
@@ -255,4 +258,19 @@ fn word_range(all: &[MediaWords], map: &TimeMap, item: &str) -> Result<String, C
         start.as_secs_f64(),
         end.as_secs_f64()
     ))
+}
+
+/// The source span a word cut takes: the snapped edges, or — when a short word's edges snapped
+/// to one quiet spot or crossed — the words' own bounds (µs).
+pub(crate) fn cut_bounds(
+    snapped: (SourceTime, SourceTime),
+    words: (i64, i64),
+) -> (SourceTime, SourceTime) {
+    match snapped {
+        (start, end) if end > start => (start, end),
+        _ => (
+            SourceTime::from_micros(words.0),
+            SourceTime::from_micros(words.1),
+        ),
+    }
 }
