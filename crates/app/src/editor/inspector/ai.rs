@@ -15,7 +15,7 @@ use dc_ui_kit::tokens::{
 use dc_ui_kit::widgets::{Button, Checkbox, IconButton, Kind, dropdown, text_area, text_field};
 use eframe::egui::{self, RichText, Ui};
 
-use super::Cx;
+use super::{Cx, ai_cards};
 use crate::editor::Action;
 use crate::editor::ai::{Ai, AiAsk, Draft, Line, Phase};
 
@@ -28,8 +28,16 @@ const ASK_ROWS: usize = 3;
 /// The tab.
 pub fn tab(ui: &mut Ui, cx: &mut Cx<'_>) {
     let (base, ai, actions) = (&mut cx.base, &mut *cx.ai, &mut cx.actions);
-    if ai.agent().is_none() {
-        not_found(ui, actions);
+    if !ai.looked {
+        actions.push(Action::Ai(AiAsk::LookAgain));
+        return;
+    }
+    if ai.agent().is_none() || ai.signed_in == Some(false) {
+        match ai.agent() {
+            None => ai_cards::not_found(ui, actions),
+            Some(_) => ai_cards::signed_out(ui, actions),
+        }
+        own(ui, base, ai, actions);
         return;
     }
     head(ui, ai);
@@ -51,6 +59,7 @@ pub fn tab(ui: &mut Ui, cx: &mut Cx<'_>) {
                 agent(ui, ai)
             });
             padded(ui, |ui| run_button(ui, ai, actions, text::RUN));
+            own(ui, base, ai, actions);
         }
         Phase::Running { .. } => {
             base.group(ui, group("log", text::LOG, true), |ui, _| log(ui, ai));
@@ -236,27 +245,13 @@ fn said_line(ui: &mut Ui, said: &str) {
     ui.add(egui::Label::new(RichText::new(said).size(FS_M).color(TEXT)).wrap());
 }
 
-/// «Нейронка не найдена»: what is needed, «Как поставить», «Проверить снова».
-fn not_found(ui: &mut Ui, actions: &mut Vec<Action>) {
-    let head = Header {
-        hue: HUE_KEYS,
-        title: text::TITLE,
-        subtitle: text::NOT_FOUND,
-    };
-    header(ui, &head, |_| {});
-    padded(ui, |ui| {
-        ui.add(egui::Label::new(RichText::new(text::NOT_FOUND_TEXT).size(FS_M).color(TEXT)).wrap());
-        ui.add_space(S2);
-        ui.horizontal(|ui| {
-            if ui.add(Button::new(text::HOW_TO_INSTALL).small()).clicked() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(text::INSTALL_URL));
-            }
-            let again = Button::new(text::CHECK_AGAIN).kind(Kind::Ghost).small();
-            if ui.add(again).clicked() {
-                actions.push(Action::Ai(AiAsk::LookAgain));
-            }
+/// «Своя нейронка», closed: the skill folder for agents opened without DevCast.
+fn own(ui: &mut Ui, base: &mut panel::Cx<'_>, ai: &Ai, actions: &mut Vec<Action>) {
+    if let Some(folder) = ai.skill.as_deref() {
+        base.group(ui, group("own", text::OWN_AGENT, false), |ui, _| {
+            ai_cards::own_agent(ui, folder, actions);
         });
-    });
+    }
 }
 
 /// The «Свой рецепт» dialog while it is open.

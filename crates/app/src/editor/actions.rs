@@ -316,7 +316,13 @@ fn ask_ai(
         ai::AiAsk::Run => errors.extend(editor.ai.start(ui.ctx(), editor.doc.dir().root()).err()),
         ai::AiAsk::Stop => editor.ai.stop(now),
         ai::AiAsk::Restart => editor.ai.restart(),
-        ai::AiAsk::LookAgain => editor.ai.look_again(),
+        ai::AiAsk::LookAgain => errors.extend(editor.ai.look_again(ui.ctx()).err()),
+        ai::AiAsk::Login => errors.extend(editor.ai.login().err()),
+        ai::AiAsk::OpenSkill => {
+            if let Some(folder) = &editor.ai.skill {
+                errors.extend(crate::open_folder(folder).err().map(|e| e.to_string()));
+            }
+        }
         ai::AiAsk::UndoAll => {
             let ours =
                 editor.ai.group.is_some() && editor.doc.top_group() == editor.ai.group.as_deref();

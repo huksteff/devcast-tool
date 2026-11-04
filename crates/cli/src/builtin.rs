@@ -267,11 +267,11 @@ enum Builtin {
         args: ExportArgs,
     },
     #[command(
-        about = "Установить skill для Claude Code в ~/.claude/skills/devcast",
-        after_help = "skill install"
+        about = "skill install — skill для Claude Code в ~/.claude/skills/devcast; skill files — папка со скиллом для любой нейронки и просьба установить его",
+        after_help = "skill files"
     )]
     Skill {
-        #[arg(help = "Что сделать: install")]
+        #[arg(help = "Что сделать: install или files")]
         action: SkillAction,
     },
     /// An op from the registry, e.g. `zoom add --at 12.5`.
@@ -282,6 +282,7 @@ enum Builtin {
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum SkillAction {
     Install,
+    Files,
 }
 
 impl Cli {
@@ -344,6 +345,9 @@ impl Cli {
             Builtin::Skill {
                 action: SkillAction::Install,
             } => skill::install(&skill::target()?, ctx.globals.dry_run),
+            Builtin::Skill {
+                action: SkillAction::Files,
+            } => skill::files(ctx),
             Builtin::Op(words) => edit::op(ctx, &words),
         }
     }

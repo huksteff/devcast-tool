@@ -219,7 +219,7 @@ fn kill_tree(child: &mut Child) {
 }
 
 /// A console program started from the app opens no console window.
-fn no_window(command: &mut Command) {
+pub(crate) fn no_window(command: &mut Command) {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

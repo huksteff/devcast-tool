@@ -6,6 +6,8 @@
 pub mod find;
 pub mod prompt;
 pub mod run;
+pub mod sign_in;
+pub mod skills;
 pub mod stream;
 
 pub use find::{Found, Places, find, pick};

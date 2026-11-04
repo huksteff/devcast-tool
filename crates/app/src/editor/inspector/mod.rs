@@ -9,6 +9,7 @@
 //! [`tab`], an object kind in `object.rs`.
 
 mod ai;
+mod ai_cards;
 mod captions;
 mod object;
 

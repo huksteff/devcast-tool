@@ -3,9 +3,10 @@
 //! join one undo step by their group (`DEVCAST_GROUP`, `History::group`). The UI never waits:
 //! the agent's reader thread wakes the main window, the editor takes the events in its frame.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{Receiver, channel};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use dc_agent::{Ask, Event, Found, Job, Places, find, launch, pick, prompt};
@@ -25,6 +26,10 @@ pub enum AiAsk {
     Restart,
     /// «Проверить снова».
     LookAgain,
+    /// «Войти»: the agent's sign-in in its own console window.
+    Login,
+    /// «Открыть папку» of «Своя нейронка».
+    OpenSkill,
 }
 
 /// A line of «Ход работы».
@@ -82,14 +87,26 @@ pub struct Ai {
     pub edits: Vec<AiEdit>,
     /// The undo step of the last run: «Отменить всё» undoes it while it is on top.
     pub group: Option<String>,
+    /// Signed in to the user's account: none until checked, or when the agent cannot tell.
+    pub signed_in: Option<bool>,
+    /// The agents were looked for.
+    pub looked: bool,
+    /// The folder with the skill for agents opened without DevCast (8.10).
+    pub skill: Option<PathBuf>,
+    signing: Option<Receiver<Option<bool>>>,
     session: Option<String>,
     job: Option<Job>,
     news: Arc<AtomicBool>,
 }
 
 impl Default for Ai {
+    /// Not looked for yet: the first look at the tab looks (`look_again`), so an editor whose
+    /// tab stays closed starts no process.
     fn default() -> Self {
-        Self::new(Vec::new())
+        Self {
+            looked: false,
+            ..Self::new(Vec::new())
+        }
     }
 }
 
@@ -105,15 +122,14 @@ impl Ai {
             draft: None,
             edits: Vec::new(),
             group: None,
+            signed_in: None,
+            looked: true,
+            skill: None,
+            signing: None,
             session: None,
             job: None,
             news: Arc::new(AtomicBool::new(false)),
         }
-    }
-
-    /// The agents of this computer.
-    pub fn of_computer() -> Self {
-        Self::new(find(&Places::here()))
     }
 
     /// The agent the next run calls.
@@ -183,8 +199,13 @@ impl Ai {
 
     /// Takes the agent's events; true when the tab has news to draw.
     pub fn receive(&mut self, now: Instant) -> bool {
+        let signed = self.signing.as_ref().and_then(|s| s.try_recv().ok());
+        if let Some(signed) = signed {
+            self.signed_in = signed;
+            self.signing = None;
+        }
         let Some(job) = &self.job else {
-            return false;
+            return signed.is_some();
         };
         let events = job.receive();
         let news = !events.is_empty();
@@ -240,9 +261,54 @@ impl Ai {
         self.more.clear();
     }
 
-    /// «Проверить снова»: the agents are looked for again.
-    pub fn look_again(&mut self) {
+    /// The first look and «Проверить снова»: the agents, whether one is signed in, and the
+    /// skill for agents opened without DevCast.
+    pub fn look_again(&mut self, ctx: &egui::Context) -> Result<(), String> {
+        self.looked = true;
         self.found = find(&Places::here());
+        self.check_sign_in(ctx);
+        self.write_skill()
+    }
+
+    /// Asks the agent whether it is signed in, on a thread that wakes the main window: the
+    /// answer is a process, too slow for a frame.
+    pub fn check_sign_in(&mut self, ctx: &egui::Context) {
+        let Some(agent) = self.agent().cloned() else {
+            self.signed_in = None;
+            return;
+        };
+        let (send, answer) = channel();
+        let wake = self.waker(ctx);
+        let started = std::thread::Builder::new()
+            .name("devcast-agent-auth".to_owned())
+            .spawn(move || {
+                if send.send(dc_agent::sign_in::signed_in(&agent)).is_ok() {
+                    wake();
+                }
+            });
+        if started.is_ok() {
+            self.signing = Some(answer);
+        }
+    }
+
+    /// «Войти»: the agent signs in in its own console window.
+    pub fn login(&self) -> Result<(), String> {
+        let agent = self
+            .agent()
+            .ok_or_else(|| text::NOT_FOUND_TEXT.to_owned())?;
+        dc_agent::sign_in::open_login(agent).map_err(|e| text::not_started(&e))
+    }
+
+    /// Writes the skill for agents opened without DevCast into the app settings folder.
+    pub fn write_skill(&mut self) -> Result<(), String> {
+        let folder = dc_project::settings::dir()
+            .map_err(|e| e.to_string())?
+            .join(dc_agent::skills::FOLDER);
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let devcast = exe.parent().unwrap_or(&exe);
+        dc_agent::skills::write(&folder, devcast).map_err(|e| text::skill_not_written(&e))?;
+        self.skill = Some(folder);
+        Ok(())
     }
 
     /// Seconds since the start of the run.

@@ -68,11 +68,17 @@ pub(crate) enum RecipesCommand {
         after_help = "recipes model sonnet"
     )]
     Model { model: String },
+    #[command(
+        about = "Войти в подписку нейронки (Claude Code: claude auth login): откроется браузер",
+        after_help = "recipes login"
+    )]
+    Login,
 }
 
 pub(crate) fn execute(ctx: &Ctx<'_>, command: RecipesCommand) -> Result<Answer, CliError> {
     let edits = match command {
         RecipesCommand::Ls => return ls(ctx),
+        RecipesCommand::Login => return login(ctx),
         RecipesCommand::Add {
             name,
             prompt,
@@ -122,7 +128,12 @@ pub(crate) fn execute(ctx: &Ctx<'_>, command: RecipesCommand) -> Result<Answer, 
 fn ls(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
     let ai = ctx.app_settings()?.ai;
     let found = find(&Places::here());
+    let chosen = dc_agent::pick(&found, ai.agent);
+    let signed = chosen.and_then(dc_agent::sign_in::signed_in);
     let mut lines = vec![format!("нейронка: {}", agents_line(&ai, &found))];
+    if signed == Some(false) {
+        lines.push("не вошла в подписку: devcast recipes login".to_owned());
+    }
     lines.push(format!(
         "модель: {}",
         ai.model.as_deref().unwrap_or("по умолчанию")
@@ -140,8 +151,38 @@ fn ls(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         .iter()
         .map(|f| json!({ "agent": f.agent, "path": f.path }))
         .collect();
-    let json = json!({ "found": found, "ai": choices_json(&ai) });
+    let json = json!({ "found": found, "signed_in": signed, "ai": choices_json(&ai) });
     Ok(Answer::new(lines.join("\n"), json))
+}
+
+/// `recipes login`: the agent's own sign-in, in this console (a browser page opens).
+fn login(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
+    let ai = ctx.app_settings()?.ai;
+    let found = find(&Places::here());
+    let agent = dc_agent::pick(&found, ai.agent).ok_or_else(|| {
+        CliError::Failed("нейронка не найдена: поставь Claude Code или Codex".to_owned())
+    })?;
+    let name = agent_name(agent.agent);
+    if ctx.globals.dry_run {
+        let text = format!("dry-run: {name} не запущен");
+        return Ok(Answer::new(text, json!({ "dry_run": true })));
+    }
+    let status = std::process::Command::new(&agent.path)
+        .args(dc_agent::sign_in::login_args(agent.agent))
+        .status()
+        .map_err(|e| {
+            CliError::Failed(format!("{name} не запустился ({e}): проверь, что он стоит"))
+        })?;
+    let signed = dc_agent::sign_in::signed_in(agent);
+    if !status.success() || signed == Some(false) {
+        return Err(CliError::Failed(format!(
+            "{name} не вошёл в подписку: запусти devcast recipes login ещё раз"
+        )));
+    }
+    Ok(Answer::new(
+        format!("{name}: вход выполнен"),
+        json!({ "signed_in": signed }),
+    ))
 }
 
 fn agents_line(ai: &AiChoices, found: &[dc_agent::Found]) -> String {

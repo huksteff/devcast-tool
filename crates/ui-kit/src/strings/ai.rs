@@ -29,6 +29,13 @@ pub const HOW_TO_INSTALL: &str = "Как поставить";
 /// Where «Как поставить» leads: how to set up Claude Code.
 pub const INSTALL_URL: &str = "https://docs.anthropic.com/en/docs/claude-code/setup";
 pub const CHECK_AGAIN: &str = "Проверить снова";
+pub const SIGNED_OUT: &str = "нейронка не вошла в аккаунт";
+pub const SIGNED_OUT_TEXT: &str = "Claude Code нашёлся, но не вошёл в вашу подписку. «Войти» откроет окно: войдите в браузере, потом нажмите «Проверить снова».";
+pub const SIGN_IN: &str = "Войти";
+pub const OWN_AGENT: &str = "Своя нейронка";
+pub const OWN_AGENT_TEXT: &str = "Чтобы монтировать нейронкой вне DevCast (Claude Code, Codex, Cursor, Gemini …), отдайте ей эту папку и попросите установить скилл:";
+pub const COPY_ASK: &str = "Копировать просьбу";
+pub const OPEN_FOLDER: &str = "Открыть папку";
 pub const RECIPE_NAME: &str = "Название";
 pub const RECIPE_NAME_HINT: &str = "например: «Лого в углу»";
 pub const RECIPE_PROMPT: &str = "Что попросить у нейронки";
@@ -78,6 +85,13 @@ pub fn not_started(error: &dyn std::fmt::Display) -> String {
 
 fn clock(secs: u64) -> String {
     format!("{}:{:02}", secs / 60, secs % 60)
+}
+
+/// The skill folder for agents opened without DevCast could not be written.
+pub fn skill_not_written(error: &dyn std::fmt::Display) -> String {
+    format!(
+        "Скилл для своей нейронки не записан ({error}): проверьте место на диске и права на папку настроек."
+    )
 }
 
 #[cfg(test)]

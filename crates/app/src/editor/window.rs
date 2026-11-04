@@ -31,7 +31,6 @@ impl Shared {
             crate::models::Models::of_app(self.downloads.clone()),
             crate::recognition::job::cli_worker(),
         );
-        editor.ai = super::ai::Ai::of_computer();
         if let Some(gpu) = self.gpu.clone() {
             if self.exports.is_none() {
                 let ctx = self.ctx.clone();

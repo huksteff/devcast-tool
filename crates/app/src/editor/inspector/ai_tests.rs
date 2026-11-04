@@ -194,3 +194,35 @@ fn without_an_agent_the_tab_says_what_is_needed() {
     );
     harness.snapshot("inspector_ai_not_found");
 }
+
+#[test]
+fn a_signed_out_agent_offers_its_sign_in_and_the_skill_for_own_agents() {
+    let mut harness = ai_tab(vec![Found {
+        agent: Agent::Claude,
+        path: "нет такой программы.exe".into(),
+    }]);
+    let folder = std::path::PathBuf::from(r"C:\Users\Кто-то\AppData\Roaming\DevCast\agent-skill");
+    let ai = &mut harness.state_mut().editor.ai;
+    ai.signed_in = Some(false);
+    ai.skill = Some(folder.clone());
+    harness.run();
+    assert!(harness.query_by_label(text::SIGNED_OUT_TEXT).is_some());
+    assert!(
+        harness
+            .query_by_role_and_label(egui::Role::Button, text::RUN)
+            .is_none()
+    );
+    harness.get_by_label(text::OWN_AGENT).click();
+    harness.run();
+    assert!(
+        harness
+            .query_by_label(&folder.display().to_string())
+            .is_some()
+    );
+    harness.snapshot("inspector_ai_signed_out");
+    assert!(
+        harness
+            .query_by_role_and_label(egui::Role::Button, text::SIGN_IN)
+            .is_some()
+    );
+}

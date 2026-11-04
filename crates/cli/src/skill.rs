@@ -47,3 +47,35 @@ pub(crate) fn install(target: &Path, dry_run: bool) -> Result<Answer, CliError> 
         json,
     ))
 }
+
+/// `devcast skill files`: the skill for any agent in `agent-skill` of the app settings folder
+/// (`dc_agent::skills`), and the request to hand the agent.
+pub(crate) fn files(ctx: &crate::edit::Ctx<'_>) -> Result<Answer, CliError> {
+    let folder = ctx.settings_dir()?.join(dc_agent::skills::FOLDER);
+    let ask = dc_agent::skills::ask(&folder);
+    let json = json!({"path": folder, "ask": ask, "dry_run": ctx.globals.dry_run});
+    if ctx.globals.dry_run {
+        let text = format!(
+            "dry-run, ничего не записано: скилл ляжет в {}",
+            folder.display()
+        );
+        return Ok(Answer::new(text, json));
+    }
+    let exe = std::env::current_exe().map_err(|e| {
+        CliError::Failed(format!(
+            "не найден путь к devcast ({e}): запусти devcast из его папки"
+        ))
+    })?;
+    let devcast = exe.parent().unwrap_or(&exe);
+    dc_agent::skills::write(&folder, devcast).map_err(|e| {
+        CliError::Failed(format!(
+            "скилл не записан в «{}» ({e}): проверь место на диске и права",
+            folder.display()
+        ))
+    })?;
+    let text = format!(
+        "скилл для любой нейронки: {}\nскажи нейронке: {ask}",
+        folder.display()
+    );
+    Ok(Answer::new(text, json))
+}
