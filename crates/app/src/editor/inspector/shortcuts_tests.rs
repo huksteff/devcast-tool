@@ -112,7 +112,7 @@ fn with_shortcuts() -> H {
 fn the_keys_panel_counts_the_shortcuts_and_shows_a_sample() {
     let mut harness = with_shortcuts();
     let head = harness.get_by_role_and_label(egui::Role::Heading, text::KEYS);
-    assert_eq!(head.value().as_deref(), Some("3 сочетания в записях"));
+    assert_eq!(head.value().as_deref(), Some("3 клавиши в записях"));
     assert!(harness.query_by_label("Ctrl + Shift + P ×2").is_some());
     harness.snapshot("editor_key_chips_off");
     click(&mut harness, egui::Role::Switch, names::KEYS_SHOW);
@@ -131,6 +131,6 @@ fn plate_samples_read_like_on_the_mockup() {
     );
     assert_eq!(names::plate_sample("F5", 1), "F5");
     assert_eq!(names::plate_sample("Ctrl++", 1), "Ctrl + +");
-    assert_eq!(names::shortcuts_found(1), "1 сочетание в записях");
-    assert_eq!(names::shortcuts_found(0), "в записях нет сочетаний");
+    assert_eq!(names::shortcuts_found(1), "1 клавиша в записях");
+    assert_eq!(names::shortcuts_found(0), "в записях нет нажатых клавиш");
 }
