@@ -72,9 +72,9 @@ pub struct KeyFilter {
     /// The left Ctrl that Windows adds for AltGr is down: the right Alt is AltGr, it types
     /// characters and is not a modifier.
     altgr: bool,
-    /// The modifier key that went down last with no other key since: released, it is a press
-    /// of its own.
-    tapped: Option<u16>,
+    /// Only modifiers went down since the last other key: the first of them released is a press
+    /// of the modifiers held (`Ctrl+Shift`), whatever order they are released in.
+    tapped: bool,
 }
 
 impl KeyFilter {
@@ -90,7 +90,7 @@ impl KeyFilter {
         if let Some(bit) = MODIFIER_KEYS.iter().position(|&(k, _)| k == key) {
             return self.modifier(bit, key, down);
         }
-        self.tapped = None;
+        self.tapped = false;
         down.then(|| KeyEvent {
             key,
             modifiers: self.modifiers(),
@@ -101,13 +101,14 @@ impl KeyFilter {
         if down {
             // Auto-repeat of a held modifier keeps its tap.
             if self.down & (1 << bit) == 0 {
-                self.tapped = Some(key);
+                self.tapped = true;
             }
             self.down |= 1 << bit;
             return None;
         }
+        let was_down = self.down & (1 << bit) != 0;
         self.down &= !(1 << bit);
-        (self.tapped.take() == Some(key)).then(|| KeyEvent {
+        (was_down && std::mem::take(&mut self.tapped)).then(|| KeyEvent {
             key,
             modifiers: self.modifiers(),
         })

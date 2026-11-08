@@ -102,6 +102,15 @@ fn a_modifier_tapped_alone_is_a_press_on_its_release() {
         pressed(SHIFT, true, false, false, false).name(),
         "Ctrl+Shift"
     );
+    // Released in the order pressed: still one press, Ctrl+Shift.
+    assert_eq!(filter.key(stroke(CTRL, true)), None);
+    assert_eq!(filter.key(stroke(SHIFT, true)), None);
+    let first = filter.key(stroke(CTRL, false));
+    assert_eq!(first, Some(pressed(CTRL, false, true, false, false)));
+    assert_eq!(first.map(|p| p.name()).as_deref(), Some("Ctrl+Shift"));
+    assert_eq!(filter.key(stroke(SHIFT, false)), None);
+    // A release with nothing down before it (held since before the recording) is no press.
+    assert_eq!(filter.key(stroke(ALT, false)), None);
     // A modifier of a chord is not a press of its own.
     assert_eq!(press(&mut filter, &[CTRL, letter('c')]).len(), 1);
     assert_eq!(
