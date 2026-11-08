@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::export::Spec;
 use crate::export_jobs::{Finished, Job};
 pub use crate::live_app::{
-    AppStatus, CaptionsState, EditorState, RecordAnswer, RecordControl, RecordingState,
+    AppStatus, CaptionsState, EditorState, RecordAnswer, RecordControl, RecordingState, UpdateState,
 };
 
 /// Service name of the channel (`dc_ipc::socket_name`).
@@ -92,6 +92,11 @@ pub enum Request {
     StopCaptions { root: PathBuf },
     /// `devcast app status` ([`Answer::Status`]).
     Status,
+    /// `devcast app update`: as «Проверить обновления» of the settings, the answer
+    /// ([`Answer::Update`]) once the check ended; with `install`, a newer version is also
+    /// downloaded and the app restarts into it, as «Перезапустить» (not while recording or
+    /// exporting).
+    Update { install: bool },
     /// `devcast app quit`: as «Выход» of the tray without its question: a recording is stopped
     /// and saved, the editor writes its working state. The answer comes just before the app
     /// ends ([`Answer::Quit`]).
@@ -174,6 +179,8 @@ pub enum Answer {
         stopped: bool,
     },
     Status(Box<AppStatus>),
+    /// The updates after `Request::Update`.
+    Update(UpdateState),
     /// The app ends now; `recorded`: the project of the recording it stopped and saved.
     Quit {
         recorded: Option<PathBuf>,

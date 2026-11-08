@@ -147,6 +147,10 @@ pub struct Updates {
     /// Check every 6 hours.
     pub auto_check: bool,
     pub beta: bool,
+    /// When the last check ended well, unix seconds.
+    pub checked_at: Option<u64>,
+    /// The version «Пропустить версию» was pressed for: no question about it.
+    pub skipped: Option<String>,
 }
 
 impl Default for Updates {
@@ -154,6 +158,8 @@ impl Default for Updates {
         Self {
             auto_check: true,
             beta: false,
+            checked_at: None,
+            skipped: None,
         }
     }
 }

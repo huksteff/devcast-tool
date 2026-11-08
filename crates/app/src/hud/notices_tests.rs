@@ -136,3 +136,52 @@ fn closing_the_crash_notice_shows_the_news() {
     let open = harness.state().shared.as_ref().unwrap().popover;
     assert_eq!(open.map(|o| o.kind), Some(popover::Kind::WhatsNew));
 }
+
+/// The «Обновление» popover in its three looks.
+fn update_popover(state: dc_ops::live::UpdateState, name: &str) {
+    let dir = tempfile::tempdir().unwrap();
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(egui::vec2(356.0, 150.0))
+        .build_ui_state(
+            move |ui, state: &mut State| {
+                let shared = state.shared.get_or_insert_with(|| {
+                    let store = Store::load(&state.dir.path().join("settings.json")).unwrap();
+                    Shared::new(ui.ctx().clone(), store)
+                });
+                panel_frame().show(ui, |ui| {
+                    ui.set_width(316.0);
+                    super::super::update::ui(ui, shared);
+                });
+            },
+            State { shared: None, dir },
+        );
+    harness.state_mut().shared = None;
+    harness.run();
+    harness.state_mut().shared.as_mut().unwrap().updates.state = state;
+    harness.run();
+    harness.snapshot(name);
+}
+
+#[test]
+fn update_available_popover() {
+    let version = "0.2.0".to_owned();
+    let state = dc_ops::live::UpdateState::Available { version };
+    update_popover(state, "hud_update_available");
+}
+
+#[test]
+fn update_downloading_popover() {
+    let version = "0.2.0".to_owned();
+    let state = dc_ops::live::UpdateState::Downloading {
+        version,
+        done: 0.62,
+    };
+    update_popover(state, "hud_update_downloading");
+}
+
+#[test]
+fn update_ready_popover() {
+    let version = "0.2.0".to_owned();
+    let state = dc_ops::live::UpdateState::Ready { version };
+    update_popover(state, "hud_update_ready");
+}

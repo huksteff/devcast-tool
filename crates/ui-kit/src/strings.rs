@@ -20,6 +20,7 @@ pub mod notices {
     pub const CRASHED_TEXT: &str =
         "Отчёт о падении сохранён. Отправьте папку логов команде — так быстрее починим.";
     pub const WHATS_NEW: &str = "Что нового";
+    pub const UPDATE: &str = super::update::TITLE;
     pub const GOT_IT: &str = "Понятно";
 
     /// «Что нового в 2.1.0».
@@ -283,7 +284,6 @@ pub mod settings {
     pub const AUTO_UPDATES_HINT: &str = "раз в 6 часов";
     pub const BETA: &str = "Бета-версии";
     pub const CHECK_UPDATES: &str = "Проверить обновления";
-    pub const MANUAL_UPDATES: &str = "Обновления пока ставятся вручную";
     pub const DEFAULTS_HINT: &str =
         "С этими настройками эффектов открываются новые проекты и записи.";
     pub const SAVE_DEFAULTS: &str = "Сохранить текущие как по умолчанию";
@@ -325,6 +325,7 @@ pub mod settings {
 
 /// Editor shortcuts and their help.
 pub mod keys;
+pub mod update;
 
 /// Global hotkeys in the settings.
 pub mod hotkeys {

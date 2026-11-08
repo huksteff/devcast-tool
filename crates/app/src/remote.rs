@@ -109,6 +109,7 @@ impl Shared {
             }),
             Request::StopCaptions { root } => reply.send(self.stop_captions(&root)),
             Request::Status => reply.send(Answer::Status(Box::new(self.status()))),
+            Request::Update { install } => self.update_asked(install, reply),
             request => reply.send(self.live(request)),
         }
     }
