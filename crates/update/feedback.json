@@ -2,13 +2,13 @@
   "contacts": [
     {
       "name": "Задачи",
-      "value": "github.com/huksteff/recordy-fork/issues",
-      "url": "https://github.com/huksteff/recordy-fork/issues"
+      "value": "github.com/huksteff/devcast-tool/issues",
+      "url": "https://github.com/huksteff/devcast-tool/issues"
     }
   ],
   "authors": [
     { "name": "Данила Новиков", "tag": "@d.novikov" },
     { "name": "Максим Третьяков", "tag": "@m.tretyakov" }
   ],
-  "repository": "https://github.com/huksteff/recordy-fork"
+  "repository": "https://github.com/huksteff/devcast-tool"
 }

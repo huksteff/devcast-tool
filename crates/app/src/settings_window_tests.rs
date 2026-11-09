@@ -107,7 +107,14 @@ fn captions_and_updates_pages() {
         .click();
     harness.get_by_label(text::CHECK_UPDATES).click();
     harness.run();
-    harness.get_by_label(text::MANUAL_UPDATES);
+    let pressed = harness.state_mut().window.update_action.take();
+    assert_eq!(pressed, Some(UpdateAction::Check));
+    harness.state_mut().window.update = UpdateState::Downloading {
+        version: "0.2.0".to_owned(),
+        done: 0.62,
+    };
+    harness.run();
+    harness.get_by_label(&dc_ui_kit::strings::update::downloading("0.2.0", 0.62));
     assert!(harness.state().store.get().updates.beta);
     harness.snapshot("settings_updates");
 }
