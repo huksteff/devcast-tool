@@ -143,6 +143,17 @@ pub(crate) enum AppCommand {
     )]
     Quit,
     #[command(
+        about = "Обновления, как «Проверить обновления» в настройках: проверить и сказать, есть ли новая версия; с --install скачать её и перезапустить программу в неё (не во время записи и экспорта)",
+        after_help = "app update --install"
+    )]
+    Update {
+        #[arg(
+            long,
+            help = "Скачать новую версию и перезапустить программу в неё, как «Перезапустить»"
+        )]
+        install: bool,
+    },
+    #[command(
         about = "Куда написать о баге или идее (как «О программе» в настройках) и папка логов, которую приложить",
         after_help = "app feedback"
     )]
@@ -163,6 +174,7 @@ impl AppCommand {
             Self::Status => app_control::status(ctx),
             Self::Show => app_control::show(ctx),
             Self::Quit => app_control::quit(ctx),
+            Self::Update { install } => crate::app_update::update(ctx, install),
             Self::Feedback => feedback::feedback(ctx),
             Self::Changelog { since } => changelog::changelog(since.as_deref()),
         }

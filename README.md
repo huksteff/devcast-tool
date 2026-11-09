@@ -7,7 +7,7 @@
 **Запись экрана и монтаж видео-уроков для Windows.**
 Записал — подрезал паузы — зумы встали сами — субтитры за минуту — готово.
 
-[![Скачать](https://img.shields.io/github/v/release/huksteff/recordy-fork?include_prereleases&label=%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C&style=for-the-badge&color=2f6feb)](../../releases)
+[![Скачать](https://img.shields.io/github/v/release/huksteff/devcast-tool?include_prereleases&label=%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C&style=for-the-badge&color=2f6feb)](../../releases)
 [![Лицензия](https://img.shields.io/badge/%D0%BB%D0%B8%D1%86%D0%B5%D0%BD%D0%B7%D0%B8%D1%8F-AGPL--3.0-555?style=for-the-badge)](LICENSE)
 ![Windows 10 и 11](https://img.shields.io/badge/Windows-10%20%C2%B7%2011-555?style=for-the-badge)
 

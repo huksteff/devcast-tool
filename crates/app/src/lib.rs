@@ -41,6 +41,7 @@ mod settings_hotkeys;
 mod settings_window;
 mod shortcut;
 mod tray;
+mod updates;
 
 pub use error::AppError;
 

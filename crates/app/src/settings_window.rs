@@ -3,9 +3,10 @@
 //! effect defaults come from the project open in the editor (`settings_defaults.rs`, 7.30).
 
 use dc_capture::Fps;
+use dc_ops::live::UpdateState;
 use dc_ui_kit::Icon;
 use dc_ui_kit::fonts::{self, Weight};
-use dc_ui_kit::strings::{hud, settings as text};
+use dc_ui_kit::strings::{hud, settings as text, update};
 use dc_ui_kit::tokens::{BG, BORDER, CONTROL, FS_S, R1, S2, S4, S5, SURFACE_2, TEXT, TEXT_2};
 use dc_ui_kit::widgets::{Button, LevelBar, Toggle, dropdown, segmented};
 use eframe::egui::{self, Align, Color32, Layout, Sense, Stroke, StrokeKind, Ui, vec2};
@@ -67,8 +68,18 @@ pub struct SettingsWindow {
     pub models: Models,
     /// The effect defaults, read when the window opens.
     pub defaults: DefaultsFile,
-    /// «Проверить обновления» was pressed.
-    updates_checked: bool,
+    /// The app's updates, as the frame found them.
+    pub update: UpdateState,
+    /// The update button pressed this frame.
+    pub update_action: Option<UpdateAction>,
+}
+
+/// The button of the updates row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpdateAction {
+    Check,
+    Download,
+    Restart,
 }
 
 impl SettingsWindow {
@@ -79,7 +90,8 @@ impl SettingsWindow {
             hotkeys: HotkeyPage::default(),
             models,
             defaults,
-            updates_checked: false,
+            update: UpdateState::Unknown,
+            update_action: None,
         }
     }
 
@@ -207,12 +219,12 @@ impl SettingsWindow {
 
     fn updates(&mut self, ui: &mut Ui, next: &mut AppSettings) {
         heading(ui, text::UPDATES);
-        let check = Button::new(text::CHECK_UPDATES).small();
-        let status = self.updates_checked.then_some(text::MANUAL_UPDATES);
+        let (label, action, status) = update_row(&self.update);
+        let button = Button::new(label).small();
         let version = text::version(env!("CARGO_PKG_VERSION"));
-        wide_field(ui, &version, status, check.size(ui).x, |ui| {
-            if ui.add(check).clicked() {
-                self.updates_checked = true;
+        wide_field(ui, &version, status.as_deref(), button.size(ui).x, |ui| {
+            if ui.add_enabled(action.is_some(), button).clicked() {
+                self.update_action = action;
             }
         });
         let toggle = Toggle::SIZE.x;
@@ -226,6 +238,32 @@ impl SettingsWindow {
         wide_field(ui, text::BETA, None, toggle, |ui| {
             ui.add(Toggle::new(&mut next.updates.beta, text::BETA));
         });
+    }
+}
+
+/// The button of the updates row, what it does and the status under the version.
+fn update_row(state: &UpdateState) -> (&'static str, Option<UpdateAction>, Option<String>) {
+    use UpdateAction::{Check, Download, Restart};
+    let check = text::CHECK_UPDATES;
+    match state {
+        UpdateState::NotInstalled => (check, None, Some(update::NOT_INSTALLED.into())),
+        UpdateState::Unknown => (check, Some(Check), None),
+        UpdateState::Checking => (check, None, Some(update::CHECKING.into())),
+        UpdateState::UpToDate { .. } => (check, Some(Check), Some(update::UP_TO_DATE.into())),
+        UpdateState::Available { version } => (
+            update::DOWNLOAD,
+            Some(Download),
+            Some(update::found(version)),
+        ),
+        UpdateState::Downloading { version, done } => (
+            update::DOWNLOADING_BUTTON,
+            None,
+            Some(update::downloading(version, *done)),
+        ),
+        UpdateState::Ready { version } => {
+            (update::RESTART, Some(Restart), Some(update::ready(version)))
+        }
+        UpdateState::Failed { error } => (check, Some(Check), Some(error.clone())),
     }
 }
 
@@ -311,6 +349,21 @@ fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
     {
         window.microphones = fresh;
     }
+    let update = shared.updates.state.clone();
+    let Some(window) = shared.settings.as_mut() else {
+        return;
+    };
+    window.update = update;
+    match settings_ui(ui, shared) {
+        Some(UpdateAction::Check) => shared.check_updates(),
+        Some(UpdateAction::Download) => shared.download_update(),
+        Some(UpdateAction::Restart) => shared.restart_into_update(),
+        None => {}
+    }
+}
+
+/// The window's own part of the frame; the update button pressed in it.
+fn settings_ui(ui: &mut egui::Ui, shared: &mut Shared) -> Option<UpdateAction> {
     let Shared {
         ctx,
         store,
@@ -321,9 +374,7 @@ fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
         editor,
         ..
     } = shared;
-    let Some(window) = settings else {
-        return;
-    };
+    let window = settings.as_mut()?;
     let level = match &store.get().recording.microphone {
         Some(mic) => meters.level(ctx, &AudioSource::Microphone(mic.clone())),
         None => 0.0,
@@ -337,9 +388,11 @@ fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
         toasts.push(ui.ctx(), ToastKind::Error, error.to_string());
     }
     toasts.show(ui.ctx());
+    let action = window.update_action.take();
     if ui.input(|i| i.viewport().close_requested()) {
         *settings = None;
     }
+    action
 }
 
 #[cfg(test)]

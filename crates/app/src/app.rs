@@ -66,6 +66,7 @@ pub struct Shared {
     pub waiters: crate::remote::Waiters,
     /// Releases «Что нового» shows at the start, newest first (`hud/notices.rs`).
     pub news: Vec<dc_update::Release>,
+    pub updates: crate::updates::Updates,
 }
 
 /// Which windows are open and the step of the recording: what the HUD's frame acts on.
@@ -117,6 +118,7 @@ impl Shared {
             exports: None,
             waiters: crate::remote::Waiters::default(),
             news: Vec::new(),
+            updates: crate::updates::Updates::default(),
         }
     }
 
@@ -322,7 +324,10 @@ impl eframe::App for App {
                 request => lock(&self.shared).call(request, call.reply),
             }
         }
-        lock(&self.shared).tick();
+        let mut shared = lock(&self.shared);
+        shared.tick();
+        shared.updates_tick();
+        drop(shared);
         self.hotkeys();
         self.tray();
     }
@@ -340,6 +345,7 @@ impl eframe::App for App {
             tracing::error!("рабочее состояние проекта не записано при выходе: {error}");
         }
         crate::editor::timeline_window::remember(&mut shared);
+        shared.apply_update_at_exit();
         for reply in self.quitting.drain(..) {
             let recorded = recorded.clone();
             reply.send_written(dc_ops::live::Answer::Quit { recorded });
