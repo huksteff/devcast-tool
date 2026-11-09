@@ -17,7 +17,7 @@ use crate::instance::Reply;
 
 /// What the threads tell the app.
 enum Event {
-    Checked(Result<Option<Update>, UpdateError>),
+    Checked(Result<Option<Box<Update>>, UpdateError>),
     /// Downloaded share, 0..100 %.
     Progress(i16),
     Downloaded(Result<(), UpdateError>),
@@ -140,7 +140,7 @@ impl Shared {
         let sender = self.updates.sender.clone();
         let ctx = self.ctx.clone();
         self.spawn_update_thread("devcast-update-check", move || {
-            let _ = sender.send(Event::Checked(updater.check()));
+            let _ = sender.send(Event::Checked(updater.check().map(|f| f.map(Box::new))));
             ctx.request_repaint_of(egui::ViewportId::ROOT);
         });
     }
@@ -200,7 +200,7 @@ impl Shared {
                         version: env!("CARGO_PKG_VERSION").to_owned(),
                     },
                 };
-                self.updates.found = found;
+                self.updates.found = found.map(|update| *update);
                 let checked = self.store.update(|s| s.updates.checked_at = Some(now()));
                 self.report(checked);
                 self.after_check();
