@@ -108,3 +108,35 @@ pub enum CaptionsState {
         done: Option<f32>,
     },
 }
+
+/// The app's updates (8.2): `devcast app update` and the settings window show it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum UpdateState {
+    /// The program does not run from an installation (a build of the repository): no updates.
+    NotInstalled,
+    /// Nothing checked since the start.
+    Unknown,
+    Checking,
+    /// The installed `version` is the newest of its channel.
+    UpToDate {
+        version: String,
+    },
+    /// `version` is newer than the installed one.
+    Available {
+        version: String,
+    },
+    /// `version` is being downloaded; `done` 0..1.
+    Downloading {
+        version: String,
+        done: f32,
+    },
+    /// `version` is downloaded and installs when the app exits.
+    Ready {
+        version: String,
+    },
+    /// The last check or download failed: why and what to do.
+    Failed {
+        error: String,
+    },
+}

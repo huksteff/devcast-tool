@@ -2,6 +2,7 @@
 
 mod app_control;
 mod app_settings;
+mod app_update;
 mod audio;
 mod autozoom;
 mod batch;

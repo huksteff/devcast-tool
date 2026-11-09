@@ -10,6 +10,7 @@ pub mod notices;
 pub mod picker;
 pub use dc_settings::placement;
 pub mod popover;
+pub mod update;
 
 use dc_capture::audio::AudioSource;
 use dc_capture::win::hud_window;
