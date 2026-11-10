@@ -145,17 +145,20 @@ mod tests {
     const MAIN_LINES: usize = 7;
     const MAIN_LENGTH: usize = 100;
 
-    /// «Не выпущено» is the next release: it is held to the same rule.
+    /// «Не выпущено» is the next release: its «Главное» is held to the same size, but may
+    /// be empty until the release (the release section is then checked as a release).
     #[test]
     fn every_release_tells_the_main_things_in_a_few_short_lines() {
-        let text = CHANGELOG.replace("## Не выпущено", "## 9999.0.0");
+        const NEXT: &str = "9999.0.0";
+        let text = CHANGELOG.replace("## Не выпущено", &format!("## {NEXT}"));
         let all = releases(&text);
         assert!(all.len() >= 2);
         for release in all {
             let main = release.main();
+            let least = usize::from(release.version != NEXT);
             assert!(
-                (1..=MAIN_LINES).contains(&main.len()),
-                "{}: «### Главное» has {} lines, 1–{MAIN_LINES} wanted",
+                (least..=MAIN_LINES).contains(&main.len()),
+                "{}: «### Главное» has {} lines, {least}–{MAIN_LINES} wanted",
                 release.version,
                 main.len()
             );
