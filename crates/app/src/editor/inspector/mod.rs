@@ -234,7 +234,7 @@ fn action(request: Request) -> Option<Action> {
             item.map(|item| Action::ListPick(Selected::Region(item)))
         }
         Request::Seek(at) => Some(Action::Transport(Transport::Scrub(at))),
-        Request::AddFont(then) => rfd::FileDialog::new()
+        Request::AddFont(then) => crate::dialog::file()
             .set_title(names::PICK_FONT)
             .add_filter(names::FONT_FILES, &dc_render::FONT_EXTENSIONS)
             .pick_file()
@@ -252,7 +252,7 @@ fn picture(id: &str, at: Option<OutputTime>) -> Option<Action> {
         tracing::warn!("a panel asked for a picture of {id}, which is not an annotation");
         return None;
     };
-    let path = rfd::FileDialog::new()
+    let path = crate::dialog::file()
         .set_title(annotations::PICK_PICTURE)
         .add_filter(annotations::PICTURES, &dc_media::PICTURE_EXTENSIONS)
         .pick_file()?;

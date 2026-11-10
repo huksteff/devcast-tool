@@ -5,16 +5,20 @@
 //! `devcast record` does when its channel closes.
 
 use std::path::PathBuf;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread::JoinHandle;
+use std::time::Duration;
 
-use dc_capture::win::{ProjectRecording, RecordedProject};
+use dc_capture::win::{ProjectRecording, RecordedProject, low_room};
 use dc_capture::{HostTime, RecordingConfig};
 use dc_project::{Defaults, ProjectDir, ProjectLock};
 use eframe::egui;
 
 use crate::editor::LOCK_OWNER;
 use crate::error::AppError;
+
+/// How often a running recording looks at the room left on its disk.
+const ROOM_CHECK: Duration = Duration::from_secs(15);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Request {
@@ -140,9 +144,22 @@ fn run(
         Err(error) => return send(Event::Failed(error.to_string())),
     };
     send(Event::Started(recording.recording().info().start));
+    let mut warned = false;
     loop {
-        // The app went away without a stop: the recording is kept.
-        let request = requests.recv().unwrap_or(Request::Stop);
+        let request = match requests.recv_timeout(ROOM_CHECK) {
+            Ok(request) => request,
+            // The app went away without a stop: the recording is kept.
+            Err(RecvTimeoutError::Disconnected) => Request::Stop,
+            Err(RecvTimeoutError::Timeout) => {
+                // Told once: a disk that fills up cuts the recording off.
+                let low = dc_capture::win::free_space(root).ok().and_then(low_room);
+                if let (false, Some(low)) = (warned, low) {
+                    warned = true;
+                    send(Event::Error(low));
+                }
+                continue;
+            }
+        };
         match request {
             Request::Pause => send(match recording.pause() {
                 Ok(at) => Event::Paused(at),

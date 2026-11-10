@@ -45,6 +45,7 @@ pub mod hud {
     pub const RECORD: &str = "Запись";
     pub const MORE: &str = "Ещё";
     pub const HIDE_FROM_RECORDING: &str = "Скрывать HUD из записи";
+    pub const RECENT: &str = "Последние проекты";
     pub const OPEN_PROJECT: &str = "Открыть проект…";
     pub const SETTINGS: &str = "Настройки";
     pub const TO_TRAY: &str = "Свернуть в трей";
@@ -63,6 +64,7 @@ pub mod hud {
     pub const PREPARING: &str = "Подготовка записи";
     pub const PREPARING_HINT: &str = "Редактор откроется через пару секунд";
     pub const PREPARE_FAILED: &str = "Запись не подготовлена";
+    pub const RECOVER: &str = "Восстановить и открыть";
     pub const OPEN_FOLDER: &str = "Открыть папку записи";
     pub const WINDOW: &str = "Окно";
     pub const AREA: &str = "Область";
@@ -356,6 +358,7 @@ pub mod tray {
     pub const TOOLTIP: &str = "DevCast";
     pub const READY: &str = "DevCast — готов к записи";
     pub const SHOW: &str = "Показать панель";
+    pub const RECENT: &str = "Последние проекты";
     pub const STOP: &str = "Остановить";
     pub const SETTINGS: &str = "Настройки";
     pub const QUIT: &str = "Выход";

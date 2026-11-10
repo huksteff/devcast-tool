@@ -7,6 +7,7 @@ mod audio;
 mod autozoom;
 mod batch;
 mod beautify;
+mod bounds;
 mod builtin;
 mod builtin_app;
 mod builtin_groups;

@@ -176,6 +176,9 @@ pub struct EditorLayout {
     pub timeline_window: bool,
     /// Where the timeline window was when it closed last; `None` — centred on the HUD monitor.
     pub timeline_place: Option<WindowPlace>,
+    /// Where the editor window was when it closed last (not maximized); `None` — 1280 × 800
+    /// centred on the HUD monitor.
+    pub window_place: Option<WindowPlace>,
 }
 
 impl Default for EditorLayout {
@@ -185,6 +188,7 @@ impl Default for EditorLayout {
             rows: 1.0,
             timeline_window: false,
             timeline_place: None,
+            window_place: None,
         }
     }
 }

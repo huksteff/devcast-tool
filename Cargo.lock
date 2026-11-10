@@ -1397,6 +1397,7 @@ dependencies = [
  "dc-core",
  "dc-encode",
  "dc-project",
+ "raw-window-handle",
  "rubato",
  "serde",
  "serde_json",

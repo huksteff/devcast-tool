@@ -263,26 +263,31 @@ impl Shared {
     pub fn tray_view(&self) -> TrayView {
         let source =
             || crate::hud::bar::source_label(&self.store.get().recording.source, &self.sources);
+        let recent = self.recent().into_iter().map(|(name, _)| name).collect();
         match &self.session {
             Session::Live(live) => TrayView {
                 status: tray::recording(&live.timer(), &source()),
                 recording: true,
                 can_stop: true,
+                recent,
             },
             Session::Preparing(_) => TrayView {
                 status: dc_ui_kit::strings::hud::PREPARING.to_owned(),
                 recording: true,
                 can_stop: false,
+                recent: Vec::new(),
             },
             Session::Starting { .. } | Session::Cancelling(_) => TrayView {
                 status: tray::recording("00:00", &source()),
                 recording: true,
                 can_stop: false,
+                recent: Vec::new(),
             },
             Session::Idle | Session::Countdown(_) | Session::Launch => TrayView {
                 status: tray::READY.to_owned(),
                 recording: false,
                 can_stop: matches!(self.session, Session::Countdown(_)),
+                recent,
             },
         }
     }

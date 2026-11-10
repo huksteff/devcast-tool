@@ -252,3 +252,22 @@ fn the_window_plays_while_the_editor_gets_no_frames() {
         "the window asks for its next frame itself: {delay:?}"
     );
 }
+
+#[test]
+fn the_editor_window_place_is_remembered_when_the_editor_goes() {
+    let (_project, _settings, both) = shared();
+    assert_eq!(lock(&both).store.get().editor.window_place, None);
+    let place = WindowPlace {
+        x: -1800.0,
+        y: 60.0,
+        width: 1400.0,
+        height: 900.0,
+    };
+    lock(&both).editor.as_mut().unwrap().detached.window = Some(place);
+    timeline_window::remember(&mut lock(&both));
+    assert_eq!(lock(&both).store.get().editor.window_place, Some(place));
+    // A window that told no place (maximized all along) keeps the saved one.
+    lock(&both).editor.as_mut().unwrap().detached.window = None;
+    timeline_window::remember(&mut lock(&both));
+    assert_eq!(lock(&both).store.get().editor.window_place, Some(place));
+}

@@ -25,12 +25,13 @@ const USAGE: &str = "\
 Использование: cargo xtask <команда>
 
 Команды:
-  verify [--full] [--include-ignored] [--quick]
+  verify [--full] [--include-ignored] [--quick] [--checks | --tests]
       Проверки перед «готово»: fmt, clippy, длина файлов, CLAUDE.md и lints крейтов, зависимости,
       пометки о недоделках, тесты.
       Без --full тесты идут только для крейтов с незакоммиченными правками
       и для крейтов, которые от них зависят. --include-ignored добавляет долгие тесты.
       --quick — только проверки без сборки (без clippy и тестов), секунды.
+      --checks — всё, кроме тестов; --tests — только тесты (CI гоняет их на двух машинах сразу).
   hook-stop
       Stop-хук Claude Code (.claude/settings.json): если менялся код и verify --quick красный,
       не даёт сессии закончиться и передаёт отчёт агенту.
