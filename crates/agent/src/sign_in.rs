@@ -25,6 +25,24 @@ pub fn signed_in(found: &Found) -> Option<bool> {
     }
 }
 
+/// Whether the agent really works on the user's subscription: asks it for one word (a few
+/// seconds and tokens). The check after a run was [`refused`]: the status goes on telling
+/// «signed in» with a token that is no longer taken. None when the agent cannot be asked.
+pub fn answers(found: &Found) -> Option<bool> {
+    match found.agent {
+        Agent::Claude => {
+            let mut ask = Command::new(&found.path);
+            ask.args(["-p", "ok", "--model", "haiku"])
+                .stdin(Stdio::null());
+            crate::run::no_window(&mut ask);
+            let said = ask.output().ok()?;
+            let all = [said.stdout, said.stderr].concat();
+            Some(said.status.success() && !refused(&String::from_utf8_lossy(&all)))
+        }
+        Agent::Codex => None,
+    }
+}
+
 /// Whether `why`, the reason a run failed, says the agent is not signed in: its status may
 /// still tell «signed in» while the token it keeps is refused (expired, revoked).
 pub fn refused(why: &str) -> bool {

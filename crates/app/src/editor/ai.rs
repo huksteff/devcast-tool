@@ -94,6 +94,9 @@ pub struct Ai {
     pub limits: Option<(dc_agent::Limits, dc_agent::Limits)>,
     /// Signed in to the user's account: none until checked, or when the agent cannot tell.
     pub signed_in: Option<bool>,
+    /// A run failed because the sign-in was refused: «Проверить снова» asks the agent itself,
+    /// not its status.
+    refused: bool,
     /// The agents were looked for.
     pub looked: bool,
     /// The folder with the skill for agents opened without DevCast (8.10).
@@ -130,6 +133,7 @@ impl Ai {
             usage: None,
             limits: None,
             signed_in: None,
+            refused: false,
             looked: true,
             skill: None,
             signing: None,
@@ -212,6 +216,7 @@ impl Ai {
         if let Some(signed) = signed {
             self.signed_in = signed;
             self.signing = None;
+            self.refused &= signed != Some(true);
         }
         let Some(job) = &self.job else {
             return signed.is_some();
@@ -252,6 +257,7 @@ impl Ai {
                     Ok(said) => Phase::Done { secs, said },
                     // The sign-in is gone: the tab asks to sign in instead of an error to read.
                     Err(why) if dc_agent::sign_in::refused(&why) => {
+                        self.refused = true;
                         self.signed_in = Some(false);
                         Phase::Idle
                     }
@@ -298,10 +304,16 @@ impl Ai {
         };
         let (send, answer) = channel();
         let wake = self.waker(ctx);
+        // After a refused run the status is not believed: the agent is asked for a word.
+        let probe = self.refused;
         let started = std::thread::Builder::new()
             .name("devcast-agent-auth".to_owned())
             .spawn(move || {
-                if send.send(dc_agent::sign_in::signed_in(&agent)).is_ok() {
+                let signed = match probe {
+                    true => dc_agent::sign_in::answers(&agent),
+                    false => dc_agent::sign_in::signed_in(&agent),
+                };
+                if send.send(signed).is_ok() {
                     wake();
                 }
             });
