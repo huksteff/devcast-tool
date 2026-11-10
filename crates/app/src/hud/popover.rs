@@ -263,8 +263,9 @@ fn cancel(ui: &mut Ui, shared: &mut Shared) {
     }
 }
 
-/// The stop did not finish: the error, «Копировать», «Открыть папку записи», «Закрыть». The
-/// recording stays in its folder and is recovered on the next open of the project.
+/// The stop did not finish: the error, «Копировать», «Восстановить и открыть», «Открыть папку
+/// записи», «Закрыть». The recording stays in its folder: opening its project finishes it from
+/// what was written (`dc_ops::recovery`).
 fn failed(ui: &mut Ui, shared: &mut Shared) {
     let Some((message, root)) = shared.failure.clone() else {
         shared.popover = None;
@@ -273,9 +274,14 @@ fn failed(ui: &mut Ui, shared: &mut Shared) {
     let panel = ErrorPanel {
         title: hud::PREPARE_FAILED,
         text: &message,
-        extra: &[hud::OPEN_FOLDER],
+        extra: &[hud::RECOVER, hud::OPEN_FOLDER],
     };
     match panel.show(ui) {
+        Some(ErrorAction::Extra(0)) => {
+            shared.failure = None;
+            shared.popover = None;
+            shared.open_project(&root, false);
+        }
         Some(ErrorAction::Extra(_)) => shared.report(crate::open_folder(&root)),
         Some(ErrorAction::Close) => {
             shared.failure = None;

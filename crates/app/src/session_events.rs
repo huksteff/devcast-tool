@@ -118,6 +118,7 @@ impl Shared {
             (Event::Failed(message), Session::Preparing(recorder)) => {
                 let root = recorder.root().to_path_buf();
                 recorder.join();
+                tracing::error!("запись {} не подготовлена: {message}", root.display());
                 self.waiters.hear(Heard::Failed(message.clone()));
                 self.show_hud();
                 self.failure = Some((message, root));

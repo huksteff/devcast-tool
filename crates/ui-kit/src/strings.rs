@@ -63,6 +63,7 @@ pub mod hud {
     pub const PREPARING: &str = "Подготовка записи";
     pub const PREPARING_HINT: &str = "Редактор откроется через пару секунд";
     pub const PREPARE_FAILED: &str = "Запись не подготовлена";
+    pub const RECOVER: &str = "Восстановить и открыть";
     pub const OPEN_FOLDER: &str = "Открыть папку записи";
     pub const WINDOW: &str = "Окно";
     pub const AREA: &str = "Область";
