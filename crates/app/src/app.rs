@@ -2,7 +2,6 @@
 //! windows are deferred viewports that share [`Shared`] with the main one.
 
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use dc_capture::SourceList;
@@ -13,7 +12,7 @@ use eframe::egui;
 use crate::editor::EditorWindow;
 use crate::hotkeys::{Command, GlobalKeys};
 use crate::hud::{HudWindow, picker, popover};
-use crate::instance::Call;
+use crate::instance::Calls;
 use crate::meters::Meters;
 pub use crate::monitor::on_hud_monitor;
 use crate::session::Session;
@@ -201,7 +200,7 @@ impl Shared {
 
 pub struct App {
     /// Requests of the app channel: a second start, `devcast` on the editor's project.
-    calls: Receiver<Call>,
+    calls: Calls,
     shared: Arc<Mutex<Shared>>,
     hud: HudWindow,
     tray: Tray,
@@ -211,13 +210,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(
-        calls: Receiver<Call>,
-        shared: Shared,
-        hwnd: isize,
-        tray: Tray,
-        keys: GlobalKeys,
-    ) -> Self {
+    pub fn new(calls: Calls, shared: Shared, hwnd: isize, tray: Tray, keys: GlobalKeys) -> Self {
         let mut shared = shared;
         let hud = HudWindow::new(hwnd, &mut shared);
         Self {

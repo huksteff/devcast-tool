@@ -40,6 +40,7 @@ impl ProjectRecording {
         app: &str,
         defaults: Defaults,
     ) -> Result<Self, CaptureError> {
+        super::disk::room_to_start(root)?;
         let dir = ProjectDir::create(root)?;
         let lock = ProjectLock::acquire(&dir, app)?;
         let mut project = Project::default();
