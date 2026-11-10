@@ -53,8 +53,8 @@ pub struct Ask<'a> {
     pub group: &'a str,
 }
 
-/// The command line of `ask`: Claude Code with only `Bash(devcast …)` allowed and nothing to
-/// ask about; Codex in its sandbox writing only the project folder.
+/// The command line of `ask`: Claude Code with only `Bash(devcast …)` allowed and nobody to
+/// ask (`-p`); Codex in its sandbox writing only the project folder.
 pub fn launch(ask: &Ask<'_>) -> Launch {
     let mut args: Vec<OsString> = Vec::new();
     let mut input = ask.request.to_owned();
@@ -66,10 +66,10 @@ pub fn launch(ask: &Ask<'_>) -> Launch {
             );
             add(&mut args, &["--tools", TOOLS, "--allowedTools"]);
             add(&mut args, &ALLOWED);
-            add(
-                &mut args,
-                &["--permission-prompts", "none", "--strict-mcp-config"],
-            );
+            // Only flags that old versions know too (checked on 2.1.220 and 2.1.321): the
+            // user's Claude Code is whatever they have. With `-p` nobody answers a permission
+            // prompt, so anything not allowed is refused without a flag for it.
+            add(&mut args, &["--strict-mcp-config"]);
             add(
                 &mut args,
                 &["--disable-slash-commands", "--append-system-prompt-file"],

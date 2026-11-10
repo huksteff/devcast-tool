@@ -46,8 +46,8 @@ fn claude_code_may_only_run_devcast_and_gets_the_skill_as_a_file() {
         "PowerShell may run devcast too"
     );
     assert!(
-        has(&args, ["--permission-prompts", "none"]),
-        "nothing waits for a person"
+        !args.iter().any(|a| a == "--permission-prompts"),
+        "old versions do not know it"
     );
     assert!(has(
         &args,
