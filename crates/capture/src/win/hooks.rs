@@ -5,8 +5,8 @@
 //! with the host clock and hands it to the writer thread. Cursor shape changes come to the
 //! same loop as accessibility events of the cursor object (`OBJID_CURSOR`: shown, hidden,
 //! «name» changed = new shape); the picture of a cursor handle is read the first time it is
-//! seen, while the handle is surely alive, and encoded by the writer. Keys go through the
-//! privacy filter right in the keyboard hook; what it drops is not stored anywhere.
+//! seen, while the handle is surely alive, and encoded by the writer. Keys go through
+//! `KeyFilter` right in the keyboard hook: key strokes become presses with their modifiers.
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -239,7 +239,7 @@ pub fn send_mouse(event: Result<CursorEvent, CaptureError>) {
     post(now().and_then(|at| Ok(InputMessage::Mouse(Timed { at, event: event? }))));
 }
 
-/// Passes a key going down or up through the privacy filter; only a shortcut is stamped and
+/// Passes a key going down or up through the filter; only a press it returns is stamped and
 /// sent.
 pub fn send_key(stroke: Stroke) {
     let kept = STATE.with_borrow_mut(|state| state.as_mut().and_then(|s| s.keys.key(stroke)));

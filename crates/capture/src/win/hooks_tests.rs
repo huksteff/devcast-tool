@@ -1,5 +1,5 @@
-//! The keyboard hook procedure on synthetic hook events (no real input): typed text never
-//! leaves the hook, shortcuts reach `keys.bin`.
+//! The keyboard hook procedure on synthetic hook events (no real input): every key reaches
+//! `keys.bin`, typed text too; AltGr is not Ctrl+Alt.
 
 use std::sync::mpsc;
 
@@ -10,7 +10,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 use super::super::keys::keyboard_proc;
 use super::*;
-use crate::input::{KEYS_FILE, KeyEvent, Modifiers, read_keys, write};
+use crate::input::{KeyEvent, Modifiers, read_keys, write};
 
 const CTRL: u16 = 0xA2;
 const SHIFT: u16 = 0xA0;
@@ -113,13 +113,12 @@ fn altgr(key: u8) {
 }
 
 #[test]
-fn altgr_characters_and_alt_codes_are_text() {
+fn altgr_types_plain_keys_and_alt_keeps_its_numpad() {
     let queued = queued(|| {
         for key in *b"QEL" {
             altgr(key);
         }
-        // Alt + Numpad 6, 5 types «A»; without Num Lock the Numpad sends navigation codes
-        // without the extended flag.
+        // Alt + Numpad 6, 5 (types «A»); without Num Lock the Numpad sends navigation codes.
         press(&[ALT, 0x66, 0x65]);
         hook(ALT, true, true);
         for key in [0x27, 0x0C] {
@@ -140,8 +139,14 @@ fn altgr_characters_and_alt_codes_are_text() {
         hook_scan(0x25, 0x4B, true, false, true);
         hook(ALT, false, true);
     });
-    assert_eq!(queued.len(), 3, "only shortcuts are queued");
     let expected = [
+        with(u16::from(b'Q'), false, false, false),
+        with(u16::from(b'E'), false, false, false),
+        with(u16::from(b'L'), false, false, false),
+        with(0x66, false, false, true),
+        with(0x65, false, false, true),
+        with(0x27, false, false, true),
+        with(0x0C, false, false, true),
         with(DELETE, true, false, true),
         with(TAB, false, false, true),
         with(0x25, false, false, true),
@@ -150,7 +155,7 @@ fn altgr_characters_and_alt_codes_are_text() {
 }
 
 #[test]
-fn typed_text_never_leaves_the_hook_and_shortcuts_reach_the_file() {
+fn every_key_reaches_the_file() {
     let queued = queued(|| {
         for key in "ABC".encode_utf16() {
             press(&[key]);
@@ -162,8 +167,14 @@ fn typed_text_never_leaves_the_hook_and_shortcuts_reach_the_file() {
         press(&[F5]);
     });
     let keys = keys_of(&queued);
-    assert_eq!(queued.len(), keys.len(), "only shortcuts are queued");
+    assert_eq!(queued.len(), keys.len(), "only key presses are queued");
     let expected = [
+        with(u16::from(b'A'), false, false, false),
+        with(u16::from(b'B'), false, false, false),
+        with(u16::from(b'C'), false, false, false),
+        with(u16::from(b'A'), false, true, false),
+        with(u16::from(b'1'), false, false, false),
+        with(0x20, false, false, false),
         with(u16::from(b'P'), true, true, false),
         with(TAB, false, false, true),
         with(F5, false, false, false),
@@ -183,16 +194,11 @@ fn typed_text_never_leaves_the_hook_and_shortcuts_reach_the_file() {
     }
     drop(send);
     let summary = write(&receive, |_| Ok(Vec::new())).unwrap();
-    assert_eq!(summary.keys, 3);
+    assert_eq!(summary.keys, 9);
     let written: Vec<KeyEvent> = read_keys(dir.path())
         .unwrap()
         .iter()
         .map(|k| k.event)
         .collect();
     assert_eq!(written, expected);
-    let bytes = std::fs::read(dir.path().join(KEYS_FILE)).unwrap();
-    let typed = bytes[8..]
-        .chunks(12)
-        .filter(|r| matches!(r[8], b'A'..=b'C') && r[10] & 0b1101 == 0);
-    assert_eq!(typed.count(), 0, "abc or Shift+A in keys.bin");
 }

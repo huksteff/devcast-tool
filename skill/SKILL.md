@@ -41,7 +41,7 @@ devcast info          # длительность, сохранён ли, ско�
 devcast ls clips      # клипы с временем по готовому видео
 devcast ls zooms --from 10 --to 1:20 --fields scale,mode
 devcast events clicks --from 10 --to 20   # клики: время, кнопка, x y в долях кадра (как фокус зума)
-devcast events keys                       # сочетания клавиш: Ctrl+S, Alt+Tab, F5
+devcast events keys                       # нажатые клавиши: Ctrl+S, Alt+Tab, F5, A, Ctrl
 devcast events activity                   # отрезки, где был ввод; промежутки между ними — простой
 ```
 
@@ -250,7 +250,7 @@ devcast app status                                  # запись, проект
 ```
 `devcast app show` — показать HUD; `devcast app quit` — закрыть программу, как «Выход» в трее, без вопроса (идущая запись остановится и сохранится, редактор запишет несохранённое для восстановления). `devcast captions stop` — остановить «Создать субтитры», идущее в редакторе с проектом. `devcast app feedback` — куда написать о баге или идее и папка логов, которую приложить. `devcast app changelog --since 0.1.0` — что нового в выпусках после этой версии. `devcast app update` — проверить обновления (установленная программа, GitHub Releases); `--install` — скачать новую версию и перезапустить программу в неё (не во время записи и экспорта). `devcast skill install` — поставить этот skill для Claude Code в `~/.claude/skills/devcast`.
 
-«Сделать красиво» (нейронка пользователя — Claude Code или Codex — монтирует проект этим skill): `devcast recipes ls` — рецепты (отмеченные — `[x]`), найденные нейронки и модель; `devcast recipes add "Лого" "Вставь лого в угол"` — свой рецепт, `--replace <старое>` — заменить, `devcast recipes rm "Лого"`; `devcast recipes check slips keys` (`--off` — снять); `devcast recipes agent claude|codex|auto`, `devcast recipes model sonnet|default`, `devcast recipes login` — войти в подписку нейронки. Своя нейронка вне DevCast: `devcast skill files` — папка со скиллом для любой нейронки и что ей сказать. `devcast beautify` — запустить по отмеченным рецептам (`--recipe pauses`, `--ask "…"` — что ещё попросить, `--agent`, `--model` на этот раз); всё сделанное — один шаг `devcast undo`; продолжить разговор — `devcast beautify --resume <сессия из ответа> --ask "…"`.
+«Сделать красиво» (нейронка пользователя — Claude Code или Codex — монтирует проект этим skill): `devcast recipes ls` — рецепты (отмеченные — `[x]`), найденные нейронки и модель; `devcast recipes add "Лого" "Вставь лого в угол"` — свой рецепт, `--replace <старое>` — заменить, `devcast recipes rm "Лого"`; `devcast recipes check slips zooms` (`--off` — снять); `devcast recipes agent claude|codex|auto`, `devcast recipes model sonnet|default`, `devcast recipes login` — войти в подписку нейронки. Своя нейронка вне DevCast: `devcast skill files` — папка со скиллом для любой нейронки и что ей сказать. `devcast beautify` — запустить по отмеченным рецептам (`--recipe pauses`, `--ask "…"` — что ещё попросить, `--agent`, `--model` на этот раз); всё сделанное — один шаг `devcast undo`; продолжить разговор — `devcast beautify --resume <сессия из ответа> --ask "…"`.
 
 ## Экспорт
 
