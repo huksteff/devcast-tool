@@ -12,9 +12,12 @@ runs:
     # The build folder is CARGO_TARGET_DIR=D:/t of the workflow, three levels above the checkout
     # D:/a/<repo>/<repo>: whisper.cpp with Vulkan builds a helper through MSBuild, which fails on
     # paths over 260 characters (docs/SETUP.md, step 6).
+    # The cache is kept after a red run too: the dependencies it holds built fine, and the
+    # next run of the fixed branch starts from them.
     - uses: Swatinem/rust-cache@v2
       with:
         workspaces: ". -> ../../../t"
+        cache-on-failure: true
 
     # FFmpeg и libclang (решение 003); архивы проверяются по SHA-256 внутри xtask.
     - uses: actions/cache@v4
