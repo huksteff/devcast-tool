@@ -25,6 +25,21 @@ pub fn signed_in(found: &Found) -> Option<bool> {
     }
 }
 
+/// Whether `why`, the reason a run failed, says the agent is not signed in: its status may
+/// still tell «signed in» while the token it keeps is refused (expired, revoked).
+pub fn refused(why: &str) -> bool {
+    let why = why.to_lowercase();
+    [
+        "401",
+        "failed to authenticate",
+        "session has expired",
+        "not logged in",
+        "/login",
+    ]
+    .iter()
+    .any(|sign| why.contains(sign))
+}
+
 /// `loggedIn` of the status JSON.
 fn logged_in(status: &str) -> Option<bool> {
     let json: serde_json::Value = serde_json::from_str(status.trim()).ok()?;
@@ -64,5 +79,15 @@ mod tests {
         assert_eq!(logged_in(r#"{"loggedIn": true}"#), Some(true));
         assert_eq!(logged_in("error: unknown command"), None);
         assert_eq!(login_args(Agent::Claude), ["auth", "login"]);
+        // As Claude Code 2.1.321 fails with a token that went stale.
+        assert!(refused(
+            "Failed to authenticate. API Error: 401 OAuth access token is invalid."
+        ));
+        assert!(refused(
+            "Your Claude session has expired. Sign in again to continue (claude auth login)."
+        ));
+        assert!(!refused(
+            "нейронка закончила работу без ответа: попробуй ещё раз"
+        ));
     }
 }

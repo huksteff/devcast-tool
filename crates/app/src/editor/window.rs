@@ -61,6 +61,9 @@ impl Shared {
     }
 }
 
+/// The id of the editor window.
+pub const ID: &str = "editor";
+
 /// Shows the editor while one is open; closing it brings the HUD back.
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     let (title, size, corner) = {
@@ -87,10 +90,14 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     if let Some(corner) = corner {
         builder = builder.with_position(corner);
     }
-    let id = egui::ViewportId::from_hash_of("editor");
+    let id = egui::ViewportId::from_hash_of(ID);
     let window = Arc::clone(shared);
     ctx.show_viewport_deferred(id, builder, move |ui, _| {
         show_when_drawn(ui.ctx());
+        // A window shown this way is not in front: the editor that opens takes the keyboard.
+        if ui.ctx().cumulative_frame_nr() == 0 {
+            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
         other_window(ui, &window, frame)
     });
     let (news, wake_editor, wake_timeline) = {

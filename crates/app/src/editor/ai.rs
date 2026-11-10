@@ -250,6 +250,11 @@ impl Ai {
                 self.job = None;
                 self.phase = match end {
                     Ok(said) => Phase::Done { secs, said },
+                    // The sign-in is gone: the tab asks to sign in instead of an error to read.
+                    Err(why) if dc_agent::sign_in::refused(&why) => {
+                        self.signed_in = Some(false);
+                        Phase::Idle
+                    }
                     Err(why) => Phase::Failed { secs, why },
                 };
             }

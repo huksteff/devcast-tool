@@ -56,6 +56,14 @@ impl Shared {
         let root = editor.doc.dir().root().to_path_buf();
         self.editor = Some(editor);
         self.remember_project(&root, None);
+        // Another project in a window that is already there (minimized, behind): it comes up.
+        let window = eframe::egui::ViewportId::from_hash_of(super::window::ID);
+        for command in [
+            eframe::egui::ViewportCommand::Minimized(false),
+            eframe::egui::ViewportCommand::Focus,
+        ] {
+            self.ctx.send_viewport_cmd_to(window, command);
+        }
         self.hide_hud();
         Ok(())
     }
