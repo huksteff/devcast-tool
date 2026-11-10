@@ -183,7 +183,7 @@ pub fn run(editor: &mut EditorWindow, key: EditorKey) {
                 .root()
                 .parent()
                 .map(std::path::Path::to_path_buf);
-            let mut dialog = rfd::FileDialog::new().set_title(text::PICK_PROJECT);
+            let mut dialog = crate::dialog::file().set_title(text::PICK_PROJECT);
             if let Some(folder) = folder {
                 dialog = dialog.set_directory(folder);
             }

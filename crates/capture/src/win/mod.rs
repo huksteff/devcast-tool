@@ -15,6 +15,7 @@ mod monitors;
 mod mouse;
 mod nv12;
 mod origin;
+pub mod owner;
 mod preview;
 mod project;
 mod recording;

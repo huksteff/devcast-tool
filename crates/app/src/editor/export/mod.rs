@@ -344,7 +344,7 @@ fn pick_file(format: Format, name: &str) -> Option<PathBuf> {
         Format::Mp4 => (text::MP4_FILES, "mp4"),
         Format::Gif => (text::GIF_FILES, "gif"),
     };
-    let mut path = rfd::FileDialog::new()
+    let mut path = crate::dialog::file()
         .set_title(text::PICK_FILE)
         .set_file_name(format!("{name}.{extension}"))
         .add_filter(filter, &[extension])

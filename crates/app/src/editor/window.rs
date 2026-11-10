@@ -63,21 +63,26 @@ impl Shared {
 
 /// Shows the editor while one is open; closing it brings the HUD back.
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
-    let (title, corner) = {
+    let (title, size, corner) = {
         let shared = lock(shared);
         let Some(editor) = shared.editor.as_ref() else {
             return;
         };
-        (
-            text::title(&editor.name),
-            on_hud_monitor(ctx, &shared, SIZE),
-        )
+        // Where it was left; the first time, or when that monitor is gone, on the HUD's.
+        let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
+        let saved = shared.store.get().editor.window_place;
+        let (size, corner) = match timeline_window::on_screen(saved, &shared.sources.monitors, ppp)
+        {
+            Some(p) => (egui::vec2(p.width, p.height), Some(egui::pos2(p.x, p.y))),
+            None => (SIZE, on_hud_monitor(ctx, &shared, SIZE)),
+        };
+        (text::title(&editor.name), size, corner)
     };
     let mut builder = egui::ViewportBuilder::default()
         .with_icon(crate::logo::window_icon())
         .with_visible(false)
         .with_title(title)
-        .with_inner_size(SIZE)
+        .with_inner_size(size)
         .with_min_inner_size(MIN_SIZE);
     if let Some(corner) = corner {
         builder = builder.with_position(corner);
@@ -150,6 +155,7 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     let before = editor.mark();
     let was_open = editor.detached.open;
     let outcome = editor_ui(ui, editor, layout, (&keys, &groups), now);
+    timeline_window::keep_window_place(ui, editor);
     editor.touched(ui.ctx(), Side::Editor, &before);
     let toggled = editor.detached.open != was_open;
     let chosen = (editor.captions.language, editor.captions.listen);
