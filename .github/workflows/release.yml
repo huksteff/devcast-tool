@@ -1,7 +1,7 @@
 name: Release
 
 # Установщик и обновления (CONTRIBUTING.md, «Выпуск»): каждое вливание в develop — бета
-# `<версия>-beta.<номер>` в канале beta, тег vX.Y.Z на main — выпуск в обычном канале.
+# `<следующая версия>-beta.<номер>` в канале beta, тег vX.Y.Z на main — выпуск в обычном канале.
 # Код уже проверен CI в MR, здесь только сборка и публикация в GitHub Releases.
 on:
   push:
@@ -34,8 +34,21 @@ jobs:
             if ('${{ github.ref_name }}' -ne "v$crate") { throw "Тег ${{ github.ref_name }} не совпадает с версией v$crate в Cargo.toml: поправь версию в develop и поставь тег заново." }
             $version = $crate; $channel = 'win'; $pre = ''
           } else {
-            $version = "$crate-beta.${{ github.run_number }}"; $channel = 'beta'; $pre = '--pre'
+            # Бета должна быть новее последнего выпуска, а `1.2.3-beta.N` старее `1.2.3`. Пока в
+            # Cargo.toml версия уже вышедшего выпуска, беты идут под следующим номером; версия
+            # новее выпуска (готовится большой выпуск) берётся как есть.
+            $released = git ls-remote --tags origin 'v*' |
+              ForEach-Object { ($_ -split 'refs/tags/')[1] } |
+              Where-Object { $_ -match '^v\d+\.\d+\.\d+$' } |
+              ForEach-Object { [version]$_.Substring(1) } |
+              Sort-Object | Select-Object -Last 1
+            $base = [version]$crate
+            if ($released -and $base -le $released) {
+              $base = [version]::new($released.Major, $released.Minor, $released.Build + 1)
+            }
+            $version = "$($base.Major).$($base.Minor).$($base.Build)-beta.${{ github.run_number }}"; $channel = 'beta'; $pre = '--pre'
           }
+          "version: $version, channel: $channel"
           "version=$version" >> $env:GITHUB_OUTPUT
           "channel=$channel" >> $env:GITHUB_OUTPUT
           "pre=$pre" >> $env:GITHUB_OUTPUT
