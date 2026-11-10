@@ -317,7 +317,9 @@ fn ask_ai(
         ai::AiAsk::Stop => editor.ai.stop(now),
         ai::AiAsk::Restart => editor.ai.restart(),
         ai::AiAsk::LookAgain => errors.extend(editor.ai.look_again(ui.ctx()).err()),
-        ai::AiAsk::Login => errors.extend(editor.ai.login().err()),
+        ai::AiAsk::Login => errors.extend(editor.ai.login(ui.ctx()).err()),
+        ai::AiAsk::SendCode => errors.extend(editor.ai.send_code().err()),
+        ai::AiAsk::CancelLogin => editor.ai.cancel_login(),
         ai::AiAsk::OpenSkill => {
             if let Some(folder) = &editor.ai.skill {
                 errors.extend(crate::open_folder(folder).err().map(|e| e.to_string()));

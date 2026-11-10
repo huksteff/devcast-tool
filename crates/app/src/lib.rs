@@ -11,6 +11,7 @@ mod countdown;
 )]
 mod crash;
 mod crashes;
+mod dialog;
 mod downloads;
 #[cfg(test)]
 mod e2e_tests;

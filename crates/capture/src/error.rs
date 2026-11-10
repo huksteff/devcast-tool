@@ -87,6 +87,15 @@ pub enum CaptureError {
     },
 
     #[error(
+        "на диске с папкой {folder} свободно {free_mb} МБ, а для записи нужно хотя бы {needed_mb} МБ: освободи место или выбери другую папку записей в настройках"
+    )]
+    DiskFull {
+        folder: PathBuf,
+        free_mb: u64,
+        needed_mb: u64,
+    },
+
+    #[error(
         "эта версия Windows не умеет убирать курсор из захвата: обнови Windows 10 до версии 2004 или новее"
     )]
     CursorUnsupported,

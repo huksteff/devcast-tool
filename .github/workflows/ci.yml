@@ -1,9 +1,10 @@
 name: CI
 
-# Проверка каждого MR и каждой ветки, куда вливают (CONTRIBUTING.md). Без зелёного CI MR не вливается.
+# Проверка каждого MR (CONTRIBUTING.md). Без зелёного CI MR не вливается.
+# После вливания тот же код заново не проверяется: develop и main принимают только MR, уже
+# прошедшие эту проверку. Ночной прогон проверяет develop целиком и обновляет кэш сборки,
+# из которого берут все MR.
 on:
-  push:
-    branches: [main, develop]
   pull_request:
   # Ночной прогон с долгими тестами (#[ignore]). GitHub запускает расписание только на ветке по умолчанию (develop).
   schedule:
@@ -15,12 +16,64 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Short build folder: MSBuild of whisper.cpp fails on paths over 260 characters (docs/SETUP.md, step 6).
 env:
+  # Short build folder: MSBuild of whisper.cpp fails on paths over 260 characters (docs/SETUP.md, step 6).
   CARGO_TARGET_DIR: D:/t
+  # No debug info: nobody debugs on the CI machine, and the build and its cache get smaller.
+  CARGO_PROFILE_DEV_DEBUG: 0
 
 jobs:
-  verify:
+  # MR, где менялись только документы, сборку не запускает: её результат от них не зависит.
+  # Список белый: пропуск — только когда каждый изменённый файл из него; любой другой файл —
+  # полная проверка. Документы, которые читает сборка или verify, в список не входят:
+  # CHANGELOG.md и skill/SKILL.md вшиты в программу, CLAUDE.md проверяются на длину,
+  # docs/features.json и docs/roadmap сверяются между собой.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.files.outputs.code }}
+    steps:
+      - name: что изменилось
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename')
+          code=false
+          while IFS= read -r file; do
+            case "$file" in
+              docs/features.json | docs/roadmap/*) code=true ;;
+              docs/* | README.md | CONTRIBUTING.md | LICENSE) ;;
+              .github/ISSUE_TEMPLATE/* | .github/pull_request_template.md) ;;
+              *) code=true ;;
+            esac
+          done <<< "$files"
+          echo "изменённые файлы:"; echo "$files"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+  # Две половины verify идут на двух машинах сразу: clippy и тесты собирают проект каждый
+  # по-своему и общего у них нет.
+  checks:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/build-deps
+
+      - name: verify (fmt, clippy, правила)
+        run: cargo xtask verify --checks
+
+  tests:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
@@ -43,10 +96,28 @@ jobs:
         with:
           tool: cargo-nextest
 
-      - name: verify
+      - name: verify (тесты)
         if: github.event_name != 'schedule'
-        run: cargo xtask verify --full
+        run: cargo xtask verify --full --tests
 
-      - name: verify (с долгими тестами)
+      - name: verify (тесты с долгими)
         if: github.event_name == 'schedule'
-        run: cargo xtask verify --full --include-ignored
+        run: cargo xtask verify --full --tests --include-ignored
+
+  # Обязательная проверка в защите веток называется `verify`: она зелёная, когда зелёные обе
+  # половины, или когда менялись только документы и половины пропущены.
+  verify:
+    if: always()
+    needs: [changes, checks, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: обе половины зелёные или пропущены из-за документов
+        run: |
+          code='${{ needs.changes.outputs.code }}'
+          checks='${{ needs.checks.result }}'
+          tests='${{ needs.tests.result }}'
+          echo "код менялся: $code; checks: $checks; tests: $tests"
+          if [ "$code" = "false" ] && [ "$checks" = "skipped" ] && [ "$tests" = "skipped" ]; then
+            exit 0
+          fi
+          [ "$checks" = "success" ] && [ "$tests" = "success" ]

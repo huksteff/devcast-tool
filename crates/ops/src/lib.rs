@@ -18,6 +18,7 @@ pub mod new_project;
 pub mod picture_file;
 pub mod plan;
 pub mod recognition;
+pub mod recovery;
 pub mod registry;
 pub mod scene;
 pub mod settings;

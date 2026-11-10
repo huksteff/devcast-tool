@@ -52,7 +52,7 @@ pub fn ui(
 /// Adds the region of `row` at `range`; a sound row asks for the file first.
 fn add(editor: &mut EditorWindow, row: Row, range: Range<Output>) {
     if let Row::Audio(track) = row {
-        let picked = rfd::FileDialog::new()
+        let picked = crate::dialog::file()
             .set_title(text::PICK_SOUND)
             .add_filter(text::SOUND_FILES, &dc_audio::AUDIO_EXTENSIONS)
             .pick_file();

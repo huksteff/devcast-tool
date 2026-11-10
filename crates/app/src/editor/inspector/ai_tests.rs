@@ -71,19 +71,52 @@ fn the_recipes_and_the_request_are_the_choices_of_the_settings() {
     let tmp = tempfile::tempdir().unwrap();
     let mut harness = ai_tab(vec![pretend(tmp.path(), ANSWER)]);
     harness.snapshot("inspector_ai");
-    click(&mut harness, egui::Role::CheckBox, "Показ клавиш");
+    click(&mut harness, egui::Role::CheckBox, "Убрать оговорки и «ээ»");
     click(&mut harness, egui::Role::CheckBox, "Убрать паузы");
     let edits = std::mem::take(&mut harness.state_mut().editor.ai.edits);
     let check = |id: &str, on| AiEdit::Check {
         id: id.to_owned(),
         on,
     };
-    assert_eq!(edits, vec![check("keys", true), check("pauses", false)]);
+    assert_eq!(edits, vec![check("slips", true), check("pauses", false)]);
     harness.state_mut().editor.ai.choices.checked.clear();
     harness.run();
     let run = harness.get_by_role_and_label(egui::Role::Button, text::RUN);
     assert!(run.accesskit_node().is_disabled(), "nothing to ask");
     assert!(harness.query_by_label(text::NOTHING).is_some());
+}
+
+/// The long caption of a model stays in its drop-down: the inspector keeps its width (it
+/// narrowed, the preview covered the tab rail and the other tabs could not be opened).
+#[test]
+fn a_long_model_keeps_the_inspector_width() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut harness = ai_tab(vec![pretend(tmp.path(), ANSWER)]);
+    // The right edge of the preview's toolbar is the left edge of the inspector.
+    let preview_edge = |harness: &H| {
+        harness
+            .get_by_role_and_label(
+                egui::Role::RadioButton,
+                dc_ui_kit::strings::editor::QUALITY_FAST,
+            )
+            .accesskit_node()
+            .bounding_box()
+    };
+    let before = preview_edge(&harness);
+    // The group «Нейронка» with the model's drop-down, opened (its title is also the tab's).
+    let state = harness.state_mut();
+    state.groups.0.insert("ai.agent".to_owned(), true);
+    state.editor.ai.choices.model = Some("sonnet".to_owned());
+    harness.run();
+    harness.run();
+    assert!(
+        harness
+            .query_by_role_and_label(egui::Role::ComboBox, text::MODEL)
+            .is_some(),
+        "the group is open"
+    );
+    assert_eq!(preview_edge(&harness), before, "the preview did not grow");
+    harness.snapshot("inspector_ai_long_model");
 }
 
 #[cfg(windows)]

@@ -1,4 +1,4 @@
-//! Tests of the privacy filter and of `keys.bin`.
+//! Tests of the key filter and of `keys.bin`.
 
 use super::*;
 use crate::input::file::RecordWriter;
@@ -8,7 +8,6 @@ const SHIFT: u16 = 0xA0;
 const ALT: u16 = 0xA4;
 const WIN: u16 = 0x5B;
 const F5: u16 = 0x74;
-const ESC: u16 = 0x1B;
 
 /// Presses `chord` in order and releases it in reverse, through the filter.
 fn press(filter: &mut KeyFilter, chord: &[u16]) -> Vec<KeyEvent> {
@@ -24,27 +23,15 @@ fn press(filter: &mut KeyFilter, chord: &[u16]) -> Vec<KeyEvent> {
 }
 
 fn stroke(key: u16, down: bool) -> Stroke {
-    Stroke {
-        key,
-        scan: 0,
-        extended: false,
-        down,
-    }
+    Stroke { key, scan: 0, down }
 }
 
 fn letter(c: char) -> u16 {
     c.to_ascii_uppercase() as u16
 }
 
-#[test]
-fn typed_text_is_dropped_and_shortcuts_are_kept() {
-    let mut filter = KeyFilter::default();
-    for c in "abc 123".chars() {
-        assert_eq!(press(&mut filter, &[letter(c)]), [], "{c}");
-    }
-    assert_eq!(press(&mut filter, &[SHIFT, letter('a')]), [], "Shift+A");
-    assert_eq!(press(&mut filter, &[SHIFT]), []);
-    let shortcut = |key, ctrl, shift, alt, win| KeyEvent {
+fn pressed(key: u16, ctrl: bool, shift: bool, alt: bool, win: bool) -> KeyEvent {
+    KeyEvent {
         key,
         modifiers: Modifiers {
             ctrl,
@@ -52,47 +39,84 @@ fn typed_text_is_dropped_and_shortcuts_are_kept() {
             alt,
             win,
         },
-    };
+    }
+}
+
+#[test]
+fn every_key_is_kept_with_its_modifiers() {
+    let mut filter = KeyFilter::default();
+    for c in "abc 123".chars() {
+        let key = letter(c);
+        assert_eq!(
+            press(&mut filter, &[key]),
+            [pressed(key, false, false, false, false)],
+            "{c}"
+        );
+    }
     let cases = [
         (
-            vec![CTRL, SHIFT, letter('p')],
-            shortcut(letter('p'), true, true, false, false),
+            vec![SHIFT, letter('a')],
+            pressed(letter('a'), false, true, false, false),
         ),
-        (vec![F5], shortcut(F5, false, false, false, false)),
-        (vec![ESC], shortcut(ESC, false, false, false, false)),
-        (vec![SHIFT, 0x09], shortcut(0x09, false, true, false, false)),
-        (vec![ALT, 0x09], shortcut(0x09, false, false, true, false)),
+        (
+            vec![CTRL, SHIFT, letter('p')],
+            pressed(letter('p'), true, true, false, false),
+        ),
+        (vec![F5], pressed(F5, false, false, false, false)),
+        (vec![ALT, 0x09], pressed(0x09, false, false, true, false)),
         (
             vec![WIN, letter('d')],
-            shortcut(letter('d'), false, false, false, true),
+            pressed(letter('d'), false, false, false, true),
         ),
         (
             vec![0x11, letter('z')],
-            shortcut(letter('z'), true, false, false, false),
+            pressed(letter('z'), true, false, false, false),
         ),
     ];
     for (chord, expected) in cases {
         assert_eq!(press(&mut filter, &chord), [expected], "{chord:x?}");
     }
-    // After the shortcuts every modifier is up again: plain typing is dropped.
-    assert_eq!(press(&mut filter, &[letter('q')]), []);
+    // After the chords every modifier is up again.
+    assert_eq!(
+        press(&mut filter, &[letter('q')]),
+        [pressed(letter('q'), false, false, false, false)]
+    );
 }
 
 #[test]
-fn special_keys_are_exactly_the_list() {
+fn a_modifier_tapped_alone_is_a_press_on_its_release() {
     let mut filter = KeyFilter::default();
-    let kept: Vec<u16> = (1..=0xFE)
-        .filter(|&key| {
-            let kept = filter.key(stroke(key, true)).is_some();
-            filter.key(stroke(key, false));
-            kept
-        })
-        .collect();
-    let mut expected = vec![0x08, 0x09, 0x0D, 0x1B];
-    expected.extend(0x21..=0x28);
-    expected.extend(0x2C..=0x2E);
-    expected.extend(0x70..=0x87);
-    assert_eq!(kept, expected);
+    assert_eq!(filter.key(stroke(CTRL, true)), None);
+    // Auto-repeat while held.
+    assert_eq!(filter.key(stroke(CTRL, true)), None);
+    assert_eq!(
+        filter.key(stroke(CTRL, false)),
+        Some(pressed(CTRL, false, false, false, false))
+    );
+    // Ctrl, then Shift, both released: one press, Ctrl+Shift.
+    assert_eq!(
+        press(&mut filter, &[CTRL, SHIFT]),
+        [pressed(SHIFT, true, false, false, false)]
+    );
+    assert_eq!(
+        pressed(SHIFT, true, false, false, false).name(),
+        "Ctrl+Shift"
+    );
+    // Released in the order pressed: still one press, Ctrl+Shift.
+    assert_eq!(filter.key(stroke(CTRL, true)), None);
+    assert_eq!(filter.key(stroke(SHIFT, true)), None);
+    let first = filter.key(stroke(CTRL, false));
+    assert_eq!(first, Some(pressed(CTRL, false, true, false, false)));
+    assert_eq!(first.map(|p| p.name()).as_deref(), Some("Ctrl+Shift"));
+    assert_eq!(filter.key(stroke(SHIFT, false)), None);
+    // A release with nothing down before it (held since before the recording) is no press.
+    assert_eq!(filter.key(stroke(ALT, false)), None);
+    // A modifier of a chord is not a press of its own.
+    assert_eq!(press(&mut filter, &[CTRL, letter('c')]).len(), 1);
+    assert_eq!(
+        press(&mut filter, &[WIN]),
+        [pressed(WIN, false, false, false, false)]
+    );
 }
 
 #[test]

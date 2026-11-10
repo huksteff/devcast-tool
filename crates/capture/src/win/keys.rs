@@ -1,9 +1,9 @@
-//! The low-level keyboard hook procedure. It hands the key to the privacy filter of the hook
-//! thread at once; only what the filter keeps is stamped and queued (decision 009).
+//! The low-level keyboard hook procedure. It hands the key to the filter of the hook thread
+//! at once; only the presses it returns are stamped and queued (decision 009).
 
 use windows::Win32::Foundation::{LPARAM, LRESULT, WPARAM};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, HC_ACTION, KBDLLHOOKSTRUCT, LLKHF_EXTENDED, WM_KEYDOWN, WM_SYSKEYDOWN,
+    CallNextHookEx, HC_ACTION, KBDLLHOOKSTRUCT, WM_KEYDOWN, WM_SYSKEYDOWN,
 };
 
 use super::hooks::send_key;
@@ -18,7 +18,6 @@ pub unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: L
             // Virtual-key codes are 1..=254.
             key: info.vkCode as u16,
             scan: info.scanCode,
-            extended: info.flags.contains(LLKHF_EXTENDED),
             down: matches!(wparam.0 as u32, WM_KEYDOWN | WM_SYSKEYDOWN),
         });
     }

@@ -19,7 +19,7 @@ pub const KEYS_COLORS: &str = "Буквы · плашка";
 pub const KEYS_LETTERS: &str = "Цвет букв";
 pub const KEYS_PLATE: &str = "Цвет плашки";
 pub const KEYS_HOLD: &str = "Держать";
-pub const KEYS_NOTE: &str = "Пишутся только сочетания с модификаторами и спецклавиши. Обычный ввод текста не записывается никогда.";
+pub const KEYS_NOTE: &str = "Записываются все нажатые клавиши, и набранный текст тоже. Пароли во время записи лучше не вводить.";
 /// Unit after seconds in a number field.
 pub const SECONDS: &str = " с";
 /// Unit after a factor in a number field.
@@ -125,12 +125,12 @@ pub fn click_about(at: &str, button: &str, double: bool) -> String {
     }
 }
 
-/// «3 сочетания в записях»: the subtitle of «Показ клавиш».
+/// «3 клавиши в записях» (different presses: `A`, `Ctrl+S`): the subtitle of «Показ клавиш».
 pub fn shortcuts_found(count: usize) -> String {
     match count {
-        0 => "в записях нет сочетаний".to_owned(),
+        0 => "в записях нет нажатых клавиш".to_owned(),
         n => {
-            let what = super::timeline::plural(n, "сочетание", "сочетания", "сочетаний");
+            let what = super::timeline::plural(n, "клавиша", "клавиши", "клавиш");
             format!("{n} {what} в записях")
         }
     }

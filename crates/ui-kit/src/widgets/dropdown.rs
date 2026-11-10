@@ -1,5 +1,7 @@
 //! Drop-down list of the mockup (`.select`): egui's combo box in our theme with the line
-//! chevron; the chosen item is the button's text and accessible name.
+//! chevron; the chosen item is the button's text and accessible name. The button is `width`
+//! wide whatever is chosen, a longer caption is cut with «…»: a wider button pushed apart
+//! fixed-width panels (the inspector with «Sonnet — быстрее и экономнее»).
 
 use egui::{Rect, Response, Ui, WidgetInfo, vec2};
 
@@ -35,22 +37,31 @@ pub fn dropdown_some<T: PartialEq + Clone>(
         .find(|(item, _, _)| item == value)
         .map_or("", |(_, text, _)| *text);
     let mut changed = false;
-    let mut response = egui::ComboBox::from_id_salt(label)
-        .selected_text(chosen.to_owned())
-        .width(width)
-        .icon(|ui, rect, _, _| {
-            let icon = Rect::from_center_size(rect.center(), vec2(ICON, ICON) * 0.75);
-            Icon::Down.paint(ui.painter(), icon, TEXT_2);
+    // `truncate` cuts the caption at the room the button has: the scope gives it `width`.
+    let mut response = ui
+        .scope(|ui| {
+            ui.set_max_width(width);
+            egui::ComboBox::from_id_salt(label)
+                .selected_text(chosen.to_owned())
+                .width(width)
+                .truncate()
+                .icon(|ui, rect, _, _| {
+                    let icon = Rect::from_center_size(rect.center(), vec2(ICON, ICON) * 0.75);
+                    Icon::Down.paint(ui.painter(), icon, TEXT_2);
+                })
+                .show_ui(ui, |ui| {
+                    for (item, text, can) in items {
+                        let picked = ui
+                            .add_enabled_ui(*can, |ui| {
+                                ui.selectable_value(value, item.clone(), *text)
+                            })
+                            .inner;
+                        changed |= picked.changed();
+                    }
+                })
+                .response
         })
-        .show_ui(ui, |ui| {
-            for (item, text, can) in items {
-                let picked = ui
-                    .add_enabled_ui(*can, |ui| ui.selectable_value(value, item.clone(), *text))
-                    .inner;
-                changed |= picked.changed();
-            }
-        })
-        .response;
+        .inner;
     if changed {
         response.mark_changed();
     }

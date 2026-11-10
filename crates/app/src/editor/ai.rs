@@ -26,8 +26,12 @@ pub enum AiAsk {
     Restart,
     /// «Проверить снова».
     LookAgain,
-    /// «Войти»: the agent's sign-in in its own console window.
+    /// «Войти»: the agent's sign-in; its page opens in the browser.
     Login,
+    /// «Отправить код» of the sign-in.
+    SendCode,
+    /// «Отмена» of the sign-in.
+    CancelLogin,
     /// «Открыть папку» of «Своя нейронка».
     OpenSkill,
 }
@@ -94,11 +98,19 @@ pub struct Ai {
     pub limits: Option<(dc_agent::Limits, dc_agent::Limits)>,
     /// Signed in to the user's account: none until checked, or when the agent cannot tell.
     pub signed_in: Option<bool>,
+    /// A run failed because the sign-in was refused: «Проверить снова» asks the agent itself,
+    /// not its status.
+    pub(super) refused: bool,
     /// The agents were looked for.
     pub looked: bool,
     /// The folder with the skill for agents opened without DevCast (8.10).
     pub skill: Option<PathBuf>,
     signing: Option<Receiver<Option<bool>>>,
+    /// The sign-in that runs («Войти»), the code typed for it and its page until the tab
+    /// opens it (`ai_sign_in.rs`).
+    pub(super) login: Option<dc_agent::login::Login>,
+    pub code: String,
+    pub(super) page: Option<String>,
     session: Option<String>,
     job: Option<Job>,
     news: Arc<AtomicBool>,
@@ -130,9 +142,13 @@ impl Ai {
             usage: None,
             limits: None,
             signed_in: None,
+            refused: false,
             looked: true,
             skill: None,
             signing: None,
+            login: None,
+            code: String::new(),
+            page: None,
             session: None,
             job: None,
             news: Arc::new(AtomicBool::new(false)),
@@ -208,10 +224,12 @@ impl Ai {
 
     /// Takes the agent's events; true when the tab has news to draw.
     pub fn receive(&mut self, now: Instant) -> bool {
+        self.sign_in_tick();
         let signed = self.signing.as_ref().and_then(|s| s.try_recv().ok());
         if let Some(signed) = signed {
             self.signed_in = signed;
             self.signing = None;
+            self.refused &= signed != Some(true);
         }
         let Some(job) = &self.job else {
             return signed.is_some();
@@ -250,6 +268,12 @@ impl Ai {
                 self.job = None;
                 self.phase = match end {
                     Ok(said) => Phase::Done { secs, said },
+                    // The sign-in is gone: the tab asks to sign in instead of an error to read.
+                    Err(why) if dc_agent::sign_in::refused(&why) => {
+                        self.refused = true;
+                        self.signed_in = Some(false);
+                        Phase::Idle
+                    }
                     Err(why) => Phase::Failed { secs, why },
                 };
             }
@@ -293,24 +317,22 @@ impl Ai {
         };
         let (send, answer) = channel();
         let wake = self.waker(ctx);
+        // After a refused run the status is not believed: the agent is asked for a word.
+        let probe = self.refused;
         let started = std::thread::Builder::new()
             .name("devcast-agent-auth".to_owned())
             .spawn(move || {
-                if send.send(dc_agent::sign_in::signed_in(&agent)).is_ok() {
+                let signed = match probe {
+                    true => dc_agent::sign_in::answers(&agent),
+                    false => dc_agent::sign_in::signed_in(&agent),
+                };
+                if send.send(signed).is_ok() {
                     wake();
                 }
             });
         if started.is_ok() {
             self.signing = Some(answer);
         }
-    }
-
-    /// «Войти»: the agent signs in in its own console window.
-    pub fn login(&self) -> Result<(), String> {
-        let agent = self
-            .agent()
-            .ok_or_else(|| text::NOT_FOUND_TEXT.to_owned())?;
-        dc_agent::sign_in::open_login(agent).map_err(|e| text::not_started(&e))
     }
 
     /// Writes the skill for agents opened without DevCast into the app settings folder.
@@ -339,7 +361,7 @@ impl Ai {
         self.news.swap(false, Ordering::AcqRel)
     }
 
-    fn waker(&self, ctx: &egui::Context) -> impl Fn() + Send + 'static {
+    pub(super) fn waker(&self, ctx: &egui::Context) -> impl Fn() + Send + Clone + 'static {
         let (ctx, news) = (ctx.clone(), Arc::clone(&self.news));
         move || {
             news.store(true, Ordering::Release);

@@ -32,6 +32,7 @@ pub fn stop() -> ExitCode {
         full: false,
         include_ignored: false,
         quick: true,
+        part: verify::Part::All,
     });
     match decide(report.is_ok(), active) {
         Decision::Allow => ExitCode::SUCCESS,

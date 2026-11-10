@@ -65,7 +65,7 @@ pub fn crashed(ui: &mut Ui, shared: &mut Shared) {
     }
 }
 
-/// The groups of each new release and «Понятно».
+/// «Главное» of each new release — a few short lines — and «Понятно».
 pub fn whats_new(ui: &mut Ui, shared: &mut Shared) {
     let current = env!("CARGO_PKG_VERSION");
     ui.label(
@@ -82,19 +82,12 @@ pub fn whats_new(ui: &mut Ui, shared: &mut Shared) {
                 if several {
                     ui.label(RichText::new(&release.version).color(TEXT_2));
                 }
-                for group in &release.groups {
-                    ui.label(
-                        RichText::new(&group.title)
-                            .font(fonts::text(FS_S, Weight::Semibold))
-                            .color(TEXT),
-                    );
+                for item in release.main() {
+                    let line = RichText::new(format!("•  {item}"));
+                    ui.label(line.font(fonts::text(FS_S, Weight::Regular)).color(TEXT_2));
                     ui.add_space(S1);
-                    for item in &group.items {
-                        let line = RichText::new(format!("•  {item}"));
-                        ui.label(line.font(fonts::text(FS_S, Weight::Regular)).color(TEXT_2));
-                    }
-                    ui.add_space(S2);
                 }
+                ui.add_space(S1);
             }
         });
     ui.add_space(S3);

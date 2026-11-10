@@ -84,7 +84,7 @@ fn header(ui: &mut Ui, editor: &mut EditorWindow) {
         ui.label(RichText::new(text::TITLE).size(FS_M).strong().color(TEXT));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.add(Button::new(text::IMPORT).small()).clicked() {
-                let picked = rfd::FileDialog::new()
+                let picked = crate::dialog::file()
                     .set_title(text::PICK_VIDEOS)
                     .add_filter(text::VIDEOS, &dc_media::VIDEO_EXTENSIONS)
                     .pick_files();

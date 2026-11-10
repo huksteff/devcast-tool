@@ -34,8 +34,8 @@ pub struct AiChoices {
     pub own: Vec<OwnRecipe>,
 }
 
-/// The built-in recipes checked at first: pauses, zooms by clicks, captions.
-pub const CHECKED_FIRST: [&str; 3] = ["pauses", "zooms", "captions"];
+/// The built-in recipes checked at first: pauses, zooms by clicks.
+pub const CHECKED_FIRST: [&str; 2] = ["pauses", "zooms"];
 
 impl Default for AiChoices {
     fn default() -> Self {
@@ -49,7 +49,7 @@ impl Default for AiChoices {
 }
 
 /// The built-in recipes: id, title, request to the agent.
-pub const BUILT_IN: [(&str, &str, &str); 5] = [
+pub const BUILT_IN: [(&str, &str, &str); 3] = [
     (
         "pauses",
         "Убрать паузы",
@@ -61,19 +61,9 @@ pub const BUILT_IN: [(&str, &str, &str); 5] = [
         "Поставь зумы по кликам: `devcast zoom add --at clicks`. Если где-то зумы идут чаще одного на 4 секунды, убери лишние.",
     ),
     (
-        "captions",
-        "Субтитры",
-        "Сделай субтитры из речи: `devcast captions gen`, потом посмотри `devcast ls captions` и раздели слишком длинные реплики (`devcast captions split`).",
-    ),
-    (
         "slips",
         "Убрать оговорки и «ээ»",
         "По `devcast transcript` найди оговорки, повторы, фальстарты и слова-паразиты («ээ», «ну», «как бы») и вырежи их по словам (`devcast cut w…`). Смысл сказанного не меняй.",
-    ),
-    (
-        "keys",
-        "Показ клавиш",
-        "Если в записи нажимались сочетания клавиш (`devcast events keys`), включи их показ: `devcast keys --show`.",
     ),
 ];
 

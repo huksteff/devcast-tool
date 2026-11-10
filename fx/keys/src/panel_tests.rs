@@ -88,7 +88,7 @@ fn edits_are_the_keys_command() {
     let mut harness = harness(project(), shortcuts);
     harness.run();
     let head = harness.get_by_role_and_label(egui::Role::Heading, text::KEYS);
-    assert_eq!(head.value().as_deref(), Some("3 сочетания в записях"));
+    assert_eq!(head.value().as_deref(), Some("3 клавиши в записях"));
     assert!(harness.query_by_label("Ctrl + Shift + P ×2").is_some());
     harness
         .get_by_role_and_label(egui::Role::Switch, names::KEYS_SHOW)

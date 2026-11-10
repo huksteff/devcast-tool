@@ -47,11 +47,17 @@ pub enum Way {
 }
 
 impl Document {
-    /// Locks `dir` and loads its working state as `devcast` does. Also returns the problems
-    /// found in its history (the project still opened).
+    /// Locks `dir`, finishes its interrupted recordings and loads its working state as
+    /// `devcast` does. Also returns what to tell the user: the recordings recovered and the
+    /// problems found in the history (the project still opened).
     pub fn open(dir: ProjectDir) -> Result<(Self, Vec<String>), DocumentError> {
         let lock = ProjectLock::acquire(&dir, LOCK_OWNER)?;
+        // A recording that was never finished comes back as `devcast` brings it back; what
+        // went wrong is told, the project opens anyway.
+        let mut warnings =
+            dc_ops::recovery::recover(&dir, &lock).unwrap_or_else(|e| vec![e.to_string()]);
         let working = Working::load(&dir, true)?;
+        warnings.extend(working.warnings);
         let document = Self {
             log: HistoryLog::new(&dir),
             dir,
@@ -63,7 +69,7 @@ impl Document {
             pending: Vec::new(),
             revision: 0,
         };
-        Ok((document, working.warnings))
+        Ok((document, warnings))
     }
 
     /// The folder and its lock, the rest of the document dropped (renaming the project).
@@ -245,3 +251,7 @@ impl Document {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "document_tests.rs"]
+mod tests;

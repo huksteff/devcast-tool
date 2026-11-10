@@ -110,6 +110,13 @@ fn a_failed_check_says_why() {
     };
     assert!(error.contains("нет сети") && error.contains("Проверь интернет"));
     assert!(shared.store.get().updates.checked_at.is_none());
+    let failed_at = shared.updates.failed_at;
+    assert!(
+        dc_update::until_check(now(), None, failed_at) > 0,
+        "the next check waits instead of starting in the next frame"
+    );
+    shared.updates_heard(Event::Checked(Ok(None)));
+    assert_eq!(shared.updates.failed_at, None);
 }
 
 #[test]

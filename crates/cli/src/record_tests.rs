@@ -234,6 +234,7 @@ fn stop_prints_one_line_about_the_project() {
                 problems: vec!["захват экрана прервался".to_owned()],
             },
             audio: vec![audio("system"), audio("mic")],
+            lost_sound: vec!["звук записан не до конца".to_owned()],
             input: Err("курсор и клавиши записаны не до конца".to_owned()),
             files: Vec::new(),
             manifest,
@@ -253,8 +254,9 @@ fn stop_prints_one_line_about_the_project() {
         answer.warnings,
         [
             "захват экрана прервался",
+            "звук записан не до конца",
             "курсор и клавиши записаны не до конца"
         ],
-        "a failed capture or input keeps the recording and warns"
+        "a failed capture, sound track or input keeps the recording and warns"
     );
 }

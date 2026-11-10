@@ -32,6 +32,8 @@ pub struct Recording {
 pub struct RecordingSummary {
     pub video: VideoSummary,
     pub audio: Vec<AudioSummary>,
+    /// Sound tracks that failed on the way: each is kept up to its last whole segment.
+    pub lost_sound: Vec<String>,
     /// The input written, or why it stopped early: the recording is kept without it.
     pub input: Result<InputSummary, String>,
     /// The finished MP4 of each track, in manifest order (video first).
@@ -44,6 +46,7 @@ impl RecordingSummary {
     /// What went wrong without losing the recording: video, each sound track, input.
     pub fn problems(&self) -> Vec<String> {
         let sound = self.audio.iter().flat_map(|a| a.problems.iter().cloned());
+        let sound = sound.chain(self.lost_sound.iter().cloned());
         let input = self.input.as_ref().err().cloned();
         self.video
             .problems
@@ -59,6 +62,7 @@ impl RecordingSummary {
 struct Stopped {
     video: VideoSummary,
     audio: Vec<AudioSummary>,
+    lost_sound: Vec<String>,
     input: Result<InputSummary, String>,
 }
 
@@ -137,6 +141,7 @@ impl Recording {
         Ok(RecordingSummary {
             video: stopped.video,
             audio: stopped.audio,
+            lost_sound: stopped.lost_sound,
             input: stopped.input,
             files,
             manifest: finished,
@@ -156,17 +161,25 @@ impl Recording {
         self.input.stop();
         let at = now()?;
         for track in &self.audio {
-            track.stop(at)?;
+            // A track whose thread is gone tells why when it is joined.
+            let _ = track.stop(at);
         }
         let video = self.video.stop(at)?;
-        let audio = self
-            .audio
-            .into_iter()
-            .map(AudioRecording::join)
-            .collect::<Result<Vec<_>, _>>()?;
+        // A sound track that failed does not take the recording with it (a full disk, a
+        // device gone wrong): what it wrote stays, the failure is a problem of the summary.
+        let (mut audio, mut lost_sound) = (Vec::new(), Vec::new());
+        for track in self.audio {
+            match track.join() {
+                Ok(summary) => audio.push(summary),
+                Err(error) => lost_sound.push(format!(
+                    "звук записан не до конца, дорожка сохранена до сбоя: {error}"
+                )),
+            }
+        }
         Ok(Stopped {
             video,
             audio,
+            lost_sound,
             input: self
                 .input
                 .join()
