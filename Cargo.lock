@@ -1310,7 +1310,7 @@ checksum = "0c87e182de0887fd5361989c677c4e8f5000cd9491d6d563161a8f3a5519fc7f"
 
 [[package]]
 name = "dc-agent"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-settings",
  "serde",
@@ -1321,7 +1321,7 @@ dependencies = [
 
 [[package]]
 name = "dc-app"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "crash-handler",
  "dc-agent",
@@ -1373,7 +1373,7 @@ dependencies = [
 
 [[package]]
 name = "dc-audio"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cpal",
  "dc-capture",
@@ -1391,7 +1391,7 @@ dependencies = [
 
 [[package]]
 name = "dc-capture"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "cpal",
  "dc-core",
@@ -1409,7 +1409,7 @@ dependencies = [
 
 [[package]]
 name = "dc-cli"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "clap",
  "dc-agent",
@@ -1443,7 +1443,7 @@ dependencies = [
 
 [[package]]
 name = "dc-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "proptest",
  "schemars",
@@ -1454,7 +1454,7 @@ dependencies = [
 
 [[package]]
 name = "dc-encode"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-media",
@@ -1471,7 +1471,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-annotations"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-render",
@@ -1484,7 +1484,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-audio-tracks"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-ui-kit",
@@ -1496,7 +1496,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-blur"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-fx-annotations",
@@ -1510,7 +1510,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-callout"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-render",
@@ -1525,7 +1525,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-captions"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-render",
@@ -1538,7 +1538,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-crop"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-ui-kit",
@@ -1551,7 +1551,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-cursor"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-render",
@@ -1565,7 +1565,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-cut"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-render",
@@ -1577,7 +1577,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-drawing"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-fx-annotations",
@@ -1591,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-image"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-fx-annotations",
@@ -1605,7 +1605,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-keys"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-render",
@@ -1619,7 +1619,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-shape"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-fx-annotations",
@@ -1633,7 +1633,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-text"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-fx-annotations",
@@ -1648,7 +1648,7 @@ dependencies = [
 
 [[package]]
 name = "dc-fx-zoom"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-render",
@@ -1662,7 +1662,7 @@ dependencies = [
 
 [[package]]
 name = "dc-ipc"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "interprocess",
  "serde",
@@ -1672,7 +1672,7 @@ dependencies = [
 
 [[package]]
 name = "dc-media"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-project",
@@ -1685,7 +1685,7 @@ dependencies = [
 
 [[package]]
 name = "dc-models"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-project",
  "serde",
@@ -1697,7 +1697,7 @@ dependencies = [
 
 [[package]]
 name = "dc-ops"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-audio",
  "dc-capture",
@@ -1732,7 +1732,7 @@ dependencies = [
 
 [[package]]
 name = "dc-project"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "serde",
@@ -1744,7 +1744,7 @@ dependencies = [
 
 [[package]]
 name = "dc-render"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-media",
@@ -1763,7 +1763,7 @@ dependencies = [
 
 [[package]]
 name = "dc-settings"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-capture",
  "dc-encode",
@@ -1779,7 +1779,7 @@ dependencies = [
 
 [[package]]
 name = "dc-setup"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-ui-kit",
  "dirs 6.0.0",
@@ -1790,7 +1790,7 @@ dependencies = [
 
 [[package]]
 name = "dc-transcribe"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-audio",
  "dc-models",
@@ -1805,7 +1805,7 @@ dependencies = [
 
 [[package]]
 name = "dc-ui-kit"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "dc-core",
  "dc-render",
@@ -1820,7 +1820,7 @@ dependencies = [
 
 [[package]]
 name = "dc-update"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -7510,7 +7510,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "proc-macro2",
  "serde",
