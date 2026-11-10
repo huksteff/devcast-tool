@@ -6,16 +6,17 @@ use std::sync::{Arc, Mutex};
 
 use dc_ui_kit::strings::{hud, notices, picker as picker_text, tray};
 use dc_ui_kit::theme::WINDOW_SHADOW;
-use dc_ui_kit::tokens::{CONTROL, S2, S3};
+use dc_ui_kit::tokens::S3;
 use dc_ui_kit::widgets::{
     Answer, Confirm, ErrorAction, ErrorPanel, Kind as ButtonKind, panel_frame,
 };
-use eframe::egui::{self, Margin, Rect, Ui, Vec2, pos2, vec2};
+use eframe::egui::{self, Margin, Rect, Ui, vec2};
 
 use dc_capture::Source;
 
 use super::menus::{MoreAction, more_menu};
 use super::picker::Pick;
+use super::place::{ceiling, placed};
 
 use crate::app::{Shared, lock, other_window};
 use crate::borderless;
@@ -122,9 +123,6 @@ impl Open {
 /// Highest a popover gets, points (mockup: the source picker scrolls past 620).
 pub const MAX_HEIGHT: f32 = 620.0;
 
-/// Gap between the bar and a popover, points.
-const GAP: f32 = 8.0;
-
 /// The popover's window; one at a time.
 pub const ID: &str = "hud-popover";
 
@@ -140,8 +138,9 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::WhatsNew => 380.0,
         Kind::Update => 340.0,
     };
+    let ceiling = ceiling(ctx, &lock(shared));
     let shared = Arc::clone(shared);
-    let builder = builder(open, width, bar);
+    let builder = builder(open, width, bar, ceiling);
     ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
         other_window(ui, &shared, |ui, shared| {
             frame(ui, shared, open, width, bar)
@@ -150,28 +149,13 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
 }
 
 /// The window of `open` with a panel `width` wide (it starts 40 high, then fits).
-pub fn builder(open: Open, width: f32, bar: Rect) -> egui::ViewportBuilder {
-    let window = window_rect(open, vec2(width, 40.0), bar);
+pub fn builder(open: Open, width: f32, bar: Rect, ceiling: Option<f32>) -> egui::ViewportBuilder {
+    let window = placed(open, vec2(width, 40.0), bar, ceiling);
     borderless::floating(open.kind.title())
         .with_visible(false)
         .with_resizable(false)
         .with_inner_size(window.size())
         .with_position(window.min)
-}
-
-/// The transparent window of `open` around a panel of `panel` size, its shadow margin
-/// included: the panel stands `GAP` above the HUD's panel, under the button that opened it;
-/// `bar` is the HUD's window rectangle.
-pub fn window_rect(open: Open, panel: Vec2, bar: Rect) -> Rect {
-    let top = borderless::panel_rect(bar).top();
-    // «Ещё» is the last button: its menu ends where the button ends, as menus at the right
-    // edge do, instead of reaching past the HUD.
-    let left = match open.kind {
-        Kind::More => open.anchor + CONTROL + S2 - panel.x,
-        _ => open.anchor - S2,
-    };
-    let corner = pos2(bar.left() + left, top - GAP - panel.y);
-    Rect::from_min_size(corner, panel) + borderless::margin()
 }
 
 /// One frame of the popover window: its content, its size to fit, closing on Esc or lost focus.
@@ -210,7 +194,7 @@ fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
                 .response
         })
         .inner;
-    let window = window_rect(open, response.rect.size(), bar);
+    let window = placed(open, response.rect.size(), bar, ceiling(ui.ctx(), shared));
     let current = ui.input(|i| i.viewport().inner_rect.map(|r| r.size()));
     if current.is_some_and(|c| (c - window.size()).length() > 0.5) {
         ui.ctx()

@@ -11,6 +11,7 @@ pub mod ai;
 mod clipboard;
 mod closing;
 mod crop;
+mod dock;
 mod document;
 mod export;
 mod fonts;
@@ -335,10 +336,11 @@ pub fn editor_ui(
             }
         });
     let most = (ui.available_height() * TIMELINE_MAX_SHARE).max(TIMELINE_MIN);
+    let dock = dock::Dock::new(ui, layout.timeline_height.clamp(TIMELINE_MIN, most), most);
     let timeline = (!editor.detached.open).then(|| {
-        egui::Panel::bottom("editor-timeline")
+        egui::Panel::bottom(dock::PANEL)
             .resizable(true)
-            .default_size(layout.timeline_height.clamp(TIMELINE_MIN, most))
+            .default_size(dock.wanted)
             .size_range(TIMELINE_MIN..=most)
             .frame(Frame::new().fill(SURFACE))
             .show(ui, |ui| {
@@ -379,7 +381,7 @@ pub fn editor_ui(
     Outcome {
         open_settings,
         layout: timeline.map_or(layout, |t| EditorLayout {
-            timeline_height: t.response.rect.height(),
+            timeline_height: dock.height(t.response.rect.height(), layout.timeline_height),
             rows: t.inner,
             ..layout
         }),

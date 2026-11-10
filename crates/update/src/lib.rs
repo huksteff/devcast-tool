@@ -5,7 +5,7 @@ mod error;
 mod feedback;
 mod updates;
 
-pub use changelog::{Group, Release, news};
+pub use changelog::{Group, MAIN, Release, news};
 pub use error::UpdateError;
 pub use feedback::{Author, Contact, Feedback, feedback};
 pub use updates::{CHECK_EVERY, RETRY_AFTER, SNOOZE, Update, Updater, ask, until_check};
