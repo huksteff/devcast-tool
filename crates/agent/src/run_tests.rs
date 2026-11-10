@@ -130,6 +130,28 @@ fn a_run_that_ends_without_an_answer_fails() {
 
 #[cfg(windows)]
 #[test]
+fn a_run_that_fails_tells_what_the_agent_said() {
+    let tmp = tempfile::tempdir().unwrap();
+    let old = Launch {
+        program: PathBuf::from("cmd"),
+        args: vec!["/C".into(), "echo error: unknown option '--x' 1>&2".into()],
+        ..pretend(tmp.path(), "")
+    };
+    let job = Job::start(old, || {}).unwrap();
+    let events: Vec<Event> = std::iter::from_fn(|| job.next()).collect();
+    let [Event::Finished(Err(why))] = events.as_slice() else {
+        panic!("{events:?}");
+    };
+    assert!(
+        why.contains("unknown option '--x'") && why.contains("claude update"),
+        "{why}"
+    );
+    assert!(no_answer("").ends_with("попробуй ещё раз"));
+    assert!(no_answer("Not logged in").contains("(Not logged in)"));
+}
+
+#[cfg(windows)]
+#[test]
 fn stop_ends_a_long_run() {
     let tmp = tempfile::tempdir().unwrap();
     let long = Launch {

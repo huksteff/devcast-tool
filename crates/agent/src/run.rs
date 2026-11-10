@@ -137,10 +137,12 @@ impl Job {
             .envs(launch.env.iter().map(|(k, v)| (k, v)))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null());
+            .stderr(Stdio::piped());
         no_window(&mut command);
         let mut child = command.spawn()?;
-        let (Some(mut input), Some(output)) = (child.stdin.take(), child.stdout.take()) else {
+        let (Some(mut input), Some(output), Some(errors)) =
+            (child.stdin.take(), child.stdout.take(), child.stderr.take())
+        else {
             return Err(std::io::Error::other("нет каналов процесса нейронки"));
         };
         let (sender, events) = channel();
@@ -150,10 +152,13 @@ impl Job {
         std::thread::Builder::new()
             .name("devcast-agent".to_owned())
             .spawn(move || {
+                // Read on its own thread: a full pipe would stall the agent.
+                let complaint = std::thread::spawn(move || last_line(BufReader::new(errors)));
                 // A failed write shows as the agent's own answer or as no answer.
                 let _ = input.write_all(text.as_bytes());
                 drop(input);
-                listen(agent, BufReader::new(output), &sender, &wake);
+                let complaint = || complaint.join().unwrap_or_default();
+                listen(agent, BufReader::new(output), &sender, &wake, complaint);
             })?;
         Ok(job)
     }
@@ -185,8 +190,15 @@ impl Drop for Job {
 }
 
 /// Sends the events of `output` until the end of the run; output that ends without it is a
-/// failure. Stops when nobody listens any more.
-fn listen(agent: Agent, output: impl BufRead, sender: &Sender<Event>, wake: &dyn Fn()) {
+/// failure that tells the agent's `complaint` (the last line of its stderr). Stops when nobody
+/// listens any more.
+fn listen(
+    agent: Agent,
+    output: impl BufRead,
+    sender: &Sender<Event>,
+    wake: &dyn Fn(),
+    complaint: impl FnOnce() -> String,
+) {
     let mut reader = Reader::new(agent);
     for line in output.lines() {
         let Ok(line) = line else { break };
@@ -201,9 +213,36 @@ fn listen(agent: Agent, output: impl BufRead, sender: &Sender<Event>, wake: &dyn
             }
         }
     }
-    let why = "нейронка закончила работу без ответа: попробуй ещё раз";
-    if sender.send(Event::Finished(Err(why.to_owned()))).is_ok() {
+    if sender
+        .send(Event::Finished(Err(no_answer(&complaint()))))
+        .is_ok()
+    {
         wake();
+    }
+}
+
+/// The last line with text, at most 200 characters of it.
+fn last_line(errors: impl BufRead) -> String {
+    let last = errors
+        .lines()
+        .map_while(Result::ok)
+        .filter(|line| !line.trim().is_empty())
+        .last();
+    last.map_or(String::new(), |line| {
+        line.trim().chars().take(200).collect()
+    })
+}
+
+/// Why a run ended without an answer, and what to do.
+fn no_answer(complaint: &str) -> String {
+    if complaint.contains("unknown option") {
+        format!(
+            "нейронка устарела ({complaint}): обнови её (Claude Code — `claude update`) и попробуй ещё раз"
+        )
+    } else if complaint.is_empty() {
+        "нейронка закончила работу без ответа: попробуй ещё раз".to_owned()
+    } else {
+        format!("нейронка закончила работу без ответа ({complaint}): попробуй ещё раз")
     }
 }
 
