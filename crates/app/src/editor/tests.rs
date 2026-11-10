@@ -108,6 +108,30 @@ fn opens_in_the_middle_of_the_hud_monitor() {
 }
 
 #[test]
+fn the_timeline_takes_its_height_back_after_the_window_was_small() {
+    let top = |harness: &egui_kittest::Harness<'static, State>| {
+        harness
+            .get_by_label(dc_ui_kit::strings::timeline::ADD_TRACK)
+            .rect()
+            .top()
+    };
+    let mut harness = harness(SIZE);
+    harness.run();
+    let before = top(&harness);
+    harness.set_size(egui::vec2(SIZE.x, 360.0));
+    harness.run();
+    assert!(top(&harness) < before, "squeezed by the small window");
+    harness.set_size(SIZE);
+    harness.run();
+    assert!((top(&harness) - before).abs() < 1.0, "back with the room");
+    let layout = harness.state().outcome.clone().unwrap().layout;
+    assert!(
+        (layout.timeline_height - 300.0).abs() < 1.0,
+        "the remembered height did not change: {layout:?}"
+    );
+}
+
+#[test]
 fn editor_window() {
     let mut harness = harness(SIZE);
     harness.run();

@@ -1,4 +1,5 @@
-//! Updates (8.2, decision 013): a check at the start and every 6 hours (`updates.auto_check`)
+//! Updates (8.2, decision 013): a check at the start and every 6 hours (`updates.auto_check`;
+//! 15 minutes after a failed one, never while recording)
 //! or by «Проверить обновления» and `devcast app update`, on a thread of its own; «Скачать?» is
 //! a HUD popover (`hud/update.rs`), never while recording or exporting; the download goes on a
 //! thread too and the update installs when the app exits («Перезапустить» exits at once).
@@ -33,6 +34,9 @@ pub struct Updates {
     found: Option<Update>,
     sender: Sender<Event>,
     events: Receiver<Event>,
+    /// When the last check failed, unix seconds: the next automatic one waits
+    /// (`dc_update::RETRY_AFTER`).
+    failed_at: Option<u64>,
     /// «Скачать?» waits until then, unix seconds; set whenever it is asked.
     snoozed_until: Option<u64>,
     /// «Готово» was told about the downloaded version.
@@ -50,6 +54,7 @@ impl Default for Updates {
             updater: None,
             state: UpdateState::Unknown,
             found: None,
+            failed_at: None,
             sender,
             events,
             snoozed_until: None,
@@ -96,8 +101,9 @@ impl Shared {
             self.updates_heard(event);
         }
         let settings = self.store.get().updates.clone();
-        if settings.auto_check && self.updates.updater().is_some() && !self.updates.busy() {
-            match dc_update::until_check(now(), settings.checked_at) {
+        let free = self.session.is_idle() && !self.updates.busy();
+        if settings.auto_check && self.updates.updater().is_some() && free {
+            match dc_update::until_check(now(), settings.checked_at, self.updates.failed_at) {
                 0 => self.check_updates(),
                 wait => self
                     .ctx
@@ -201,6 +207,7 @@ impl Shared {
                     },
                 };
                 self.updates.found = found.map(|update| *update);
+                self.updates.failed_at = None;
                 let checked = self.store.update(|s| s.updates.checked_at = Some(now()));
                 self.report(checked);
                 self.after_check();
@@ -220,6 +227,7 @@ impl Shared {
             }
             Event::Checked(Err(error)) | Event::Downloaded(Err(error)) => {
                 tracing::warn!("{error}");
+                self.updates.failed_at = Some(now());
                 *state = UpdateState::Failed {
                     error: error.to_string(),
                 };

@@ -115,6 +115,7 @@ fn claude(value: &Value) -> Vec<Event> {
             let said = text(&value["result"]).trim().to_owned();
             let end = match value["is_error"].as_bool().unwrap_or(false) {
                 false => Event::Finished(Ok(said)),
+                true if said.is_empty() => failed(&errors(value)),
                 true => failed(&said),
             };
             let usage = Usage::claude(value).map(Event::Usage);
@@ -122,6 +123,13 @@ fn claude(value: &Value) -> Vec<Event> {
         }
         _ => Vec::new(),
     }
+}
+
+/// Why a run failed before its first turn (`errors` of the result: an expired sign-in).
+fn errors(value: &Value) -> String {
+    let lines = value["errors"].as_array().cloned().unwrap_or_default();
+    let lines: Vec<&str> = lines.iter().map(text).collect();
+    lines.join(" ")
 }
 
 /// The command line of a tool call: `Bash` has `command`; any other tool shows its name.

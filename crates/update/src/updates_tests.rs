@@ -5,11 +5,18 @@ use super::*;
 
 #[test]
 fn checks_every_six_hours_and_at_once_the_first_time() {
-    assert_eq!(until_check(1_000, None), 0);
-    assert_eq!(until_check(1_000, Some(1_000)), CHECK_EVERY);
-    assert_eq!(until_check(1_000 + CHECK_EVERY - 5, Some(1_000)), 5);
-    assert_eq!(until_check(1_000 + CHECK_EVERY + 5, Some(1_000)), 0);
-    assert_eq!(until_check(1_000, Some(5_000)), 0, "clock set back");
+    assert_eq!(until_check(1_000, None, None), 0);
+    assert_eq!(until_check(1_000, Some(1_000), None), CHECK_EVERY);
+    assert_eq!(until_check(1_000 + CHECK_EVERY - 5, Some(1_000), None), 5);
+    assert_eq!(until_check(1_000 + CHECK_EVERY + 5, Some(1_000), None), 0);
+    assert_eq!(until_check(1_000, Some(5_000), None), 0, "clock set back");
+    assert_eq!(until_check(1_000, None, Some(1_000)), RETRY_AFTER);
+    assert_eq!(until_check(1_000 + RETRY_AFTER, None, Some(1_000)), 0);
+    assert_eq!(
+        until_check(2_000, Some(1_000), Some(1_990)),
+        CHECK_EVERY - 1_000,
+        "the longer wait"
+    );
 }
 
 #[test]

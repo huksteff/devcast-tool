@@ -1,6 +1,8 @@
 //! «Что нового» (8.3): the releases of `CHANGELOG.md`, built into the programs. A release is a
 //! section `## <версия>` (`## 0.2.0` or `## 0.2.0 — 2026-11-10`) with groups `### Добавлено` …
 //! of items `- …`; «Не выпущено» and other sections without a version are not releases.
+//! The window «Что нового» shows only the group `### Главное`: a few short lines a user reads
+//! in ten seconds; the other groups are the full log (`devcast app changelog`).
 
 use crate::error::UpdateError;
 
@@ -11,6 +13,19 @@ const CHANGELOG: &str = include_str!("../../../CHANGELOG.md");
 pub struct Release {
     pub version: String,
     pub groups: Vec<Group>,
+}
+
+/// The group the window «Что нового» shows.
+pub const MAIN: &str = "Главное";
+
+impl Release {
+    /// The lines of «Главное»; none when the release has no such group.
+    pub fn main(&self) -> &[String] {
+        self.groups
+            .iter()
+            .find(|group| group.title == MAIN)
+            .map_or(&[], |group| group.items.as_slice())
+    }
 }
 
 /// `### Добавлено` and its items.
@@ -124,5 +139,34 @@ mod tests {
     #[test]
     fn the_built_in_changelog_reads() {
         news(None, env!("CARGO_PKG_VERSION")).unwrap();
+    }
+
+    /// The most lines of [`MAIN`] in a release and the most characters in a line.
+    const MAIN_LINES: usize = 7;
+    const MAIN_LENGTH: usize = 100;
+
+    /// «Не выпущено» is the next release: it is held to the same rule.
+    #[test]
+    fn every_release_tells_the_main_things_in_a_few_short_lines() {
+        let text = CHANGELOG.replace("## Не выпущено", "## 9999.0.0");
+        let all = releases(&text);
+        assert!(all.len() >= 2);
+        for release in all {
+            let main = release.main();
+            assert!(
+                (1..=MAIN_LINES).contains(&main.len()),
+                "{}: «### Главное» has {} lines, 1–{MAIN_LINES} wanted",
+                release.version,
+                main.len()
+            );
+            for line in main {
+                assert!(
+                    line.chars().count() <= MAIN_LENGTH,
+                    "{}: longer than {MAIN_LENGTH} characters: {line}",
+                    release.version
+                );
+            }
+        }
+        assert_eq!(releases(TEXT)[0].main(), [] as [String; 0]);
     }
 }

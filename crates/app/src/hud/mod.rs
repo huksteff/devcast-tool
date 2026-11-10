@@ -8,6 +8,7 @@ pub mod live;
 pub mod menus;
 pub mod notices;
 pub mod picker;
+pub mod place;
 pub use dc_settings::placement;
 pub mod popover;
 pub mod update;

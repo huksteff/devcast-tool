@@ -90,3 +90,14 @@ fn claude_code_tells_how_full_the_limits_are() {
     };
     assert_eq!(read(Agent::Claude, line), vec![Event::Limits(limits)]);
 }
+
+#[test]
+fn a_run_that_never_started_tells_why() {
+    // As Claude Code 2.1.321 prints an expired sign-in.
+    let line = r#"{"type":"result","subtype":"error_during_execution","is_error":true,"num_turns":0,"errors":["Your Claude session has expired. Sign in again to continue (claude auth login)."]}"#;
+    let events = Reader::new(Agent::Claude).line(line);
+    let Some(Event::Finished(Err(why))) = events.last() else {
+        panic!("{events:?}");
+    };
+    assert!(why.contains("claude auth login"), "{why}");
+}

@@ -1,10 +1,12 @@
 //! Which AI agents the user has: `claude` and `codex` on `PATH`, or where their installers put
 //! them (the native installer of Claude Code — `~\.local\bin`, npm — `%APPDATA%\npm`), and
-//! last the Claude Code inside Claude Desktop (`%LOCALAPPDATA%\Claude-Data\claude_*\claude-code\
-//! <version>\<build>\claude.exe`, the newest version): it works on its own once signed in with
-//! `/login` (owner's decision 2026-11-04).
+//! the Claude Code inside Claude Desktop (`%LOCALAPPDATA%\Claude-Data\claude_*\claude-code\
+//! <version>\<build>\claude.exe`): it works on its own once signed in with `/login` (owner's
+//! decision 2026-11-04). Of several Claude Codes the newest version runs: an old one left by an
+//! installer does not know the flags of [`crate::run::launch`].
 
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 use dc_settings::Agent;
 
@@ -49,20 +51,57 @@ impl Places {
     }
 }
 
-/// The agents found in `places`, Claude Code first; each once, at its first place.
+/// The agents found in `places`, Claude Code first: the newest Claude Code, the first Codex.
 pub fn find(places: &Places) -> Vec<Found> {
     let folders = places.folders();
-    [(Agent::Claude, "claude"), (Agent::Codex, "codex")]
+    let installed = |name: &str| -> Vec<PathBuf> {
+        let mut programs: Vec<PathBuf> = folders
+            .iter()
+            .filter_map(|folder| program(folder, name))
+            .collect();
+        programs.dedup();
+        programs
+    };
+    let claudes = installed("claude")
         .into_iter()
-        .filter_map(|(agent, name)| {
-            let installed = folders.iter().find_map(|folder| program(folder, name));
-            let path = match agent {
-                Agent::Claude => installed.or_else(|| desktop_claude(places.local.as_deref()?)),
-                Agent::Codex => installed,
-            }?;
-            Some(Found { agent, path })
+        .map(|path| (asked_version(&path), path))
+        .chain(places.local.as_deref().and_then(desktop_claude));
+    let claude = newest(claudes).map(|path| Found {
+        agent: Agent::Claude,
+        path,
+    });
+    let codex = installed("codex").into_iter().next().map(|path| Found {
+        agent: Agent::Codex,
+        path,
+    });
+    claude.into_iter().chain(codex).collect()
+}
+
+/// The program of the highest version; of equal ones the first.
+fn newest(found: impl Iterator<Item = (Vec<u32>, PathBuf)>) -> Option<PathBuf> {
+    found
+        .fold(None, |best: Option<(Vec<u32>, PathBuf)>, next| match best {
+            Some(best) if best.0 >= next.0 => Some(best),
+            _ => Some(next),
         })
-        .collect()
+        .map(|(_, path)| path)
+}
+
+/// What `program --version` says («2.1.321 (Claude Code)»); empty — the oldest — when it
+/// does not say.
+fn asked_version(program: &Path) -> Vec<u32> {
+    let mut ask = Command::new(program);
+    ask.arg("--version")
+        .stdin(Stdio::null())
+        .stderr(Stdio::null());
+    crate::run::no_window(&mut ask);
+    ask.output()
+        .ok()
+        .and_then(|said| {
+            let said = String::from_utf8_lossy(&said.stdout);
+            said.split_whitespace().next().and_then(version_of)
+        })
+        .unwrap_or_default()
 }
 
 /// The agent `wanted` among `found`, else the first one.
@@ -72,8 +111,8 @@ pub fn pick(found: &[Found], wanted: Option<Agent>) -> Option<&Found> {
         .or_else(|| found.first())
 }
 
-/// The Claude Code of Claude Desktop under `local`, of its newest version.
-fn desktop_claude(local: &Path) -> Option<PathBuf> {
+/// The Claude Code of Claude Desktop under `local`, of its newest version, with that version.
+fn desktop_claude(local: &Path) -> Option<(Vec<u32>, PathBuf)> {
     let apps = std::fs::read_dir(local.join("Claude-Data")).ok()?;
     let mut found: Vec<(Vec<u32>, PathBuf)> = Vec::new();
     for app in apps.flatten() {
@@ -95,10 +134,7 @@ fn desktop_claude(local: &Path) -> Option<PathBuf> {
             found.extend(exe.map(|exe| (number, exe)));
         }
     }
-    found
-        .into_iter()
-        .max_by(|a, b| a.0.cmp(&b.0))
-        .map(|(_, exe)| exe)
+    found.into_iter().max_by(|a, b| a.0.cmp(&b.0))
 }
 
 /// `2.1.309` as numbers; none for a folder that is not a version.
@@ -162,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn claude_desktop_gives_its_newest_claude_code_last() {
+    fn claude_desktop_gives_its_newest_claude_code() {
         let tmp = tempfile::tempdir().unwrap();
         let code = tmp
             .path()
@@ -183,21 +219,56 @@ mod tests {
             found,
             vec![Found {
                 agent: Agent::Claude,
-                path: newest
+                path: newest.clone()
             }],
             "2.2.0 has no exe"
         );
         let installed = tmp.path().join("bin");
         touch(&installed.join(exe("claude")));
         let places = Places {
-            path: vec![installed.clone()],
+            path: vec![installed],
             ..places
         };
         assert_eq!(
             find(&places)[0].path,
-            installed.join(exe("claude")),
-            "an installed one first"
+            newest,
+            "an installed one that tells no version is the oldest"
         );
+    }
+
+    /// A pretend Claude Code that answers `--version`.
+    #[cfg(windows)]
+    fn shim(folder: &Path, version: &str) -> PathBuf {
+        let path = folder.join("claude.cmd");
+        touch(&path);
+        std::fs::write(&path, format!("@echo {version} (Claude Code)\r\n")).unwrap();
+        path
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn the_newest_claude_code_runs_wherever_it_is() {
+        let tmp = tempfile::tempdir().unwrap();
+        let code = tmp.path().join("Claude-Data").join("claude_pzs8");
+        let desktop = code.join("claude-code").join("2.1.321").join("b2");
+        touch(&desktop.join("claude.exe"));
+        let old = shim(&tmp.path().join("old"), "2.1.220");
+        let places = Places {
+            path: vec![tmp.path().join("old")],
+            local: Some(tmp.path().to_path_buf()),
+            ..Places::default()
+        };
+        assert_eq!(
+            find(&places)[0].path,
+            desktop.join("claude.exe"),
+            "{old:?} is older"
+        );
+        let new = shim(&tmp.path().join("new"), "2.2.5");
+        let places = Places {
+            path: vec![tmp.path().join("old"), tmp.path().join("new")],
+            ..places
+        };
+        assert_eq!(find(&places)[0].path, new);
     }
 
     #[cfg(windows)]

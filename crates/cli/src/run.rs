@@ -112,10 +112,8 @@ pub fn run_with(args: Vec<String>, cwd: &Path, registry: &Registry, local: Local
 /// The built-in command or op `rest` names, run in `ctx`.
 pub(crate) fn dispatch(rest: Vec<String>, ctx: &Ctx<'_>) -> Result<Answer, CliError> {
     let cli = parse(rest)?;
-    if let (Some(_), Some(why)) = (ctx.local.group, cli.not_for_agent()) {
-        return Err(CliError::Usage(format!(
-            "во время «Сделать красиво» эта команда закрыта: {why}"
-        )));
+    if ctx.local.group.is_some() {
+        crate::bounds::check(ctx, &cli)?;
     }
     cli.execute(ctx)
 }
@@ -128,8 +126,22 @@ pub(crate) fn parse(rest: Vec<String>) -> Result<Cli, CliError> {
     }
     Cli::try_parse_from(std::iter::once("devcast".to_owned()).chain(rest)).map_err(|e| {
         CliError::Usage(format!(
-            "командная строка не разобрана ({}). Список: devcast help",
-            e.kind()
+            "командная строка не разобрана: {}. Список: devcast help",
+            said(&e)
         ))
     })
+}
+
+/// What clap says is wrong, in one line: the argument and the values it takes, without the
+/// usage text.
+fn said(error: &clap::Error) -> String {
+    let text = error.render().to_string();
+    let text = text.split("\nUsage:").next().unwrap_or_default();
+    let lines: Vec<&str> = text
+        .trim_start_matches("error: ")
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    lines.join("; ")
 }

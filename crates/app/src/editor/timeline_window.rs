@@ -34,6 +34,9 @@ pub struct Detached {
     pub open: bool,
     /// Where the window is now; kept in the settings when it closes or the editor does.
     pub place: Option<WindowPlace>,
+    /// Where the editor window is now, unless it is maximized or minimized; kept in the
+    /// settings when the editor closes, and the next one opens there.
+    pub window: Option<WindowPlace>,
     /// A frame of the timeline window changed what the editor shows: it repaints.
     pub wake_editor: bool,
     /// A frame of the editor changed what the timeline window shows: it repaints.
@@ -122,10 +125,14 @@ pub fn remember(shared: &mut Shared) {
         return;
     };
     let (open, place) = (editor.detached.open, editor.detached.place);
+    let window = editor.detached.window;
     let saved = shared.store.update(|s| {
         s.editor.timeline_window = open;
         if place.is_some() {
             s.editor.timeline_place = place;
+        }
+        if window.is_some() {
+            s.editor.window_place = window;
         }
     });
     shared.report(saved);
@@ -173,6 +180,29 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, repaint: bool) {
     }
 }
 
+/// Where the window of this frame is: its outer corner and its inner size.
+pub fn place_of(ui: &Ui) -> Option<WindowPlace> {
+    ui.input(|i| {
+        let viewport = i.viewport();
+        let (outer, inner) = (viewport.outer_rect?, viewport.inner_rect?);
+        Some(WindowPlace {
+            x: outer.min.x,
+            y: outer.min.y,
+            width: inner.width(),
+            height: inner.height(),
+        })
+    })
+}
+
+/// The editor window's frame keeps where that window is, unless it is maximized or minimized:
+/// the next editor opens at its ordinary place.
+pub fn keep_window_place(ui: &Ui, editor: &mut EditorWindow) {
+    let (big, small) = ui.input(|i| (i.viewport().maximized, i.viewport().minimized));
+    if big != Some(true) && small != Some(true) {
+        editor.detached.window = place_of(ui).or(editor.detached.window);
+    }
+}
+
 /// The saved place while its middle is on one of `monitors` (`ppp` physical pixels a point).
 pub fn on_screen(
     place: Option<WindowPlace>,
@@ -211,16 +241,7 @@ pub fn frame(ui: &mut Ui, shared: &mut Shared) {
     let mut errors: Vec<String> = sound_error.into_iter().collect();
     errors.extend(actions::run(ui, editor, now));
     playback::keep_playing(ui, editor);
-    editor.detached.place = ui.input(|i| {
-        let viewport = i.viewport();
-        let (outer, inner) = (viewport.outer_rect?, viewport.inner_rect?);
-        Some(WindowPlace {
-            x: outer.min.x,
-            y: outer.min.y,
-            width: inner.width(),
-            height: inner.height(),
-        })
-    });
+    editor.detached.place = place_of(ui);
     let closed = ui.input(|i| i.viewport().close_requested());
     if closed {
         editor.detach(false);

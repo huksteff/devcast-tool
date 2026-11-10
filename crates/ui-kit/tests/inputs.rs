@@ -200,6 +200,27 @@ fn dropdown_open_shows_every_item() {
     harness.snapshot("dropdown_open");
 }
 
+/// A chosen caption longer than the button is cut with «…»: the button keeps its width and does
+/// not push apart the fixed-width panel it stands in (the «Нейронка» tab with «Sonnet — …»).
+#[test]
+fn dropdown_keeps_its_width_with_a_long_choice() {
+    const MODELS: [(usize, &str); 2] = [
+        (0, "По умолчанию"),
+        (1, "Sonnet — быстрее и экономнее, чем самая длинная подпись"),
+    ];
+    const WIDTH: f32 = 160.0;
+    let mut harness = harness((1, 0.0), |ui, (model, width): &mut (usize, f32)| {
+        *width = dropdown(ui, "Модель", model, &MODELS, WIDTH).rect.width();
+    });
+    harness.run();
+    let width = harness.state().1;
+    assert!(
+        width <= WIDTH + 0.5,
+        "кнопка списка шириной {width} px вместо {WIDTH}"
+    );
+    harness.snapshot("dropdown_long_choice");
+}
+
 #[test]
 fn text_field_with_hint() {
     let mut harness = harness(

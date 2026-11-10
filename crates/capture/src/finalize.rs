@@ -62,6 +62,13 @@ fn join(dir: &Path, track: &Track) -> Result<(), CaptureError> {
         return Err(CaptureError::EmptyRecording(dir.to_path_buf()));
     };
     writer.finish()?;
+    // On the disk before the segments it was made of are deleted: a power cut must not leave
+    // neither.
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&partial)
+        .and_then(|file| file.sync_all())
+        .map_err(CaptureError::file("сохранить", &partial))?;
     std::fs::rename(&partial, &target).map_err(CaptureError::file("переименовать", &partial))
 }
 

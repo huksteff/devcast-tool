@@ -21,6 +21,8 @@ use crate::keymap::EditorKey;
 
 /// The projects the menu lists at most (v1, SCOPE).
 pub const RECENT_MAX: usize = 16;
+/// How many of them the HUD's «Ещё» and the tray show.
+pub const RECENT_SHOWN: usize = 5;
 /// Width of the menu, its tiles in a row and the height of a tile's name, points (mockup).
 const MENU_WIDTH: f32 = 400.0;
 const COLUMNS: usize = 3;
@@ -181,7 +183,7 @@ pub fn run(editor: &mut EditorWindow, key: EditorKey) {
                 .root()
                 .parent()
                 .map(std::path::Path::to_path_buf);
-            let mut dialog = rfd::FileDialog::new().set_title(text::PICK_PROJECT);
+            let mut dialog = crate::dialog::file().set_title(text::PICK_PROJECT);
             if let Some(folder) = folder {
                 dialog = dialog.set_directory(folder);
             }

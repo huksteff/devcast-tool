@@ -171,7 +171,7 @@ impl SettingsWindow {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let choose = Button::new(text::CHOOSE).icon(Icon::Folder);
                 if ui.add(choose).clicked()
-                    && let Some(folder) = rfd::FileDialog::new()
+                    && let Some(folder) = crate::dialog::file()
                         .set_directory(&next.recordings_dir)
                         .pick_folder()
                 {

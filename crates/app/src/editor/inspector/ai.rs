@@ -35,7 +35,7 @@ pub fn tab(ui: &mut Ui, cx: &mut Cx<'_>) {
     if ai.agent().is_none() || ai.signed_in == Some(false) {
         match ai.agent() {
             None => ai_cards::not_found(ui, actions),
-            Some(_) => ai_cards::signed_out(ui, actions),
+            Some(_) => ai_cards::signed_out(ui, ai, actions),
         }
         own(ui, base, ai, actions);
         return;

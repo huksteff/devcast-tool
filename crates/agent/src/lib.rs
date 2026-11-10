@@ -4,6 +4,7 @@
 //! editor's «Нейронка» tab and `devcast beautify`.
 
 pub mod find;
+pub mod login;
 pub mod prompt;
 pub mod run;
 pub mod sign_in;

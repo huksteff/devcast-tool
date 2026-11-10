@@ -46,8 +46,8 @@ fn claude_code_may_only_run_devcast_and_gets_the_skill_as_a_file() {
         "PowerShell may run devcast too"
     );
     assert!(
-        has(&args, ["--permission-prompts", "none"]),
-        "nothing waits for a person"
+        !args.iter().any(|a| a == "--permission-prompts"),
+        "old versions do not know it"
     );
     assert!(has(
         &args,
@@ -126,6 +126,28 @@ fn a_run_that_ends_without_an_answer_fails() {
     let job = Job::start(pretend(tmp.path(), "просто текст\n"), || {}).unwrap();
     let events: Vec<Event> = std::iter::from_fn(|| job.next()).collect();
     assert!(matches!(events.as_slice(), [Event::Finished(Err(_))]));
+}
+
+#[cfg(windows)]
+#[test]
+fn a_run_that_fails_tells_what_the_agent_said() {
+    let tmp = tempfile::tempdir().unwrap();
+    let old = Launch {
+        program: PathBuf::from("cmd"),
+        args: vec!["/C".into(), "echo error: unknown option '--x' 1>&2".into()],
+        ..pretend(tmp.path(), "")
+    };
+    let job = Job::start(old, || {}).unwrap();
+    let events: Vec<Event> = std::iter::from_fn(|| job.next()).collect();
+    let [Event::Finished(Err(why))] = events.as_slice() else {
+        panic!("{events:?}");
+    };
+    assert!(
+        why.contains("unknown option '--x'") && why.contains("claude update"),
+        "{why}"
+    );
+    assert!(no_answer("").ends_with("попробуй ещё раз"));
+    assert!(no_answer("Not logged in").contains("(Not logged in)"));
 }
 
 #[cfg(windows)]

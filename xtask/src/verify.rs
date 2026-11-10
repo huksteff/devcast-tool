@@ -15,6 +15,18 @@ pub struct Options {
     /// Only the checks that need no build (no clippy, no tests): seconds instead of minutes,
     /// for the Stop hook on the owner's PC (docs/PROCESS.md).
     pub quick: bool,
+    /// Which half runs: CI runs the two on two machines at once.
+    pub part: Part,
+}
+
+/// The halves of verify.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Part {
+    All,
+    /// Everything but the tests: fmt, clippy and the rules of the repository.
+    Checks,
+    /// Only the tests.
+    Tests,
 }
 
 impl Options {
@@ -23,12 +35,15 @@ impl Options {
             full: false,
             include_ignored: false,
             quick: false,
+            part: Part::All,
         };
         for arg in args {
             match arg.as_str() {
                 "--full" => options.full = true,
                 "--include-ignored" => options.include_ignored = true,
                 "--quick" => options.quick = true,
+                "--checks" => options.part = Part::Checks,
+                "--tests" => options.part = Part::Tests,
                 other => return Err(format!("неизвестный флаг `{other}`")),
             }
         }
@@ -83,14 +98,19 @@ impl Report {
 }
 
 pub fn run(options: &Options) -> Report {
-    let mut steps = vec![(
-        "fmt",
-        run::cargo(
-            &["fmt", "--all", "--check", "--", "--color=never"],
-            "Запусти `cargo fmt --all` и повтори.",
-        ),
-    )];
-    if !options.quick {
+    let checks = options.part != Part::Tests;
+    let with_tests = !options.quick && options.part != Part::Checks;
+    let mut steps = Vec::new();
+    if checks {
+        steps.push((
+            "fmt",
+            run::cargo(
+                &["fmt", "--all", "--check", "--", "--color=never"],
+                "Запусти `cargo fmt --all` и повтори.",
+            ),
+        ));
+    }
+    if checks && !options.quick {
         steps.push((
             "clippy",
             run::cargo(
@@ -109,14 +129,16 @@ pub fn run(options: &Options) -> Report {
     }
     match Workspace::load() {
         Ok(workspace) => {
-            steps.push(("limits", limits::check(&workspace.root)));
-            steps.push(("crates", crates::check(&workspace)));
-            steps.push(("deps", deps::check(&workspace)));
-            steps.push(("todo", todo::check(&workspace.root)));
-            steps.push(("seams", seams::check(&workspace.root)));
-            steps.push(("schema_docs", schema_docs::check(&workspace.root)));
-            steps.push(("features", features::check(&workspace.root)));
-            if !options.quick {
+            if checks {
+                steps.push(("limits", limits::check(&workspace.root)));
+                steps.push(("crates", crates::check(&workspace)));
+                steps.push(("deps", deps::check(&workspace)));
+                steps.push(("todo", todo::check(&workspace.root)));
+                steps.push(("seams", seams::check(&workspace.root)));
+                steps.push(("schema_docs", schema_docs::check(&workspace.root)));
+                steps.push(("features", features::check(&workspace.root)));
+            }
+            if with_tests {
                 steps.push(("tests", tests(options, &workspace)));
             }
         }
@@ -178,5 +200,9 @@ mod tests {
         assert!(options.quick && !options.full && !options.include_ignored);
         assert!(!Options::parse(&[]).unwrap().quick);
         assert!(Options::parse(&["--fast".to_owned()]).is_err());
+        assert_eq!(Options::parse(&[]).unwrap().part, Part::All);
+        let part = |flag: &str| Options::parse(&[flag.to_owned()]).unwrap().part;
+        assert_eq!(part("--checks"), Part::Checks);
+        assert_eq!(part("--tests"), Part::Tests);
     }
 }

@@ -312,3 +312,17 @@ mod live {
         );
     }
 }
+
+#[test]
+fn the_hud_and_the_tray_offer_the_recent_projects_that_are_still_there() {
+    let (_temp, mut shared, a, b) = two();
+    assert!(shared.recent().is_empty());
+    assert!(shared.open_project(&a, false) && shared.open_project(&b, false));
+    shared.drop_editor();
+    let names: Vec<String> = shared.recent().into_iter().map(|(name, _)| name).collect();
+    assert_eq!(names, ["Б", "А"], "newest first, without .devcast");
+    std::fs::remove_dir_all(&b).unwrap();
+    assert_eq!(shared.recent(), [("А".to_owned(), a)]);
+    shared.record();
+    assert!(shared.recent().is_empty(), "none while recording");
+}
