@@ -21,6 +21,8 @@ use crate::keymap::EditorKey;
 
 /// The projects the menu lists at most (v1, SCOPE).
 pub const RECENT_MAX: usize = 16;
+/// How many of them the HUD's «Ещё» and the tray show.
+pub const RECENT_SHOWN: usize = 5;
 /// Width of the menu, its tiles in a row and the height of a tile's name, points (mockup).
 const MENU_WIDTH: f32 = 400.0;
 const COLUMNS: usize = 3;

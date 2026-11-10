@@ -205,12 +205,15 @@ fn name(ui: &mut Ui, text: &str, color: Color32, width: f32) {
 /// What the «Ещё» menu asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoreAction {
+    /// Open the recent project of this place in the list.
+    Open(usize),
     Settings,
     Quit,
 }
 
-/// The «Ещё» menu (mockup 1): «Скрывать HUD из записи», «Настройки», «Выход».
-pub fn more_menu(ui: &mut Ui, hide: &mut bool) -> Option<MoreAction> {
+/// The «Ещё» menu (mockup 1): «Скрывать HUD из записи», the `recent` projects by name (the
+/// editor opens one; none while recording), «Настройки», «Выход».
+pub fn more_menu(ui: &mut Ui, hide: &mut bool, recent: &[String]) -> Option<MoreAction> {
     ui.spacing_mut().item_spacing.y = 2.0;
     ui.horizontal(|ui| {
         ui.set_min_height(34.0);
@@ -226,6 +229,22 @@ pub fn more_menu(ui: &mut Ui, hide: &mut bool) -> Option<MoreAction> {
     });
     divider(ui);
     let mut action = None;
+    if !recent.is_empty() {
+        ui.horizontal(|ui| {
+            ui.add_space(S2);
+            ui.label(
+                egui::RichText::new(hud::RECENT)
+                    .font(fonts::text(FS_S, Weight::Regular))
+                    .color(TEXT_2),
+            );
+        });
+        for (place, name) in recent.iter().enumerate() {
+            if item(ui, Icon::Project, &short(name)).clicked() {
+                action = Some(MoreAction::Open(place));
+            }
+        }
+        divider(ui);
+    }
     if item(ui, Icon::Gear, hud::SETTINGS).clicked() {
         action = Some(MoreAction::Settings);
     }
@@ -234,6 +253,16 @@ pub fn more_menu(ui: &mut Ui, hide: &mut bool) -> Option<MoreAction> {
         action = Some(MoreAction::Quit);
     }
     action
+}
+
+/// The most characters of a project name in the menu; a longer one ends with «…».
+const NAME: usize = 26;
+
+fn short(name: &str) -> String {
+    match name.chars().count() > NAME {
+        true => name.chars().take(NAME - 1).chain(['…']).collect(),
+        false => name.to_owned(),
+    }
 }
 
 /// A row of a popover menu: icon and text, lit when hovered.

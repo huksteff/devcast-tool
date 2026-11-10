@@ -9,7 +9,7 @@ use dc_core::project::MediaKind;
 use dc_project::ProjectDir;
 use dc_ui_kit::strings::projects as text;
 
-use super::projects::RECENT_MAX;
+use super::projects::{RECENT_MAX, RECENT_SHOWN};
 use super::{Document, EditorWindow, LOCK_OWNER, Leave, timeline_window};
 use crate::app::Shared;
 
@@ -58,6 +58,30 @@ impl Shared {
         self.remember_project(&root, None);
         self.hide_hud();
         Ok(())
+    }
+
+    /// The projects opened last that are still there, newest first, each with its name: the
+    /// HUD's «Ещё» and the tray open them. None while a recording runs.
+    pub fn recent(&self) -> Vec<(String, std::path::PathBuf)> {
+        if !self.session.is_idle() {
+            return Vec::new();
+        }
+        let settings = self.store.get();
+        let there = settings.recent_projects.iter().filter(|root| root.is_dir());
+        there
+            .take(RECENT_SHOWN)
+            .map(|root| {
+                let name = root.file_stem().unwrap_or(root.as_os_str());
+                (name.to_string_lossy().into_owned(), root.clone())
+            })
+            .collect()
+    }
+
+    /// Opens the project at `place` of [`Self::recent`] in the editor.
+    pub fn open_recent(&mut self, place: usize) {
+        if let Some((_, root)) = self.recent().get(place) {
+            self.open_project(root, true);
+        }
     }
 
     /// `devcast open`: the editor opens the project in `root`; with unsaved changes of another

@@ -7,7 +7,7 @@ use std::sync::mpsc::{self, Receiver};
 
 use dc_ui_kit::strings::tray as text;
 use eframe::egui;
-use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
+use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
 use tray_icon::{Icon, MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 use crate::error::AppError;
@@ -18,9 +18,14 @@ use crate::logo;
 pub enum TrayAction {
     ShowHud,
     Stop,
+    /// Open the recent project of this place in the list.
+    Open(usize),
     Settings,
     Quit,
 }
+
+/// The id of the menu item of a recent project is this and its place.
+const RECENT_ID: &str = "recent-";
 
 /// What the menu shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,6 +36,8 @@ pub struct TrayView {
     pub recording: bool,
     /// «Остановить» works (not at rest and not while the recording is prepared).
     pub can_stop: bool,
+    /// «Последние проекты»: their names, newest first; empty — the submenu is inactive.
+    pub recent: Vec<String>,
 }
 
 impl TrayView {
@@ -46,6 +53,9 @@ pub struct Tray {
     status: MenuItem,
     stop: MenuItem,
     show: MenuItem,
+    recent: Submenu,
+    /// One item per place of «Последние проекты»; the first `recent` of the view are in it.
+    projects: Vec<MenuItem>,
     settings: MenuItem,
     actions: Receiver<TrayAction>,
     shown: Option<TrayView>,
@@ -59,12 +69,17 @@ impl Tray {
         let show = MenuItem::new(text::SHOW, true, None);
         let settings = MenuItem::new(text::SETTINGS, true, None);
         let quit = MenuItem::new(text::QUIT, true, None);
+        let recent = Submenu::new(text::RECENT, false);
+        let projects = (0..crate::editor::RECENT_SHOWN)
+            .map(|place| MenuItem::with_id(format!("{RECENT_ID}{place}"), "", true, None))
+            .collect();
         let menu = Menu::with_items(&[
             &status,
             &PredefinedMenuItem::separator(),
             &show,
             &stop,
             &PredefinedMenuItem::separator(),
+            &recent,
             &settings,
             &quit,
         ])
@@ -78,9 +93,13 @@ impl Tray {
         ];
         let (menu_sender, menu_ctx) = (sender.clone(), ctx.clone());
         MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
-            if let Some((_, action)) = ids.iter().find(|(id, _)| *id == event.id) {
+            let fixed = ids.iter().find(|(id, _)| *id == event.id);
+            let action = fixed
+                .map(|(_, action)| *action)
+                .or_else(|| opened(&event.id.0));
+            if let Some(action) = action {
                 // The receiver goes only with the app.
-                let _ = menu_sender.send(*action);
+                let _ = menu_sender.send(action);
                 menu_ctx.request_repaint_of(egui::ViewportId::ROOT);
             }
         }));
@@ -109,6 +128,8 @@ impl Tray {
             status,
             stop,
             show,
+            recent,
+            projects,
             settings,
             actions,
             shown: None,
@@ -128,6 +149,10 @@ impl Tray {
         self.status.set_text(&view.status);
         self.stop.set_enabled(view.can_stop);
         self.settings.set_enabled(view.can_open_settings());
+        if self.shown.as_ref().map(|v| &v.recent) != Some(&view.recent) {
+            self.list(&view.recent)
+                .map_err(|e| AppError::Tray(e.to_string()))?;
+        }
         if was_recording != Some(view.recording) {
             self.icon
                 .set_icon(Some(
@@ -148,6 +173,29 @@ impl Tray {
         self.shown = Some(view);
         Ok(())
     }
+}
+
+impl Tray {
+    /// «Последние проекты» holds an item per name of `recent`.
+    fn list(&self, recent: &[String]) -> tray_icon::menu::Result<()> {
+        for item in self.recent.items() {
+            if let Some(item) = item.as_menuitem() {
+                self.recent.remove(item)?;
+            }
+        }
+        for (item, name) in self.projects.iter().zip(recent) {
+            item.set_text(name);
+            self.recent.append(item)?;
+        }
+        self.recent.set_enabled(!recent.is_empty());
+        Ok(())
+    }
+}
+
+/// The action of the menu item `id` of a recent project.
+fn opened(id: &str) -> Option<TrayAction> {
+    let place = id.strip_prefix(RECENT_ID)?.parse().ok()?;
+    Some(TrayAction::Open(place))
 }
 
 /// The DevCast icon, with a red dot while recording.

@@ -125,7 +125,7 @@ fn more_menu() {
         .build_ui_state(
             |ui, state: &mut (bool, Option<MoreAction>)| {
                 dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
-                    if let Some(action) = menus::more_menu(ui, &mut state.0) {
+                    if let Some(action) = menus::more_menu(ui, &mut state.0, &[]) {
                         state.1 = Some(action);
                     }
                 });
@@ -140,6 +140,31 @@ fn more_menu() {
     harness.get_by_label(hud::SETTINGS).click();
     harness.run();
     assert_eq!(*harness.state(), (false, Some(MoreAction::Settings)));
+}
+
+#[test]
+fn more_menu_opens_a_recent_project() {
+    let recent = [
+        "Урок 1".to_owned(),
+        "Очень длинное название проекта про шейдеры".to_owned(),
+    ];
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(egui::vec2(280.0, 290.0))
+        .build_ui_state(
+            move |ui, state: &mut Option<MoreAction>| {
+                dc_ui_kit::widgets::panel_frame().show(ui, |ui| {
+                    ui.set_width(244.0);
+                    *state = menus::more_menu(ui, &mut true, &recent).or(*state);
+                });
+            },
+            None,
+        );
+    harness.run();
+    harness.get_by_label(hud::RECENT);
+    harness.snapshot("hud_more_recent");
+    harness.get_by_label("Урок 1").click();
+    harness.run();
+    assert_eq!(*harness.state(), Some(MoreAction::Open(0)));
 }
 
 /// Two screens and the windows of a usual desktop, with real titles.

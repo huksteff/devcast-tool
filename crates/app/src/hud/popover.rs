@@ -358,10 +358,16 @@ fn timing(ui: &mut Ui, shared: &mut Shared) {
 
 fn more(ui: &mut Ui, shared: &mut Shared) {
     let mut hide = shared.store.get().hide_hud;
-    let action = more_menu(ui, &mut hide);
+    let recent = shared.recent();
+    let names: Vec<String> = recent.iter().map(|(name, _)| name.clone()).collect();
+    let action = more_menu(ui, &mut hide, &names);
     let result = shared.store.update(|s| s.hide_hud = hide);
     shared.report(result);
     match action {
+        Some(MoreAction::Open(place)) => {
+            shared.popover = None;
+            shared.open_recent(place);
+        }
         Some(MoreAction::Settings) => {
             shared.popover = None;
             shared.open_settings();

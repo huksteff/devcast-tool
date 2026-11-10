@@ -90,6 +90,7 @@ pub use actions::{Action, Transport};
 pub use closing::Leave;
 pub use document::{Document, DocumentError, LOCK_OWNER, Way};
 use playback::seek::{FALLBACK_FPS, frame_rate};
+pub use projects::RECENT_SHOWN;
 pub use timeline::{Place, Tracks};
 pub use view::View;
 pub use window::show;

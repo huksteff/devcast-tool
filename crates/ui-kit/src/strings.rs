@@ -45,6 +45,7 @@ pub mod hud {
     pub const RECORD: &str = "Запись";
     pub const MORE: &str = "Ещё";
     pub const HIDE_FROM_RECORDING: &str = "Скрывать HUD из записи";
+    pub const RECENT: &str = "Последние проекты";
     pub const OPEN_PROJECT: &str = "Открыть проект…";
     pub const SETTINGS: &str = "Настройки";
     pub const TO_TRAY: &str = "Свернуть в трей";
@@ -357,6 +358,7 @@ pub mod tray {
     pub const TOOLTIP: &str = "DevCast";
     pub const READY: &str = "DevCast — готов к записи";
     pub const SHOW: &str = "Показать панель";
+    pub const RECENT: &str = "Последние проекты";
     pub const STOP: &str = "Остановить";
     pub const SETTINGS: &str = "Настройки";
     pub const QUIT: &str = "Выход";

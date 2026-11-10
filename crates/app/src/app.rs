@@ -263,6 +263,7 @@ impl App {
             match action {
                 TrayAction::ShowHud => shared.show_hud(),
                 TrayAction::Stop => shared.stop(),
+                TrayAction::Open(place) => shared.open_recent(place),
                 TrayAction::Settings => shared.open_settings(),
                 TrayAction::Quit => shared.quit(),
             }
