@@ -98,6 +98,14 @@ impl Parts {
 
 /// The parts that differ between `before` and `after`.
 fn diff(before: &Project, after: &Project) -> (Parts, Parts) {
+    // Every field by name: a new field of `Project` does not compile until it is compared
+    // here, otherwise a command that changes it would change nothing.
+    let Project {
+        schema_version: _,
+        clips: _,
+        clip_ids: _,
+        effects: _,
+    } = before;
     let mut old = Parts::default();
     let mut new = Parts::default();
     if before.clips != after.clips || before.clip_ids != after.clip_ids {
