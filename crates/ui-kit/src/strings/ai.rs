@@ -33,7 +33,13 @@ pub const HOW_TO_INSTALL: &str = "Как поставить";
 pub const INSTALL_URL: &str = "https://docs.anthropic.com/en/docs/claude-code/setup";
 pub const CHECK_AGAIN: &str = "Проверить снова";
 pub const SIGNED_OUT: &str = "нейронка не вошла в аккаунт";
-pub const SIGNED_OUT_TEXT: &str = "Claude Code не вошёл в вашу подписку. «Войти» откроет чёрное окно и страницу в браузере. Разрешите доступ; если покажут код — вставьте его в чёрное окно и нажмите Enter. Потом «Проверить снова».";
+pub const SIGNED_OUT_TEXT: &str =
+    "Claude Code не вошёл в вашу подписку. «Войти» откроет страницу входа в браузере.";
+pub const SIGNING_IN: &str = "вход в аккаунт";
+pub const SIGNING_IN_TEXT: &str = "Страница входа открыта в браузере: разрешите доступ. Если страница покажет код — вставьте его сюда.";
+pub const CODE_HINT: &str = "код";
+pub const SEND_CODE: &str = "Отправить код";
+pub const CANCEL_SIGN_IN: &str = "Отмена";
 pub const SIGN_IN: &str = "Войти";
 pub const OWN_AGENT: &str = "Своя нейронка";
 pub const OWN_AGENT_TEXT: &str = "Чтобы монтировать нейронкой вне DevCast (Claude Code, Codex, Cursor, Gemini …), отдайте ей эту папку и попросите установить скилл:";

@@ -26,8 +26,12 @@ pub enum AiAsk {
     Restart,
     /// «Проверить снова».
     LookAgain,
-    /// «Войти»: the agent's sign-in in its own console window.
+    /// «Войти»: the agent's sign-in; its page opens in the browser.
     Login,
+    /// «Отправить код» of the sign-in.
+    SendCode,
+    /// «Отмена» of the sign-in.
+    CancelLogin,
     /// «Открыть папку» of «Своя нейронка».
     OpenSkill,
 }
@@ -96,12 +100,17 @@ pub struct Ai {
     pub signed_in: Option<bool>,
     /// A run failed because the sign-in was refused: «Проверить снова» asks the agent itself,
     /// not its status.
-    refused: bool,
+    pub(super) refused: bool,
     /// The agents were looked for.
     pub looked: bool,
     /// The folder with the skill for agents opened without DevCast (8.10).
     pub skill: Option<PathBuf>,
     signing: Option<Receiver<Option<bool>>>,
+    /// The sign-in that runs («Войти»), the code typed for it and its page until the tab
+    /// opens it (`ai_sign_in.rs`).
+    pub(super) login: Option<dc_agent::login::Login>,
+    pub code: String,
+    pub(super) page: Option<String>,
     session: Option<String>,
     job: Option<Job>,
     news: Arc<AtomicBool>,
@@ -137,6 +146,9 @@ impl Ai {
             looked: true,
             skill: None,
             signing: None,
+            login: None,
+            code: String::new(),
+            page: None,
             session: None,
             job: None,
             news: Arc::new(AtomicBool::new(false)),
@@ -212,6 +224,7 @@ impl Ai {
 
     /// Takes the agent's events; true when the tab has news to draw.
     pub fn receive(&mut self, now: Instant) -> bool {
+        self.sign_in_tick();
         let signed = self.signing.as_ref().and_then(|s| s.try_recv().ok());
         if let Some(signed) = signed {
             self.signed_in = signed;
@@ -322,14 +335,6 @@ impl Ai {
         }
     }
 
-    /// «Войти»: the agent signs in in its own console window.
-    pub fn login(&self) -> Result<(), String> {
-        let agent = self
-            .agent()
-            .ok_or_else(|| text::NOT_FOUND_TEXT.to_owned())?;
-        dc_agent::sign_in::open_login(agent).map_err(|e| text::not_started(&e))
-    }
-
     /// Writes the skill for agents opened without DevCast into the app settings folder.
     pub fn write_skill(&mut self) -> Result<(), String> {
         let folder = dc_project::settings::dir()
@@ -356,7 +361,7 @@ impl Ai {
         self.news.swap(false, Ordering::AcqRel)
     }
 
-    fn waker(&self, ctx: &egui::Context) -> impl Fn() + Send + 'static {
+    pub(super) fn waker(&self, ctx: &egui::Context) -> impl Fn() + Send + Clone + 'static {
         let (ctx, news) = (ctx.clone(), Arc::clone(&self.news));
         move || {
             news.store(true, Ordering::Release);
