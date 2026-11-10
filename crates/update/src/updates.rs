@@ -91,13 +91,19 @@ pub const CHECK_EVERY: u64 = 6 * 3600;
 /// Seconds «Не сейчас» puts the question off.
 pub const SNOOZE: u64 = 3 * 3600;
 
-/// Seconds from `now` until the next automatic check (0: now), the last one made at
-/// `checked_at`; unix seconds. A clock set back checks at once.
-pub fn until_check(now: u64, checked_at: Option<u64>) -> u64 {
-    match checked_at {
-        Some(at) if at <= now => (at + CHECK_EVERY).saturating_sub(now),
+/// Seconds before a failed check is tried again: a computer without a network must not ask
+/// GitHub in a loop (its limit is 60 requests an hour for the whole office).
+pub const RETRY_AFTER: u64 = 15 * 60;
+
+/// Seconds from `now` until the next automatic check (0: now): the last good one ended at
+/// `checked_at`, the last failed one at `failed_at`; unix seconds. A clock set back checks
+/// at once.
+pub fn until_check(now: u64, checked_at: Option<u64>, failed_at: Option<u64>) -> u64 {
+    let after = |at: Option<u64>, wait: u64| match at {
+        Some(at) if at <= now => (at + wait).saturating_sub(now),
         _ => 0,
-    }
+    };
+    after(checked_at, CHECK_EVERY).max(after(failed_at, RETRY_AFTER))
 }
 
 /// Whether the app asks «Скачать?» about `version` at `now`: not a version the user skipped,
