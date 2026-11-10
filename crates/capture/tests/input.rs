@@ -242,7 +242,7 @@ fn chord(keys: &[u16]) {
 
 #[test]
 #[ignore = "types into the test window on monitor DEVCAST_TEST_MONITOR"]
-fn typed_text_is_not_recorded_and_shortcuts_are() {
+fn typed_text_and_shortcuts_are_recorded() {
     const CTRL: u16 = 0x11;
     const SHIFT: u16 = 0x10;
     const F5: u8 = 0x74;
@@ -286,6 +286,14 @@ fn typed_text_is_not_recorded_and_shortcuts_are() {
             win: false,
         },
     };
-    assert_eq!(keys, [with(b'P', true, true), with(F5, false, false)]);
+    let expected = [
+        with(b'A', false, false),
+        with(b'B', false, false),
+        with(b'C', false, false),
+        with(b'A', false, true),
+        with(b'P', true, true),
+        with(F5, false, false),
+    ];
+    assert_eq!(keys, expected);
     std::fs::remove_dir_all(&dir).unwrap();
 }
