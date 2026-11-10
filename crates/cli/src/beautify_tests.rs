@@ -61,6 +61,64 @@ fn the_agent_may_not_undo_nor_touch_the_project_as_a_whole() {
 }
 
 #[test]
+fn the_agent_writes_files_and_edits_only_inside_its_project() {
+    let f = Fixture::new();
+    ok(run(&f, &["test", "add", "--secs", "2"], None, None));
+    // The folder of this crate is neither the project nor the temp folder.
+    let outside = Path::new(env!("CARGO_MANIFEST_DIR")).join("agent-wrote-this.txt");
+    let outside = outside.to_string_lossy().into_owned();
+    let other = f._tmp.path().join("other.devcast");
+    std::fs::create_dir_all(&other).unwrap();
+    let other = other.to_string_lossy().into_owned();
+    for line in [
+        &["captions", "export", "-o", &outside][..],
+        &["frame", "--at", "0", "-o", &outside],
+        &["sheet", "-o", &outside],
+        &["--project", &other, "ls", "clips"],
+        &["style", "copy", "--from", &other, "--to", &other],
+    ] {
+        let out = run(&f, line, None, Some("ai-1"));
+        assert_eq!(out.code, 2, "{line:?}: {}", out.stderr);
+        assert!(out.stderr.contains("«Сделать красиво»"), "{}", out.stderr);
+    }
+    assert!(!Path::new(&outside).exists());
+    // Inside the project the check lets the command through (there are no captions to write).
+    let inside = f.cwd.join("субтитры.txt").to_string_lossy().into_owned();
+    let allowed = run(
+        &f,
+        &["captions", "export", "-o", &inside],
+        None,
+        Some("ai-1"),
+    );
+    assert!(
+        allowed.stderr.contains("captions gen"),
+        "{}",
+        allowed.stderr
+    );
+    let own = f.dir.root().to_string_lossy().into_owned();
+    ok(run(
+        &f,
+        &["--project", &own, "ls", "clips"],
+        None,
+        Some("ai-1"),
+    ));
+    let user = run(&f, &["captions", "export", "-o", &outside], None, None);
+    assert!(
+        user.stderr.contains("captions gen"),
+        "the user writes where they like"
+    );
+}
+
+#[test]
+fn a_wrong_command_line_names_the_argument() {
+    let f = Fixture::new();
+    let out = run(&f, &["ls", "clips", "--nope"], None, None);
+    assert_eq!(out.code, 2);
+    assert!(out.stderr.contains("--nope"), "{}", out.stderr);
+    assert!(!out.stderr.contains("Usage:"), "{}", out.stderr);
+}
+
+#[test]
 fn own_recipes_are_added_checked_and_listed() {
     let f = Fixture::new();
     let added = ok(run(

@@ -1,8 +1,12 @@
 //! Which built-in commands `batch` and an AI agent run refuse, and the registry op a command
 //! line names.
 
+use std::path::Path;
+
 use super::{Builtin, Cli};
-use crate::builtin_groups::{AudioCommand, CaptionsCommand, ClipCommand, ZoomCommand};
+use crate::builtin_groups::{
+    AudioCommand, CaptionsCommand, ClipCommand, StyleCommand, ZoomCommand,
+};
 use crate::sources;
 
 impl Cli {
@@ -64,6 +68,21 @@ impl Cli {
             | Builtin::Program(_)
             | Builtin::Defaults { .. }
             | Builtin::Skill { .. } => Some("это делает сам пользователь"),
+            Builtin::Style {
+                command: StyleCommand::Copy(_),
+            } => Some("другие проекты правит сам пользователь"),
+            _ => None,
+        }
+    }
+
+    /// The file this command writes (`-o`); the agent may write only where `bounds` lets it.
+    pub(crate) fn written(&self) -> Option<&Path> {
+        match &self.command {
+            Builtin::Captions {
+                command: CaptionsCommand::Export { out },
+            } => Some(out),
+            Builtin::Frame(args) => Some(&args.out),
+            Builtin::Sheet(args) => Some(&args.out),
             _ => None,
         }
     }

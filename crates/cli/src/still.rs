@@ -35,7 +35,7 @@ pub(crate) struct FrameArgs {
     )]
     width: Option<u32>,
     #[arg(short = 'o', long, help = "PNG-файл, куда писать")]
-    out: PathBuf,
+    pub(crate) out: PathBuf,
 }
 
 #[derive(Debug, clap::Args)]
@@ -56,7 +56,7 @@ pub(crate) struct SheetArgs {
     )]
     width: Option<u32>,
     #[arg(short = 'o', long, help = "PNG-файл, куда писать")]
-    out: PathBuf,
+    pub(crate) out: PathBuf,
 }
 
 pub(crate) fn frame(ctx: &Ctx<'_>, args: &FrameArgs) -> Result<Answer, CliError> {
