@@ -77,12 +77,7 @@ fn ripple_through_its_life_and_overlapping_clicks() {
 #[test]
 fn every_style_at_one_moment() {
     let p = project();
-    let kinds = [
-        ClickKind::Ripple,
-        ClickKind::Spotlight,
-        ClickKind::Echo,
-        ClickKind::Flash,
-    ];
+    let kinds = [ClickKind::Ripple, ClickKind::Flash];
     let looks: Vec<_> = kinds
         .iter()
         .map(|&kind| json!({ "kind": kind, "effects": effects_at(&p, &style(kind), 1.55) }))
@@ -93,10 +88,10 @@ fn every_style_at_one_moment() {
 #[test]
 fn effect_starts_half_a_bounce_after_the_press_and_lasts_its_duration() {
     let p = project();
-    let state = style(ClickKind::Echo);
+    let state = style(ClickKind::Ripple);
     assert!(effects_at(&p, &state, 1.374).is_empty());
     let first = effects_at(&p, &state, 1.376);
-    assert_eq!(first.len(), 3);
+    assert_eq!(first.len(), 1);
     for shape in &first {
         let [x, y, _] = circle(shape);
         assert!((x - 1536.0).abs() < 0.01 && (y - 756.0).abs() < 0.01);
@@ -106,9 +101,9 @@ fn effect_starts_half_a_bounce_after_the_press_and_lasts_its_duration() {
     assert!(later.iter().all(|e| (circle(e)[0] - 480.0).abs() < 0.01));
     // 1.75 s: the click of 1.2 s and the one of 1.5 s both run, the older one under.
     let both = effects_at(&p, &state, 1.75);
-    assert_eq!(both.len(), 6);
+    assert_eq!(both.len(), 2);
     assert!((circle(&both[0])[0] - 1536.0).abs() < 0.01);
-    assert!((circle(&both[5])[0] - 480.0).abs() < 0.01);
+    assert!((circle(&both[1])[0] - 480.0).abs() < 0.01);
     assert!(effects_at(&p, &CursorState::default(), 1.5).is_empty());
 }
 
@@ -164,11 +159,12 @@ fn a_changed_click_has_its_own_look() {
         opacity: None,
         duration: None,
     };
-    // Off for the press at 1.2 s, typed 40 ms off; echo for the one at 1.5 s.
-    state.clicks = vec![change(1.24, ClickKind::Off), change(1.5, ClickKind::Echo)];
+    // Off for the press at 1.2 s, typed 40 ms off; a flash (a disk and 18 particles) for the one
+    // at 1.5 s.
+    state.clicks = vec![change(1.24, ClickKind::Off), change(1.5, ClickKind::Flash)];
     assert!(effects_at(&p, &state, 1.45).is_empty());
-    assert_eq!(effects_at(&p, &state, 1.75).len(), 3);
-    assert_eq!(effects_at(&p, &state, 1.85).len(), 4);
+    assert_eq!(effects_at(&p, &state, 1.75).len(), 19);
+    assert_eq!(effects_at(&p, &state, 1.85).len(), 20);
     // 60 ms is another press.
     state.clicks = vec![change(1.26, ClickKind::Off)];
     assert_eq!(effects_at(&p, &state, 1.45).len(), 1);

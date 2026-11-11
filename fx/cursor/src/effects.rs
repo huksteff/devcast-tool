@@ -64,16 +64,8 @@ impl Look<'_> {
         match self.style.kind {
             ClickKind::Off => Vec::new(),
             ClickKind::Ripple => self.ripple(),
-            ClickKind::Spotlight => self.spotlight(),
-            ClickKind::Echo => self.echo(),
             ClickKind::Flash => self.flash(),
         }
-    }
-
-    /// v1 `base` and `sw`: the starting ring radius and the ring width.
-    fn base(&self) -> (f64, f64) {
-        let base = (0.55 * self.arrow * self.style.scale).max(12.0 * self.k);
-        (base, (0.08 * self.arrow).max(2.0 * self.k))
     }
 
     fn ripple(&self) -> Vec<Shape> {
@@ -82,30 +74,6 @@ impl Look<'_> {
         let r = ((1.0 - fade) * self.arrow * 1.95 * s.scale).max(0.5 * self.k);
         let width = (2.0 * fade).max(1.0) * self.k;
         vec![self.ring(r, width, fade * 0.6 * s.opacity)]
-    }
-
-    fn spotlight(&self) -> Vec<Shape> {
-        let (base, sw) = self.base();
-        let (u, alpha) = (1.0 - self.p, self.p * self.style.opacity);
-        let r1 = base + u * self.arrow * self.style.scale;
-        let r2 = (0.72 * base).max(0.76 * r1);
-        vec![
-            self.ring(r1, (0.68 * sw).max(1.25 * self.k), 0.28 * alpha),
-            self.ring(r2, (0.75 * sw).max(1.5 * self.k), 0.5 * alpha),
-        ]
-    }
-
-    fn echo(&self) -> Vec<Shape> {
-        let (base, sw) = self.base();
-        let (u, alpha) = (1.0 - self.p, self.p * self.style.opacity);
-        let r1 = base + u * self.arrow * 1.22 * self.style.scale;
-        let r2 = (0.58 * base).max(0.62 * r1);
-        let dot = (0.18 * base).max(3.0 * self.k);
-        vec![
-            self.disk(dot, 0.14 * alpha, None),
-            self.ring(r2, (0.72 * sw).max(1.4 * self.k), 0.42 * alpha),
-            self.ring(r1, sw, 0.72 * alpha),
-        ]
     }
 
     /// v1 preview look: a soft disk growing from nothing and 18 particles filling it. The radial

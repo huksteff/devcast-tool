@@ -1,5 +1,5 @@
 //! Rows of a click effect (mockup 3a «Эффект клика»), shared by the «Курсор» tab (`clicks`, every
-//! click) and the panel of one click (`click set --at`): the look — tiles of the five styles,
+//! click) and the panel of one click (`click set --at`): the look — tiles of the three styles,
 //! the colour (the first five of the v1 palette and an own colour), the size — and the timing —
 //! opacity and duration. Both commands take the same fields.
 
@@ -8,18 +8,16 @@ use dc_ui_kit::egui::{Color32, Painter, Pos2, Rect, Stroke, Ui, vec2};
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::panel::{args, rows};
 use dc_ui_kit::strings::inspector as names;
-use dc_ui_kit::tokens::{ACCENT_HI, PAUSE, TEXT_3, WHITE};
+use dc_ui_kit::tokens::{ACCENT_HI, PAUSE, TEXT_3};
 use serde_json::{Map, Value, json};
 
 use crate::{
     CLICK_SCALE_MAX, CLICK_SCALE_MIN, CLICK_TIME_MAX, CLICK_TIME_MIN, ClickKind, ClickStyle,
 };
 
-const KINDS: [(ClickKind, &str); 5] = [
+const KINDS: [(ClickKind, &str); 3] = [
     (ClickKind::Off, names::CLICK_OFF),
     (ClickKind::Ripple, names::CLICK_RIPPLE),
-    (ClickKind::Spotlight, names::CLICK_SPOTLIGHT),
-    (ClickKind::Echo, names::CLICK_ECHO),
     (ClickKind::Flash, names::CLICK_FLASH),
 ];
 
@@ -83,8 +81,8 @@ pub(crate) fn timing_args(style: &ClickStyle) -> Map<String, Value> {
     ])
 }
 
-/// The picture of a tile (mockup `.tile .pv`, 26 px): a cross, a blue ring, a white glow, two
-/// rings, an amber flash with rays.
+/// The picture of a tile (mockup `.tile .pv`, 26 px): a cross, a blue ring, an amber flash
+/// with rays.
 fn picture(painter: &Painter, rect: Rect, kind: ClickKind) {
     let centre = rect.center();
     let r = rect.width() / 2.0;
@@ -95,17 +93,6 @@ fn picture(painter: &Painter, rect: Rect, kind: ClickKind) {
         }
         ClickKind::Ripple => {
             painter.circle_stroke(centre, r - 2.0, Stroke::new(2.0, ACCENT_HI));
-        }
-        ClickKind::Spotlight => {
-            for step in (1..=6).rev() {
-                let share = step as f32 / 6.0;
-                let alpha = (1.0 - share) * 0.5 + 0.08;
-                painter.circle_filled(centre, r * share * 0.75, WHITE.gamma_multiply(alpha));
-            }
-        }
-        ClickKind::Echo => {
-            painter.circle_stroke(centre, r - 4.0, Stroke::new(2.0, WHITE));
-            painter.circle_stroke(centre, r - 1.5, Stroke::new(2.5, WHITE.gamma_multiply(0.4)));
         }
         ClickKind::Flash => flash(painter, centre, r),
     }

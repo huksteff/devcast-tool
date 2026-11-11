@@ -23,11 +23,10 @@ pub enum ClickKind {
     #[default]
     Off,
     /// One ring growing out of the point.
+    // `spotlight` and `echo` were removed as too alike to it (owner, 2026-11-12); older
+    // projects, defaults and history still hold them.
+    #[serde(alias = "spotlight", alias = "echo")]
     Ripple,
-    /// Two rings spreading from the cursor size.
-    Spotlight,
-    /// Two rings and a dot.
-    Echo,
     /// A soft flash with 18 particles.
     Flash,
 }
@@ -37,8 +36,6 @@ impl ClickKind {
         match self {
             Self::Off => "off",
             Self::Ripple => "ripple",
-            Self::Spotlight => "spotlight",
-            Self::Echo => "echo",
             Self::Flash => "flash",
         }
     }

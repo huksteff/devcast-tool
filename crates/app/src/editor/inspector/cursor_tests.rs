@@ -140,8 +140,8 @@ fn cursor_tab_resets_are_one_step_each() {
     let clicks = names::reset_group(names::CLICK_GROUP);
     assert!(harness.get_by_label(&cursor).accesskit_node().is_disabled());
     type_in(&mut harness, names::CURSOR_SIZE, 3.0);
-    click(&mut harness, egui::Role::RadioButton, names::CLICK_ECHO);
-    let edited = ["cursor --size 3", "clicks --style echo"];
+    click(&mut harness, egui::Role::RadioButton, names::CLICK_FLASH);
+    let edited = ["cursor --size 3", "clicks --style flash"];
     harness.get_by_label(&cursor).click();
     harness.run();
     harness.get_by_label(&clicks).click();
