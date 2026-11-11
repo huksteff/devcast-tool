@@ -295,8 +295,8 @@ impl EditorWindow {
 /// What a frame of the editor asks of the app.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Outcome {
-    /// The settings window to open on this page.
-    pub open_settings: Option<Page>,
+    /// The settings window to open, on this page when one is named.
+    pub open_settings: Option<Option<Page>>,
     /// Timeline height and row factor after the frame.
     pub layout: EditorLayout,
     /// Why an action failed, for a toast.
@@ -334,7 +334,7 @@ pub fn editor_ui(
         .frame(Frame::new().fill(SURFACE))
         .show(ui, |ui| {
             if header::ui(ui, editor) {
-                open_settings = Some(Page::default());
+                open_settings = Some(None);
             }
         });
     let most = (ui.available_height() * TIMELINE_MAX_SHARE).max(TIMELINE_MIN);
@@ -367,7 +367,7 @@ pub fn editor_ui(
             editor.help = None;
         }
         if answer.settings {
-            open_settings = Some(Page::Hotkeys);
+            open_settings = Some(Some(Page::Hotkeys));
         }
     }
     crop::show(ui, editor);
