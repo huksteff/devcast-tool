@@ -34,6 +34,8 @@ pub enum Action {
     Sound(adding::SoundFile),
     /// A picture file shown by an image annotation, as one undo step (`devcast image set`).
     Picture(adding::PictureFile),
+    /// A new image annotation with a picture file, as one undo step; it gets picked.
+    NewPicture(adding::NewPicture),
     /// A font file added to the project and chosen by a panel's command, as one undo step.
     Font(fonts::FontFile),
     /// «Создать субтитры»: recognize the speech (downloading the model first when needed); the
@@ -85,16 +87,9 @@ impl Action {
 /// Runs the queued actions; the view is rebuilt when the project changed. Returns the errors.
 pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
     let mut errors = Vec::new();
-    let mut changed = false;
+    let mut changed = receive(ui, editor, now, &mut errors);
     let mut moved = false;
     let mut rows = false;
-    if let Some(done) = generation::receive(ui.ctx(), editor, now) {
-        match done {
-            Ok(applied) => changed |= applied,
-            Err(error) => errors.push(error),
-        }
-    }
-    editor.ai.receive(now);
     for action in std::mem::take(&mut editor.actions) {
         match action {
             Action::Travel(way) => changed |= editor.doc.travel(way, now).is_some(),
@@ -128,6 +123,11 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                 Ok(()) => changed = true,
                 Err(error) => errors.push(error),
             },
+            Action::NewPicture(file) => {
+                let add =
+                    |e: &mut EditorWindow| adding::new_picture(e, &file, now).map(|()| Vec::new());
+                moved |= adds(editor, now, &mut errors, add);
+            }
             Action::Font(file) => match fonts::add(editor, file, now) {
                 Ok(applied) => changed |= applied,
                 Err(error) => errors.push(error),
@@ -163,6 +163,20 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
         ui.ctx().request_repaint();
     }
     errors
+}
+
+/// Takes what the background work brought: the cues of a recognition (true when they changed
+/// the project) and the progress of the AI run.
+fn receive(ui: &Ui, editor: &mut EditorWindow, now: Instant, errors: &mut Vec<String>) -> bool {
+    let mut changed = false;
+    if let Some(done) = generation::receive(ui.ctx(), editor, now) {
+        match done {
+            Ok(applied) => changed = applied,
+            Err(error) => errors.push(error),
+        }
+    }
+    editor.ai.receive(now);
+    changed
 }
 
 /// Applies `steps`, which put a key of annotation `id` at the playhead, and picks that key;

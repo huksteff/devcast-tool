@@ -21,6 +21,7 @@ mod gesture;
 mod ghost;
 mod heads;
 mod key_tip;
+mod kinds;
 mod marks;
 mod paint;
 mod places;
@@ -203,6 +204,7 @@ fn playhead(ui: &mut Ui, editor: &mut EditorWindow, lanes: &Lanes, ruler: Rect, 
     pointer::scrub(ui, &handles, lanes, editor);
     range::paint(ui, editor, lanes, ruler, bottom);
     range::menu(ui, editor, lanes, ruler);
+    kinds::menu(ui, editor);
     let clip = Rect::from_x_y_ranges(lanes.left..=ruler.right(), ruler.top()..=bottom);
     let scale = editor.view.timeline.scale(lanes);
     let at = editor.view.playhead;

@@ -1,20 +1,22 @@
 //! The ghost of quick adding (mockup 1 and 2e, Cap and v1): over an empty spot of the zooms,
 //! cursor, annotation and extra sound rows a dashed region shows what a click adds there and
 //! how long (`adding::slot`); the click adds it with the effect's command and picks it. On an
-//! extra sound row the click asks for a sound file first.
+//! extra sound row the click asks for a sound file first, on an annotation row for the kind
+//! (`kinds.rs`).
 
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range};
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::FS_S;
-use eframe::egui::{Align2, Rect, Response, Shape, Stroke, Ui, pos2};
+use eframe::egui::{Align2, Pos2, Rect, Response, Shape, Stroke, Ui, pos2};
 
 use super::paint;
 use super::scale::TimeScale;
 use super::tracks::Row;
 use crate::editor::adding::{self, SoundFile};
 use crate::editor::lanes;
+use crate::editor::view::KindMenu;
 use crate::editor::{Action, EditorWindow};
 
 /// Opacity of the ghost's fill.
@@ -45,12 +47,21 @@ pub fn ui(
     if !empty.clicked() || ui.input(|i| i.modifiers.command) {
         return false;
     }
-    add(editor, row, range);
+    add(editor, row, range, pointer);
     true
 }
 
-/// Adds the region of `row` at `range`; a sound row asks for the file first.
-fn add(editor: &mut EditorWindow, row: Row, range: Range<Output>) {
+/// Adds the region of `row` at `range`; a sound row asks for the file first, an annotation row
+/// for the kind (its menu opens at `pointer`).
+fn add(editor: &mut EditorWindow, row: Row, range: Range<Output>, pointer: Pos2) {
+    if let Row::Annotations(track) = row {
+        editor.view.kinds = Some(KindMenu {
+            track,
+            range,
+            at: pointer,
+        });
+        return;
+    }
     if let Row::Audio(track) = row {
         let picked = crate::dialog::file()
             .set_title(text::PICK_SOUND)

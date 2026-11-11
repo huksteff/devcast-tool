@@ -153,20 +153,72 @@ fn the_ghost_adds_a_zoom_where_the_pointer_is() {
     undo_is_one_step(&mut harness);
 }
 
+/// The item `name` of the menu of kinds the ghost opened at `spot` (regions of that kind are
+/// named so too: the one starting nearest right of `spot`; the menu may stand above it).
+fn kind_item(harness: &H, spot: Pos2, name: &str) -> Pos2 {
+    let rects: Vec<eframe::egui::Rect> = harness
+        .query_all_by_label(name)
+        .map(|n| n.rect())
+        .filter(|r| r.min.x >= spot.x - 1.0)
+        .collect();
+    let nearest = rects
+        .into_iter()
+        .min_by(|a, b| (a.min.x - spot.x).total_cmp(&(b.min.x - spot.x)));
+    nearest.unwrap().center()
+}
+
 #[test]
-fn the_ghost_adds_a_text_annotation_on_its_row() {
+fn the_ghost_asks_the_kind_of_a_new_annotation() {
     let mut harness = started();
     let spot = on_row(&harness, "Аннотации 2", 60.0);
     click(&mut harness, spot, Modifiers::NONE);
+    assert!(
+        harness.state().editor.view.kinds.is_some(),
+        "the menu opens"
+    );
+    expect(&harness, &[]);
+    harness.snapshot("editor_kind_menu");
+    let shape = kind_item(&harness, spot, text::SHAPE);
+    click(&mut harness, shape, Modifiers::NONE);
+    assert!(harness.state().editor.view.kinds.is_none());
     assert_eq!(picked(&harness), [annotation(4)]);
     let start = start_of(&harness, annotation(4));
     expect(
         &harness,
         &[&format!(
-            "annot add text --at {start} --duration 1 --track 1"
+            "annot add shape --at {start} --duration 1 --track 1"
         )],
     );
     undo_is_one_step(&mut harness);
+}
+
+#[test]
+fn a_drawing_from_the_menu_is_picked_under_the_brush_bar() {
+    let mut harness = started();
+    let spot = on_row(&harness, "Аннотации 2", 60.0);
+    click(&mut harness, spot, Modifiers::NONE);
+    let drawing = kind_item(&harness, spot, text::DRAWING);
+    click(&mut harness, drawing, Modifiers::NONE);
+    assert_eq!(picked(&harness), [annotation(4)]);
+    let start = start_of(&harness, annotation(4));
+    expect(
+        &harness,
+        &[&format!(
+            "annot add drawing --at {start} --duration 1 --track 1"
+        )],
+    );
+    let pencil = dc_ui_kit::strings::annotations::BRUSH_PENCIL;
+    assert!(harness.query_by_label(pencil).is_some(), "the brush bar");
+}
+
+#[test]
+fn esc_closes_the_menu_of_kinds() {
+    let mut harness = started();
+    let spot = on_row(&harness, "Аннотации 2", 60.0);
+    click(&mut harness, spot, Modifiers::NONE);
+    press(&mut harness, Key::Escape, Modifiers::NONE);
+    assert!(harness.state().editor.view.kinds.is_none());
+    expect(&harness, &[]);
 }
 
 #[test]

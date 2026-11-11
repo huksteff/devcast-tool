@@ -94,8 +94,8 @@ pub fn range_speed(editor: &mut EditorWindow) {
     }
 }
 
-/// Esc: closes the range menu, else drops dragged regions or a clip where they were, else the
-/// range, else takes «Выбор» back from «Лезвие».
+/// Esc: closes the range menu or the menu of kinds, else drops dragged regions or a clip where
+/// they were, else the range, else takes «Выбор» back from «Лезвие».
 pub fn escape(editor: &mut EditorWindow) {
     if super::stage::cancel(editor) {
         return;
@@ -106,6 +106,7 @@ pub fn escape(editor: &mut EditorWindow) {
         || view.remove.take().is_some()
         || view.lift.take().is_some()
         || view.menu.take().is_some()
+        || view.kinds.take().is_some()
         || view.drag.take().is_some()
         || view.range.take().is_some()
     {

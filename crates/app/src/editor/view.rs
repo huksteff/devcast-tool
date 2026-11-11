@@ -97,6 +97,8 @@ pub struct View {
     pub ranging: Option<OutputTime>,
     /// The menu or the speed popover of the range.
     pub menu: Option<RangeMenu>,
+    /// The menu of kinds a click on the ghost of an annotation row opened.
+    pub kinds: Option<KindMenu>,
     /// A clip being dragged to another place of the track.
     pub drag: Option<ClipDrag>,
     /// Regions being dragged, an edge being dragged or a rubber band being drawn (7.9).
@@ -138,6 +140,7 @@ impl Default for View {
             range: None,
             ranging: None,
             menu: None,
+            kinds: None,
             drag: None,
             gesture: None,
             clipboard: Clipboard::default(),
@@ -182,6 +185,14 @@ pub enum RangeMenu {
     Actions,
     /// Preset speeds and a speed of one's own, 0.25–16.
     Speed { own: f64 },
+}
+
+/// The menu of kinds of a new annotation: where it would lie and where the ghost was clicked.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct KindMenu {
+    pub track: u32,
+    pub range: Range<Output>,
+    pub at: Pos2,
 }
 
 /// A clip dragged along the main track.

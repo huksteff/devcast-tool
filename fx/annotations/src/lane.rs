@@ -1,10 +1,11 @@
 //! The annotations on the timeline (`dc_ui_kit::lane`): a row per track (a higher one is painted
 //! above), a region per annotation that shows with the name of its kind and its keys (7.12); a
 //! moved annotation is `annot move --at` (with `--track` when it changes row), a dragged edge
-//! `annot set --from|--to`, a copy `annot paste` with its JSON, a new one (ghost, T) a text
-//! annotation. «Дублировать» puts the copy right after the original: on its row when that row is
-//! free there, else on the first free row, else on its row on top (as Ctrl+V). Rows removed or
-//! moved (the row order is the layer order) are `annot rm` and `annot move --track`.
+//! `annot set --from|--to`, a copy `annot paste` with its JSON, a new one `annot add` of a kind of
+//! [`KINDS`] (the ghost's menu; T adds text). «Дублировать» puts the copy right after the
+//! original: on its row when that row is free there, else on the first free row, else on its
+//! row on top (as Ctrl+V). Rows removed or moved (the row order is the layer order) are
+//! `annot rm` and `annot move --track`.
 
 use dc_core::time::Output;
 use dc_core::{IdKind, OutputTime, Project, Range, StateError, Step, TimeDelta, TimeMap};
@@ -12,8 +13,8 @@ use dc_ui_kit::lane::{Item, Lane, Moved, Region, Resize, id_args, seconds, time}
 use dc_ui_kit::strings::timeline as text;
 
 pub use crate::lane_tip::{Fields, Tip, fields, tip};
-pub use crate::{AnnotId, TRACKS, same_moment};
-use crate::{AnnotKind, Annotation, Annotations, Kind};
+pub use crate::{AnnotId, Kind, TRACKS, same_moment};
+use crate::{AnnotKind, Annotation, Annotations};
 
 pub const LANE: Lane = Lane {
     prefix: AnnotKind::PREFIX,
@@ -148,7 +149,8 @@ fn keys(map: &TimeMap, annotation: &Annotation, span: Range<Output>) -> Vec<Outp
     times.collect()
 }
 
-fn kind_name(kind: Kind) -> &'static str {
+/// The name of `kind` on its regions and in the menu of a new annotation.
+pub fn kind_name(kind: Kind) -> &'static str {
     match kind {
         Kind::Text => text::TEXT,
         Kind::Shape => text::SHAPE,
@@ -158,14 +160,29 @@ fn kind_name(kind: Kind) -> &'static str {
     }
 }
 
-/// `annot add` of a text annotation at `range` on `track`.
-pub fn added(range: Range<Output>, track: u32) -> Step {
+/// The kinds a new annotation can be, in the order of the menu that adds one.
+pub const KINDS: [Kind; 5] = [
+    Kind::Text,
+    Kind::Shape,
+    Kind::Image,
+    Kind::Drawing,
+    Kind::Blur,
+];
+
+/// `annot add` of a `kind` annotation at `range` on `track`.
+pub fn added(range: Range<Output>, track: u32, kind: Kind) -> Step {
     let mut args = serde_json::Map::new();
     args.insert("at".to_owned(), time(range.start()));
-    args.insert("kind".to_owned(), serde_json::Value::from("text"));
+    args.insert("kind".to_owned(), serde_json::Value::from(kind.name()));
     args.insert("track".to_owned(), track.into());
     args.insert("duration".to_owned(), seconds(range.duration()));
     Step::new("annot add", args)
+}
+
+/// The id `annot add` gives the next annotation of `project`.
+pub fn next_id(project: &Project) -> Result<AnnotId, StateError> {
+    let state = project.state::<Annotations>()?;
+    Ok(AnnotId::from_number(state.ids.next_number()))
 }
 
 /// Each annotation to the track `to` gives (`None` removes it), in the order of the list:

@@ -1,9 +1,10 @@
-//! Adding regions (mockup 2e, «призрак»): a hovered empty spot of a row, Z and T at the playhead,
-//! a sound file on an extra sound row; a picture
-//! file into an image annotation. A new region has the length v1 gives (`LENGTH`), fits the
-//! room it is in (zooms and extra sound do not overlap their neighbours, zooms, annotations and
-//! callout events lie in one clip) and is added by the effect's own command, then picked. Tab
-//! picks the next annotation under the playhead in the order they are painted.
+//! Adding regions (mockup 2e, «призрак»): a hovered empty spot of a row (an annotation of the
+//! kind picked from its menu, `timeline/kinds.rs`), Z and T at the playhead, a sound file on an
+//! extra sound row; a picture file into an image annotation or a new one. A new region has the
+//! length v1 gives (`LENGTH`), fits the room it is in (zooms and extra sound do not overlap their
+//! neighbours, zooms, annotations and callout events lie in one clip) and is added by the
+//! effect's own command, then picked. Tab picks the next annotation under the playhead in the
+//! order they are painted.
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -14,7 +15,7 @@ use dc_ops::{SoundPlace, Step};
 
 use super::lanes::{
     self,
-    annotations::{AnnotId, TRACKS},
+    annotations::{AnnotId, Kind, TRACKS},
 };
 use super::selection::{Item, Selected};
 use super::timeline::{Row, Tracks};
@@ -87,12 +88,13 @@ fn regions(tracks: &Tracks, row: Row) -> impl Iterator<Item = Range<Output>> + '
         .map(|r| r.range)
 }
 
-/// The command that adds a region at `range` of `row` (a text annotation, a callout «on»).
+/// The command that adds a region at `range` of `row` (a text annotation, a callout «on»); the
+/// ghost of an annotation row asks for the kind first (`timeline/kinds.rs`).
 pub fn step(row: Row, range: Range<Output>) -> Option<Step> {
     match row {
         Row::Zooms => Some(lanes::zoom::added(range)),
         Row::Cursor => Some(lanes::callout::added(range)),
-        Row::Annotations(track) => Some(lanes::annotations::added(range, track)),
+        Row::Annotations(track) => Some(lanes::annotations::added(range, track, Kind::Text)),
         _ => None,
     }
 }
@@ -184,6 +186,35 @@ pub fn picture(editor: &mut EditorWindow, file: &PictureFile, now: Instant) -> R
         .map_err(|e| e.to_string())?;
     let name = dc_ops::PictureImport::NAME;
     match editor.doc.apply_commands(name, &[&imported.command], now) {
+        Ok(_) => Ok(()),
+        Err(error) => Err(match imported.discard() {
+            Ok(()) => error.to_string(),
+            Err(e) => format!("{error}; {e}"),
+        }),
+    }
+}
+
+/// A new image annotation `add` (`annot add image`) showing the picture file `path`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NewPicture {
+    pub add: Step,
+    pub path: PathBuf,
+}
+
+/// Adds the image annotation of `file` and shows its picture copied into the project, as one
+/// undo step (`devcast annot add image` and `image set`); a refused command deletes the copy.
+/// The message of what failed.
+pub fn new_picture(
+    editor: &mut EditorWindow,
+    file: &NewPicture,
+    now: Instant,
+) -> Result<(), String> {
+    let id = lanes::annotations::next_id(editor.doc.project()).map_err(|e| e.to_string())?;
+    let add = editor.doc.command(&file.add).map_err(|e| e.to_string())?;
+    let imported = dc_ops::import_picture(editor.doc.dir(), &file.path, (id, None), false)
+        .map_err(|e| e.to_string())?;
+    let commands: [&dyn dc_core::Command; 2] = [add.as_ref(), &imported.command];
+    match editor.doc.apply_commands(&file.add.op, &commands, now) {
         Ok(_) => Ok(()),
         Err(error) => Err(match imported.discard() {
             Ok(()) => error.to_string(),
