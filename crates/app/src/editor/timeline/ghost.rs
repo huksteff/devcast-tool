@@ -36,6 +36,10 @@ pub fn ui(
     let Some(pointer) = empty.hover_pos() else {
         return false;
     };
+    // A click near a click dot picks the dot, never adds a callout event.
+    if row == Row::Cursor && super::dots::grabbed(editor, lane, scale, pointer) {
+        return false;
+    }
     let at = scale.time(pointer.x);
     let Some(range) = adding::slot(&editor.tracks, row, at) else {
         return false;
