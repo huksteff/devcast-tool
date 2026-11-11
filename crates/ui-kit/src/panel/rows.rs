@@ -3,7 +3,9 @@
 //! is committed, and the panel turns it into one registry command — one undo step: a click or
 //! a typed number (on Enter or when the field loses focus) at once, a slider or a colour dragged
 //! with the pointer when it is let go. Meanwhile the control shows the dragged value (a draft in
-//! egui's temporary memory) and the project stays as it was.
+//! egui's temporary memory) and the project stays as it was; the dragged value is returned every
+//! pass too, and [`drafting`] tells the editor that the panel's edits of this pass are a draft
+//! for the preview only.
 
 use crate::tokens::{FS_S, S2, TEXT_3};
 use crate::widgets::{
@@ -26,8 +28,9 @@ pub fn row<T>(ui: &mut Ui, label: &str, control: impl FnOnce(&mut Ui) -> T) -> T
     settings_rows::labelled(ui, label, (LABEL, S2, ROW), control)
 }
 
-/// The edited value of the control `show` draws from `now`: a draft while the pointer is down
-/// or a text field has the keys, the value once the edit ends (`None` when it did not change).
+/// The edited value of the control `show` draws from `now`: the draft every pass while the
+/// pointer holds the control (marked for [`drafting`]), nothing while a text field has the keys,
+/// the value once the edit ends (`None` when it did not change).
 fn drafted<T>(
     ui: &mut Ui,
     id: Id,
@@ -44,13 +47,35 @@ where
     if !response.changed() && !drafting {
         return None;
     }
-    let held = ui.input(|i| i.pointer.any_down()) || ui.ctx().text_edit_focused();
-    if held {
-        ui.data_mut(|d| d.insert_temp(id, value));
-        return None;
+    let pass = ui.ctx().cumulative_pass_nr();
+    let pointer = ui.input(|i| i.pointer.any_down());
+    if pointer || ui.ctx().text_edit_focused() {
+        let live = pointer && value != now;
+        ui.data_mut(|d| {
+            d.insert_temp(id, value.clone());
+            if live {
+                d.insert_temp(held_id(), Held(pass));
+            }
+        });
+        return live.then_some(value);
     }
     ui.data_mut(|d| d.remove::<T>(id));
     (value != now).then_some(value)
+}
+
+/// The pass a control held with the pointer returned its draft.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Held(u64);
+
+fn held_id() -> Id {
+    Id::unique("panel-control-held")
+}
+
+/// True when a control held with the pointer returned its draft this pass: the edits the panels
+/// made this pass are what the preview shows while the drag goes on, not changes of the project.
+pub fn drafting(ctx: &egui::Context) -> bool {
+    let pass = ctx.cumulative_pass_nr();
+    ctx.data(|d| d.get_temp::<Held>(held_id())) == Some(Held(pass))
 }
 
 /// An on/off switch.

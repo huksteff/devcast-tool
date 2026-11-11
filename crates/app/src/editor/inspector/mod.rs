@@ -208,7 +208,13 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
             });
         });
     let edits = std::mem::take(&mut cx.base.edits);
-    cx.actions.extend(edits.into_iter().map(Action::Apply));
+    // A control held with the pointer: its edits show on the preview until it is let go.
+    let draft = if rows::drafting(ui.ctx()) {
+        Some(edits.concat())
+    } else {
+        cx.actions.extend(edits.into_iter().map(Action::Apply));
+        None
+    };
     let adds = std::mem::take(&mut cx.base.adds);
     cx.actions.extend(adds.into_iter().map(Action::Paste));
     if let Some(typed) = rows::flush(ui) {
@@ -220,6 +226,19 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
     let (actions, recognition) = (cx.actions, cx.recognition);
     captions::take(&mut editor.captions, &recognition);
     editor.actions.extend(actions);
+    match draft {
+        // A control held still asks for nothing (decision 002).
+        Some(steps) if editor.view.panel_draft.as_ref() == Some(&steps) => {}
+        Some(steps) => {
+            super::stage::show_draft(ui, editor, &steps);
+            editor.view.panel_draft = Some(steps);
+        }
+        None => {
+            if editor.view.panel_draft.take().is_some() {
+                editor.preview.changed(editor.doc.project());
+            }
+        }
+    }
     toggled
 }
 

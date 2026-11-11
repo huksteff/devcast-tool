@@ -108,9 +108,10 @@ fn settle(ui: &Ui, editor: &mut EditorWindow, drag: Option<Drag>, answer: Answer
     }
 }
 
-/// Shows the project as `steps` make it on the preview. A draft the commands refuse is not
-/// shown: the release applies the same steps and its toast says why.
-fn show_draft(ui: &Ui, editor: &mut EditorWindow, steps: &[Step]) {
+/// Shows the project as `steps` make it on the preview (a gesture on it, a held control of the
+/// inspector). A draft the commands refuse is not shown: the release applies the same steps
+/// and its toast says why.
+pub(super) fn show_draft(ui: &Ui, editor: &mut EditorWindow, steps: &[Step]) {
     if let Ok(draft) = editor.doc.draft(steps) {
         editor.preview.changed(&draft);
         // The frame of the draft is asked by the next pass.

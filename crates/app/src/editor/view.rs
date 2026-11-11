@@ -111,6 +111,9 @@ pub struct View {
     pub lift: Option<u32>,
     /// A gesture on the preview: the zoom frame or an annotation box (7.21, 7.22).
     pub stage: Option<super::stage::Drag>,
+    /// The draft of a panel control held with the pointer the preview shows (`rows::drafting`):
+    /// when the drag ends the preview goes back to the project.
+    pub panel_draft: Option<Vec<dc_ops::Step>>,
     /// Tool of a left drag in the picked drawing, chosen on the brush bar (7.24); Shift erases
     /// with either.
     pub brush: StrokeTool,
@@ -145,6 +148,7 @@ impl Default for View {
             remove: None,
             lift: None,
             stage: None,
+            panel_draft: None,
             brush: StrokeTool::Pencil,
             eraser: ERASER_WIDTH,
         }
