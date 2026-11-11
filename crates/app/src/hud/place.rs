@@ -1,11 +1,11 @@
 //! Where a popover of the HUD stands: 8 px above the bar under the button that opened it, or
-//! under the bar when there is no room above (the HUD near the top of the screen).
+//! under the bar when there is more room there (the HUD near the top of the screen); always
+//! inside the work area of the HUD's monitor, as tall as the room lets it.
 
 use dc_ui_kit::tokens::{CONTROL, S2};
 use eframe::egui::{self, Rect, Vec2, pos2, vec2};
 
-use super::popover::{Kind, Open};
-use crate::app::Shared;
+use super::popover::{Kind, MAX_HEIGHT, Open};
 use crate::borderless;
 
 /// Between the bar and the popover's panel, points.
@@ -26,26 +26,61 @@ pub fn window_rect(open: Open, panel: Vec2, bar: Rect) -> Rect {
     Rect::from_min_size(corner, panel) + borderless::margin()
 }
 
-/// The top edge of the HUD's monitor, points of the main window; `None` while the monitors
-/// are unknown.
-pub(super) fn ceiling(ctx: &egui::Context, shared: &Shared) -> Option<f32> {
-    let settings = shared.store.get();
-    let bounds = settings.hud.monitor(&shared.sources.monitors)?.bounds;
-    Some(bounds.y() as f32 / ctx.native_pixels_per_point().unwrap_or(1.0))
+/// The work area (no taskbar) of the monitor the HUD whose window is `bar` stands on, points of
+/// the main window; from the main window's pass. `None` when Windows does not tell it.
+pub fn room(ctx: &egui::Context, bar: Rect) -> Option<Rect> {
+    let ppp = ctx.pixels_per_point();
+    let px = bar * ppp;
+    let rect = (
+        px.left().round() as i32,
+        px.top().round() as i32,
+        px.width().round() as u32,
+        px.height().round() as u32,
+    );
+    let (x, y, width, height) = dc_capture::win::hud_window::work_area(rect)
+        .inspect_err(|e| tracing::warn!("поповер может выйти за экран: {e}"))
+        .ok()?;
+    let corner = pos2(x as f32, y as f32);
+    Some(Rect::from_min_size(corner, vec2(width as f32, height as f32)) / ppp)
 }
 
-/// [`window_rect`] on a monitor whose top edge is `ceiling`: a popover too tall to stand above
-/// the HUD (the HUD is near the top of the screen) opens under it instead of over it.
-pub fn placed(open: Open, panel: Vec2, bar: Rect, ceiling: Option<f32>) -> Rect {
+/// Space for a panel above and under the HUD's bar in `room`, points.
+fn spaces(bar: Rect, room: Rect) -> (f32, f32) {
+    let hud = borderless::panel_rect(bar);
+    let above = hud.top() - GAP - room.top();
+    let under = room.bottom() - hud.bottom() - GAP;
+    (above.max(0.0), under.max(0.0))
+}
+
+/// The tallest panel a popover may lay out: [`MAX_HEIGHT`], or less when neither above nor
+/// under the bar has that much room.
+pub fn tallest(bar: Rect, room: Option<Rect>) -> f32 {
+    room.map_or(MAX_HEIGHT, |room| {
+        let (above, under) = spaces(bar, room);
+        above.max(under).min(MAX_HEIGHT)
+    })
+}
+
+/// [`window_rect`] kept in `room`: above the bar when the panel fits there, else under it when
+/// it fits there, else on the roomier side with the panel as tall as that side lets it. Then
+/// moved sideways into `room`. Without `room` it is just [`window_rect`].
+pub fn placed(open: Open, panel: Vec2, bar: Rect, room: Option<Rect>) -> Rect {
     let above = window_rect(open, panel, bar);
-    let top = borderless::panel_rect(above).top();
-    match ceiling {
-        Some(edge) if top < edge => {
-            let under = borderless::panel_rect(bar).bottom() + GAP;
-            above.translate(vec2(0.0, under - top))
-        }
-        _ => above,
-    }
+    let Some(room) = room else {
+        return above;
+    };
+    let (space_above, space_under) = spaces(bar, room);
+    let up = panel.y <= space_above || (panel.y > space_under && space_above >= space_under);
+    let height = panel.y.min(if up { space_above } else { space_under });
+    let hud = borderless::panel_rect(bar);
+    let top = if up {
+        hud.top() - GAP - height
+    } else {
+        hud.bottom() + GAP
+    };
+    let wanted = borderless::panel_rect(above).left();
+    let left = wanted.min(room.right() - panel.x).max(room.left());
+    Rect::from_min_size(pos2(left, top), vec2(panel.x, height)) + borderless::margin()
 }
 
 #[cfg(test)]
