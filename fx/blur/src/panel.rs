@@ -3,6 +3,7 @@
 //! The box turns with «Поворот» of «Тонкая настройка», like every annotation.
 
 use crate::{BlurBody, RADIUS_MAX, STRENGTH_MAX, STRENGTH_MIN};
+use dc_core::OpName;
 use dc_core::Step;
 use dc_render::Rgba;
 use dc_ui_kit::egui::Ui;
@@ -12,7 +13,7 @@ use serde_json::{Value, json};
 use dc_fx_annotations::panel::{Edit, Section};
 use dc_ui_kit::panel::{Cx, rows};
 
-const SET: &str = "blur set";
+const SET: OpName = OpName::of::<crate::BlurSet>();
 
 impl Section for BlurBody {
     const ID: &'static str = "blur";

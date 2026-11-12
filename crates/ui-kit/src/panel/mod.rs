@@ -15,7 +15,7 @@ pub mod rows;
 
 use std::collections::BTreeMap;
 
-use dc_core::{Effect, OutputTime, Project, StateError, Step};
+use dc_core::{Effect, OpName, OutputTime, Project, StateError, Step};
 use egui::{Frame, Margin, Rect, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use serde_json::{Map, Value};
 
@@ -86,9 +86,9 @@ impl Cx<'_> {
     }
 
     /// `op` with `args` (`("show", true)` is `--show true`) as one undo step.
-    pub fn apply(&mut self, op: &str, args: impl IntoIterator<Item = (&'static str, Value)>) {
+    pub fn apply(&mut self, op: OpName, args: impl IntoIterator<Item = (&'static str, Value)>) {
         let args = args.into_iter().map(|(k, v)| (k.to_owned(), v)).collect();
-        self.edits.push(vec![Step::new(op, args)]);
+        self.edits.push(vec![Step::of(op, args)]);
     }
 
     /// The font row `label` with family `now`: the family picked from [`Cx::fonts`] (and `now`
@@ -309,6 +309,6 @@ pub fn time_arg(t: OutputTime) -> String {
 }
 
 /// `op` with the default fields of a group; nothing when the fields are the defaults already.
-pub fn reset(op: &str, now: &Map<String, Value>, default: Map<String, Value>) -> Option<Step> {
-    (*now != default).then(|| Step::new(op, default))
+pub fn reset(op: OpName, now: &Map<String, Value>, default: Map<String, Value>) -> Option<Step> {
+    (*now != default).then(|| Step::of(op, default))
 }

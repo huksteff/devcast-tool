@@ -3,6 +3,7 @@
 
 use crate::panel::{Edit, Shown};
 use crate::{Animation, Annotation, ROTATION_LIMIT, STAGE_DEFAULT, Stage, same_moment};
+use dc_core::OpName;
 use dc_core::OutputTime;
 use dc_ui_kit::egui::{self, Align, Layout, Rect, Sense, Shape, Stroke, Ui, UiBuilder, pos2, vec2};
 use dc_ui_kit::fonts::{self, Weight};
@@ -13,6 +14,11 @@ use dc_ui_kit::strings::{annotations as text, timeline as rows_text};
 use dc_ui_kit::tokens::{FS_M, KEYFRAME, S2, S3, SURFACE_2, TEXT, TEXT_3};
 use dc_ui_kit::widgets::{Button, IconButton, Kind as ButtonKind, dropdown, dropdown_some};
 use serde_json::json;
+
+const ANNOT_ANIM: OpName = OpName::of::<crate::AnnotAnim>();
+const ANNOT_LAYER: OpName = OpName::of::<crate::AnnotLayer>();
+const ANNOT_MOVE: OpName = OpName::of::<crate::AnnotMove>();
+const ANNOT_SET: OpName = OpName::of::<crate::AnnotSet>();
 
 /// Height of the key strip, points (mockup `.kfbar`).
 const STRIP: f32 = 36.0;
@@ -154,7 +160,7 @@ pub fn motion_group(ui: &mut Ui, cx: &mut Cx<'_>, annotation: &Annotation, edit:
         title: text::MOTION,
         open: true,
         reset: Some(
-            edit.reset("annot anim", &now, &fields(&still, &still))
+            edit.reset(ANNOT_ANIM, &now, &fields(&still, &still))
                 .into_iter()
                 .collect(),
         ),
@@ -181,7 +187,7 @@ pub fn motion_group(ui: &mut Ui, cx: &mut Cx<'_>, annotation: &Annotation, edit:
                     .then_some(chosen)
             });
             if let Some(animation) = picked {
-                edit.apply(cx, "annot anim", [(field, json!(animation))]);
+                edit.apply(cx, ANNOT_ANIM, [(field, json!(animation))]);
             }
             if stage.animation == Animation::None {
                 continue;
@@ -194,7 +200,7 @@ pub fn motion_group(ui: &mut Ui, cx: &mut Cx<'_>, annotation: &Annotation, edit:
                 } else {
                     "exit_duration"
                 };
-                edit.apply(cx, "annot anim", [(name, json!(v))]);
+                edit.apply(cx, ANNOT_ANIM, [(name, json!(v))]);
             }
         }
     });
@@ -207,7 +213,7 @@ pub fn fine_rows(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
     let turn = (1.0, text::DEGREES);
     let limit = -ROTATION_LIMIT..=ROTATION_LIMIT;
     if let Some(v) = rows::slider(ui, text::ROTATION, shown.rotation, limit, turn) {
-        edit.apply(cx, "annot set", [("rotation", json!(v))]);
+        edit.apply(cx, ANNOT_SET, [("rotation", json!(v))]);
     }
     times(ui, cx, shown, edit.unkeyed());
     arrange(ui, cx, shown, edit.unkeyed());
@@ -228,7 +234,7 @@ fn place(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
     ];
     for (field, label, value, side, range) in places {
         if let Some(v) = rows::slider(ui, label, (value * side).round(), range, (1.0, "")) {
-            edit.apply(cx, "annot set", [(field, json!(v / side))]);
+            edit.apply(cx, ANNOT_SET, [(field, json!(v / side))]);
         }
     }
     rows::note(ui, text::PLACE_NOTE);
@@ -243,7 +249,7 @@ fn times(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
             ("to", text::END, shown.range.end()),
         ];
         for (field, label, now) in ends {
-            let apply = |typed: String| edit.step("annot set", [(field, json!(typed))]);
+            let apply = |typed: String| edit.step(ANNOT_SET, [(field, json!(typed))]);
             let typed = ui
                 .allocate_ui(vec2(half, ui.spacing().interact_size.y), |ui| {
                     rows::text(
@@ -276,7 +282,7 @@ fn arrange(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
             .then_some(track)
     });
     if let Some(track) = moved {
-        edit.apply(cx, "annot move", [("track", json!(track))]);
+        edit.apply(cx, ANNOT_MOVE, [("track", json!(track))]);
     }
     let steps = [
         ("top", text::LAYER_TOP),
@@ -290,7 +296,7 @@ fn arrange(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) {
         for (step, label) in steps {
             let button = Button::new(label).kind(ButtonKind::Ghost).small();
             if ui.add(button).clicked() {
-                edit.apply(cx, "annot layer", [("step", json!(step))]);
+                edit.apply(cx, ANNOT_LAYER, [("step", json!(step))]);
             }
         }
     });

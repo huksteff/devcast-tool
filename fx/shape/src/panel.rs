@@ -5,6 +5,7 @@
 //! figure and its ends.
 
 use crate::{CYCLE_MAX, Figure, GLOW_MAX, RADIUS_MAX, ShapeBody, WIDTH_MAX, WIDTH_MIN};
+use dc_core::OpName;
 use dc_core::Step;
 use dc_render::Rgba;
 use dc_ui_kit::egui::{Painter, Pos2, Rect, Stroke, Ui, pos2};
@@ -15,7 +16,7 @@ use dc_fx_annotations::panel::{Edit, Section};
 use dc_ui_kit::panel::{Cx, rows};
 use dc_ui_kit::tokens::TEXT_2;
 
-const SET: &str = "shape set";
+const SET: OpName = OpName::of::<crate::ShapeSet>();
 
 const FIGURES: [(Figure, &str); 6] = [
     (Figure::Arrow, text::ARROW),

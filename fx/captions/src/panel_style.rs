@@ -2,6 +2,7 @@
 //! size, word colours, shadow, animation; «Тонкая настройка» — lines, place, width and the plate.
 //! Every edit and «Сбросить» is `captions style` (the settings key `captions`).
 
+use dc_core::OpName;
 use dc_core::Step;
 use dc_ui_kit::egui::Ui;
 use dc_ui_kit::panel::{Cx, Group, args, reset, rows};
@@ -14,7 +15,7 @@ use crate::{
 };
 
 /// The command of the look.
-pub const OP: &str = "captions style";
+pub const OP: OpName = OpName::of::<crate::CaptionsStyle>();
 
 const ANIMATIONS: [(Animation, &str); 4] = [
     (Animation::None, text::NO_ANIMATION),
@@ -50,7 +51,7 @@ pub fn groups(ui: &mut Ui, cx: &mut Cx<'_>, now: &CaptionsSettings, default: &Ca
 }
 
 fn style_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &CaptionsSettings) {
-    let choose = Step::new(OP, Map::new());
+    let choose = Step::of(OP, Map::new());
     if let Some(font) = cx.font(ui, text::FONT, &now.font, choose) {
         cx.apply(OP, [("font", json!(font))]);
     }

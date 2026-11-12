@@ -5,6 +5,7 @@
 //! 15°), stuck to the lines it is given ([`Drag::follow`]). One `annot set` per gesture, to the
 //! key the panel would edit ([`Edit`], `--at`). Picking and which gesture runs are the editor's.
 
+use dc_core::OpName;
 use dc_core::time::Output;
 use dc_core::{OutputTime, Project, Range, Step};
 use dc_ui_kit::egui::{CursorIcon, Pos2, Vec2};
@@ -16,6 +17,8 @@ use serde_json::json;
 pub use crate::panel::Edit;
 use crate::panel::target;
 use crate::{AnnotKind, Annotations, Kind, SIZE_MIN, key_offset};
+
+const ANNOT_SET: OpName = OpName::of::<crate::AnnotSet>();
 
 /// An annotation region of the timeline: its track, object, place on the output and keys.
 #[derive(Debug, Clone, Copy)]
@@ -165,9 +168,9 @@ impl Drag {
         match self.grip {
             Grip::Move => self
                 .edit
-                .step("annot set", [("x", json!(x)), ("y", json!(y))]),
+                .step(ANNOT_SET, [("x", json!(x)), ("y", json!(y))]),
             Grip::Handle(_) => self.edit.step(
-                "annot set",
+                ANNOT_SET,
                 [
                     ("x", json!(x)),
                     ("y", json!(y)),
@@ -177,7 +180,7 @@ impl Drag {
             ),
             Grip::Turn => self
                 .edit
-                .step("annot set", [("rotation", json!(self.now.rotation()))]),
+                .step(ANNOT_SET, [("rotation", json!(self.now.rotation()))]),
         }
     }
 }

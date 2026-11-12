@@ -1,6 +1,7 @@
 //! «Распознавание» of the captions tab and the empty card: the choices of the recognition, its
 //! progress, «Создать субтитры», «Пересоздать» and «Отменить» as requests to the editor.
 
+use dc_core::OpName;
 use dc_ui_kit::egui::{Frame, Margin, RichText, Sense, Stroke, Ui, vec2};
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::panel::{Cx, Request, rows};
@@ -14,6 +15,8 @@ use serde_json::json;
 use crate::panel::{Language, Model, Phase, Recognition, Tracks};
 use crate::panel_style::OP;
 use crate::{SILENCE_MAX, SILENCE_MIN, Silence};
+
+const CAPTIONS_CLEAR: OpName = OpName::of::<crate::CaptionsClear>();
 
 /// Height of the progress bar, side of the icon of the empty card, points.
 const BAR: f32 = 4.0;
@@ -69,7 +72,7 @@ pub fn recognition(
             }
             let clear = Button::new(text::CLEAR).kind(Kind::Danger).small();
             if ui.add(clear).clicked() {
-                cx.apply("captions clear", []);
+                cx.apply(CAPTIONS_CLEAR, []);
             }
         });
     }

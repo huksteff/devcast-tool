@@ -6,6 +6,7 @@
 //! `zoom add --at clicks` ([`by_clicks`]) in `cx.adds`, so the editor picks the added zooms.
 //! The panels need no facts of the editor: the zooms and their motion are in the project.
 
+use dc_core::OpName;
 use dc_core::{Effect, Step};
 use dc_ui_kit::egui::Ui;
 use dc_ui_kit::icons::Icon;
@@ -23,7 +24,7 @@ use crate::{
 /// Id of the zoom panels in the remembered groups.
 pub const ID: &str = ZoomEffect::ID;
 /// The registry command of the camera motion.
-const MOTION: &str = "zoom motion";
+const MOTION: OpName = OpName::of::<crate::ZoomMotion>();
 
 const PRESETS: [(Preset, &str); 2] = [
     (Preset::Focused, names::ZOOM_FOCUSED),
@@ -129,7 +130,7 @@ pub(crate) fn footer(ui: &mut Ui, cx: &mut Cx<'_>) {
 
 /// `zoom motion --<field> <value>`.
 fn set(field: &'static str, value: Value) -> Vec<Step> {
-    vec![Step::new(MOTION, args([(field, value)]))]
+    vec![Step::of(MOTION, args([(field, value)]))]
 }
 
 /// `zoom motion` with the default fields of a group, as steps of «Сбросить».

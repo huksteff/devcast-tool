@@ -6,6 +6,7 @@
 //! keeping the output's proportions and the opposite corner ([`resize`]). One `zoom set` per
 //! gesture; the preview shows the draft meanwhile.
 
+use dc_core::OpName;
 use dc_core::{Point, Project, Step};
 use dc_ui_kit::egui::{Color32, CursorIcon, FontId, Pos2, Rect, Response, Stroke, StrokeKind, Ui};
 use dc_ui_kit::egui::{pos2, vec2};
@@ -18,6 +19,8 @@ use serde_json::{Map, json};
 
 pub use crate::ZoomId;
 use crate::{Corner, Mode, Zoom, ZoomEffect, frame, reachable, resize};
+
+const ZOOM_SET: OpName = OpName::of::<crate::ZoomSet>();
 
 /// Outside the zoom frame: black 45 %.
 const DIM: Color32 = Color32::from_black_alpha(115);
@@ -191,7 +194,7 @@ fn step(drag: &Drag) -> Step {
     if drag.follows && drag.grip == Grip::Move {
         args.insert("mode".to_owned(), json!(Mode::Fixed));
     }
-    Step::new("zoom set", args)
+    Step::of(ZOOM_SET, args)
 }
 
 /// The zoom frame `frame` (screen) of a zoom with `scale`.

@@ -10,6 +10,7 @@
 //! the [`Answer`] closes it. A fixed format keeps the frame at its proportion: picking it fits
 //! the frame to it, the handles keep it; in «Свободный» Shift keeps the frame's own.
 
+use dc_core::OpName;
 use dc_core::{Clip, ClipId, PixelSize, Project, Rect, Step};
 use dc_ui_kit::egui::{self, Align, Color32, Key, Layout, Margin, RichText, TextureId, Ui};
 use dc_ui_kit::fonts::{self, Weight};
@@ -135,17 +136,20 @@ impl Dialog {
         let mut steps = Vec::new();
         if rect != self.was.0 {
             let args = [("clip", json!(self.clip)), ("rect", json!(rect))];
-            steps.push(step("crop", args));
+            steps.push(step(CROP, args));
         }
         if self.aspect != self.was.1 {
-            steps.push(step("aspect", [("aspect", json!(self.aspect))]));
+            steps.push(step(ASPECT, [("aspect", json!(self.aspect))]));
         }
         steps
     }
 }
 
-fn step<const N: usize>(op: &str, args: [(&str, Value); N]) -> Step {
-    Step::new(
+const CROP: OpName = OpName::of::<crate::CropClip>();
+const ASPECT: OpName = OpName::of::<crate::SetAspect>();
+
+fn step<const N: usize>(op: OpName, args: [(&str, Value); N]) -> Step {
+    Step::of(
         op,
         args.into_iter().map(|(k, v)| (k.to_owned(), v)).collect(),
     )
