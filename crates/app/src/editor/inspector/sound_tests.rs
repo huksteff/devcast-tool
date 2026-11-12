@@ -15,11 +15,10 @@ use crate::editor::editing_tests::json;
 use crate::editor::selection::{Item, Selected};
 use crate::editor::streams::Imported;
 use crate::editor::timeline::Row;
-use crate::editor::view::Panel;
 
 fn sound_tab() -> H {
     let mut harness = tall();
-    harness.state_mut().editor.view.panel = Panel::Sound;
+    harness.state_mut().editor.view.tab = super::SOUND.id;
     harness.run();
     harness
 }

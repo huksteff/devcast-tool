@@ -18,7 +18,6 @@ use super::tests::{H, project_json, step};
 use super::zoom_tests::tall;
 use crate::editor::ai::{Ai, Line, Phase};
 use crate::editor::editing_tests::json;
-use crate::editor::view::Panel;
 
 /// A pretend Claude Code: a batch file that ignores its arguments and writes `answer`.
 fn pretend(dir: &Path, answer: &str) -> Found {
@@ -48,7 +47,7 @@ fn ai_tab(found: Vec<Found>) -> H {
     let mut harness = tall();
     let editor = &mut harness.state_mut().editor;
     editor.ai = Ai::new(found);
-    editor.view.panel = Panel::Ai;
+    editor.view.tab = super::AI.id;
     harness.run();
     harness
 }

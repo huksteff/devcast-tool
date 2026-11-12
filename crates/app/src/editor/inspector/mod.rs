@@ -6,7 +6,7 @@
 //! with the kit of `dc_ui_kit::panel` over [`Cx::base`] and the facts of the timeline it needs.
 //! Every committed edit is a registry command — one undo step; what a panel asks besides the
 //! project (`panel::Request`) becomes an [`Action`] in [`action`]. A tab gets its panel in
-//! [`tab`], an object kind in `object.rs`.
+//! [`TABS`], an object kind in `object.rs`.
 
 mod ai;
 mod ai_cards;
@@ -49,34 +49,78 @@ use super::adding::PictureFile;
 use super::fonts::FontFile;
 use super::selection::Selected;
 use super::streams::{Imported, Streams};
-use super::view::{Panel, View};
+use super::view::View;
 use super::{Action, EditorWindow, Transport};
 
 /// Width of the tab rail, side of a tab (mockup).
 const RAIL: f32 = 44.0;
 const TAB: f32 = 36.0;
 
-const PANELS: [Panel; 5] = [
-    Panel::Zoom,
-    Panel::Cursor,
-    Panel::Keys,
-    Panel::Captions,
-    Panel::Sound,
-];
-
 /// A panel: draws into the inspector and asks for actions through [`Cx`].
 type PanelUi = fn(&mut Ui, &mut Cx<'_>);
 
-/// The panel of a rail tab with its id (the first part of its groups' keys).
-fn tab(panel: Panel) -> (&'static str, PanelUi) {
-    match panel {
-        Panel::Keys => (dc_fx_keys::panel::ID, keys),
-        Panel::Zoom => (dc_fx_zoom::panel::ID, zoom),
-        Panel::Cursor => (dc_fx_cursor::panel::ID, cursor),
-        Panel::Captions => (dc_fx_captions::panel::ID, captions::tab),
-        Panel::Sound => (dc_fx_audio_tracks::panel::ID, sound),
-        Panel::Ai => (ai::ID, ai::tab),
-    }
+/// A tab of the rail: the panel of the global settings of an effect.
+pub struct Tab {
+    /// The first part of the keys of its groups; names the open tab in [`View::tab`].
+    pub id: &'static str,
+    icon: Icon,
+    title: &'static str,
+    ui: PanelUi,
+}
+
+/// The tabs of the effects, in the order of the rail. A new tab is a line here and the function
+/// that gives its panel the facts it needs.
+const TABS: [Tab; 5] = [
+    Tab {
+        id: dc_fx_zoom::panel::ID,
+        icon: Icon::Frame,
+        title: text::ZOOM,
+        ui: zoom,
+    },
+    Tab {
+        id: dc_fx_cursor::panel::ID,
+        icon: Icon::Cursor,
+        title: text::CURSOR,
+        ui: cursor,
+    },
+    KEYS,
+    CAPTIONS,
+    SOUND,
+];
+
+/// «Показ клавиш»: the tab the editor opens on.
+pub const KEYS: Tab = Tab {
+    id: dc_fx_keys::panel::ID,
+    icon: Icon::Keyboard,
+    title: text::KEYS,
+    ui: keys,
+};
+
+pub const CAPTIONS: Tab = Tab {
+    id: dc_fx_captions::panel::ID,
+    icon: Icon::Captions,
+    title: text::CAPTIONS,
+    ui: captions::tab,
+};
+
+pub const SOUND: Tab = Tab {
+    id: dc_fx_audio_tracks::panel::ID,
+    icon: Icon::Speaker,
+    title: text::SOUND,
+    ui: sound,
+};
+
+/// «Сделать красиво» by the user's AI agent (8.11): under the line of the rail.
+pub const AI: Tab = Tab {
+    id: ai::ID,
+    icon: Icon::Spark,
+    title: dc_ui_kit::strings::ai::TAB,
+    ui: ai::tab,
+};
+
+/// The tab with `id`.
+fn tab(id: &str) -> Option<&'static Tab> {
+    TABS.iter().chain([&AI]).find(|tab| tab.id == id)
 }
 
 /// «Зум» of `dc_fx_zoom`: no facts, the zooms are in the project.
@@ -98,30 +142,6 @@ fn keys(ui: &mut Ui, cx: &mut Cx<'_>) {
 fn sound(ui: &mut Ui, cx: &mut Cx<'_>) {
     let sources = cx.sources(None);
     dc_fx_audio_tracks::panel::ui(ui, &mut cx.base, &sources);
-}
-
-impl Panel {
-    fn icon(self) -> Icon {
-        match self {
-            Self::Zoom => Icon::Frame,
-            Self::Cursor => Icon::Cursor,
-            Self::Keys => Icon::Keyboard,
-            Self::Captions => Icon::Captions,
-            Self::Sound => Icon::Speaker,
-            Self::Ai => Icon::Spark,
-        }
-    }
-
-    fn title(self) -> &'static str {
-        match self {
-            Self::Zoom => text::ZOOM,
-            Self::Cursor => text::CURSOR,
-            Self::Keys => text::KEYS,
-            Self::Captions => text::CAPTIONS,
-            Self::Sound => text::SOUND,
-            Self::Ai => dc_ui_kit::strings::ai::TAB,
-        }
-    }
 }
 
 /// What the inspector works with this frame: what every panel gets and the editor's own parts
@@ -201,9 +221,10 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow) -> bool {
             ScrollArea::vertical().show(ui, |ui| match view.object {
                 Some(picked) => object::ui(ui, &mut cx, tracks, picked),
                 None => {
-                    let (id, panel) = tab(view.panel);
-                    cx.base.groups.panel(id);
-                    panel(ui, &mut cx);
+                    if let Some(tab) = tab(view.tab) {
+                        cx.base.groups.panel(tab.id);
+                        (tab.ui)(ui, &mut cx);
+                    }
                 }
             });
         });
@@ -290,8 +311,8 @@ fn follow(view: &mut View) {
 /// The tabs of the effects, a line, then «Нейронка» (mockup 9).
 fn rail(ui: &mut Ui, view: &mut View) {
     ui.spacing_mut().item_spacing.y = 2.0;
-    for panel in PANELS {
-        tab_button(ui, view, panel);
+    for tab in &TABS {
+        tab_button(ui, view, tab);
     }
     let (line, _) = ui.allocate_exact_size(egui::vec2(TAB, tokens::S2 + 1.0), egui::Sense::hover());
     let y = line.center().y;
@@ -299,17 +320,17 @@ fn rail(ui: &mut Ui, view: &mut View) {
     let half = (TAB - tokens::S3) / 2.0;
     ui.painter()
         .hline(x - half..=x + half, y, (1.0, tokens::BORDER));
-    tab_button(ui, view, Panel::Ai);
+    tab_button(ui, view, &AI);
 }
 
-fn tab_button(ui: &mut Ui, view: &mut View, panel: Panel) {
-    let on = view.object.is_none() && view.panel == panel;
-    let button = IconButton::new(panel.icon(), panel.title())
+fn tab_button(ui: &mut Ui, view: &mut View, tab: &Tab) {
+    let on = view.object.is_none() && view.tab == tab.id;
+    let button = IconButton::new(tab.icon, tab.title)
         .size(TAB, tokens::ICON)
         .on(on);
-    let response = ui.add(button).on_hover_text(panel.title());
+    let response = ui.add(button).on_hover_text(tab.title);
     if response.clicked() {
-        view.panel = panel;
+        view.tab = tab.id;
         view.object = None;
     }
 }

@@ -43,21 +43,6 @@ pub enum Quality {
     Fast,
 }
 
-/// Global settings panel of the inspector: a tab of its rail.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Panel {
-    Zoom,
-    /// Cursor, clicks and the callout.
-    Cursor,
-    /// The only tab with its panel until 7.14: the frame opens on it.
-    #[default]
-    Keys,
-    Captions,
-    Sound,
-    /// «Сделать красиво» by the user's AI agent (8.11).
-    Ai,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct View {
     /// Timeline tool.
@@ -77,7 +62,7 @@ pub struct View {
     /// Snapping on the timeline: the blade sticks with it (7.8), regions from 7.9.
     pub magnet: bool,
     /// The tab of the inspector rail: its panel shows while no object is open.
-    pub panel: Panel,
+    pub tab: &'static str,
     /// The picked object whose panel the inspector shows instead of the tab (7.13).
     pub object: Option<Selected>,
     /// The single picked object the inspector last saw: a new one opens its panel.
@@ -133,7 +118,7 @@ impl Default for View {
             markers: true,
             volume: 80.0,
             magnet: true,
-            panel: Panel::default(),
+            tab: super::inspector::KEYS.id,
             object: None,
             followed: None,
             playhead: OutputTime::ZERO,

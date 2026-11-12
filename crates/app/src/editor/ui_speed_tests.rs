@@ -220,7 +220,7 @@ fn ui_speed() {
     blocking();
     harness.hover_at(egui::pos2(800.0, 850.0));
     measure(&mut harness, "nothing picked");
-    harness.state_mut().editor.view.panel = super::view::Panel::Captions;
+    harness.state_mut().editor.view.tab = super::inspector::CAPTIONS.id;
     measure(&mut harness, "captions tab");
     let cue = first(&harness, Row::Captions);
     harness.state_mut().editor.view.selection.only(cue);
