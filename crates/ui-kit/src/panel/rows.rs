@@ -259,6 +259,11 @@ fn typed(
     let response = ui
         .push_id(&key, |ui| field(ui, &mut value, hint, width))
         .inner;
+    let asked = Focus(Id::unique(&key));
+    if ui.data(|d| d.get_temp::<Focus>(focus_id())) == Some(asked) {
+        ui.data_mut(|d| d.remove::<Focus>(focus_id()));
+        select_all(ui, &response, &value);
+    }
     if response.has_focus() {
         let pass = ui.ctx().cumulative_pass_nr();
         let pending = (value != now).then(|| Pending {
@@ -286,6 +291,30 @@ fn typed(
     });
     let dropped = ui.input(|i| i.key_pressed(egui::Key::Escape));
     (response.lost_focus() && !dropped && value != now).then(|| apply(value))
+}
+
+/// The text field asked to take the keys, by the key of its object.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Focus(Id);
+
+fn focus_id() -> Id {
+    Id::unique("inspector-focus-text")
+}
+
+/// The field of [`text`] or [`text_area`] of the object `key` takes the keys with its whole
+/// text selected when it is drawn next, so typing replaces the text (a double-click on a text
+/// annotation of the preview).
+pub fn focus_text(ctx: &egui::Context, key: impl std::hash::Hash + std::fmt::Debug) {
+    ctx.data_mut(|d| d.insert_temp(focus_id(), Focus(Id::unique(key))));
+}
+
+/// The field of `response` takes the keys with all of `text` selected.
+fn select_all(ui: &Ui, response: &Response, text: &str) {
+    response.request_focus();
+    let mut state = egui::text_edit::TextEditState::load(ui.ctx(), response.id).unwrap_or_default();
+    let all = egui::text::CCursorRange::select_all_str(text);
+    state.cursor.set_char_range(Some(all));
+    state.store(ui.ctx(), response.id);
 }
 
 /// The text typed into a field that is gone this pass (another object was picked): its
