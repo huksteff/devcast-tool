@@ -56,6 +56,7 @@ pub fn spec(editor: &EditorWindow, settings: Settings, out: PathBuf) -> Spec {
         root: editor.doc.dir().root().to_path_buf(),
         project: editor.doc.project().clone(),
         settings,
+        piece: None,
         out,
     }
 }

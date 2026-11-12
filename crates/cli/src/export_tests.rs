@@ -195,3 +195,53 @@ fn two_calls_share_the_queue_and_both_files_come_out() {
         "the queue closed when it ran empty"
     );
 }
+
+/// One output moment of `file` (frame `n`) as 32 × 18 gray pixels.
+fn small_frame(file: &Path, n: u32) -> Vec<u8> {
+    let filter = format!(r"select=eq(n\,{n}),scale=32:18,format=gray");
+    let file = file.to_str().unwrap();
+    let args = [
+        "-i",
+        file,
+        "-vf",
+        &filter,
+        "-frames:v",
+        "1",
+        "-f",
+        "rawvideo",
+        "-",
+    ];
+    crate::test_util::decoded(&args)
+}
+
+#[test]
+fn a_piece_shows_the_frames_of_the_whole_video_there() {
+    let f = Fixture::new();
+    let project = f.cwd.join("клики.devcast");
+    crate::test_util::fixture_copy("clicks.devcast", &project);
+    // The zoom of the clicks goes on past the end of the piece: its camera must stay as in the
+    // whole video, not end with the piece.
+    let registry = Registry::devcast().unwrap();
+    let zoom = crate::test_util::run_line("zoom add --at clicks", &project, &registry);
+    assert_eq!(zoom.code, 0, "{zoom:?}");
+    let name = channel("piece");
+    let args = |out: &str, from: Option<&str>, to: Option<&str>| ExportArgs {
+        out: Some(out.into()),
+        res: Some(crate::export_args::Res::Source),
+        fps: Some(30),
+        from: from.map(str::to_owned),
+        to: to.map(str::to_owned),
+        ..ExportArgs::default()
+    };
+    for args in [
+        args("целое.mp4", None, None),
+        args("кусок.mp4", Some("1"), Some("4")),
+    ] {
+        call(&project, &registry, None, None, &args, &name).unwrap();
+    }
+    // Output 3 s: frame 90 of the whole video, frame 60 of the piece from 1 s.
+    let whole = small_frame(&project.join("целое.mp4"), 90);
+    let piece = small_frame(&project.join("кусок.mp4"), 60);
+    let differ = whole.iter().zip(&piece).map(|(a, b)| a.abs_diff(*b)).max();
+    assert!(differ.is_some_and(|d| d <= 8), "{differ:?}");
+}

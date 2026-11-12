@@ -73,6 +73,7 @@ fn the_editor_job_is_the_cli_job() {
         root: editor.doc.dir().root().to_path_buf(),
         project: working.project,
         settings: Settings::default_for(Format::Mp4),
+        piece: None,
         out,
     };
     assert_eq!(app, cli);

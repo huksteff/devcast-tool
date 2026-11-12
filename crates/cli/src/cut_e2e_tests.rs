@@ -124,6 +124,7 @@ fn flashes_and_beeps_stay_together_after_ten_cuts_a_join_and_speed() {
             quality: Quality::High,
             looped: false,
         },
+        piece: None,
         out: out.clone(),
     };
     let gpu = Arc::new(Gpu::new(AdapterChoice::Auto).unwrap());
