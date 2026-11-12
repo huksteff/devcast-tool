@@ -1,6 +1,7 @@
 //! Project checks (verify) and maintenance commands: `cargo xtask <command>`.
 
 mod changed;
+mod changelog;
 mod crates;
 mod deps;
 mod features;
@@ -32,6 +33,9 @@ const USAGE: &str = "\
       и для крейтов, которые от них зависят. --include-ignored добавляет долгие тесты.
       --quick — только проверки без сборки (без clippy и тестов), секунды.
       --checks — всё, кроме тестов; --tests — только тесты (CI гоняет их на двух машинах сразу).
+  changelog
+      Выпуск: собрать раздел `## <version из Cargo.toml>` в CHANGELOG.md из файлов changelog/*.md
+      и удалить их. До выпуска каждый MR кладёт свои строки журнала своим файлом в changelog/.
   hook-stop
       Stop-хук Claude Code (.claude/settings.json): если менялся код и verify --quick красный,
       не даёт сессии закончиться и передаёт отчёт агенту.
@@ -62,6 +66,20 @@ fn main() -> ExitCode {
             Err(message) => usage_error(&message),
         },
         "hook-stop" => hook::stop(),
+        "changelog" => {
+            let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent();
+            match root.map(changelog::release) {
+                Some(Ok(report)) => {
+                    println!("{report}");
+                    ExitCode::SUCCESS
+                }
+                Some(Err(message)) => {
+                    eprintln!("changelog: {message}");
+                    ExitCode::FAILURE
+                }
+                None => usage_error("не найден корень workspace"),
+            }
+        }
         "golden" => match golden::run(rest) {
             Ok(report) => {
                 println!("{report}");

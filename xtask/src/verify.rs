@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use crate::metadata::Workspace;
 use crate::run::{self, Outcome};
-use crate::{changed, crates, deps, features, limits, schema_docs, seams, todo};
+use crate::{changed, changelog, crates, deps, features, limits, schema_docs, seams, todo};
 
 pub struct Options {
     /// Test the whole workspace instead of changed crates only.
@@ -137,6 +137,7 @@ pub fn run(options: &Options) -> Report {
                 steps.push(("seams", seams::check(&workspace.root)));
                 steps.push(("schema_docs", schema_docs::check(&workspace.root)));
                 steps.push(("features", features::check(&workspace.root)));
+                steps.push(("changelog", changelog::check(&workspace.root)));
             }
             if with_tests {
                 steps.push(("tests", tests(options, &workspace)));
