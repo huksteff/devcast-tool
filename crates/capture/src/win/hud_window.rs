@@ -1,8 +1,11 @@
 //! The app's HUD window as the recording sees it (decision 001): excluded from capture, moved
 //! in physical desktop pixels. `hwnd` is the window handle of the app. Also bringing a picked
-//! window to front.
+//! window to front, and the work area of the monitor the HUD stands on (where its popovers fit).
 
 use windows::Win32::Foundation::{HWND, RECT};
+use windows::Win32::Graphics::Gdi::{
+    GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromRect,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     GetWindowRect, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, SetForegroundWindow,
     SetWindowDisplayAffinity, SetWindowPos, WDA_EXCLUDEFROMCAPTURE, WDA_NONE,
@@ -55,6 +58,40 @@ pub fn move_window(hwnd: isize, x: i32, y: i32) -> Result<(), CaptureError> {
         )
     }
     .map_err(|e| CaptureError::platform("передвинуть панель")(e.to_string()))
+}
+
+/// The work area (the monitor without the taskbar) of the monitor that holds most of `rect`
+/// (or the nearest one); both as [`window_rect`] gives them: corner and size, physical desktop
+/// pixels.
+pub fn work_area(
+    (x, y, width, height): (i32, i32, u32, u32),
+) -> Result<(i32, i32, u32, u32), CaptureError> {
+    let rect = RECT {
+        left: x,
+        top: y,
+        right: x.saturating_add_unsigned(width),
+        bottom: y.saturating_add_unsigned(height),
+    };
+    let mut info = MONITORINFO {
+        cbSize: size_of::<MONITORINFO>() as u32,
+        ..Default::default()
+    };
+    // SAFETY: `rect` is a live RECT; with MONITOR_DEFAULTTONEAREST the handle is always a monitor,
+    // and `info` is a MONITORINFO with cbSize set.
+    let ok = unsafe {
+        GetMonitorInfoW(
+            MonitorFromRect(&raw const rect, MONITOR_DEFAULTTONEAREST),
+            &raw mut info,
+        )
+    };
+    if !ok.as_bool() {
+        return Err(CaptureError::platform("узнать рабочую область монитора")(
+            windows::core::Error::from_thread().to_string(),
+        ));
+    }
+    let w = info.rcWork;
+    let size = |from: i32, to: i32| u32::try_from(to - from).unwrap_or(0);
+    Ok((w.left, w.top, size(w.left, w.right), size(w.top, w.bottom)))
 }
 
 /// Brings the window `id` (a source of the picker) to front, as the user chose it to record.

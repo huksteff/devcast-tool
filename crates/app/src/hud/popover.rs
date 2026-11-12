@@ -16,7 +16,7 @@ use dc_capture::Source;
 
 use super::menus::{MoreAction, more_menu};
 use super::picker::Pick;
-use super::place::{ceiling, placed};
+use super::place::{placed, room, tallest};
 
 use crate::app::{Shared, lock, other_window};
 use crate::borderless;
@@ -126,7 +126,7 @@ pub const MAX_HEIGHT: f32 = 620.0;
 /// The popover's window; one at a time.
 pub const ID: &str = "hud-popover";
 
-/// Shows the open popover window above the HUD whose window rectangle is `bar`.
+/// Shows the open popover window by the HUD whose window rectangle is `bar`.
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: Rect) {
     let width = match open.kind {
         Kind::Source => super::picker::WIDTH,
@@ -138,19 +138,19 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::WhatsNew => 380.0,
         Kind::Update => 340.0,
     };
-    let ceiling = ceiling(ctx, &lock(shared));
+    let room = room(ctx, bar);
     let shared = Arc::clone(shared);
-    let builder = builder(open, width, bar, ceiling);
+    let builder = builder(open, width, bar, room);
     ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
         other_window(ui, &shared, |ui, shared| {
-            frame(ui, shared, open, width, bar)
+            frame(ui, shared, open, width, bar, room)
         });
     });
 }
 
 /// The window of `open` with a panel `width` wide (it starts 40 high, then fits).
-pub fn builder(open: Open, width: f32, bar: Rect, ceiling: Option<f32>) -> egui::ViewportBuilder {
-    let window = placed(open, vec2(width, 40.0), bar, ceiling);
+pub fn builder(open: Open, width: f32, bar: Rect, room: Option<Rect>) -> egui::ViewportBuilder {
+    let window = placed(open, vec2(width, 40.0), bar, room);
     borderless::floating(open.kind.title())
         .with_visible(false)
         .with_resizable(false)
@@ -159,19 +159,19 @@ pub fn builder(open: Open, width: f32, bar: Rect, ceiling: Option<f32>) -> egui:
 }
 
 /// One frame of the popover window: its content, its size to fit, closing on Esc or lost focus.
-fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
+fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect, room: Option<Rect>) {
     let hidden = shared.store.get().hide_hud;
     if shared.popover.as_mut().is_some_and(|o| o.exclude(hidden)) {
         ui.ctx()
             .send_viewport_cmd(egui::ViewportCommand::ContentProtected(hidden));
     }
-    // Laid out in the full popover height, not the window's current one: the window then
-    // takes the size of the content (it starts 40 px high).
+    // Laid out in the full height the room around the bar gives, not the window's current one:
+    // the window then takes the size of the content (it starts 40 px high); a taller list scrolls.
     let margin = borderless::margin();
     let corner = ui.max_rect().min + vec2(margin.left.into(), margin.top.into());
-    let room = Rect::from_min_size(corner, vec2(width, MAX_HEIGHT));
+    let space = Rect::from_min_size(corner, vec2(width, tallest(bar, room)));
     let response = ui
-        .scope_builder(egui::UiBuilder::new().max_rect(room), |ui| {
+        .scope_builder(egui::UiBuilder::new().max_rect(space), |ui| {
             let padding = open.kind.padding();
             panel_frame()
                 .inner_margin(padding)
@@ -194,7 +194,7 @@ fn frame(ui: &mut Ui, shared: &mut Shared, open: Open, width: f32, bar: Rect) {
                 .response
         })
         .inner;
-    let window = placed(open, response.rect.size(), bar, ceiling(ui.ctx(), shared));
+    let window = placed(open, response.rect.size(), bar, room);
     let current = ui.input(|i| i.viewport().inner_rect.map(|r| r.size()));
     if current.is_some_and(|c| (c - window.size()).length() > 0.5) {
         ui.ctx()
