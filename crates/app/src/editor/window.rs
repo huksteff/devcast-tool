@@ -210,6 +210,8 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
     if let Some(leave) = outcome.leave {
         shared.leave_project(leave);
     }
+    // The HUD hides while the editor is open: the toasts show over the editor instead.
+    shared.toasts.show(ui.ctx());
 }
 
 /// Keeps a dragged timeline height (once the pointer is let go) and a new row factor.

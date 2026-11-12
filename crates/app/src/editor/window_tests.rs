@@ -148,3 +148,20 @@ fn a_save_that_fails_keeps_the_window_with_the_error() {
     );
     assert!(!harness.state().toasts.is_empty(), "the error is told");
 }
+
+#[test]
+fn the_toasts_show_in_the_editor_window_while_the_hud_hides() {
+    let (_project, _settings, shared, _root) = edited();
+    let mut harness = dc_ui_kit::testing::harness()
+        .with_size(crate::editor::SIZE)
+        .build_ui_state(|ui, shared: &mut Shared| frame(ui, shared), shared);
+    let ctx = harness.ctx.clone();
+    let told = "автозумов нет: в записях нет кликов";
+    let state = harness.state_mut();
+    state.ctx = ctx.clone();
+    state
+        .toasts
+        .push(&ctx, dc_ui_kit::widgets::ToastKind::Error, told);
+    harness.run();
+    assert!(harness.query_by_label(told).is_some(), "the toast is seen");
+}
