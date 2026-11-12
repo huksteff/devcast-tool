@@ -129,6 +129,12 @@ impl Document {
         Ok(project)
     }
 
+    /// The registry command of `step`, to apply together with ready commands
+    /// ([`Self::apply_commands`]).
+    pub fn command(&self, step: &Step) -> Result<Box<dyn dc_core::Command>, OpsError> {
+        self.registry.command(&step.op, step.args.clone())
+    }
+
     /// Ready commands (not of the registry: `audio add` after its file is copied) as one undo
     /// step named `name`, as `devcast` applies them.
     pub fn apply_commands(

@@ -187,3 +187,36 @@ fn an_added_font_is_chosen_and_listed() {
     undo(&mut harness);
     assert_eq!(font(&harness), "Inter", "one step");
 }
+
+#[test]
+fn a_new_picture_annotation_is_one_step_and_picked() {
+    let mut harness = super::tests::started();
+    let made = ["annot add image --at 50 --duration 1 --track 1"];
+    let sticker = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/images/sticker.png");
+    let file = adding::NewPicture {
+        add: super::tests::step(made[0]),
+        path: sticker,
+    };
+    harness.state_mut().editor.ask(Action::NewPicture(file));
+    harness.run();
+    let id = AnnotId::from_number(4);
+    let mut expected = cli(&made);
+    let size = PixelSize {
+        width: 160,
+        height: 100,
+    };
+    let picture = PictureFile::new("assets/images/sticker.png".to_owned(), size, &[]);
+    let set = ImageSet {
+        id,
+        picture,
+        at: None,
+    };
+    set.apply(&mut expected).unwrap();
+    assert_eq!(project_json(&harness), json(&expected));
+    let picked: Vec<_> = harness.state().editor.view.selection.regions().collect();
+    assert_eq!(picked, [crate::editor::selection::Item::of(id)]);
+    undo(&mut harness);
+    let now = harness.state().editor.doc.project();
+    let back = crate::editor::editing_tests::undone(&cli(&[]), now);
+    assert_eq!(project_json(&harness), back, "one step");
+}
