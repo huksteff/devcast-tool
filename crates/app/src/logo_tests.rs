@@ -13,6 +13,12 @@ fn at(rgba: &[u8], x: u32, y: u32) -> &[u8] {
 #[test]
 fn the_icon_is_the_48_px_picture_of_the_exe_icon() {
     assert_eq!(ICON.len(), (SIDE * SIDE * 4) as usize);
+    assert_eq!(at(ICON, 0, 0)[3], 0, "transparent background");
+    assert_eq!(
+        at(ICON, SIDE / 2, SIDE / 2)[3],
+        0,
+        "transparent negative space"
+    );
     assert!(
         ICON.as_chunks::<4>().0.iter().any(|pixel| pixel[3] == 255),
         "opaque icon"
