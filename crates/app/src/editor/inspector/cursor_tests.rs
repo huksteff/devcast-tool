@@ -204,3 +204,28 @@ fn a_picked_click_edits_are_click_set() {
         "still picked"
     );
 }
+
+#[test]
+fn a_click_near_a_dot_picks_it_and_adds_nothing() {
+    let mut harness = with_clicks();
+    let at = OutputTime::from_secs_f64(21.0);
+    let zone = harness
+        .get_by_label(&rows_text::click_dot(&timecode(at)))
+        .rect();
+    // 6 pt beside the dot, near the top of the row: once a miss that added a callout event.
+    let near = zone.center() + egui::vec2(6.0, 2.0 - zone.height() / 2.0);
+    harness.event(egui::Event::PointerMoved(near));
+    harness.run();
+    for pressed in [true, false] {
+        harness.event(egui::Event::PointerButton {
+            pos: near,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+    harness.run();
+    let editor = &harness.state().editor;
+    assert_eq!(editor.view.object, Some(Selected::Click(at)));
+    assert_eq!(project_json(&harness), json(&project()), "nothing added");
+}
