@@ -97,6 +97,8 @@ pub mod hud {
 /// The source picker.
 pub mod picker {
     pub const TITLE: &str = "Источник записи";
+    /// Title of the frame that flashes around a picked window (no caption shows it).
+    pub const PICKED_WINDOW: &str = "Выбранное окно";
     pub const SCREENS: &str = "Экраны";
     pub const WINDOWS: &str = "Окна";
     pub const AREA: &str = "Область…";
