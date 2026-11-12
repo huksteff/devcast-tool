@@ -29,8 +29,8 @@ pub(super) struct State {
     pub outcome: Option<Outcome>,
     /// The timeline sizes the settings give the editor.
     pub layout: crate::settings::EditorLayout,
-    /// Some frame asked for the settings window, on this page.
-    pub settings: Option<crate::settings_window::Page>,
+    /// Some frame asked for the settings window, on this page when one is named.
+    pub settings: Option<Option<crate::settings_window::Page>>,
     /// The shortcuts the settings give the editor.
     pub keys: crate::keymap::EditorKeys,
     /// The inspector groups of the settings: a frame that toggles one stores it here.
@@ -169,10 +169,7 @@ fn controls_hold_their_state() {
     assert_eq!(harness.state().settings, None);
     harness.get_by_label(text::SETTINGS).click();
     harness.run();
-    assert_eq!(
-        harness.state().settings,
-        Some(crate::settings_window::Page::Recording)
-    );
+    assert_eq!(harness.state().settings, Some(None));
 }
 
 #[test]

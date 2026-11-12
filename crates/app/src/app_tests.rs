@@ -5,7 +5,7 @@ use eframe::egui;
 use super::{Shared, lock, show_windows};
 use crate::hud::popover::{self, Kind, Open};
 use crate::settings::Store;
-use crate::settings_window::ID as SETTINGS_ID;
+use crate::settings_open::ID as SETTINGS_ID;
 
 const KINDS: [Kind; 9] = [
     Kind::Source,

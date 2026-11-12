@@ -11,17 +11,9 @@ use dc_ui_kit::tokens::{BG, BORDER, CONTROL, FS_S, R1, S2, S4, S5, SURFACE_2, TE
 use dc_ui_kit::widgets::{Button, LevelBar, Toggle, dropdown, segmented};
 use eframe::egui::{self, Align, Color32, Layout, Sense, Stroke, StrokeKind, Ui, vec2};
 
-use std::sync::{Arc, Mutex};
-
-use dc_capture::audio::AudioSource;
-use dc_ui_kit::widgets::ToastKind;
-
-use crate::app::{Shared, lock, other_window};
-use crate::borderless::show_when_drawn;
 use crate::error::AppError;
 use crate::hotkeys::Command;
 use crate::models::Models;
-use crate::monitor::on_hud_monitor;
 use crate::settings::{AppSettings, Countdown, Store};
 use crate::settings_defaults::{DefaultsFile, OpenProject};
 use crate::settings_hotkeys::HotkeyPage;
@@ -72,6 +64,8 @@ pub struct SettingsWindow {
     pub update: UpdateState,
     /// The update button pressed this frame.
     pub update_action: Option<UpdateAction>,
+    /// «Настройки» was pressed while the window was open: it asks for the focus once restored.
+    pub focus: bool,
 }
 
 /// The button of the updates row.
@@ -92,6 +86,7 @@ impl SettingsWindow {
             defaults,
             update: UpdateState::Unknown,
             update_action: None,
+            focus: false,
         }
     }
 
@@ -318,81 +313,6 @@ pub fn countdown(ui: &mut Ui, countdown: &mut Countdown) {
         .map(|(c, label)| (*c, label.as_str(), true))
         .collect();
     segmented(ui, countdown, &options);
-}
-
-/// Viewport of the settings window.
-pub const ID: &str = "settings";
-
-/// The settings window, from the main window's pass.
-pub fn show(ctx: &egui::Context, shared: Arc<Mutex<Shared>>) {
-    let mut builder = egui::ViewportBuilder::default()
-        .with_icon(crate::logo::window_icon())
-        .with_visible(false)
-        .with_title(text::TITLE)
-        .with_inner_size(SIZE)
-        .with_min_inner_size(MIN_SIZE)
-        .with_maximize_button(false);
-    if let Some(corner) = on_hud_monitor(ctx, &lock(&shared), SIZE) {
-        builder = builder.with_position(corner);
-    }
-    ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
-        show_when_drawn(ui.ctx());
-        other_window(ui, &shared, settings_frame)
-    });
-}
-
-/// One frame of the settings window.
-fn settings_frame(ui: &mut egui::Ui, shared: &mut Shared) {
-    crate::borderless::opaque(ui);
-    if let Some(fresh) = shared.fresh_microphones().map(<[String]>::to_vec)
-        && let Some(window) = shared.settings.as_mut()
-    {
-        window.microphones = fresh;
-    }
-    let update = shared.updates.state.clone();
-    let Some(window) = shared.settings.as_mut() else {
-        return;
-    };
-    window.update = update;
-    match settings_ui(ui, shared) {
-        Some(UpdateAction::Check) => shared.check_updates(),
-        Some(UpdateAction::Download) => shared.download_update(),
-        Some(UpdateAction::Restart) => shared.restart_into_update(),
-        None => {}
-    }
-}
-
-/// The window's own part of the frame; the update button pressed in it.
-fn settings_ui(ui: &mut egui::Ui, shared: &mut Shared) -> Option<UpdateAction> {
-    let Shared {
-        ctx,
-        store,
-        settings,
-        meters,
-        toasts,
-        taken_hotkeys,
-        editor,
-        ..
-    } = shared;
-    let window = settings.as_mut()?;
-    let level = match &store.get().recording.microphone {
-        Some(mic) => meters.level(ctx, &AudioSource::Microphone(mic.clone())),
-        None => 0.0,
-    };
-    let open = editor.as_mut().map(|editor| OpenProject {
-        name: &editor.name,
-        project: editor.doc.project(),
-        defaults: &mut editor.defaults,
-    });
-    if let Err(error) = window.ui(ui, store, (level, taken_hotkeys.as_slice()), open) {
-        toasts.push(ui.ctx(), ToastKind::Error, error.to_string());
-    }
-    toasts.show(ui.ctx());
-    let action = window.update_action.take();
-    if ui.input(|i| i.viewport().close_requested()) {
-        *settings = None;
-    }
-    action
 }
 
 #[cfg(test)]

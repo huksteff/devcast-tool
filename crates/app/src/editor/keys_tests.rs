@@ -156,7 +156,7 @@ fn the_help_searches_and_leads_to_the_settings() {
     assert!(harness.state().editor.help.is_none());
     assert_eq!(
         harness.state().settings,
-        Some(crate::settings_window::Page::Hotkeys)
+        Some(Some(crate::settings_window::Page::Hotkeys))
     );
 }
 

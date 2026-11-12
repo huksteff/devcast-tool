@@ -18,8 +18,8 @@ pub use crate::monitor::on_hud_monitor;
 use crate::session::Session;
 use crate::settings::Hotkeys;
 use crate::settings::Store;
-use crate::settings_defaults::DefaultsFile;
-use crate::settings_window::{self, SettingsWindow};
+use crate::settings_open;
+use crate::settings_window::SettingsWindow;
 use crate::tray::{Tray, TrayAction};
 
 /// State of all windows.
@@ -153,29 +153,6 @@ impl Shared {
             Err(error) => self.report(Err(error)),
         }
         Some(&self.microphones)
-    }
-
-    /// Opens the settings window with the microphones known; a fresh list follows.
-    pub fn open_settings(&mut self) {
-        self.open_settings_at(crate::settings_window::Page::default());
-    }
-
-    /// Opens the settings window on `page`.
-    pub fn open_settings_at(&mut self, page: crate::settings_window::Page) {
-        self.fresh_microphones();
-        let ctx = self.ctx.clone();
-        self.mic_refresh.start(&ctx);
-        let defaults = match DefaultsFile::of_app() {
-            Ok(file) => file,
-            Err(error) => return self.report(Err(error)),
-        };
-        let mut window = SettingsWindow::new(
-            self.microphones.clone(),
-            crate::models::Models::of_app(self.downloads.clone()),
-            defaults,
-        );
-        window.page = page;
-        self.settings = Some(window);
     }
 
     /// Opens the level meters the open windows show and closes the rest.
@@ -390,8 +367,8 @@ pub fn show_windows(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, bar: Optio
         ctx.request_repaint_of(egui::ViewportId::from_hash_of(popover::ID));
     }
     if settings {
-        settings_window::show(ctx, Arc::clone(shared));
-        ctx.request_repaint_of(egui::ViewportId::from_hash_of(settings_window::ID));
+        settings_open::show(ctx, Arc::clone(shared));
+        ctx.request_repaint_of(egui::ViewportId::from_hash_of(settings_open::ID));
     }
 }
 

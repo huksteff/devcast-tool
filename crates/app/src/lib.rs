@@ -39,6 +39,7 @@ mod settings_about;
 mod settings_captions;
 mod settings_defaults;
 mod settings_hotkeys;
+mod settings_open;
 mod settings_window;
 mod shortcut;
 mod tray;
