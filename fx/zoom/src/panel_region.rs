@@ -1,7 +1,7 @@
 //! The panel of a picked zoom (mockup 3a): «Основное» — mode, scale and focus point of this zoom
 //! (`zoom set`), then the motion shared by every zoom (`panel.rs`: `zoom motion`); «Тонкая
 //! настройка» and «Подобрать зумы по кликам» as on the rail tab. «Сбросить» of «Основное» brings
-//! the zoom to what `zoom add` gives (scale 1.5, follow, focus in the centre) and the shared
+//! the zoom to what `zoom add` gives (scale 1.3, follow, focus in the centre) and the shared
 //! fields to the defaults, one undo step. The frame on the editor's preview edits the same scale
 //! and focus.
 

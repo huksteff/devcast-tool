@@ -96,11 +96,11 @@ fn type_in(harness: &mut Harness<'_, State>, label: &str, value: f64) {
 #[test]
 fn tab_edits_are_zoom_motion_and_suggest_is_a_step_that_adds() {
     let mut harness = harness(project(&[10.0]), None);
-    click(&mut harness, egui::Role::RadioButton, names::ZOOM_SMOOTH);
+    click(&mut harness, egui::Role::RadioButton, names::ZOOM_FOCUSED);
     click(&mut harness, egui::Role::Switch, names::ZOOM_AUTO);
-    let smooth = serde_json::to_value(Preset::Smooth).unwrap();
+    let focused = serde_json::to_value(Preset::Focused).unwrap();
     let expected = vec![
-        step("zoom motion", json!({"preset": smooth})),
+        step("zoom motion", json!({"preset": focused})),
         step("zoom motion", json!({"auto": false})),
     ];
     assert_eq!(harness.state().edits, expected);
@@ -154,7 +154,7 @@ fn reset_of_a_picked_zoom_is_what_zoom_add_gives_in_one_step() {
         .click();
     harness.run();
     let (follow, id) = (json!(Mode::Follow), json!(id));
-    let back = json!({"id": id, "scale": 1.5, "mode": follow, "x": 0.5, "y": 0.5});
+    let back = json!({"id": id, "scale": 1.3, "mode": follow, "x": 0.5, "y": 0.5});
     assert_eq!(harness.state().edits, vec![step("zoom set", back)]);
 }
 

@@ -20,8 +20,8 @@ fn set_changes_settings_through_their_commands_in_one_step() {
     let f = Recordings::new();
     let before = f.dir.load().unwrap();
     assert_eq!(
-        f.ok("set captions.size=36 zoom.preset=smooth cursor.size=3"),
-        "субтитры: размер 30→36; движение зума: вход 0.200→1.523 с, выход 0.200→1.015 с (Smooth); курсор: размер 2.50→3.00"
+        f.ok("set captions.size=36 zoom.preset=focused cursor.size=3"),
+        "субтитры: размер 30→36; движение зума: вход 1.523→0.200 с, выход 1.015→0.200 с (Focused); курсор: размер 1.00→3.00"
     );
     let project = f.dir.load().unwrap();
     assert_eq!(
@@ -29,7 +29,7 @@ fn set_changes_settings_through_their_commands_in_one_step() {
         36.0
     );
     let zoom = project.state::<ZoomEffect>().unwrap().settings;
-    assert_eq!(zoom.preset(), Some(Preset::Smooth));
+    assert_eq!(zoom.preset(), Some(Preset::Focused));
     assert!(f.ok("history").contains("1  set "), "one step");
     f.ok("undo");
     assert_eq!(f.dir.load().unwrap(), before);
@@ -109,15 +109,15 @@ fn defaults_are_set_shown_taken_from_a_project_and_reset() {
 fn defaults_show_lines_go_into_set() {
     let f = Recordings::new();
     let file = defaults_file(f.dir.root().parent().unwrap());
-    f.ok("defaults set zoom.preset=smooth zoom.blur=1.5 zoom.auto=false crop.aspect=16:9");
+    f.ok("defaults set zoom.preset=focused zoom.blur=1.5 zoom.auto=false crop.aspect=16:9");
     f.ok("defaults set cursor.bounce_time=0.2 cursor.loop=true clicks.style=flash");
     f.ok("defaults set clicks.duration=0.5 keys.duration=2 keys.position=top");
     f.ok("defaults set callout.text=Готово callout.colors=#ff0000ff,#00ff00ff,#0000ffff");
     let shown = f.ok("defaults show");
     assert_eq!(
         shown,
-        "crop.aspect=16:9\nzoom.auto=false\nzoom.blur=1.5\nzoom.zoom_in=1.522575\n\
-         zoom.zoom_out=1.01505\ncursor.bounce_time=0.2\ncursor.loop=true\nclicks.duration=0.5\n\
+        "crop.aspect=16:9\nzoom.auto=false\nzoom.blur=1.5\nzoom.zoom_in=0.2\n\
+         zoom.zoom_out=0.2\ncursor.bounce_time=0.2\ncursor.loop=true\nclicks.duration=0.5\n\
          clicks.style=flash\ncallout.colors=#ff0000ff,#00ff00ff,#0000ffff\ncallout.text=Готово\n\
          keys.duration=2.0\nkeys.position=top\nостальные — заводские"
     );
@@ -157,7 +157,7 @@ fn style_copy_replaces_settings_and_keeps_content() {
         copied.state::<CaptionsEffect>().unwrap().settings.size,
         40.0
     );
-    assert_eq!(copied.state::<Cursor>().unwrap().settings.size, 2.5);
+    assert_eq!(copied.state::<Cursor>().unwrap().settings.size, 1.0);
     assert_eq!(
         f.ok("style copy --from . --to ../*.devcast"),
         "Другой.devcast: без изменений\nУрок 2.devcast: без изменений\nготово в 2 из 2"
@@ -172,7 +172,7 @@ fn batch_runs_one_command_in_every_project() {
     let other = sibling(&f, "Второй.devcast");
     assert_eq!(
         f.ok("batch ../*.devcast -- set cursor.size=3"),
-        "Второй.devcast: курсор: размер 2.50→3.00\nУрок 2.devcast: курсор: размер 2.50→3.00\nготово в 2 из 2"
+        "Второй.devcast: курсор: размер 1.00→3.00\nУрок 2.devcast: курсор: размер 1.00→3.00\nготово в 2 из 2"
     );
     for dir in [&f.dir, &other] {
         let project = dir.load().unwrap();

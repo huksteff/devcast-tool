@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 pub const SCALE_MIN: f64 = 1.0;
 pub const SCALE_MAX: f64 = 5.0;
-pub const DEFAULT_SCALE: f64 = 1.5;
+pub const DEFAULT_SCALE: f64 = 1.3;
 /// Zoom-in and zoom-out durations allowed by the settings, as in v1.
 pub const TRANSITION_MIN: TimeDelta = TimeDelta::from_millis(60);
 pub const TRANSITION_MAX: TimeDelta = TimeDelta::from_millis(4000);
@@ -129,12 +129,12 @@ impl Preset {
 
 impl Default for ZoomSettings {
     fn default() -> Self {
-        let (zoom_in, zoom_out) = Preset::Focused.durations();
+        let (zoom_in, zoom_out) = Preset::Smooth.durations();
         Self {
             zoom_in,
             zoom_out,
-            smoothness: 0.5,
-            motion_blur: 0.35,
+            smoothness: 0.8,
+            motion_blur: 0.0,
             connect: true,
             auto: true,
         }

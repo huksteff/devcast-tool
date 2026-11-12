@@ -22,6 +22,16 @@ fn at(s: f64) -> OutputTime {
     OutputTime::from_secs_f64(s)
 }
 
+/// The quick camera of v1 (Focused, on a spring, blurred) the tests of motion are written
+/// for; the defaults are calm.
+fn lively() -> ZoomState {
+    let mut state = ZoomState::default();
+    (state.settings.zoom_in, state.settings.zoom_out) = Preset::Focused.durations();
+    state.settings.smoothness = 0.5;
+    state.settings.motion_blur = 0.35;
+    state
+}
+
 fn project(length: f64) -> Project {
     let mut p = Project::default();
     let id = p.clip_ids.allocate();
@@ -59,7 +69,7 @@ fn zoom(state: &mut ZoomState, from: f64, to: f64, scale: f64, focus: (f64, f64)
 }
 
 fn one_zoom(from: f64, to: f64) -> ZoomState {
-    let mut state = ZoomState::default();
+    let mut state = lively();
     zoom(&mut state, from, to, 2.0, (0.3, 0.4));
     state
 }
@@ -80,7 +90,7 @@ fn rounded(camera: Camera) -> serde_json::Value {
 #[test]
 fn without_zooms_the_camera_rests() {
     let p = project(10.0);
-    let track = track(&p, &ZoomState::default());
+    let track = track(&p, &lively());
     assert!(track.runs.is_empty());
     for ms in (-500..11_000).step_by(100) {
         assert_eq!(
@@ -119,7 +129,7 @@ fn held_zoom_puts_the_focus_in_the_centre() {
 #[test]
 fn focus_at_the_edge_keeps_the_frame_covered() {
     let p = project(10.0);
-    let mut state = ZoomState::default();
+    let mut state = lively();
     zoom(&mut state, 2.0, 5.0, 2.0, (1.0, 0.0));
     let track = track(&p, &state);
     for ms in (0..10_000).step_by(20) {

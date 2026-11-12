@@ -67,9 +67,9 @@ fn add_at_clicks_is_one_undo_step() {
     assert_eq!(f.ok("zoom add --at clicks"), "зумы +3 z1..z3");
     assert_eq!(
         f.ok("ls zooms --fields scale,mode"),
-        "z1  0:01.500–0:04.500  mode=follow  scale=1.5\n\
-         z2  0:11.500–0:12.500  mode=follow  scale=1.5\n\
-         z3  0:20.500–0:21.500  mode=follow  scale=1.5"
+        "z1  0:01.500–0:04.500  mode=follow  scale=1.3\n\
+         z2  0:11.500–0:12.500  mode=follow  scale=1.3\n\
+         z3  0:20.500–0:21.500  mode=follow  scale=1.3"
     );
     assert_eq!(
         f.ok("zoom suggest"),
@@ -92,7 +92,7 @@ fn add_at_clicks_is_one_undo_step() {
     assert_eq!(
         f.ok("ls zooms --fields scale,mode,focus"),
         "z5  0:01.500–0:03.500  focus.x=0.1  focus.y=0.1  mode=fixed  scale=2.0\n\
-         z4  0:11.000–0:13.000  focus.x=0.5  focus.y=0.5  mode=follow  scale=1.5\n\
+         z4  0:11.000–0:13.000  focus.x=0.5  focus.y=0.5  mode=follow  scale=1.3\n\
          z6  0:19.500–0:20.500  focus.x=0.25  focus.y=0.25  mode=fixed  scale=2.0"
     );
 }

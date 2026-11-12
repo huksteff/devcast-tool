@@ -28,7 +28,7 @@ pub const STOP_TAIL: TimeDelta = TimeDelta::from_millis(1000);
 /// the project and the clicks lie in the recordings' files, so `dc_ops::autozoom` resolves it.
 pub const AT_CLICKS: &str = "clicks";
 
-/// `zoom add --at clicks`: the suggested zooms (scale 1.5, follow) as one step, as `devcast` and
+/// `zoom add --at clicks`: the suggested zooms (scale 1.3, follow) as one step, as `devcast` and
 /// the plans of `devcast apply` give it.
 pub fn by_clicks() -> Step {
     let args = [("at".to_owned(), Value::from(AT_CLICKS))]

@@ -6,7 +6,20 @@ use dc_core::{
     PixelSize, Point, Project, Range, Rect, SourceTime, TimeDelta,
 };
 
-use crate::{CursorSettings, CursorState};
+use crate::{CursorSettings, CursorState, Smoothing};
+
+/// The lively look of v1 (big, on a spring, squeezed by clicks, tilted, blurred): what the
+/// tests of motion are written for. The defaults are calm and have none of it.
+pub fn lively() -> CursorSettings {
+    CursorSettings {
+        size: 2.5,
+        smoothing: Smoothing::Focused,
+        blur: 0.6,
+        bounce: 2.0,
+        sway: 0.4,
+        ..CursorSettings::default()
+    }
+}
 
 /// A state of these settings without changed clicks.
 pub fn state(settings: CursorSettings) -> CursorState {

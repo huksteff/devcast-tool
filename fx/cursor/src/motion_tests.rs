@@ -5,7 +5,7 @@ use serde_json::json;
 
 use super::*;
 use crate::state::Smoothing;
-use crate::test_util::{HD, o, project, s, tracks};
+use crate::test_util::{HD, lively, o, project, s, tracks};
 
 /// Exact motion, everything of 5.22 off; tests turn one thing on.
 fn exact() -> CursorSettings {
@@ -14,7 +14,7 @@ fn exact() -> CursorSettings {
         blur: 0.0,
         bounce: 0.0,
         sway: 0.0,
-        ..CursorSettings::default()
+        ..lively()
     }
 }
 
@@ -61,7 +61,7 @@ fn cursor_motion_through_a_click_and_a_jump() {
     ];
     let sprites: Vec<_> = moments
         .iter()
-        .map(|&t| json!({ "t": t, "cursor": sprite_at(&p, CursorSettings::default(), t) }))
+        .map(|&t| json!({ "t": t, "cursor": sprite_at(&p, lively(), t) }))
         .collect();
     insta::assert_json_snapshot!(sprites);
 }
