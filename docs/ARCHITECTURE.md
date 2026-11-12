@@ -75,6 +75,7 @@
 | [018](decisions/018-recognition-process.md) Распознавание вне окна | `devcast-app` не линкует whisper и Vulkan: модели качает `dc-models`, речь распознаёт `devcast --captions-worker` рядом с exe (протокол `dc_ops::recognition`); правило в `xtask verify`. |
 | [019](decisions/019-patched-winit.md) Копии egui-winit и winit | `third_party/` — точные копии с правками для Windows (тень окна без рамки по `has_shadow`, без битмапа перенаправления у прозрачного окна, `SetFocus` окну переднего плана без фокуса), `[patch.crates-io]`; вне workspace, проверки их не трогают. |
 | [020](decisions/020-transparent-windows.md) Прозрачные окна | HUD, поповеры и отсчёт — прозрачные окна (swapchain `DxgiFromVisual`, `WS_EX_NOREDIRECTIONBITMAP` при создании через egui-winit), панель, рамку и тень рисует egui; поле под тень маленькое — оно забирает клики. |
+| [022](decisions/022-gif-lossy-stack.md) Стек GIF-кодера | В копии gifski 1.34.0 lossy LZW обходит словарь итеративно с прежним порядком и качеством: однотонные области не переполняют стек потока. |
 
 ## Крейты
 
@@ -130,7 +131,7 @@ xtask/           verify (fmt, clippy, тесты, длины, зависимос
 spikes/          пробы этапа 1; удаляются после переноса выводов
 fixtures/        короткие записи (Git LFS), проекты, эталонные кадры по бэкендам
 skill/           SKILL.md для Claude Code: монтаж через CLI
-third_party/     исправленные копии чужих крейтов (egui-winit, winit; решение 019), не члены workspace
+third_party/     исправленные копии egui-winit, winit и gifski (решения 019, 020, 022), вне workspace
 ```
 
 **Правила зависимостей** (проверяет `cargo xtask verify`):
