@@ -130,18 +130,6 @@ fn golden_ripple_of_a_click() -> TestResult {
 }
 
 #[test]
-fn golden_echo_of_a_click() -> TestResult {
-    let (project, tracks, clicks) = fixture()?;
-    let project = with(project, clicking(ClickKind::Echo))?;
-    crate::common::check(
-        "cursor/click_echo",
-        &project,
-        tracks,
-        after(&clicks, 1, 0.4)?,
-    )
-}
-
-#[test]
 fn golden_flash_of_a_click() -> TestResult {
     let (project, tracks, clicks) = fixture()?;
     let project = with(project, clicking(ClickKind::Flash))?;
@@ -153,9 +141,9 @@ fn golden_flash_of_a_click() -> TestResult {
     )
 }
 
-/// Ripple for all, but this click is a red spotlight.
+/// Ripple for all, but this click is a red flash.
 #[test]
-fn golden_one_click_changed_to_a_spotlight() -> TestResult {
+fn golden_one_click_changed_to_a_flash() -> TestResult {
     let (project, tracks, clicks) = fixture()?;
     let media = project
         .clips
@@ -167,7 +155,7 @@ fn golden_one_click_changed_to_a_spotlight() -> TestResult {
     let change = ClickChange {
         media,
         at: *clicks.get(3).ok_or("fixture without that click")?,
-        kind: Some(ClickKind::Spotlight),
+        kind: Some(ClickKind::Flash),
         color: Some(Rgba([0xef, 0x44, 0x44, 0xff])),
         scale: None,
         opacity: None,

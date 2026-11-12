@@ -143,11 +143,11 @@ fn a_click_edits_are_click_set_at_its_output_time() {
     assert_eq!(head.value().as_deref(), Some(about.as_str()));
     let reset = names::reset_group(names::CLICK_ONE);
     assert!(harness.get_by_label(&reset).accesskit_node().is_disabled());
-    click(&mut harness, egui::Role::RadioButton, names::CLICK_ECHO);
+    click(&mut harness, egui::Role::RadioButton, names::CLICK_FLASH);
     type_in(&mut harness, names::CLICK_SIZE, 2.0);
-    let echo = json!(ClickKind::Echo);
+    let flash = json!(ClickKind::Flash);
     let expected = vec![
-        step("click set", json!({"at": "1.500000", "style": echo})),
+        step("click set", json!({"at": "1.500000", "style": flash})),
         step("click set", json!({"at": "1.500000", "scale": 2.0})),
     ];
     assert_eq!(harness.state().edits, expected);
@@ -156,7 +156,7 @@ fn a_click_edits_are_click_set_at_its_output_time() {
 #[test]
 fn a_changed_click_shows_its_change_and_resets_with_click_reset() {
     let mut project = project();
-    let args = json!({"at": "1.500000", "style": ClickKind::Echo});
+    let args = json!({"at": "1.500000", "style": ClickKind::Flash});
     let set: ClickSet = serde_json::from_value(args).unwrap();
     set.apply(&mut project).unwrap();
     let mut harness = harness(project, Some(press(false)));

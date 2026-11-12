@@ -110,7 +110,7 @@ fn defaults_show_lines_go_into_set() {
     let f = Recordings::new();
     let file = defaults_file(f.dir.root().parent().unwrap());
     f.ok("defaults set zoom.preset=smooth zoom.blur=1.5 zoom.auto=false crop.aspect=16:9");
-    f.ok("defaults set cursor.bounce_time=0.2 cursor.loop=true clicks.style=echo");
+    f.ok("defaults set cursor.bounce_time=0.2 cursor.loop=true clicks.style=flash");
     f.ok("defaults set clicks.duration=0.5 keys.duration=2 keys.position=top");
     f.ok("defaults set callout.text=Готово callout.colors=#ff0000ff,#00ff00ff,#0000ffff");
     let shown = f.ok("defaults show");
@@ -118,7 +118,7 @@ fn defaults_show_lines_go_into_set() {
         shown,
         "crop.aspect=16:9\nzoom.auto=false\nzoom.blur=1.5\nzoom.zoom_in=1.522575\n\
          zoom.zoom_out=1.01505\ncursor.bounce_time=0.2\ncursor.loop=true\nclicks.duration=0.5\n\
-         clicks.style=echo\ncallout.colors=#ff0000ff,#00ff00ff,#0000ffff\ncallout.text=Готово\n\
+         clicks.style=flash\ncallout.colors=#ff0000ff,#00ff00ff,#0000ffff\ncallout.text=Готово\n\
          keys.duration=2.0\nkeys.position=top\nостальные — заводские"
     );
     let lines: Vec<&str> = shown.lines().filter(|l| l.contains('=')).collect();

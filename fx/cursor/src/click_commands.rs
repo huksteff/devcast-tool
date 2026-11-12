@@ -63,7 +63,7 @@ fn describe(style: &ClickStyle) -> String {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ClicksSet {
-    /// off, ripple, spotlight, echo or flash.
+    /// off, ripple or flash.
     pub style: Option<ClickKind>,
     /// #rrggbbaa.
     pub color: Option<Rgba>,
@@ -121,7 +121,8 @@ impl Command for ClicksSet {
 
 impl Op for ClicksSet {
     const NAME: &'static str = "clicks";
-    const ABOUT: &'static str = "Эффект всех кликов: стиль off/ripple/spotlight/echo/flash, цвет, размер, прозрачность, длительность";
+    const ABOUT: &'static str =
+        "Эффект всех кликов: стиль off/ripple/flash, цвет, размер, прозрачность, длительность";
     const EXAMPLE: &'static str = "clicks --style ripple --color #ef4444ff --duration 0.8";
     const SETTINGS: Option<&'static str> = Some("clicks");
 }
@@ -148,7 +149,7 @@ fn press(project: &Project, at: TimeArg<Output>) -> Result<(String, SourceTime),
 pub struct ClickSet {
     /// Output moment of the click, as `devcast events clicks` shows it.
     pub at: TimeArg<Output>,
-    /// off, ripple, spotlight, echo or flash.
+    /// off, ripple or flash.
     pub style: Option<ClickKind>,
     /// #rrggbbaa.
     pub color: Option<Rgba>,

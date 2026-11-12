@@ -90,7 +90,7 @@ fn click_time_counts_speed_and_must_be_in_the_video() {
         range: Range::new(s(1.0), s(2.0)).unwrap(),
         factor: 2.0,
     }];
-    click(json!({"at": 1.1, "style": "echo"}))
+    click(json!({"at": 1.1, "style": "flash"}))
         .apply(&mut p)
         .unwrap();
     assert_eq!(state(&p).clicks[0].at, s(1.2));
@@ -122,7 +122,7 @@ fn undo_and_redo_of_click_changes() {
     let mut p = project();
     let mut history = History::default();
     history
-        .apply(&mut p, &clicks(json!({"style": "spotlight"})))
+        .apply(&mut p, &clicks(json!({"style": "flash"})))
         .unwrap();
     history
         .apply(&mut p, &click(json!({"at": 1.2, "color": "#00ff00ff"})))
@@ -138,4 +138,29 @@ fn undo_and_redo_of_click_changes() {
     let text = serde_json::to_string(&p).unwrap();
     let back: Project = serde_json::from_str(&text).unwrap();
     assert_eq!(state(&back), state(&p));
+}
+
+#[test]
+fn removed_styles_of_older_projects_load_as_ripple() {
+    let mut p = project();
+    clicks(json!({"style": "flash"})).apply(&mut p).unwrap();
+    click(json!({"at": 1.2, "style": "flash"}))
+        .apply(&mut p)
+        .unwrap();
+    let text = serde_json::to_string(&p)
+        .unwrap()
+        .replacen("\"flash\"", "\"spotlight\"", 1)
+        .replacen("\"flash\"", "\"echo\"", 1);
+    assert!(text.contains("\"spotlight\"") && text.contains("\"echo\""));
+    let mut old: Project = serde_json::from_str(&text).unwrap();
+    let loaded = state(&old);
+    assert_eq!(loaded.settings.click.kind, ClickKind::Ripple);
+    assert_eq!(loaded.clicks[0].kind, Some(ClickKind::Ripple));
+    // The next edit of the effect writes its state back with the new name.
+    clicks(json!({"opacity": 0.5})).apply(&mut old).unwrap();
+    let saved = serde_json::to_string(&old).unwrap();
+    assert!(
+        !saved.contains("spotlight") && !saved.contains("echo"),
+        "{saved}"
+    );
 }
