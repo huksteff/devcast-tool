@@ -32,7 +32,7 @@ fn style(kind: ClickKind) -> CursorState {
 }
 
 fn effects_at(project: &Project, state: &CursorState, secs: f64) -> Vec<Shape> {
-    let prepared = Prepared::new(project, state.clone(), tracks());
+    let prepared = Prepared::new(project, state.clone(), &tracks());
     let mut scene = Scene::new(HD);
     evaluate(
         &prepared,

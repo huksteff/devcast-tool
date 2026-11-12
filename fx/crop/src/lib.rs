@@ -7,6 +7,7 @@ mod commands;
 pub mod dialog;
 mod dialog_geom;
 mod dialog_view;
+pub mod look;
 pub mod stage;
 mod state;
 

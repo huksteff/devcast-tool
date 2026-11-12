@@ -9,6 +9,7 @@ mod keyed;
 mod keys;
 pub mod lane;
 mod lane_tip;
+pub mod look;
 mod model;
 mod motion;
 pub mod panel;

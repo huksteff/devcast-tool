@@ -1,7 +1,6 @@
 //! Registry of all commands, batch apply, dry-run, one-line diff output, errors with hints; the
 //! project's `evaluate` over all effects.
 
-mod annotations;
 pub mod apply;
 pub mod argv;
 pub mod autozoom;

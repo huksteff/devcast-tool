@@ -4,6 +4,7 @@
 mod commands;
 mod evaluate;
 pub mod lane;
+pub mod look;
 pub mod panel;
 mod prepared;
 mod state;

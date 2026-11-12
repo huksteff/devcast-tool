@@ -3,6 +3,7 @@
 //! the camera like the cursor.
 
 use dc_core::{OutputTime, TimeMap};
+use dc_render::look::Pointer;
 use dc_render::{
     Align, Band, Beside, DEFAULT_FAMILY, Font, Glow, Gradient, Layer, Paint, Plate, PxRect, Rgba,
     Scene, Text, TextRun,
@@ -27,24 +28,13 @@ const GRADIENT_LOOP_SECS: f64 = 2.4;
 /// Glow σ per glow unit and ref-px (v1 figures: `shadowBlur = glow · 1.5` = 2σ).
 const GLOW_SIGMA: f64 = 0.75;
 
-/// Where the cursor is, from `dc_fx_cursor::pointer` (this crate does not depend on the cursor).
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Anchor {
-    /// Px of the canvas, before the camera.
-    pub tip: [f64; 2],
-    /// Visible arrow height without the click bounce, px of the canvas.
-    pub arrow: f64,
-    /// Canvas px per ref-px (clip width on the canvas / 1920).
-    pub k: f64,
-}
-
 /// Puts the callout of output moment `t` into `scene`, in `Band::Cursor` after the cursor. The
 /// camera of `scene` must already be set: the frame edges are checked where the camera shows.
 pub fn evaluate(
     state: &CalloutState,
     map: &TimeMap,
     t: OutputTime,
-    anchor: Option<Anchor>,
+    anchor: Option<Pointer>,
     scene: &mut Scene,
 ) {
     let (Some(text), Some(anchor)) = (text_at(state, map, t), anchor) else {

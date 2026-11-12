@@ -7,6 +7,7 @@
 
 mod commands;
 mod evaluate;
+pub mod look;
 mod model;
 mod panel;
 

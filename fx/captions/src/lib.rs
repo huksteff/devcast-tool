@@ -5,6 +5,7 @@ mod evaluate;
 mod generate;
 pub mod lane;
 mod layout;
+pub mod look;
 mod model;
 pub mod panel;
 mod panel_cue;

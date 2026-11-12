@@ -6,6 +6,7 @@ mod ease;
 mod follow;
 mod frame;
 pub mod lane;
+pub mod look;
 mod model;
 mod motion;
 pub mod panel;

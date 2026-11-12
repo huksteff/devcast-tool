@@ -9,6 +9,7 @@ mod commands;
 mod effects;
 mod evaluate;
 pub mod lane;
+pub mod look;
 pub mod panel;
 mod panel_click;
 mod panel_style;
@@ -26,7 +27,7 @@ pub use click_state::{
 };
 pub use commands::CursorSet;
 pub use evaluate::evaluate;
-pub use pointer::{Pointer, pointer};
+pub use pointer::pointer;
 pub use prepared::Prepared;
 pub use state::{
     BLUR_MAX, BOUNCE_MAX, BOUNCE_TIME_MAX, BOUNCE_TIME_MIN, CursorSettings, CursorState, SIZE_MAX,

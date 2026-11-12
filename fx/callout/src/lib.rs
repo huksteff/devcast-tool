@@ -4,6 +4,7 @@
 mod commands;
 mod evaluate;
 pub mod lane;
+pub mod look;
 mod model;
 pub mod panel;
 mod resolve;
@@ -11,7 +12,7 @@ mod style;
 mod text;
 
 pub use commands::{ActionName, CalloutAdd, CalloutRm, CalloutSet};
-pub use evaluate::{Anchor, evaluate};
+pub use evaluate::evaluate;
 pub use model::{
     Action, Callout, CalloutEvent, CalloutSettings, CalloutState, EventId, EventKind, GLOW_MAX,
     SIZE_MAX, SIZE_MIN, TEXT_MAX,
