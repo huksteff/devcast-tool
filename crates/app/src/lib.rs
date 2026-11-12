@@ -44,6 +44,7 @@ mod settings_window;
 mod shortcut;
 mod tray;
 mod updates;
+mod window_flash;
 
 pub use error::AppError;
 

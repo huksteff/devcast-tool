@@ -29,7 +29,7 @@ pub use console::on_console_stop;
 pub use disk::{ROOM_LOW, ROOM_TO_START, free_space, low_room, room_to_start};
 pub use frame::VideoFrame;
 pub use input::InputRecording;
-pub use origin::source_origin;
+pub use origin::{source_origin, window_frame};
 pub use preview::{preview_monitor, preview_window};
 pub use project::{ProjectRecording, RecordedProject};
 pub use recording::{Recording, RecordingSummary};
