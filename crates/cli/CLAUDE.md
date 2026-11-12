@@ -1,10 +1,10 @@
 # dc-cli (`crates/cli`)
 
-Бинарник `devcast`: монтаж, анализ, рендер кадров и экспорт из командной строки. Логика в библиотеке (`run`), `main.rs` только печатает `Outcome`.
+Бинарник `devcast`: монтаж, анализ, рендер кадров и экспорт из командной строки. Логика — в библиотеке (`run`), `main.rs` печатает `Outcome`.
 
 ## Инварианты
 
-- `run(args, cwd, registry) -> Outcome` — чистый вход для тестов: код выхода, stdout, stderr. stdout — только результат, stderr — ошибки и предупреждения. Коды: 0 готово, 1 не получилось (`CliError::Failed`), 2 неверная командная строка (`CliError::Usage`).
+- `run(args, cwd, registry) -> Outcome` — чистый вход для тестов: код выхода, stdout, stderr. stdout — только результат, stderr — ошибки и предупреждения. Коды: 0 готово, 1 не получилось (`CliError::Failed`), 2 неверная строка (`CliError::Usage`).
 - Глобальные флаги `--project`, `--json`, `--dry-run` снимаются со всей строки (`globals::split`); поля команд с такими именами запрещает реестр `ops`.
 - Встроенные команды — подкоманды clap (`builtin.rs`, группы вроде `clip add`, `zoom suggest`, `captions gen` — `builtin_groups.rs`), остальное — команда реестра `dc_ops::Registry::devcast()` (общий с редактором), её аргументы разбирает `dc_ops::parse_args`.
 - Справка (`help.rs`) собирается из тех же определений: у встроенной команды `about`, `after_help` (пример), `help` аргументов; у команды `ops` — `ABOUT`, `EXAMPLE` и JSON Schema из doc-комментариев. `help --json` отдаёт ещё схему `Project` и состояний эффектов.
@@ -17,7 +17,7 @@
 - `font add|ls` (`font.rs`): копия шрифта в `assets/fonts/` через `dc_ops::import_font` под lock, без записи истории; проект держит редактор — `Request::Fonts` (он перечитывает списки).
 - Стиль (`style.rs`): `set ключ.аргумент=значение …` — команды настроек эффектов (`Op::SETTINGS`) одной записью `set`; `style copy` — `Defaults::restyle`. `defaults show|set|from-project|reset` (`defaults.rs`): файл — `Ctx::defaults_file`. Программа (`builtin_program.rs`, `builtin_app.rs`): `config`, `hotkeys` — правка `dc_settings::Edit` запущенной программе (`Request::Settings`), без неё — в файл (`app_settings.rs`); `models` (прогресс — `Local::progress`); `ls projects`; `app status|show|quit`, `captions stop` — запросы программе; `app feedback|changelog` — `dc_update`.
 - «Сделать красиво»: `beautify` (`beautify.rs`) — нейронка `dc-agent` в папке проекта, под `DEVCAST_GROUP` (`bounds.rs`): закрыто — `not_for_agent`, `--project` — свой, `-o` — в проект или temp; `recipes` — `Edit::Ai`, как `config`; `DEVCAST_GROUP` (`Local::group`) — правки запуска одним шагом (`History::group`); тесты — нейронка `.cmd` (`Local::agent`), папка настроек — `Local::settings`. `captions gen`, `transcript`, `cut w…` без флагов — `captions.*` настроек (`speech::chosen`).
-- `batch <проекты…> -- <команда>` (`batch.rs`): `*` и `?` раскрывает сам CLI; команда проверяется один раз до проектов; каждый проект — как с `--project`, своя запись истории; ошибка проекта — предупреждение и код 1; запрещённые команды — `Cli::not_for_batch`. Время в `info`, `ls`, `events`, `transcript`, `silences` — выходное, вырезанное только считается.
+- `batch <проекты…> -- <команда>` (`batch.rs`): `*`, `?` раскрывает CLI; команда проверяется один раз до проектов; каждый проект — как с `--project`, своя запись истории; ошибка проекта — предупреждение и код 1; запрещённые команды — `Cli::not_for_batch`. Время в `info`, `ls`, `events`, `transcript`, `silences` — выходное, вырезанное только считается.
 - Слова (`transcript.rs`, `speech.rs`): каждая запись распознаётся целиком один раз (`speech::project_words`, кэш в `cache/`); id слов `w1, w2, …` — по порядку записей и времени в записи, вырез их не меняет. В `cut` границы слов сдвигаются к самому тихому месту в пределах 150 мс (решение 010), сошлись — свои (`cut_bounds`). `captions gen` — только невырезанные слова. Whisper линкует только этот крейт (решение 018).
 - Процесс распознавания редактора (`worker.rs`): `devcast --captions-worker` (единственный аргумент, `main.rs`; в справке нет) читает `dc_ops::recognition::Request` из stdin и пишет строки `Message`; путь — `speech::generate`, как у `captions gen`.
 - Автозумы (`autozoom.rs`): предложения — `dc_ops::click_zooms` (общие с редактором). Запись, добавленная в проект (стоп `record`, восстановление), идёт через `dc_ops::autozoom::after_recording` (тот же путь у записи из программы): автозумы одной записью, если `zoom.auto`; ошибка — предупреждение.
@@ -29,7 +29,7 @@
 
 - `cargo nextest run -p dc-cli`. Тестовые проекты — `src/test_util.rs`: `Fixture` (пустой проект, команды `test add/rm`, путь с кириллицей и пробелами) и `Recordings` (две записи, настоящий реестр).
 - Сценарии по файлам `src/*_tests.rs`; e2e одним insta-снимком — `e2e_tests.rs`, `scope_e2e_tests.rs`, `pauses_e2e_tests.rs` (намеренная смена вывода — `INSTA_UPDATE=always` и просмотр diff; решение 014).
-- `tests/binary.rs` — настоящий exe; `tests/worker.rs` — `--captions-worker`; `#[ignore]` — живая запись (`tests/record_live.rs`) и настоящий Whisper.
+- `tests/binary.rs` — настоящий exe; `tests/worker.rs` — `--captions-worker`; `#[ignore]` — живая запись (`tests/record_live.rs`) и Whisper.
 
 ## Куда не лезть
 
