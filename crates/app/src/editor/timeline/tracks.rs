@@ -3,7 +3,7 @@
 
 use dc_core::project::MediaKind;
 use dc_core::time::Output;
-use dc_core::{ClipId, KeyTracks, OutputTime, Project, Range, StateError, TimeDelta, TimeMap};
+use dc_core::{ClipId, KeyTracks, OutputTime, Project, Range, TimeDelta, TimeMap};
 use dc_ui_kit::lane;
 use dc_ui_kit::strings::timeline as text;
 
@@ -106,17 +106,13 @@ impl Tracks {
             duration: map.duration(),
             ..Self::default()
         };
-        let captions = tracks.problem(lanes::captions::row(project, &map));
         let (sounds, broken) = lanes::audio::rows(project, &map, sound, least.audio);
         tracks.problems.extend(broken.map(|e| e.to_string()));
-        let keys = tracks.problem(lanes::keys::shown(project));
-        let zooms = tracks.lane(lanes::zoom::regions(project, &map));
-        let cursor = tracks.lane(lanes::callout::regions(project, &map));
-        tracks.add_lane(Row::CAPTIONS, captions);
+        tracks.fill(Row::CAPTIONS, project, &map);
         tracks.clips(project, &map);
-        tracks.add(Row::ZOOMS, zooms, false);
-        tracks.add(Row::CURSOR, cursor, false);
-        tracks.add(Row::KEYS, Vec::new(), !keys);
+        for row in [Row::ZOOMS, Row::CURSOR, Row::KEYS] {
+            tracks.fill(row, project, &map);
+        }
         tracks.annotations(project, &map, least.annotations);
         for channel in sounds.channels {
             let row = Row::channel(channel.name);
@@ -142,21 +138,13 @@ impl Tracks {
         }
     }
 
-    /// What an effect's lane read; a broken state is a problem and reads as the default.
-    fn problem<T: Default>(&mut self, read: Result<T, StateError>) -> T {
-        read.unwrap_or_else(|error| {
-            self.problems.push(error.to_string());
-            T::default()
-        })
-    }
-
-    /// The regions of an effect's lane; a broken state is a problem and shows nothing.
-    fn lane(&mut self, regions: Result<Vec<lane::Region>, StateError>) -> Vec<Region> {
-        let regions = self.problem(regions);
-        regions.into_iter().map(Region::from).collect()
-    }
-
-    fn add_lane(&mut self, row: Row, lane: lane::Row) {
+    /// The row as its effect reads it (`Kind::fill`); a broken state is a problem.
+    fn fill(&mut self, row: Row, project: &Project, map: &TimeMap) {
+        let (lane, broken) = row
+            .kind
+            .fill
+            .map_or_else(Default::default, |f| f(project, map));
+        self.problems.extend(broken.map(|e| e.to_string()));
         let regions = lane.regions.into_iter().map(Region::from).collect();
         self.add(row, regions, lane.off);
     }

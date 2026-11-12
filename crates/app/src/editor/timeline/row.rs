@@ -1,14 +1,15 @@
 //! The rows of the timeline as a table (docs/ARCHITECTURE.md, «Дорожка эффекта»): what a row is
-//! called, its colour and height, the button of its header, whether its regions may overlap and
-//! what a click on its empty place adds. The timeline reads these facts and never asks which
-//! effect a row belongs to; a new kind of row is a [`Kind`] here and the line of `Tracks::of`
-//! that fills it. The order of the rows is the order `Tracks::of` adds them in (owner's
-//! decision 2026-11-02).
+//! called, its colour and height, the button of its header, whether its regions may overlap,
+//! what a click on its empty place adds and how the effect reads the row from the project
+//! ([`Kind::fill`]). The timeline reads these facts and never asks which effect a row belongs
+//! to; a new kind of row is a [`Kind`] here and its place in `Tracks::of`. The order of the rows
+//! is the order `Tracks::of` adds them in (owner's decision 2026-11-02).
 
 use std::fmt;
 
 use dc_core::time::Output;
-use dc_core::{OpName, Project, Range, Step};
+use dc_core::{OpName, Project, Range, StateError, Step, TimeMap};
+use dc_ui_kit::lane;
 use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::{self, Hue};
 
@@ -36,9 +37,15 @@ pub struct Kind {
     pub in_clip: bool,
     /// What a click on an empty place of a row adds.
     pub adds: Adds,
+    /// The effect's row read from the project: its regions and whether it is off, and why its state
+    /// is broken (a problem of the rows). None: `Tracks::of` fills the row itself (clips, tracks).
+    pub fill: Option<Fill>,
     /// What the ghost of a new region says instead of «+».
     pub ghost: Option<fn() -> String>,
 }
+
+/// How an effect reads its row from the project through the time map.
+pub type Fill = fn(&Project, &TimeMap) -> (lane::Row, Option<StateError>);
 
 /// The button of a row header.
 #[derive(Clone, Copy)]
@@ -82,6 +89,7 @@ static CAPTIONS: Kind = Kind {
     name: |_| text::CAPTIONS.to_owned(),
     hue: tokens::HUE_CAPTIONS,
     button: Button::Shown(lanes::CAPTIONS_STYLE),
+    fill: Some(lanes::captions::row),
     ..PLAIN
 };
 
@@ -101,6 +109,7 @@ static ZOOMS: Kind = Kind {
     apart: true,
     adds: Adds::Step(|range, _| lanes::zoom::added(range)),
     ghost: Some(lanes::zoom::ghost),
+    fill: Some(lanes::zoom::row),
     ..PLAIN
 };
 
@@ -110,6 +119,7 @@ static CURSOR: Kind = Kind {
     name: |_| text::CURSOR.to_owned(),
     hue: tokens::HUE_CURSOR,
     adds: Adds::Step(|range, _| lanes::callout::added(range)),
+    fill: Some(lanes::callout::row),
     ..PLAIN
 };
 
@@ -118,6 +128,7 @@ static KEYS: Kind = Kind {
     name: |_| text::KEYS.to_owned(),
     hue: tokens::HUE_KEYS,
     button: Button::Shown(lanes::KEYS),
+    fill: Some(lanes::keys::row),
     ..PLAIN
 };
 
@@ -182,6 +193,7 @@ const PLAIN: Kind = Kind {
     in_clip: true,
     adds: Adds::Nothing,
     ghost: None,
+    fill: None,
 };
 
 /// A row of sound.

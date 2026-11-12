@@ -11,7 +11,7 @@
 use std::fmt;
 
 use dc_core::time::Output;
-use dc_core::{Id, IdKind, OpName, OutputTime, Project, Range, Step, TimeDelta};
+use dc_core::{Id, IdKind, OpName, OutputTime, Project, Range, StateError, Step, TimeDelta};
 use serde_json::{Map, Value};
 
 use crate::panel::time_arg;
@@ -106,6 +106,16 @@ impl Region {
 pub struct Row {
     pub regions: Vec<Region>,
     pub off: bool,
+}
+
+impl Row {
+    /// A row read from a project; a broken state shows the empty row and is the problem.
+    pub fn or_empty(read: Result<Self, StateError>) -> (Self, Option<StateError>) {
+        match read {
+            Ok(row) => (row, None),
+            Err(error) => (Self::default(), Some(error)),
+        }
+    }
 }
 
 /// A region after a move: its new place and, between the rows of an effect with tracks, its new

@@ -52,7 +52,11 @@ fn duplicated(project: &Project, item: Item, range: Range<Output>) -> Option<Ste
 }
 
 /// The captions row: the cues that show on the output; off while the captions are not shown.
-pub fn row(project: &Project, map: &TimeMap) -> Result<Row, StateError> {
+pub fn row(project: &Project, map: &TimeMap) -> (Row, Option<StateError>) {
+    Row::or_empty(read(project, map))
+}
+
+fn read(project: &Project, map: &TimeMap) -> Result<Row, StateError> {
     let state = project.state::<CaptionsEffect>()?;
     let off = !state.settings.show;
     let regions = state.cues.iter().filter_map(|cue| {
