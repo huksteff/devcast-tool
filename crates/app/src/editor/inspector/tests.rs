@@ -237,8 +237,13 @@ fn keys_panel_edits_are_the_keys_command() {
     );
 }
 
+/// The project the preview renders.
+fn previewed(harness: &H) -> serde_json::Value {
+    json(&harness.state().editor.preview.project().0)
+}
+
 #[test]
-fn a_dragged_slider_is_one_step_on_release() {
+fn a_dragged_slider_shows_live_and_is_one_step_on_release() {
     let mut harness = started();
     let rail = harness
         .get_by_role_and_label(egui::Role::Slider, names::KEYS_SIZE)
@@ -255,10 +260,39 @@ fn a_dragged_slider_is_one_step_on_release() {
             "nothing until released"
         );
     }
+    assert_eq!(
+        previewed(&harness),
+        json(&cli(&["keys --size 3"])),
+        "the preview shows the dragged value"
+    );
     button(&mut harness, rail.right_center(), false);
     assert_eq!(project_json(&harness), json(&cli(&["keys --size 3"])));
+    assert_eq!(previewed(&harness), project_json(&harness));
     undo(&mut harness);
     assert_eq!(project_json(&harness), json(&project()));
+}
+
+#[test]
+fn a_slider_dragged_back_changes_nothing() {
+    let mut harness = started();
+    let largest = vec![step("keys --size 3")];
+    harness.state_mut().editor.ask(Action::Apply(largest));
+    harness.run();
+    let now = project_json(&harness);
+    let rail = harness
+        .get_by_role_and_label(egui::Role::Slider, names::KEYS_SIZE)
+        .rect();
+    // The right end is the largest size: the drag ends where it began.
+    button(&mut harness, rail.right_center(), true);
+    harness.event(Event::PointerMoved(rail.left_center()));
+    harness.run();
+    assert_ne!(previewed(&harness), now, "a draft shows");
+    harness.event(Event::PointerMoved(rail.right_center()));
+    harness.run();
+    button(&mut harness, rail.right_center(), false);
+    harness.run();
+    assert_eq!(project_json(&harness), now, "no step");
+    assert_eq!(previewed(&harness), now, "the preview is back");
 }
 
 #[test]
