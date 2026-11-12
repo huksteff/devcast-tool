@@ -37,6 +37,8 @@ pub struct Shared {
     pub previews: Option<picker::Previews>,
     /// Open area selection.
     pub area: Option<crate::area::AreaSession>,
+    /// The frame flashing around the window just picked as the source.
+    pub window_flash: Option<crate::window_flash::WindowFlash>,
     /// The picker asked for the area selection. It opens two main-window frames later, once the
     /// picker's window is gone: otherwise its pixels get into the still frame and its end
     /// takes the keyboard focus away from the new windows.
@@ -103,6 +105,7 @@ impl Shared {
             popover: None,
             previews: None,
             area: None,
+            window_flash: None,
             area_asked: None,
             microphones: Vec::new(),
             mic_refresh: crate::microphones::Refresh::default(),
@@ -376,6 +379,10 @@ pub fn show_windows(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, bar: Optio
         crate::area::show(ctx, shared);
     }
     crate::countdown::show(ctx, shared);
+    let flash = crate::window_flash::left(&mut lock(shared), std::time::Instant::now());
+    if let Some(left) = flash {
+        crate::window_flash::show(ctx, shared, left);
+    }
     crate::editor::show(ctx, shared);
     if let (Some(open), Some(bar)) = (open, bar) {
         popover::show(ctx, shared, open, bar);

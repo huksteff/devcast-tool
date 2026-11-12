@@ -22,13 +22,13 @@ pub fn source_origin(source: &Source) -> Result<(i32, i32), CaptureError> {
             Ok((bounds.x(), bounds.y()))
         }
         Source::Area(area) => Ok((area.x(), area.y())),
-        Source::Window(id) => window_corner(id),
+        Source::Window(id) => window_frame(id).map(|(x, y, _, _)| (x, y)),
     }
 }
 
-/// The corner of the window's visible frame (without the invisible resize border), which is
-/// what Windows Graphics Capture shows.
-fn window_corner(id: u64) -> Result<(i32, i32), CaptureError> {
+/// Top-left corner and size, physical desktop pixels, of the window's visible frame (without
+/// the invisible resize border), which is what Windows Graphics Capture shows.
+pub fn window_frame(id: u64) -> Result<(i32, i32, u32, u32), CaptureError> {
     let mut rect = RECT::default();
     // SAFETY: DWMWA_EXTENDED_FRAME_BOUNDS writes one RECT into `rect`, whose size is passed; a
     // handle that is not a window makes the call fail.
@@ -41,7 +41,9 @@ fn window_corner(id: u64) -> Result<(i32, i32), CaptureError> {
         )
     }
     .map_err(|_| CaptureError::WindowNotFound(id))?;
-    Ok((rect.left, rect.top))
+    let width = (rect.right - rect.left).unsigned_abs();
+    let height = (rect.bottom - rect.top).unsigned_abs();
+    Ok((rect.left, rect.top, width, height))
 }
 
 #[cfg(test)]
