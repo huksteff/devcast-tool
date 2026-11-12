@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 768" width="960" height="768" font-family="-apple-system,'Segoe UI',Inter,Roboto,Arial,sans-serif">
+<rect width="960" height="768" rx="12" fill="#0f1115"/>
+<rect x="0.5" y="0.5" width="959" height="767" rx="12" fill="none" stroke="#353a43"/>
+<rect x="170" y="12" width="260" height="744" rx="10" fill="#161a22"/>
+<text x="16" y="34" font-size="11" font-weight="600" letter-spacing="1" fill="#8a909b">НАПРАВЛЕНИЕ</text>
+<text x="178" y="36" font-size="15" font-weight="700" letter-spacing="1.5" fill="#e8eaed">СЕЙЧАС</text>
+<text x="178" y="55" font-size="11.5" fill="#8a909b">делаем, выйдет в ближайших версиях</text>
+<text x="438" y="36" font-size="15" font-weight="700" letter-spacing="1.5" fill="#a3a8b3">ДАЛЬШЕ</text>
+<text x="438" y="55" font-size="11.5" fill="#8a909b">следующее на очереди</text>
+<text x="698" y="36" font-size="15" font-weight="700" letter-spacing="1.5" fill="#a3a8b3">ПОЗЖЕ</text>
+<text x="698" y="55" font-size="11.5" fill="#8a909b">в планах, но не скоро</text>
+<line x1="16" y1="74" x2="944" y2="74" stroke="#2c3038"/>
+<circle cx="21" cy="97" r="5" fill="#f43f5e"/>
+<text x="34" y="102" font-size="13.5" font-weight="700" fill="#f43f5e">Нейронка</text>
+<text x="34" y="119" font-size="13.5" font-weight="700" fill="#f43f5e">снимает сама</text>
+<line x1="178" y1="111" x2="198" y2="111" stroke="#353a43" stroke-width="2" stroke-linecap="round"/>
+<rect x="434" y="88" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="446" y="107" font-size="12.5" font-weight="600" fill="#e8eaed">Съёмка по сценарию</text>
+<text x="446" y="123" font-size="11" fill="#a3a8b3">сама кликает, пишет и монтирует</text>
+<rect x="694" y="88" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="706" y="107" font-size="12.5" font-weight="600" fill="#e8eaed">Ролик к каждому MR</text>
+<text x="706" y="123" font-size="11" fill="#a3a8b3">нейронка показывает, что сделала</text>
+<line x1="16" y1="148" x2="944" y2="148" stroke="#2c3038"/>
+<circle cx="21" cy="171" r="5" fill="#22c55e"/>
+<text x="34" y="176" font-size="13.5" font-weight="700" fill="#22c55e">Подключение</text>
+<text x="34" y="193" font-size="13.5" font-weight="700" fill="#22c55e">к нейронкам</text>
+<rect x="174" y="162" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="186" y="181" font-size="12.5" font-weight="600" fill="#e8eaed">Поддержка Codex</text>
+<text x="186" y="197" font-size="11" fill="#a3a8b3">«Сделать красиво» работает и на Codex</text>
+<rect x="434" y="162" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="446" y="181" font-size="12.5" font-weight="600" fill="#e8eaed">Другие нейронки</text>
+<text x="446" y="197" font-size="11" fill="#a3a8b3">Gemini CLI и локальные модели</text>
+<line x1="698" y1="185" x2="718" y2="185" stroke="#353a43" stroke-width="2" stroke-linecap="round"/>
+<line x1="16" y1="222" x2="944" y2="222" stroke="#2c3038"/>
+<circle cx="21" cy="245" r="5" fill="#fbbf24"/>
+<text x="34" y="250" font-size="13.5" font-weight="700" fill="#fbbf24">Приватность</text>
+<rect x="174" y="236" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="186" y="255" font-size="12.5" font-weight="600" fill="#e8eaed">Пароли не в показе клавиш</text>
+<text x="186" y="271" font-size="11" fill="#a3a8b3">пауза и стирание записанных клавиш</text>
+<rect x="174" y="290" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="186" y="309" font-size="12.5" font-weight="600" fill="#e8eaed">Без всплывающих уведомлений</text>
+<text x="186" y="325" font-size="11" fill="#a3a8b3">«Не беспокоить» на время записи</text>
+<rect x="434" y="236" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="446" y="255" font-size="12.5" font-weight="600" fill="#e8eaed">Поиск секретов в кадре</text>
+<text x="446" y="271" font-size="11" fill="#a3a8b3">ключи и почты размываются сами</text>
+<rect x="694" y="236" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="706" y="255" font-size="12.5" font-weight="600" fill="#e8eaed">Проверка перед экспортом</text>
+<text x="706" y="271" font-size="11" fill="#a3a8b3">предупреждение, если секрет остался</text>
+<line x1="16" y1="350" x2="944" y2="350" stroke="#2c3038"/>
+<circle cx="21" cy="373" r="5" fill="#3b82f6"/>
+<text x="34" y="378" font-size="13.5" font-weight="700" fill="#3b82f6">Нейронка</text>
+<text x="34" y="395" font-size="13.5" font-weight="700" fill="#3b82f6">понимает запись</text>
+<line x1="178" y1="387" x2="198" y2="387" stroke="#353a43" stroke-width="2" stroke-linecap="round"/>
+<rect x="434" y="364" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="446" y="383" font-size="12.5" font-weight="600" fill="#e8eaed">Запись текстом для нейронки</text>
+<text x="446" y="399" font-size="11" fill="#a3a8b3">что на экране, что сказано, где клики</text>
+<rect x="434" y="418" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="446" y="437" font-size="12.5" font-weight="600" fill="#e8eaed">Монтаж по расшифровке</text>
+<text x="446" y="453" font-size="11" fill="#a3a8b3">удалил слова — вырезалось из видео</text>
+<rect x="694" y="364" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="706" y="383" font-size="12.5" font-weight="600" fill="#e8eaed">Нейронка проверяет себя</text>
+<text x="706" y="399" font-size="11" fill="#a3a8b3">по желанию: смотрит результат и чинит</text>
+<line x1="16" y1="478" x2="944" y2="478" stroke="#2c3038"/>
+<circle cx="21" cy="501" r="5" fill="#c084fc"/>
+<text x="34" y="506" font-size="13.5" font-weight="700" fill="#c084fc">Не только</text>
+<text x="34" y="523" font-size="13.5" font-weight="700" fill="#c084fc">видео</text>
+<rect x="174" y="492" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="186" y="511" font-size="12.5" font-weight="600" fill="#e8eaed">Главы и описание</text>
+<text x="186" y="527" font-size="11" fill="#a3a8b3">готовый флажок во вкладке «Нейронка»</text>
+<rect x="434" y="492" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="446" y="511" font-size="12.5" font-weight="600" fill="#e8eaed">Инструкция из записи</text>
+<text x="446" y="527" font-size="11" fill="#a3a8b3">шаги с картинками по кликам</text>
+<line x1="698" y1="515" x2="718" y2="515" stroke="#353a43" stroke-width="2" stroke-linecap="round"/>
+<line x1="16" y1="552" x2="944" y2="552" stroke="#2c3038"/>
+<circle cx="21" cy="575" r="5" fill="#22d3ee"/>
+<text x="34" y="580" font-size="13.5" font-weight="700" fill="#22d3ee">Рефактор</text>
+<rect x="174" y="566" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="186" y="585" font-size="12.5" font-weight="600" fill="#e8eaed">Команды без строк в коде</text>
+<text x="186" y="601" font-size="11" fill="#a3a8b3">переименование больше не ломает клик</text>
+<rect x="174" y="620" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="186" y="639" font-size="12.5" font-weight="600" fill="#e8eaed">Доделки командной строки</text>
+<text x="186" y="655" font-size="11" fill="#a3a8b3">экспорт куска, паузы одной командой</text>
+<rect x="434" y="566" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="446" y="585" font-size="12.5" font-weight="600" fill="#e8eaed">Эффект — один крейт</text>
+<text x="446" y="601" font-size="11" fill="#a3a8b3">новый эффект без правок в редакторе</text>
+<rect x="694" y="566" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="706" y="585" font-size="12.5" font-weight="600" fill="#e8eaed">Платформенный слой</text>
+<text x="706" y="601" font-size="11" fill="#a3a8b3">код Windows в одном месте</text>
+<rect x="694" y="620" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="706" y="639" font-size="12.5" font-weight="600" fill="#e8eaed">Миграции проектов</text>
+<text x="706" y="655" font-size="11" fill="#a3a8b3">старые проекты открываются без потерь</text>
+<line x1="16" y1="680" x2="944" y2="680" stroke="#2c3038"/>
+<circle cx="21" cy="703" r="5" fill="#94a3b8"/>
+<text x="34" y="708" font-size="13.5" font-weight="700" fill="#94a3b8">Фундамент</text>
+<line x1="178" y1="717" x2="198" y2="717" stroke="#353a43" stroke-width="2" stroke-linecap="round"/>
+<rect x="434" y="694" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="446" y="713" font-size="12.5" font-weight="600" fill="#e8eaed">Окна, видимые нейронке</text>
+<text x="446" y="729" font-size="11" fill="#a3a8b3">кнопки по имени, а не по пикселям</text>
+<rect x="694" y="694" width="252" height="46" rx="8" fill="#1d2027" stroke="#353a43"/>
+<text x="706" y="713" font-size="12.5" font-weight="600" fill="#e8eaed">macOS, затем Linux</text>
+<text x="706" y="729" font-size="11" fill="#a3a8b3">те же возможности на других системах</text>
+</svg>
