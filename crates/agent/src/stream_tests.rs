@@ -11,9 +11,8 @@ pub const CLAUDE_RUN: &str = r#"{"type":"system","subtype":"init","cwd":"C:\\У�
 {"type":"result","subtype":"success","is_error":false,"result":"Вырезал одну паузу.","session_id":"5a1e"}
 "#;
 
-fn read(agent: Agent, lines: &str) -> Vec<Event> {
-    let mut reader = Reader::new(agent);
-    lines.lines().flat_map(|line| reader.line(line)).collect()
+fn read(lines: &str) -> Vec<Event> {
+    lines.lines().flat_map(line).collect()
 }
 
 fn s(text: &str) -> String {
@@ -22,7 +21,7 @@ fn s(text: &str) -> String {
 
 #[test]
 fn a_claude_run_is_its_commands_words_and_end() {
-    let events = read(Agent::Claude, CLAUDE_RUN);
+    let events = read(CLAUDE_RUN);
     let expected = vec![
         Event::Session(s("5a1e")),
         Event::Said(s("Смотрю паузы.")),
@@ -40,44 +39,12 @@ fn a_claude_run_is_its_commands_words_and_end() {
 fn a_claude_error_ends_the_run_with_its_words() {
     // As a Claude Code that is not signed in answers.
     let line = r#"{"type":"result","subtype":"success","is_error":true,"result":"Not logged in · Please run /login","session_id":"x"}"#;
-    let events = read(Agent::Claude, line);
+    let events = read(line);
     assert_eq!(
         events,
         vec![Event::Finished(Err(s("Not logged in · Please run /login")))]
     );
-    assert!(read(Agent::Claude, "не JSON\n{\"type\":\"rate_limit\"}").is_empty());
-}
-
-#[test]
-fn a_codex_run_is_its_commands_words_and_end() {
-    let lines = r#"{"type":"thread.started","thread_id":"th-1"}
-{"type":"turn.started"}
-{"type":"item.started","item":{"id":"i1","type":"command_execution","command":"devcast silences","status":"in_progress"}}
-{"type":"item.completed","item":{"id":"i1","type":"command_execution","command":"devcast silences","exit_code":0,"status":"completed"}}
-{"type":"item.started","item":{"id":"i2","type":"command_execution","command":"devcast cut 1-2"}}
-{"type":"item.completed","item":{"id":"i2","type":"command_execution","exit_code":1,"status":"failed"}}
-{"type":"item.completed","item":{"id":"i3","type":"agent_message","text":"Готово."}}
-{"type":"turn.completed","usage":{"input_tokens":10}}
-"#;
-    let expected = vec![
-        Event::Session(s("th-1")),
-        Event::Command(s("devcast silences")),
-        Event::Done { ok: true },
-        Event::Command(s("devcast cut 1-2")),
-        Event::Done { ok: false },
-        Event::Said(s("Готово.")),
-        Event::Usage(crate::usage::Usage {
-            input: 10,
-            ..Default::default()
-        }),
-        Event::Finished(Ok(s("Готово."))),
-    ];
-    assert_eq!(read(Agent::Codex, lines), expected);
-    let failed = r#"{"type":"turn.failed","error":{"message":"квота"}}"#;
-    assert_eq!(
-        read(Agent::Codex, failed),
-        vec![Event::Finished(Err(s("квота")))]
-    );
+    assert!(read("не JSON\n{\"type\":\"rate_limit\"}").is_empty());
 }
 
 #[test]
@@ -88,14 +55,14 @@ fn claude_code_tells_how_full_the_limits_are() {
         five_hour: Some(0.19),
         seven_day: Some(0.35),
     };
-    assert_eq!(read(Agent::Claude, line), vec![Event::Limits(limits)]);
+    assert_eq!(read(line), vec![Event::Limits(limits)]);
 }
 
 #[test]
 fn a_run_that_never_started_tells_why() {
     // As Claude Code 2.1.321 prints an expired sign-in.
     let line = r#"{"type":"result","subtype":"error_during_execution","is_error":true,"num_turns":0,"errors":["Your Claude session has expired. Sign in again to continue (claude auth login)."]}"#;
-    let events = Reader::new(Agent::Claude).line(line);
+    let events = super::line(line);
     let Some(Event::Finished(Err(why))) = events.last() else {
         panic!("{events:?}");
     };

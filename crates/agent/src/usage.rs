@@ -49,19 +49,6 @@ impl Usage {
             cache_read: count(&summed["cache_read_input_tokens"]),
         })
     }
-
-    /// Of the `turn.completed` line of Codex: its input counts the cached part too.
-    pub fn codex(turn: &Value) -> Option<Self> {
-        let usage = &turn["usage"];
-        let cached = count(&usage["cached_input_tokens"]);
-        usage.is_object().then(|| Self {
-            model: None,
-            input: count(&usage["input_tokens"]).saturating_sub(cached),
-            output: count(&usage["output_tokens"]),
-            cache_write: 0,
-            cache_read: cached,
-        })
-    }
 }
 
 /// `claude-opus-5-5` → `Opus 5.5`, `claude-sonnet-5-5-20261020` → `Sonnet 5.5`; another name
@@ -134,19 +121,6 @@ mod tests {
             serde_json::from_str(r#"{"usage":{"input_tokens":5,"output_tokens":9}}"#).unwrap();
         assert_eq!(Usage::claude(&summed).unwrap().output, 9);
         assert_eq!(Usage::claude(&Value::Null), None);
-    }
-
-    #[test]
-    fn codex_counts_its_cached_input_apart() {
-        let turn: Value = serde_json::from_str(
-            r#"{"type":"turn.completed","usage":{"input_tokens":1000,"cached_input_tokens":800,"output_tokens":50}}"#,
-        )
-        .unwrap();
-        let usage = Usage::codex(&turn).unwrap();
-        assert_eq!(
-            (usage.input, usage.cache_read, usage.output),
-            (200, 800, 50)
-        );
     }
 
     #[test]

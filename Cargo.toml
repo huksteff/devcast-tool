@@ -49,7 +49,8 @@ wgpu = "30"
 [profile.dev.package.whisper-rs-sys]
 opt-level = 3
 
-# Two small fixes of the window layer on Windows, until upstream has them (decision 019).
+# Local dependency fixes; provenance and diffs are in third_party/*/PATCHED.md.
 [patch.crates-io]
 egui-winit = { path = "third_party/egui-winit-0.37.0" }
 winit = { path = "third_party/winit-0.30.13" }
+gifski = { path = "third_party/gifski-1.34.0" }
