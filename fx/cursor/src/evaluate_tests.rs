@@ -4,7 +4,7 @@ use serde_json::json;
 
 use super::*;
 use crate::state::{CursorState, Smoothing};
-use crate::test_util::{HAND, HD, o, project, s, tracks};
+use crate::test_util::{HAND, HD, lively, o, project, s, tracks};
 
 /// Without bounce, sway and blur: the picture stands upright on the path.
 fn settings(smoothing: Smoothing) -> CursorSettings {
@@ -13,7 +13,7 @@ fn settings(smoothing: Smoothing) -> CursorSettings {
         blur: 0.0,
         bounce: 0.0,
         sway: 0.0,
-        ..CursorSettings::default()
+        ..lively()
     }
 }
 
@@ -111,15 +111,13 @@ fn smoothing_lags_behind_and_catches_up() {
 #[test]
 fn size_scales_with_the_clip_width() {
     let p = project();
-    let sprite = cursor(&scene_at(&p, CursorSettings::default(), 0.2))
-        .unwrap()
-        .clone();
+    let sprite = cursor(&scene_at(&p, lively(), 0.2)).unwrap().clone();
     // Size 2.5 at 1920 px: the arrow 70 px, the picture 70 · 32 / 19.0625.
     assert!((sprite.rect.h - 117.508).abs() < 0.01, "{:?}", sprite.rect);
     assert_eq!(sprite.rect.w, sprite.rect.h);
     let big = CursorSettings {
         size: 10.0,
-        ..CursorSettings::default()
+        ..lively()
     };
     let large = cursor(&scene_at(&p, big, 0.2)).unwrap().clone();
     assert!((large.rect.h - 4.0 * sprite.rect.h).abs() < 0.01);
@@ -146,12 +144,12 @@ fn crop_moves_and_hides_the_cursor() {
 #[test]
 fn hidden_cursor_and_hidden_setting_draw_nothing() {
     let p = project();
-    assert_eq!(cursor(&scene_at(&p, CursorSettings::default(), 3.4)), None);
-    let shown = scene_at(&p, CursorSettings::default(), 3.55);
+    assert_eq!(cursor(&scene_at(&p, lively(), 3.4)), None);
+    let shown = scene_at(&p, lively(), 3.55);
     assert_eq!(cursor(&shown).unwrap().image.path, HAND);
     let hidden = CursorSettings {
         show: false,
-        ..CursorSettings::default()
+        ..lively()
     };
     assert_eq!(scene_at(&p, hidden, 1.0), Scene::new(HD));
 }
@@ -159,8 +157,8 @@ fn hidden_cursor_and_hidden_setting_draw_nothing() {
 #[test]
 fn imported_clip_and_frames_outside_the_video_have_no_cursor() {
     let p = project();
-    assert_eq!(scene_at(&p, CursorSettings::default(), 4.5), Scene::new(HD));
-    assert_eq!(scene_at(&p, CursorSettings::default(), 7.0), Scene::new(HD));
+    assert_eq!(scene_at(&p, lively(), 4.5), Scene::new(HD));
+    assert_eq!(scene_at(&p, lively(), 7.0), Scene::new(HD));
     let empty = Prepared::new(&p, CursorState::default(), CursorTracks::new());
     let mut scene = Scene::new(HD);
     evaluate(&empty, &p, &TimeMap::build(&p), o(1.0), &mut scene);

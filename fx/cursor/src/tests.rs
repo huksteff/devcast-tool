@@ -13,26 +13,30 @@ fn settings(p: &Project) -> CursorSettings {
 }
 
 #[test]
-fn defaults_follow_v1_focused() {
+fn defaults_are_calm() {
     let s = CursorSettings::default();
     assert!(s.show);
-    assert_eq!(s.size, 2.5);
-    assert_eq!(s.smoothing, Smoothing::Focused);
+    assert_eq!(s.size, 1.0);
+    assert_eq!(s.smoothing, Smoothing::Exact);
+    assert_eq!((s.blur, s.bounce, s.sway), (0.0, 0.0, 0.0));
     assert_eq!(project().state::<Cursor>().unwrap(), CursorState::default());
 }
 
 #[test]
 fn set_changes_only_given_fields_and_says_what() {
     let mut p = project();
-    let diff = set(json!({"size": 3, "smoothing": "exact"}))
+    let diff = set(json!({"size": 3, "smoothing": "smooth"}))
         .apply(&mut p)
         .unwrap();
     assert_eq!(
         diff.to_string(),
-        "курсор: размер 2.50→3.00, сглаживание focused→exact"
+        "курсор: размер 1.00→3.00, сглаживание exact→smooth"
     );
     let s = settings(&p);
-    assert_eq!((s.size, s.smoothing, s.show), (3.0, Smoothing::Exact, true));
+    assert_eq!(
+        (s.size, s.smoothing, s.show),
+        (3.0, Smoothing::Smooth, true)
+    );
     let diff = set(json!({"show": false})).apply(&mut p).unwrap();
     assert_eq!(diff.to_string(), "курсор: скрыт");
 }
@@ -40,9 +44,7 @@ fn set_changes_only_given_fields_and_says_what() {
 #[test]
 fn same_values_change_nothing() {
     let mut p = project();
-    let diff = set(json!({"size": 2.5, "show": true}))
-        .apply(&mut p)
-        .unwrap();
+    let diff = set(json!({"size": 1, "show": true})).apply(&mut p).unwrap();
     assert!(diff.is_empty());
     assert!(p.effects.is_empty());
 }
@@ -64,12 +66,12 @@ fn size_outside_the_range_is_refused() {
 #[test]
 fn motion_settings_are_checked_and_listed() {
     let mut p = project();
-    let diff = set(json!({"blur": 0, "bounce": 5, "bounce_time": 0.06, "sway": 2, "loop": true}))
+    let diff = set(json!({"blur": 1, "bounce": 5, "bounce_time": 0.06, "sway": 2, "loop": true}))
         .apply(&mut p)
         .unwrap();
     assert_eq!(
         diff.to_string(),
-        "курсор: blur 0.60→0.00, отскок 2.00→5.00, время отскока (с) 0.35→0.06, покачивание 0.40→2.00, loop вкл"
+        "курсор: blur 0.00→1.00, отскок 0.00→5.00, время отскока (с) 0.35→0.06, покачивание 0.00→2.00, loop вкл"
     );
     let s = settings(&p);
     assert!(s.looped && s.sway == 2.0 && s.bounce_time.as_secs_f64() == 0.06);

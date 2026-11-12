@@ -17,9 +17,9 @@ pub const SWAY_MAX: f64 = 2.0;
 #[serde(rename_all = "snake_case")]
 pub enum Smoothing {
     /// Exactly as recorded.
+    #[default]
     Exact,
     /// The spring of the Focused motion preset: quick, with a slight overshoot.
-    #[default]
     Focused,
     /// The spring of the Smooth motion preset: soft, without overshoot.
     Smooth,
@@ -66,12 +66,12 @@ impl Default for CursorSettings {
     fn default() -> Self {
         Self {
             show: true,
-            size: 2.5,
-            smoothing: Smoothing::Focused,
-            blur: 0.6,
-            bounce: 2.0,
+            size: 1.0,
+            smoothing: Smoothing::Exact,
+            blur: 0.0,
+            bounce: 0.0,
             bounce_time: TimeDelta::from_millis(350),
-            sway: 0.4,
+            sway: 0.0,
             looped: false,
             click: ClickStyle::default(),
         }

@@ -142,7 +142,9 @@ fn zoom_camera_moves_the_scene_over_a_cut() {
         json!({"zooms": [{
             "id": "z1", "media": "media/recording-1/video.mp4", "range": {"start": 500000, "end": 3000000},
             "scale": 2.0, "focus": {"x": 0.25, "y": 0.75}, "mode": "fixed"
-        }]}),
+        }], "settings": {
+            "zoom_in": 200_000, "zoom_out": 200_000, "smoothness": 0.5, "motion_blur": 0.35
+        }}),
     );
     let evaluator = Evaluator::new(
         &p,

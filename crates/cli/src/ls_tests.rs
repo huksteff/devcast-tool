@@ -8,7 +8,7 @@ fn ls_shows_objects_in_output_time_sorted_and_filtered() {
     f.ok("cut 0-1");
     assert_eq!(
         f.ok("ls zooms --fields scale"),
-        "z2  0:01.000–0:02.000  scale=1.5\nz1  0:11.000–0:14.000  scale=2.0"
+        "z2  0:01.000–0:02.000  scale=1.3\nz1  0:11.000–0:14.000  scale=2.0"
     );
     assert_eq!(
         f.ok("ls zooms --from 5 --fields mode"),
@@ -16,14 +16,14 @@ fn ls_shows_objects_in_output_time_sorted_and_filtered() {
     );
     assert_eq!(
         f.ok("ls zooms --limit 1 --fields scale"),
-        "z2  0:01.000–0:02.000  scale=1.5\nпоказано 1–1 из 2; дальше: devcast ls zooms --offset 1"
+        "z2  0:01.000–0:02.000  scale=1.3\nпоказано 1–1 из 2; дальше: devcast ls zooms --offset 1"
     );
     assert_eq!(f.ok("ls zooms --to 1"), "zooms: пусто (всего 0)");
     f.ok("cut 1-2");
     assert!(f.ok("ls zooms").starts_with("z1  0:10.000–0:13.000"));
     assert!(
         f.ok("ls zooms")
-            .ends_with("z2  вырезан  focus.x=0.5  focus.y=0.5  mode=follow  scale=1.5"),
+            .ends_with("z2  вырезан  focus.x=0.5  focus.y=0.5  mode=follow  scale=1.3"),
         "cut out objects stay listed, last"
     );
 }

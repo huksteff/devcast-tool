@@ -4,7 +4,7 @@ use dc_render::{Band, Geometry, Layer, Scene, Shape};
 use serde_json::json;
 
 use crate::click_state::{ClickChange, ClickKind, ClickStyle};
-use crate::test_util::{HD, RECORDING, o, point, project, s, track};
+use crate::test_util::{HD, RECORDING, lively, o, point, project, s, track};
 use crate::{CursorSettings, CursorState, Prepared, evaluate};
 
 /// Clicks at 1.2 s (0.8, 0.7), then 1.5 and 1.6 s at (0.25, 0.25).
@@ -25,7 +25,7 @@ fn style(kind: ClickKind) -> CursorState {
                 kind,
                 ..ClickStyle::default()
             },
-            ..CursorSettings::default()
+            ..lively()
         },
         clicks: Vec::new(),
     }

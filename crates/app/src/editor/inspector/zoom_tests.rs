@@ -51,7 +51,7 @@ pub(super) fn type_in(harness: &mut H, label: &str, value: f64) {
 fn zoom_tab_edits_are_zoom_motion() {
     let mut harness = tall();
     zoom_tab(&mut harness);
-    click(&mut harness, egui::Role::RadioButton, names::ZOOM_SMOOTH);
+    click(&mut harness, egui::Role::RadioButton, names::ZOOM_FOCUSED);
     click(&mut harness, egui::Role::Switch, names::ZOOM_CONNECT);
     click(&mut harness, egui::Role::Switch, names::ZOOM_AUTO);
     harness.get_by_label(text::FINE).click();
@@ -59,19 +59,19 @@ fn zoom_tab_edits_are_zoom_motion() {
     type_in(&mut harness, names::ZOOM_BLUR, 1.0);
     type_in(&mut harness, names::ZOOM_IN, 0.5);
     let lines = [
-        "zoom motion --preset smooth",
+        "zoom motion --preset focused",
         "zoom motion --connect false",
         "zoom motion --auto false",
         "zoom motion --blur 1",
         "zoom motion --zoom-in 0.5",
     ];
     assert_eq!(project_json(&harness), json(&cli(&lines)));
-    // Durations of no preset: neither is chosen; «Focused» brings its durations.
+    // Durations of no preset: neither is chosen; «Smooth» brings its durations.
     harness.snapshot("inspector_zoom");
-    click(&mut harness, egui::Role::RadioButton, names::ZOOM_FOCUSED);
-    let mut focused = lines.to_vec();
-    focused.push("zoom motion --preset focused");
-    assert_eq!(project_json(&harness), json(&cli(&focused)));
+    click(&mut harness, egui::Role::RadioButton, names::ZOOM_SMOOTH);
+    let mut smooth = lines.to_vec();
+    smooth.push("zoom motion --preset smooth");
+    assert_eq!(project_json(&harness), json(&cli(&smooth)));
     undo(&mut harness);
     undo(&mut harness);
     assert_eq!(
@@ -87,13 +87,13 @@ fn zoom_tab_reset_is_one_step_to_the_defaults() {
     zoom_tab(&mut harness);
     let basic = names::reset_group(text::BASIC);
     assert!(harness.get_by_label(&basic).accesskit_node().is_disabled());
-    click(&mut harness, egui::Role::RadioButton, names::ZOOM_SMOOTH);
+    click(&mut harness, egui::Role::RadioButton, names::ZOOM_FOCUSED);
     click(&mut harness, egui::Role::Switch, names::ZOOM_AUTO);
-    let edited = ["zoom motion --preset smooth", "zoom motion --auto false"];
+    let edited = ["zoom motion --preset focused", "zoom motion --auto false"];
     harness.get_by_label(&basic).click();
     harness.run();
     let mut lines = edited.to_vec();
-    lines.push("zoom motion --zoom-in 0.2 --zoom-out 0.2 --connect true --auto true");
+    lines.push("zoom motion --zoom-in 1.522575 --zoom-out 1.01505 --connect true --auto true");
     assert_eq!(project_json(&harness), json(&cli(&lines)));
     undo(&mut harness);
     assert_eq!(project_json(&harness), json(&cli(&edited)), "one step back");
@@ -126,7 +126,7 @@ fn a_picked_zoom_edits_are_zoom_set() {
         .get_by_label(&names::reset_group(text::BASIC))
         .click();
     harness.run();
-    let reset = format!("zoom set {id} --scale 1.5 --mode follow --x 0.5 --y 0.5");
+    let reset = format!("zoom set {id} --scale 1.3 --mode follow --x 0.5 --y 0.5");
     let mut all = lines[..3].to_vec();
     all.push(&reset);
     assert_eq!(project_json(&harness), json(&cli(&all)));

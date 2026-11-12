@@ -76,6 +76,7 @@ pub fn size(width: u32, height: u32) -> PixelSize {
 /// Renders the project's scene at output second `at` with bars as every video and pictures of
 /// `clicks_fixture()` as sprites, and checks it against reference `name`.
 pub fn check(name: &str, project: &Project, cursors: CursorTracks, at: f64) -> TestResult {
+    let project = &lively(project);
     let evaluator = Evaluator::new(project, cursors, KeyTracks::new(), &mut measure()?)?;
     let scene = evaluator.evaluate(OutputTime::from_secs_f64(at));
     render(name, project, &scene, &clicks_fixture())
@@ -84,6 +85,7 @@ pub fn check(name: &str, project: &Project, cursors: CursorTracks, at: f64) -> T
 /// [`check`] of a project without a cursor and with shortcuts `keys`, text in the fonts of
 /// `.deps/fonts`.
 pub fn check_keys(name: &str, project: &Project, keys: KeyTracks, at: f64) -> TestResult {
+    let project = &lively(project);
     let evaluator = Evaluator::new(project, CursorTracks::new(), keys, &mut measure()?)?;
     let scene = evaluator.evaluate(OutputTime::from_secs_f64(at));
     render(name, project, &scene, &clicks_fixture())
@@ -96,6 +98,7 @@ pub fn fixtures() -> PathBuf {
 
 /// [`check`] of a project without a cursor whose pictures are paths in [`fixtures`].
 pub fn check_pictures(name: &str, project: &Project, at: f64) -> TestResult {
+    let project = &lively(project);
     let evaluator = Evaluator::new(
         project,
         CursorTracks::new(),
@@ -104,6 +107,32 @@ pub fn check_pictures(name: &str, project: &Project, at: f64) -> TestResult {
     )?;
     let scene = evaluator.evaluate(OutputTime::from_secs_f64(at));
     render(name, project, &scene, &fixtures())
+}
+
+/// `project` with the lively motion of v1 where it sets none of its own: the quick zoom camera on
+/// a spring with blur and the big cursor on a spring. The reference frames are shot of this
+/// motion; the defaults are calm and show none of it.
+fn lively(project: &Project) -> Project {
+    let zoom = serde_json::json!({
+        "zoom_in": 200_000, "zoom_out": 200_000, "smoothness": 0.5, "motion_blur": 0.35
+    });
+    let cursor = serde_json::json!({
+        "size": 2.5, "smoothing": "focused", "blur": 0.6, "bounce": 2.0, "sway": 0.4
+    });
+    let mut project = project.clone();
+    for (effect, look) in [("zoom", zoom), ("cursor", cursor)] {
+        let state = project
+            .effects
+            .entry(effect.to_owned())
+            .or_insert_with(|| serde_json::json!({}));
+        for (field, value) in look.as_object().into_iter().flatten() {
+            let settings = &mut state["settings"];
+            if settings.get(field).is_none() {
+                settings[field] = value.clone();
+            }
+        }
+    }
+    project
 }
 
 /// The fonts of `.deps/fonts`, as the frames are drawn with.

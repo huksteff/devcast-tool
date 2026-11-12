@@ -99,7 +99,7 @@ fn cursor_tab_edits_are_cursor_and_clicks() {
     assert!(own.accesskit_node().is_disabled(), "own cursors are frozen");
     click(&mut harness, egui::Role::Switch, names::CURSOR_SHOW);
     type_in(&mut harness, names::CURSOR_SIZE, 3.0);
-    click(&mut harness, egui::Role::RadioButton, names::CURSOR_EXACT);
+    click(&mut harness, egui::Role::RadioButton, names::ZOOM_SMOOTH);
     click(&mut harness, egui::Role::RadioButton, names::CLICK_RIPPLE);
     click(&mut harness, egui::Role::RadioButton, names::RED);
     type_in(&mut harness, names::CLICK_SIZE, 1.5);
@@ -112,7 +112,7 @@ fn cursor_tab_edits_are_cursor_and_clicks() {
     let lines = [
         "cursor --show false",
         "cursor --size 3",
-        "cursor --smoothing exact",
+        "cursor --smoothing smooth",
         "clicks --style ripple",
         "clicks --color #ef4444ff",
         "clicks --scale 1.5",
@@ -147,7 +147,7 @@ fn cursor_tab_resets_are_one_step_each() {
     harness.get_by_label(&clicks).click();
     harness.run();
     let mut lines = edited.to_vec();
-    lines.push("cursor --show true --size 2.5 --smoothing focused");
+    lines.push("cursor --show true --size 1 --smoothing exact");
     lines.push("clicks --style off --color #2563ebff --scale 1");
     assert_eq!(project_json(&harness), json(&cli(&lines)));
     undo(&mut harness);

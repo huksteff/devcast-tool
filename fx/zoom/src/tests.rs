@@ -2,7 +2,8 @@ use dc_core::project::{Media, MediaKind, SpeedRange};
 use dc_core::{Clip, Command, History, Point, Project, Range, SourceTime, TimeDelta};
 
 use crate::{
-    Mode, Preset, ZoomAdd, ZoomEffect, ZoomMotion, ZoomRm, ZoomSet, ZoomSettings, ZoomState,
+    DEFAULT_SCALE, Mode, Preset, ZoomAdd, ZoomEffect, ZoomMotion, ZoomRm, ZoomSet, ZoomSettings,
+    ZoomState,
 };
 
 fn secs(s: f64) -> SourceTime {
@@ -79,7 +80,7 @@ fn add_uses_defaults_and_source_time() {
     assert_eq!(zoom.id.to_string(), "z1");
     assert_eq!(zoom.media, p.clips[0].media.path);
     assert_eq!(zoom.range, Range::new(secs(2.0), secs(3.0)).unwrap());
-    assert!((zoom.scale - 1.5).abs() < 1e-9);
+    assert!((zoom.scale - DEFAULT_SCALE).abs() < 1e-9);
     assert_eq!(zoom.mode, Mode::Follow);
     assert_eq!(zoom.focus, Point { x: 0.5, y: 0.5 });
 }
@@ -275,7 +276,12 @@ fn rm_removes_and_ids_are_never_reused() {
 #[test]
 fn motion_presets_and_fine_tuning() {
     let mut p = project(&[10.0]);
-    assert_eq!(ZoomSettings::default().preset(), Some(Preset::Focused));
+    assert_eq!(ZoomSettings::default().preset(), Some(Preset::Smooth));
+    let diff = run(&mut p, &motion(serde_json::json!({"preset": "focused"})));
+    assert_eq!(
+        diff,
+        "движение зума: вход 1.523→0.200 с, выход 1.015→0.200 с (Focused)"
+    );
     let diff = run(&mut p, &motion(serde_json::json!({"preset": "smooth"})));
     assert_eq!(
         diff,
@@ -288,19 +294,19 @@ fn motion_presets_and_fine_tuning() {
 
     let diff = run(
         &mut p,
-        &motion(serde_json::json!({"smoothness": 0.8, "connect": false})),
+        &motion(serde_json::json!({"smoothness": 0.5, "connect": false})),
     );
     assert_eq!(
         diff,
-        "движение зума: плавность 0.50→0.80, склейка вкл→выкл (Smooth)"
+        "движение зума: плавность 0.80→0.50, склейка вкл→выкл (Smooth)"
     );
     let diff = run(
         &mut p,
-        &motion(serde_json::json!({"zoom_in": 0.5, "blur": 0})),
+        &motion(serde_json::json!({"zoom_in": 0.5, "blur": 1})),
     );
     assert_eq!(
         diff,
-        "движение зума: вход 1.523→0.500 с, motion blur 0.35→0.00"
+        "движение зума: вход 1.523→0.500 с, motion blur 0.00→1.00"
     );
     assert_eq!(state(&p).settings.preset(), None);
     assert_eq!(
@@ -338,7 +344,7 @@ fn undo_redo_returns_the_same_state() {
         .apply(&mut p, &set(serde_json::json!({"id": "z1", "scale": 3})))
         .unwrap();
     history
-        .apply(&mut p, &motion(serde_json::json!({"preset": "smooth"})))
+        .apply(&mut p, &motion(serde_json::json!({"preset": "focused"})))
         .unwrap();
     history.apply(&mut p, &rm("z1")).unwrap();
     let last = p.clone();
