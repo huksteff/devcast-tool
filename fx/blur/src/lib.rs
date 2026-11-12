@@ -6,7 +6,7 @@ mod commands;
 mod evaluate;
 pub mod look;
 mod model;
-mod panel;
+pub mod panel;
 
 pub use commands::BlurSet;
 pub use evaluate::evaluate;

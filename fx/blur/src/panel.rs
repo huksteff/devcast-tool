@@ -56,3 +56,7 @@ fn fields(b: &BlurBody) -> [(&'static str, Value); 3] {
         ("radius", json!(b.radius)),
     ]
 }
+
+/// The kind as the editor registers it: its panel section and fields.
+pub const KIND: dc_fx_annotations::panel::Entry =
+    dc_fx_annotations::panel::Entry::of::<BlurBody>(dc_fx_annotations::Kind::Blur);

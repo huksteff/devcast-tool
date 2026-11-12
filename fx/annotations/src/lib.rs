@@ -8,6 +8,7 @@ mod boxes;
 mod commands;
 mod keyed;
 mod keys;
+mod kinds;
 pub mod lane;
 mod lane_tip;
 pub mod look;

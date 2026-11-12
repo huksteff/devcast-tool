@@ -13,6 +13,9 @@ use crate::{CaptionsEffect, CueKind};
 const CAPTIONS_PASTE: OpName = OpName::of::<crate::CaptionsPaste>();
 const CAPTIONS_SET: OpName = OpName::of::<crate::CaptionsSet>();
 
+/// The command of the eye of the row (`--show`).
+pub const SHOW: OpName = OpName::of::<crate::CaptionsStyle>();
+
 pub const LANE: Lane = Lane {
     prefix: CueKind::PREFIX,
     rm: OpName::of::<crate::CaptionsRm>(),

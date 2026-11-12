@@ -4,6 +4,7 @@
 mod clip;
 mod cut;
 mod evaluate;
+pub mod lane;
 pub mod look;
 mod speed;
 mod split;

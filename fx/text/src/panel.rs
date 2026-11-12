@@ -107,3 +107,7 @@ fn look(b: &TextBody) -> [(&'static str, Value); 8] {
         ("background", json!(b.background)),
     ]
 }
+
+/// The kind as the editor registers it: its panel section and fields.
+pub const KIND: dc_fx_annotations::panel::Entry =
+    dc_fx_annotations::panel::Entry::of::<TextBody>(dc_fx_annotations::Kind::Text);

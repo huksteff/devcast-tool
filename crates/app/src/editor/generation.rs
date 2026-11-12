@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Where the generation is: the type of the captions panel's facts, which the editor fills.
 pub use dc_fx_captions::panel::Phase;
-use dc_fx_captions::{CaptionsGen, NewCue};
+use dc_fx_captions::panel::{CaptionsGen, NewCue};
 use dc_ui_kit::strings::captions as text;
 use eframe::egui;
 

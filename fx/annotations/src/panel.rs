@@ -23,6 +23,7 @@ use dc_ui_kit::strings::editor;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
+pub use crate::kinds::Entry;
 use crate::panel_rows::{fine_rows, keys_strip, motion_group};
 use crate::{AnnotId, Annotation, Annotations, Kind, key_offset, same_moment};
 

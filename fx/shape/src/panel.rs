@@ -201,3 +201,7 @@ fn picture(painter: &Painter, rect: Rect, figure: Figure) {
         }
     }
 }
+
+/// The kind as the editor registers it: its panel section and fields.
+pub const KIND: dc_fx_annotations::panel::Entry =
+    dc_fx_annotations::panel::Entry::of::<ShapeBody>(dc_fx_annotations::Kind::Shape);

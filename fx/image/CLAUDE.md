@@ -9,7 +9,7 @@
 - `ImageSet` — не команда реестра (нужен файл), как `ClipAdd`: меняет только аннотации `image`; с `at` — в ключе этого момента, без него — в аннотации и во всех ключах (`edit_body`); та же картинка — пустой `Diff`.
 - `evaluate(body, placement, elapsed)` → `Option<Sprite>` (`None` без картинки): «contain» — картинка вписана в бокс с сохранением пропорций по центру (v1 `annotationRenderer.ts:599-615`, как DaVinci; растяжения нет), поворот бокса, `placement.opacity` (своей прозрачности нет, как v1). Кадр анимации — `PictureFile::frame_at(elapsed)`, по кругу; `elapsed` — время выхода от первого показанного момента (`dc_fx_annotations::shown_for`, тот же отсчёт, что у анимаций входа): ускорение не торопит, вырез не съедает. В кадр — `look.rs`: `impl dc_fx_annotations::look::Body`, `READ` для таблицы видов `dc_ops`.
 - SVG не поддерживается: только растр (решение владельца 2026-11-02).
-- Панель (`panel.rs`): `impl dc_fx_annotations::panel::Section for ImageBody` — файл и размер, «Заменить…» — `Request::Picture` (id и ключ `Edit`): диалог, копия и `ImageSet` — у редактора (`dc_ops::import_picture`). «Сбросить» нет.
+- Панель (`panel.rs`): `impl dc_fx_annotations::panel::Section for ImageBody` — файл и размер, «Заменить…» — `Request::Picture` (id и ключ `Edit`): диалог, копия и `ImageSet` — у редактора (`dc_ops::import_picture`). «Сбросить» нет. Регистрация вида в редакторе — `panel::KIND` (`dc_fx_annotations::panel::Entry`).
 
 ## Как тестировать
 

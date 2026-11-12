@@ -88,7 +88,7 @@ static CAPTIONS: Kind = Kind {
     id: "captions",
     name: |_| text::CAPTIONS.to_owned(),
     hue: tokens::HUE_CAPTIONS,
-    button: Button::Shown(lanes::CAPTIONS_STYLE),
+    button: Button::Shown(lanes::captions::SHOW),
     fill: Some(lanes::captions::row),
     ..PLAIN
 };
@@ -127,7 +127,7 @@ static KEYS: Kind = Kind {
     id: "keys",
     name: |_| text::KEYS.to_owned(),
     hue: tokens::HUE_KEYS,
-    button: Button::Shown(lanes::KEYS),
+    button: Button::Shown(lanes::keys::SHOW),
     fill: Some(lanes::keys::row),
     ..PLAIN
 };

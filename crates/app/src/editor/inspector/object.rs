@@ -12,8 +12,8 @@
 
 use dc_core::time::Output;
 use dc_core::{Project, Range};
+use dc_fx_annotations::lane::AnnotId;
 use dc_fx_annotations::panel::{self as annot, Region as Shown};
-use dc_fx_annotations::{AnnotId, Kind};
 use dc_fx_audio_tracks::panel as sound;
 use dc_fx_callout::panel as callout;
 use dc_fx_captions::panel as cue;
@@ -26,7 +26,7 @@ use dc_ui_kit::strings::{annotations, editor as text, inspector as names, timeli
 use super::Cx;
 use crate::editor::selection::{Item, Selected, same_moment};
 use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
-use crate::editor::{Action, clipboard, montage, regions};
+use crate::editor::{Action, clipboard, lanes, montage, regions};
 use eframe::egui::Ui;
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
@@ -233,24 +233,20 @@ fn delete(picked: Selected) -> Option<Action> {
 }
 
 /// The panel of annotation `id` (`dc_fx_annotations::panel`) with the section of its kind's
-/// crate, at the place and keys of its region and on the output frame after the crop.
+/// crate (`lanes::kind`), at the place and keys of its region and on the output frame after the
+/// crop.
 fn annotation(ui: &mut Ui, cx: &mut Cx<'_>, id: AnnotId, region: &Region) {
     let project = cx.base.project;
-    let Ok(crop) = project.state::<dc_fx_crop::Crop>() else {
+    let (frame, broken) = lanes::frame::frame(project);
+    if broken.is_some() {
         return;
-    };
+    }
     let shown = Shown {
         range: region.range,
         keys: &region.keys,
-        canvas: dc_fx_crop::canvas(project, &crop.settings),
+        canvas: frame.canvas,
     };
-    let cx = &mut cx.base;
-    match annot::kind(project, id) {
-        Some(Kind::Text) => annot::ui::<dc_fx_text::TextBody>(ui, cx, id, &shown),
-        Some(Kind::Shape) => annot::ui::<dc_fx_shape::ShapeBody>(ui, cx, id, &shown),
-        Some(Kind::Image) => annot::ui::<dc_fx_image::ImageBody>(ui, cx, id, &shown),
-        Some(Kind::Drawing) => annot::ui::<dc_fx_drawing::DrawingBody>(ui, cx, id, &shown),
-        Some(Kind::Blur) => annot::ui::<dc_fx_blur::BlurBody>(ui, cx, id, &shown),
-        None => {}
+    if let Some(entry) = annot::kind(project, id).and_then(lanes::kind) {
+        (entry.ui)(ui, &mut cx.base, id, &shown);
     }
 }

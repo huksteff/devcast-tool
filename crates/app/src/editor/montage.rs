@@ -23,13 +23,13 @@ pub fn range_arg(range: Range<Output>) -> String {
 
 /// `clip split --at <at>`: the blade and C.
 pub fn split(at: OutputTime) -> Action {
-    Action::op(lanes::CLIP_SPLIT, [("at", Value::String(arg(at)))])
+    Action::op(lanes::clips::CLIP_SPLIT, [("at", Value::String(arg(at)))])
 }
 
 /// `clip move <id> --to <place>`, `place` from 1.
 pub fn move_to(id: ClipId, place: usize) -> Action {
     Action::op(
-        lanes::CLIP_MOVE,
+        lanes::clips::CLIP_MOVE,
         [("id", Value::String(id.to_string())), ("to", place.into())],
     )
 }
@@ -41,7 +41,7 @@ pub fn remove(ids: impl IntoIterator<Item = ClipId>) -> Option<Action> {
         .map(|id| {
             let mut args = Map::new();
             args.insert("id".to_owned(), Value::String(id.to_string()));
-            Step::of(lanes::CLIP_RM, args)
+            Step::of(lanes::clips::CLIP_RM, args)
         })
         .collect();
     (!steps.is_empty()).then_some(Action::Apply(steps))
@@ -49,13 +49,16 @@ pub fn remove(ids: impl IntoIterator<Item = ClipId>) -> Option<Action> {
 
 /// `cut <range>`: the range goes and the rest closes up (ripple).
 pub fn cut(range: Range<Output>) -> Action {
-    Action::op(lanes::CUT, [("ranges", Value::String(range_arg(range)))])
+    Action::op(
+        lanes::clips::CUT,
+        [("ranges", Value::String(range_arg(range)))],
+    )
 }
 
 /// `speed <range> <factor>`.
 pub fn speed(range: Range<Output>, factor: f64) -> Action {
     Action::op(
-        lanes::SPEED,
+        lanes::clips::SPEED,
         [
             ("range", Value::String(range_arg(range))),
             ("factor", factor.into()),
