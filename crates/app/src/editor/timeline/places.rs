@@ -5,9 +5,10 @@ use dc_core::time::Output;
 use dc_core::{OutputTime, Range, TimeDelta};
 use eframe::egui::{Pos2, Rect};
 
+use super::row::Row;
 use super::scale::TimeScale;
 use super::snap::{self, Moving};
-use super::tracks::{Region, Row};
+use super::tracks::Region;
 use crate::editor::EditorWindow;
 use crate::editor::regions::Moved;
 use crate::editor::selection::Item;
@@ -66,13 +67,14 @@ pub fn group(
             let item = region.item?;
             let start = region.range.start() + shift.delta;
             let range = Range::new(start, region.range.end() + shift.delta).ok()?;
-            let track = track_of(rows.get(row)?.0)
-                .filter(|_| rows_by != 0 && kind == Some(Kind::of(rows[row].0)))
+            let on = rows.get(row)?.0;
+            let track = on
+                .track_of_many()
+                .filter(|_| rows_by != 0 && kind.is_some_and(|kind| kind.same_kind(on)))
                 .map(|t| (i64::from(t) + rows_by) as u32);
-            let lands = match (track, rows[row].0) {
-                (Some(t), Row::Annotations(_)) => row_index(rows, Row::Annotations(t)),
-                (Some(t), _) => row_index(rows, Row::Audio(t)),
-                (None, _) => Some(row),
+            let lands = match track {
+                Some(t) => row_index(rows, on.on(t)),
+                None => Some(row),
             }?;
             let moved = Moved { item, range, track };
             Some((region, row, moved, lands))
@@ -104,7 +106,7 @@ pub fn stretch(
                 .tracks
                 .rows
                 .iter()
-                .position(|t| t.row == Row::Clips)?;
+                .position(|t| t.row == Row::CLIPS)?;
             let band = editor
                 .tracks
                 .speeds
@@ -156,7 +158,7 @@ fn located(editor: &EditorWindow, item: Item) -> Option<(usize, Region)> {
 /// not overlap on their row; the others may.
 fn still(editor: &EditorWindow, index: usize, moving: &[Item]) -> Vec<Range<Output>> {
     let track = &editor.tracks.rows[index];
-    if !matches!(track.row, Row::Zooms | Row::Audio(_)) {
+    if !track.row.kind.apart {
         return Vec::new();
     }
     track
@@ -189,63 +191,38 @@ pub fn targets(
     targets
 }
 
-/// Regions that change track together.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Kind {
-    Annotations,
-    Sound,
-    Other,
-}
-
-impl Kind {
-    /// The kind of the regions on `row`.
-    fn of(row: Row) -> Self {
-        match row {
-            Row::Annotations(_) => Self::Annotations,
-            Row::Audio(_) => Self::Sound,
-            _ => Self::Other,
-        }
-    }
-}
-
 /// Track change of a group pressed on row `from` and now over row `over`: between the rows of
-/// annotations or of extra sound, kept to the rows there are; the kind it applies to.
+/// a kind with tracks (annotations, extra sound), kept to the rows there are; a row of the kind
+/// it applies to.
 fn track_shift(
     rows: &[(Row, Rect)],
     from: usize,
     over: Option<usize>,
     placed: &[(usize, Region)],
-) -> (i64, Option<Kind>) {
+) -> (i64, Option<Row>) {
     let (Some(&(start, _)), Some(&(now, _))) = (rows.get(from), over.and_then(|o| rows.get(o)))
     else {
         return (0, None);
     };
-    let (shift, kind) = match (start, now) {
-        (Row::Annotations(a), Row::Annotations(b)) => {
-            (i64::from(b) - i64::from(a), Kind::Annotations)
-        }
-        (Row::Audio(a), Row::Audio(b)) => (i64::from(b) - i64::from(a), Kind::Sound),
-        _ => return (0, None),
+    let (Some(a), Some(b), true) = (
+        start.track_of_many(),
+        now.track_of_many(),
+        start.same_kind(now),
+    ) else {
+        return (0, None);
     };
-    let count = rows.iter().filter(|(r, _)| Kind::of(*r) == kind).count() as i64;
+    let shift = i64::from(b) - i64::from(a);
+    let count = rows.iter().filter(|(r, _)| r.same_kind(start)).count() as i64;
     let ours = placed
         .iter()
         .filter(|(_, region)| region.item.is_some())
         .filter_map(|(row, _)| rows.get(*row).map(|r| r.0))
-        .filter(|row| Kind::of(*row) == kind)
-        .filter_map(|row| track_of(row).map(i64::from));
+        .filter(|row| row.same_kind(start))
+        .map(|row| i64::from(row.track));
     let (low, high) = ours.fold((i64::MIN, i64::MAX), |(low, high), t| {
         (low.max(-t), high.min(count - 1 - t))
     });
-    (shift.clamp(low.min(0), high.max(0)), Some(kind))
-}
-
-/// The track of `row`, for the rows that have tracks.
-fn track_of(row: Row) -> Option<u32> {
-    match row {
-        Row::Annotations(t) | Row::Audio(t) => Some(t),
-        _ => None,
-    }
+    (shift.clamp(low.min(0), high.max(0)), Some(start))
 }
 
 fn row_index(rows: &[(Row, Rect)], row: Row) -> Option<usize> {

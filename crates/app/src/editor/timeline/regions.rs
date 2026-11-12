@@ -17,8 +17,9 @@ use eframe::egui::{
 
 use super::gesture;
 use super::paint;
+use super::row::Row;
 use super::scale::TimeScale;
-use super::tracks::{Region, Row};
+use super::tracks::Region;
 use super::viewport::Lanes;
 use crate::editor::EditorWindow;
 use crate::editor::selection::{Item, Selected};
@@ -44,7 +45,7 @@ pub fn ui(
     let ctrl = ui.input(|i| i.modifiers.command);
     let press = ui.input(|i| i.pointer.press_origin());
     for (index, &(row, lane)) in rows.iter().enumerate() {
-        if row == Row::Clips {
+        if row == Row::CLIPS {
             continue;
         }
         let empty = ui.interact(
@@ -67,7 +68,7 @@ pub fn ui(
     for (index, &(row, lane)) in rows.iter().enumerate() {
         let regions = editor.tracks.rows[index].regions.clone();
         for region in regions {
-            if let (None, Some(clip), false) = (region.item, region.clip, row == Row::Clips) {
+            if let (None, Some(clip), false) = (region.item, region.clip, row == Row::CLIPS) {
                 clip_sound(ui, editor, (row, lane, scale), &region, (clip, ctrl));
                 continue;
             }
@@ -165,7 +166,7 @@ fn edge_zone(ui: &Ui, body: Rect, lane: Rect, id: Id, end: bool) -> Response {
 
 /// The edges of the speed bands of the clips row.
 fn speed_edges(ui: &Ui, rows: &[(Row, Rect)], editor: &mut EditorWindow, scale: &TimeScale) {
-    let Some(&(_, lane)) = rows.iter().find(|(row, _)| *row == Row::Clips) else {
+    let Some(&(_, lane)) = rows.iter().find(|(row, _)| *row == Row::CLIPS) else {
         return;
     };
     for band in editor.tracks.speeds.clone() {
@@ -209,7 +210,7 @@ fn rings(ui: &Ui, rows: &[(Row, Rect)], editor: &EditorWindow, scale: &TimeScale
             let picked = match (region.item, region.clip) {
                 (Some(item), _) => Selected::Region(item),
                 // The clips row rings its clips itself.
-                (None, Some(clip)) if row != Row::Clips => Selected::Clip(clip),
+                (None, Some(clip)) if row != Row::CLIPS => Selected::Clip(clip),
                 _ => continue,
             };
             if editor.view.selection.contains(picked) && !moving {

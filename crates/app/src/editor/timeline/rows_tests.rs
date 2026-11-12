@@ -10,7 +10,8 @@ use egui_kittest::kittest::Queryable;
 
 use super::clips_tests::{H, move_to, press, project_json, started, undo_is_one_step};
 use super::regions_tests::{annotation, at, by_cli, click, drag, on_row, picked, words, zoom};
-use super::tracks::{Row, Tracks};
+use super::row::Row;
+use super::tracks::Tracks;
 use crate::editor::adding::slot;
 use crate::editor::editing_tests::json;
 use crate::editor::selection::Item;
@@ -62,10 +63,10 @@ fn the_menu_and_the_bottom_button_add_empty_rows() {
     harness.snapshot("editor_track_menu");
     harness.get_by_label(text::ADD_ANNOTATIONS_ROW).click();
     harness.run();
-    assert!(row_names(&harness).contains(&Row::Annotations(2)));
+    assert!(row_names(&harness).contains(&Row::annotations(2)));
     harness.get_by_label(text::ADD_AUDIO).click();
     harness.run();
-    assert!(row_names(&harness).contains(&Row::Audio(1)));
+    assert!(row_names(&harness).contains(&Row::audio(1)));
     assert_eq!(
         project_json(&harness),
         json(&project()),
@@ -74,7 +75,7 @@ fn the_menu_and_the_bottom_button_add_empty_rows() {
     let spot = head_button(&harness, "Аннотации 3");
     click(&mut harness, spot, Modifiers::NONE);
     assert!(
-        !row_names(&harness).contains(&Row::Annotations(2)),
+        !row_names(&harness).contains(&Row::annotations(2)),
         "empty: no question"
     );
     assert!(harness.query_by_label(text::REMOVE_CONFIRM).is_none());
@@ -98,7 +99,7 @@ fn removing_a_row_with_annotations_asks_first() {
         &harness,
         &["annot rm a1", "annot rm a2", "annot move a3 --track 0"],
     );
-    assert!(!row_names(&harness).contains(&Row::Annotations(1)));
+    assert!(!row_names(&harness).contains(&Row::annotations(1)));
     undo_is_one_step(&mut harness);
 }
 
@@ -110,7 +111,7 @@ fn removing_an_extra_sound_row_removes_its_files() {
     harness.get_by_label(text::REMOVE_CONFIRM).click();
     harness.run();
     expect(&harness, &["audio rm au1"]);
-    assert!(!row_names(&harness).contains(&Row::Audio(0)));
+    assert!(!row_names(&harness).contains(&Row::audio(0)));
     undo_is_one_step(&mut harness);
 }
 
@@ -226,23 +227,23 @@ fn the_ghost_fits_the_room_it_is_in() {
     let tracks = Tracks::of(&project(), &[], Default::default());
     let t = OutputTime::from_secs_f64;
     assert_eq!(
-        slot(&tracks, Row::Zooms, t(4.5)),
+        slot(&tracks, Row::ZOOMS, t(4.5)),
         Some(output(4.0, 5.0)),
         "before a zoom"
     );
-    assert_eq!(slot(&tracks, Row::Zooms, t(6.0)), None, "on a zoom");
+    assert_eq!(slot(&tracks, Row::ZOOMS, t(6.0)), None, "on a zoom");
     assert_eq!(
-        slot(&tracks, Row::Zooms, t(12.5)),
+        slot(&tracks, Row::ZOOMS, t(12.5)),
         Some(output(12.0, 13.0)),
         "1 s gap"
     );
-    let annotations = slot(&tracks, Row::Annotations(1), t(48.7));
+    let annotations = slot(&tracks, Row::annotations(1), t(48.7));
     assert_eq!(annotations, Some(output(48.0, 49.0)), "inside its clip");
     assert_eq!(
-        slot(&tracks, Row::Cursor, t(104.8)),
+        slot(&tracks, Row::CURSOR, t(104.8)),
         Some(output(104.0, 105.0))
     );
-    let room = slot(&tracks, Row::Audio(1), t(30.0)).map(|r| r.duration());
+    let room = slot(&tracks, Row::audio(1), t(30.0)).map(|r| r.duration());
     assert_eq!(room, Some(TimeDelta::from_secs_f64(1.0)));
 }
 

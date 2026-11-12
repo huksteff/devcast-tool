@@ -18,7 +18,7 @@ use super::lanes::{
     annotations::{AnnotId, Kind, TRACKS},
 };
 use super::selection::{Item, Selected};
-use super::timeline::{Row, Tracks};
+use super::timeline::{Adds, Row, Tracks};
 use super::{Action, EditorWindow};
 
 /// Length of a new zoom, annotation and callout event (v1: zoom 1 s, annotation 1 s).
@@ -45,21 +45,18 @@ pub struct PictureFile {
 
 /// Regions can be added to `row` by hovering it.
 pub fn addable(row: Row) -> bool {
-    matches!(
-        row,
-        Row::Zooms | Row::Cursor | Row::Annotations(_) | Row::Audio(_)
-    )
+    !matches!(row.kind.adds, Adds::Nothing)
 }
 
 /// Where a region added on `row` at `at` lies; `None` when there is no room.
 pub fn slot(tracks: &Tracks, row: Row, at: OutputTime) -> Option<Range<Output>> {
     let end = OutputTime::ZERO + tracks.duration;
     let (mut low, mut high) = (OutputTime::ZERO, end);
-    if !matches!(row, Row::Audio(_)) {
-        let clip = regions(tracks, Row::Clips).find(|r| r.contains(at))?;
+    if row.kind.in_clip {
+        let clip = regions(tracks, Row::CLIPS).find(|r| r.contains(at))?;
         (low, high) = (clip.start(), clip.end());
     }
-    if matches!(row, Row::Zooms | Row::Audio(_)) {
+    if row.kind.apart {
         if regions(tracks, row).any(|r| r.contains(at)) {
             return None;
         }
@@ -91,19 +88,18 @@ fn regions(tracks: &Tracks, row: Row) -> impl Iterator<Item = Range<Output>> + '
 /// The command that adds a region at `range` of `row` (a text annotation, a callout «on»); the
 /// ghost of an annotation row asks for the kind first (`timeline/kinds.rs`).
 pub fn step(row: Row, range: Range<Output>) -> Option<Step> {
-    match row {
-        Row::Zooms => Some(lanes::zoom::added(range)),
-        Row::Cursor => Some(lanes::callout::added(range)),
-        Row::Annotations(track) => Some(lanes::annotations::added(range, track, Kind::Text)),
-        _ => None,
+    match row.kind.adds {
+        Adds::Step(added) => Some(added(range, row.track)),
+        Adds::Annotation => Some(lanes::annotations::added(range, row.track, Kind::Text)),
+        Adds::Sound | Adds::Nothing => None,
     }
 }
 
 /// Z: a zoom at the playhead; where there is no room, the command says why.
 pub fn zoom(editor: &mut EditorWindow) {
     let at = editor.view.playhead;
-    let range = slot(&editor.tracks, Row::Zooms, at).or_else(|| Range::new(at, at + LENGTH).ok());
-    if let Some(step) = range.and_then(|r| step(Row::Zooms, r)) {
+    let range = slot(&editor.tracks, Row::ZOOMS, at).or_else(|| Range::new(at, at + LENGTH).ok());
+    if let Some(step) = range.and_then(|r| step(Row::ZOOMS, r)) {
         editor.ask(Action::Paste(vec![step]));
     }
 }
@@ -112,23 +108,20 @@ pub fn zoom(editor: &mut EditorWindow) {
 pub fn annotation(editor: &mut EditorWindow) {
     let at = editor.view.playhead;
     let range =
-        slot(&editor.tracks, Row::Annotations(0), at).or_else(|| Range::new(at, at + LENGTH).ok());
+        slot(&editor.tracks, Row::annotations(0), at).or_else(|| Range::new(at, at + LENGTH).ok());
     let Some(range) = range else { return };
     let rows: Vec<u32> = editor
         .tracks
         .rows
         .iter()
-        .filter_map(|t| match t.row {
-            Row::Annotations(track) => Some(track),
-            _ => None,
-        })
+        .filter_map(|t| t.row.annotation_track())
         .collect();
     let busy = |track: u32| {
-        regions(&editor.tracks, Row::Annotations(track)).any(|r| r.intersect(&range).is_some())
+        regions(&editor.tracks, Row::annotations(track)).any(|r| r.intersect(&range).is_some())
     };
     let new = (rows.len() as u32).min(TRACKS - 1);
     let track = rows.iter().copied().find(|t| !busy(*t)).unwrap_or(new);
-    if let Some(step) = step(Row::Annotations(track), range) {
+    if let Some(step) = step(Row::annotations(track), range) {
         editor.ask(Action::Paste(vec![step]));
     }
 }
@@ -141,7 +134,7 @@ pub fn next_annotation(editor: &mut EditorWindow) {
         .tracks
         .rows
         .iter()
-        .filter(|t| matches!(t.row, Row::Annotations(_)))
+        .filter(|t| t.row.annotation_track().is_some())
         .flat_map(|t| &t.regions)
         .filter(|r| r.range.contains(at))
         .filter_map(|r| r.item)

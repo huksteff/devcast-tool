@@ -107,7 +107,7 @@ fn tall_timeline() -> H {
 
 fn mic_faded(harness: &H, clip: ClipId) -> bool {
     let rows = &harness.state().editor.tracks.rows;
-    let mic = rows.iter().find(|t| t.row == Row::Mic).unwrap();
+    let mic = rows.iter().find(|t| t.row == Row::MIC).unwrap();
     mic.regions
         .iter()
         .find(|r| r.clip == Some(clip))

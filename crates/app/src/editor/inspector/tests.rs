@@ -80,7 +80,7 @@ pub(super) fn first_zoom(harness: &H) -> Item {
     let row = tracks
         .rows
         .iter()
-        .find(|t| t.row == crate::editor::timeline::Row::Zooms);
+        .find(|t| t.row == crate::editor::timeline::Row::ZOOMS);
     row.and_then(|t| t.regions.first())
         .and_then(|r| r.item)
         .unwrap()

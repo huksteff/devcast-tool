@@ -9,7 +9,6 @@ use dc_ops::Step;
 
 use super::Action;
 use super::lanes;
-use super::timeline::Row;
 
 /// The commands that remove annotation track `track` and move the tracks above one down.
 pub fn remove_annotations(project: &Project, track: u32) -> Vec<Step> {
@@ -43,13 +42,8 @@ pub fn remove_sound(project: &Project, track: u32) -> Vec<Step> {
     lanes::audio::remove_track(project, track)
 }
 
-/// The sound button of a recording track row: mutes its sound in every clip that does not set
+/// The sound button of the row of recording track `channel`: mutes its sound in every clip that does not set
 /// its own (`audio channel`), or sounds it again.
-pub fn mute(row: Row, mute: bool) -> Option<Action> {
-    let channel = match row {
-        Row::Mic => dc_capture::audio::MIC_TRACK,
-        Row::System => dc_capture::audio::SYSTEM_TRACK,
-        _ => return None,
-    };
-    Some(Action::Apply(vec![lanes::audio::mute(channel, mute)]))
+pub fn mute(channel: &str, mute: bool) -> Action {
+    Action::Apply(vec![lanes::audio::mute(channel, mute)])
 }

@@ -11,8 +11,8 @@ use dc_ui_kit::tokens::{self, BG, TEXT_3, WHITE};
 use eframe::egui::{self, CursorIcon, Pos2, Rect, Sense, Stroke, Ui, WidgetInfo, pos2};
 
 use super::marks;
+use super::row::Row;
 use super::scale::{TimeScale, timecode};
-use super::tracks::Row;
 use crate::editor::EditorWindow;
 use crate::editor::lanes::cursor::Dot;
 use crate::editor::selection::Selected;
@@ -29,7 +29,7 @@ const GRAB: f32 = 8.0;
 /// The dots on the «Курсор» row of `rows` (each with its lane): picking them and their drawing
 /// over the callout regions.
 pub fn ui(ui: &Ui, rows: &[(Row, Rect)], editor: &mut EditorWindow, scale: &TimeScale) {
-    let Some(&(_, lane)) = rows.iter().find(|(row, _)| *row == Row::Cursor) else {
+    let Some(&(_, lane)) = rows.iter().find(|(row, _)| *row == Row::CURSOR) else {
         return;
     };
     let select = editor.view.tool == Tool::Select;

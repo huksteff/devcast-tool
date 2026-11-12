@@ -16,8 +16,9 @@ use dc_ui_kit::tokens::{BG, ICON, WHITE};
 use eframe::egui::{self, CursorIcon, Rect, Response, Sense, Shape, Stroke, Ui, WidgetInfo};
 
 use super::paint;
+use super::row::Row;
 use super::scale::TimeScale;
-use super::tracks::{Region, Row};
+use super::tracks::Region;
 use super::viewport::Lanes;
 use crate::editor::EditorWindow;
 use crate::editor::montage;
@@ -50,7 +51,7 @@ pub fn ui(ui: &mut Ui, lane: Rect, editor: &mut EditorWindow, scale: &TimeScale,
         .tracks
         .rows
         .iter()
-        .find(|t| t.row == Row::Clips)
+        .find(|t| t.row == Row::CLIPS)
         .map(|t| t.regions.clone())
         .unwrap_or_default();
     let background = ui.interact(lane, ui.scope_id().with("clips-lane"), Sense::click());
@@ -180,7 +181,7 @@ fn blade_time(editor: &EditorWindow, scale: &TimeScale, x: f32) -> OutputTime {
         .tracks
         .rows
         .iter()
-        .filter(|t| t.row != Row::Clips)
+        .filter(|t| t.row != Row::CLIPS)
         .flat_map(|t| &t.regions)
         .flat_map(|r| [r.range.start(), r.range.end()]);
     // A clip edge is no place to cut: `clip split` refuses it.
@@ -188,7 +189,7 @@ fn blade_time(editor: &EditorWindow, scale: &TimeScale, x: f32) -> OutputTime {
         .tracks
         .rows
         .iter()
-        .filter(|t| t.row == Row::Clips)
+        .filter(|t| t.row == Row::CLIPS)
         .flat_map(|t| &t.regions)
         .flat_map(|r| [r.range.start(), r.range.end()])
         .collect();
@@ -266,7 +267,7 @@ fn drag(
     let ghost = body.translate(egui::vec2(left - body.left(), -LIFT));
     let mut lifted = painter.clone();
     lifted.multiply_opacity(GHOST);
-    paint::region_body(&lifted, ghost, dragged, paint::hue(Row::Clips));
+    paint::region_body(&lifted, ghost, dragged, paint::hue(Row::CLIPS));
     paint::selected(&painter, ghost);
     // Over the ghost and inside the lane, so the place stays visible.
     if let Some(x) = mark {

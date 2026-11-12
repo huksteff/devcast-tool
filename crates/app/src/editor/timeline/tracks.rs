@@ -1,36 +1,17 @@
 //! What the timeline shows, read from the project: the rows in the order of the mockup and their
 //! regions at output times (through the time map). Rebuilt when the project changes.
 
-use dc_capture::audio::MIC_TRACK;
 use dc_core::project::MediaKind;
 use dc_core::time::Output;
 use dc_core::{ClipId, KeyTracks, OutputTime, Project, Range, StateError, TimeDelta, TimeMap};
 use dc_ui_kit::lane;
 use dc_ui_kit::strings::timeline as text;
 
+use super::row::Row;
 use super::scale::length;
 use super::wave::{self, Source, Wave};
 use crate::editor::lanes::{self, audio::Plays, audio::Sounding};
 use crate::editor::selection::Item;
-
-/// A row of the timeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Row {
-    Captions,
-    Clips,
-    Zooms,
-    /// Clicks and the callout.
-    Cursor,
-    Keys,
-    /// Annotation track `0..TRACKS`; a higher one is painted above.
-    Annotations(u32),
-    /// Microphone of the recordings.
-    Mic,
-    /// System sound of the recordings.
-    System,
-    /// Extra sound track `0..TRACKS`.
-    Audio(u32),
-}
 
 /// An object on a row: from `range.start` to `range.end` of the output.
 #[derive(Debug, Clone, PartialEq)]
@@ -131,18 +112,14 @@ impl Tracks {
         let keys = tracks.problem(lanes::keys::shown(project));
         let zooms = tracks.lane(lanes::zoom::regions(project, &map));
         let cursor = tracks.lane(lanes::callout::regions(project, &map));
-        tracks.add_lane(Row::Captions, captions);
+        tracks.add_lane(Row::CAPTIONS, captions);
         tracks.clips(project, &map);
-        tracks.add(Row::Zooms, zooms, false);
-        tracks.add(Row::Cursor, cursor, false);
-        tracks.add(Row::Keys, Vec::new(), !keys);
+        tracks.add(Row::ZOOMS, zooms, false);
+        tracks.add(Row::CURSOR, cursor, false);
+        tracks.add(Row::KEYS, Vec::new(), !keys);
         tracks.annotations(project, &map, least.annotations);
         for channel in sounds.channels {
-            let row = if channel.name == MIC_TRACK {
-                Row::Mic
-            } else {
-                Row::System
-            };
+            let row = Row::channel(channel.name);
             let regions = channel.regions.into_iter();
             let regions = regions.filter_map(|s| sounding(project, &map, channel.name, s));
             tracks.add(row, regions.collect(), channel.off);
@@ -150,7 +127,7 @@ impl Tracks {
         for (track, regions) in (0..).zip(sounds.extra) {
             let regions = regions.into_iter();
             let regions = regions.filter_map(|s| sounding(project, &map, "", s));
-            tracks.add(Row::Audio(track), regions.collect(), false);
+            tracks.add(Row::audio(track), regions.collect(), false);
         }
         tracks
     }
@@ -160,7 +137,7 @@ impl Tracks {
     pub fn place_keys(&mut self, project: &Project, keys: &KeyTracks) {
         let (chips, shortcuts) = lanes::keys::chips(project, keys);
         self.shortcuts = shortcuts;
-        if let Some(track) = self.rows.iter_mut().find(|t| t.row == Row::Keys) {
+        if let Some(track) = self.rows.iter_mut().find(|t| t.row == Row::KEYS) {
             track.regions = chips.into_iter().map(Region::from).collect();
         }
     }
@@ -223,7 +200,7 @@ impl Tracks {
                 ..region(range, label)
             });
         }
-        self.add(Row::Clips, regions, false);
+        self.add(Row::CLIPS, regions, false);
     }
 
     /// Annotation rows up to the highest used track, at least `least` and one.
@@ -234,7 +211,7 @@ impl Tracks {
         });
         for (track, regions) in (0..).zip(rows.rows) {
             let regions = regions.into_iter().map(Region::from).collect();
-            self.add(Row::Annotations(track), regions, false);
+            self.add(Row::annotations(track), regions, false);
         }
         self.keys = rows.keys;
     }

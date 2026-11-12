@@ -222,10 +222,10 @@ fn ui_speed() {
     measure(&mut harness, "nothing picked");
     harness.state_mut().editor.view.tab = super::inspector::CAPTIONS.id;
     measure(&mut harness, "captions tab");
-    let cue = first(&harness, Row::Captions);
+    let cue = first(&harness, Row::CAPTIONS);
     harness.state_mut().editor.view.selection.only(cue);
     measure(&mut harness, "a cue picked");
-    let annotation = first(&harness, Row::Annotations(2));
+    let annotation = first(&harness, Row::annotations(2));
     let selection = &mut harness.state_mut().editor.view.selection;
     selection.clear();
     selection.only(annotation);

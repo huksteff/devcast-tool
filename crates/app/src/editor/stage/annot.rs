@@ -19,16 +19,12 @@ use crate::editor::EditorWindow;
 use crate::editor::lanes::annotations::AnnotId;
 use crate::editor::lanes::boxes::{self, OnFrame, Placed};
 use crate::editor::selection::{Item, Selected};
-use crate::editor::timeline::Row;
 
 /// The annotations shown at the playhead, bottom to top, with their boxes on a `canvas` px
 /// frame; hidden rows do not count.
 pub fn shown(editor: &EditorWindow, canvas: Vec2) -> Vec<OnFrame> {
     let rows = editor.tracks.rows.iter().filter(|t| !t.off);
-    let placed = rows.filter_map(|t| match t.row {
-        Row::Annotations(track) => Some((track, &t.regions)),
-        _ => None,
-    });
+    let placed = rows.filter_map(|t| Some((t.row.annotation_track()?, &t.regions)));
     let regions = placed.flat_map(|(track, regions)| {
         regions.iter().filter_map(move |r| {
             Some(Placed {

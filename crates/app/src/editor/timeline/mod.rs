@@ -28,6 +28,7 @@ mod places;
 mod pointer;
 mod range;
 mod regions;
+mod row;
 mod scale;
 mod snap;
 mod tracks;
@@ -61,8 +62,9 @@ use dc_ui_kit::widgets::{Button, IconButton, Kind, Slider};
 use eframe::egui::{self, Align, Frame, Layout, Margin, Rect, ScrollArea, Sense, Stroke, Ui, vec2};
 
 pub use paint::{hue, name};
+pub use row::{Adds, Row};
 pub use scale::{TimeScale, timecode};
-pub use tracks::{Least, Region, Row, Track, Tracks};
+pub use tracks::{Least, Region, Track, Tracks};
 pub use viewport::Viewport;
 pub use wave::Source;
 
@@ -137,7 +139,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32, place: Place)
                 let shows = (&editor.tracks, &editor.waves);
                 let (press, head, lane, lifted) = row(ui, track, shows, &scale, rows);
                 asked = asked.or(press);
-                if let (true, Row::Annotations(from)) = (lifted, track.row) {
+                if let (true, Some(from)) = (lifted, track.row.annotation_track()) {
                     editor.view.lift = Some(from);
                 }
                 shown.push((track.row, lane));
@@ -146,7 +148,7 @@ pub fn ui(ui: &mut Ui, editor: &mut EditorWindow, saved_rows: f32, place: Place)
             if let Some(press) = asked {
                 heads::press(editor, press);
             }
-            if let Some(&(_, lane)) = shown.iter().find(|(row, _)| *row == Row::Clips) {
+            if let Some(&(_, lane)) = shown.iter().find(|(row, _)| *row == Row::CLIPS) {
                 clips::ui(ui, lane, editor, &scale, &lanes);
             }
             regions::ui(ui, &shown, editor, &scale, &lanes);
@@ -340,7 +342,7 @@ fn row(
         scale,
         waves,
     );
-    if track.row == Row::Clips {
+    if track.row == Row::CLIPS {
         paint::speeds(&ui.painter().with_clip_rect(lane), lane, tracks, scale);
     }
     let (press, lifted) = heads::header(ui, head, track, height);
