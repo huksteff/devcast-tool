@@ -1,6 +1,36 @@
 use crate::skill::{SKILL, install};
 use crate::test_util::Recordings;
 
+#[test]
+fn codex_skill_installs_separately_from_claude_and_supports_dry_run() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path().join("Мой профиль");
+    let target = crate::skill::in_home(&home, Some("codex"));
+    assert_eq!(target, home.join(".agents/skills/devcast/SKILL.md"));
+    let claude = crate::skill::in_home(&home, None);
+    assert_eq!(claude, home.join(".claude/skills/devcast/SKILL.md"));
+    install(&target, true).unwrap();
+    assert!(!target.exists());
+    install(&target, false).unwrap();
+    assert_eq!(std::fs::read_to_string(&target).unwrap(), SKILL);
+    assert!(!claude.exists());
+}
+
+#[test]
+fn skill_install_accepts_codex_without_changing_the_default() {
+    let f = crate::test_util::Fixture::new();
+    for (args, folder) in [
+        ("skill install --agent codex --dry-run", ".agents"),
+        ("skill install --dry-run", ".claude"),
+    ] {
+        let out = f.run(args);
+        assert_eq!(out.code, 0, "{}", out.stderr);
+        assert!(out.stdout.contains(folder), "{}", out.stdout);
+    }
+    assert_eq!(f.run("skill install --agent missing --dry-run").code, 2);
+    assert_eq!(f.run("skill files --agent codex --dry-run").code, 2);
+}
+
 /// Every `devcast …` line of SKILL.md's code blocks runs, in order, on a 30 s project of two
 /// recordings with telemetry, a picture `логотип.png`, a sound `музыка.mp3` and a font
 /// `шрифт.ttf`; the JSON block is the plan.

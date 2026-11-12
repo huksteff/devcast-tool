@@ -1,4 +1,4 @@
-//! Signing Claude Code in from the app, without its console window: `claude auth login` runs
+//! Signing an agent in from the app, without a console window: its login command runs
 //! with pipes, tells the page to open («If the browser didn't open, visit: https://…») and
 //! waits on its stdin for the code that page shows. The app opens the page in the browser
 //! itself and hands the code over.
@@ -77,7 +77,7 @@ impl Login {
 impl Drop for Login {
     fn drop(&mut self) {
         if self.ended().is_none() {
-            let _ = self.child.kill();
+            crate::run::kill_tree(&mut self.child);
             let _ = self.child.wait();
         }
     }

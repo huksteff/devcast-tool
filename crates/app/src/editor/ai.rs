@@ -26,6 +26,7 @@ pub enum AiAsk {
     Restart,
     /// «Проверить снова».
     LookAgain,
+    RefreshModels,
     /// «Войти»: the agent's sign-in; its page opens in the browser.
     Login,
     /// «Отправить код» of the sign-in.
@@ -80,6 +81,7 @@ pub struct Ai {
     pub found: Vec<Found>,
     /// The choices of the settings, taken each frame.
     pub choices: AiChoices,
+    pub models: super::ai_models::Models,
     /// «Ещё попросить» and «Доделать или исправить».
     pub ask: String,
     pub more: String,
@@ -105,7 +107,7 @@ pub struct Ai {
     pub looked: bool,
     /// The folder with the skill for agents opened without DevCast (8.10).
     pub skill: Option<PathBuf>,
-    signing: Option<Receiver<Option<bool>>>,
+    pub(super) signing: Option<Receiver<Option<bool>>>,
     /// The sign-in that runs («Войти»), the code typed for it and its page until the tab
     /// opens it (`ai_sign_in.rs`).
     pub(super) login: Option<dc_agent::login::Login>,
@@ -132,6 +134,7 @@ impl Ai {
         Self {
             found,
             choices: AiChoices::default(),
+            models: super::ai_models::Models::default(),
             ask: String::new(),
             more: String::new(),
             log: Vec::new(),
@@ -224,6 +227,7 @@ impl Ai {
 
     /// Takes the agent's events; true when the tab has news to draw.
     pub fn receive(&mut self, now: Instant) -> bool {
+        let models_changed = self.models.receive();
         self.sign_in_tick();
         let signed = self.signing.as_ref().and_then(|s| s.try_recv().ok());
         if let Some(signed) = signed {
@@ -232,7 +236,7 @@ impl Ai {
             self.refused &= signed != Some(true);
         }
         let Some(job) = &self.job else {
-            return signed.is_some();
+            return signed.is_some() || models_changed;
         };
         let events = job.receive();
         let news = !events.is_empty();
@@ -303,14 +307,14 @@ impl Ai {
     /// skill for agents opened without DevCast.
     pub fn look_again(&mut self, ctx: &egui::Context) -> Result<(), String> {
         self.looked = true;
-        self.found = find(&Places::here());
-        self.check_sign_in(ctx);
+        self.discovered(find(&Places::here()), ctx);
         self.write_skill()
     }
 
     /// Asks the agent whether it is signed in, on a thread that wakes the main window: the
     /// answer is a process, too slow for a frame.
     pub fn check_sign_in(&mut self, ctx: &egui::Context) {
+        self.refresh_models(ctx);
         let Some(agent) = self.agent().cloned() else {
             self.signed_in = None;
             return;
