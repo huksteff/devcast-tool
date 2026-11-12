@@ -84,9 +84,7 @@ fn the_worker_recognizes_the_speech_fixture() {
     };
     assert!(!cues.is_empty());
     assert!(
-        messages[..messages.len() - 1]
-            .iter()
-            .all(|m| matches!(m, Message::Progress(_))),
+        messages[..messages.len() - 1].iter().all(|m| !m.is_last()),
         "{messages:?}"
     );
     let mut project = project;
