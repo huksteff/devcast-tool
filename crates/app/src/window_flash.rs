@@ -64,6 +64,14 @@ pub fn left(shared: &mut Shared, now: Instant) -> Option<Duration> {
     left
 }
 
+/// Every pass of the main window: the frame while it lasts.
+pub fn tick(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
+    let left = left(&mut lock(shared), Instant::now());
+    if let Some(left) = left {
+        show(ctx, shared, left);
+    }
+}
+
 /// Shows the frame while it lasts; `left` is from [`left`].
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, left: Duration) {
     let Some(frame) = lock(shared).window_flash.map(|flash| flash.frame) else {

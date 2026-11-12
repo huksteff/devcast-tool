@@ -10,7 +10,7 @@ use dc_capture::{Source, SourceList};
 use dc_ui_kit::fonts::{self, Weight};
 use dc_ui_kit::strings::countdown as text;
 use dc_ui_kit::tokens::{BORDER, COUNTDOWN_FILL, FS_S, R_COUNTDOWN, S2, TEXT_3, WHITE};
-use eframe::egui::{self, Rect, Sense, Ui, vec2};
+use eframe::egui::{self, Pos2, Rect, Sense, Ui, pos2, vec2};
 
 use crate::app::{Shared, lock, other_window};
 use crate::borderless;
@@ -43,6 +43,9 @@ pub fn target_center(source: &Source, sources: &SourceList) -> Option<(i32, i32)
     }
 }
 
+/// Viewport of the countdown window.
+pub const ID: &str = "countdown";
+
 /// Shows the window while the countdown runs.
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
     let (left, center) = {
@@ -50,45 +53,68 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>) {
         let Session::Countdown(countdown) = &shared.session else {
             return;
         };
-        let source = &shared.store.get().recording.source;
-        (countdown.left, target_center(source, &shared.sources))
+        let settings = shared.store.get();
+        let center = target_center(&settings.recording.source, &shared.sources).or_else(|| {
+            let b = settings.hud.monitor(&shared.sources.monitors)?.bounds;
+            Some((b.x() + b.width() as i32 / 2, b.y() + b.height() as i32 / 2))
+        });
+        (countdown.left, center)
     };
-    let ppp = ctx.native_pixels_per_point().unwrap_or(1.0);
-    let size = borderless::outer_size(vec2(SIDE, SIDE));
-    let mut builder = borderless::floating(text::CANCEL_HINT)
+    let builder = borderless::floating(text::CANCEL_HINT)
         .with_visible(false)
         .with_resizable(false)
         .with_active(true)
-        .with_inner_size(size);
-    if let Some((x, y)) = center {
-        let middle = egui::pos2(x as f32 / ppp, y as f32 / ppp);
-        let panel = Rect::from_center_size(middle, vec2(SIDE, SIDE));
-        builder = builder.with_position((panel + borderless::margin()).min);
-    }
+        .with_inner_size(borderless::outer_size(vec2(SIDE, SIDE)));
     let shared = Arc::clone(shared);
-    ctx.show_viewport_deferred(
-        egui::ViewportId::from_hash_of("countdown"),
-        builder,
-        move |ui, _| {
-            other_window(ui, &shared, |ui, shared| {
-                // Never in a recording, whatever moment the recorder starts at.
-                if let Session::Countdown(countdown) = &mut shared.session {
-                    if !countdown.excluded {
-                        ui.ctx()
-                            .send_viewport_cmd(egui::ViewportCommand::ContentProtected(true));
-                        countdown.excluded = true;
-                    } else if !countdown.shown {
-                        ui.ctx()
-                            .send_viewport_cmd(egui::ViewportCommand::Visible(true));
-                        countdown.shown = true;
-                    }
+    ctx.show_viewport_deferred(egui::ViewportId::from_hash_of(ID), builder, move |ui, _| {
+        other_window(ui, &shared, |ui, shared| {
+            let placed = center.is_none_or(|center| place(ui.ctx(), center));
+            // Never in a recording, whatever moment the recorder starts at.
+            if let Session::Countdown(countdown) = &mut shared.session {
+                if !countdown.excluded {
+                    ui.ctx()
+                        .send_viewport_cmd(egui::ViewportCommand::ContentProtected(true));
+                    countdown.excluded = true;
+                } else if !countdown.shown && placed {
+                    ui.ctx()
+                        .send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    countdown.shown = true;
                 }
-                if face(ui, left) {
-                    shared.cancel_countdown();
-                }
-            });
-        },
-    );
+            }
+            if face(ui, left) {
+                shared.cancel_countdown();
+            }
+        });
+    });
+}
+
+/// Moves the window so the middle of its panel is at `center`, physical desktop pixels; true
+/// when it stands there. The place is set from the window's own frame, in its own scale: winit
+/// opens a window on the primary monitor and converts points with that monitor's scale, which
+/// misses the target on a monitor of another scale. Moved onto such a monitor, the window is
+/// rescaled by Windows, and the next frame centres it again.
+fn place(ctx: &egui::Context, center: (i32, i32)) -> bool {
+    let Some(window) = ctx.input(|i| i.viewport().outer_rect) else {
+        return false;
+    };
+    let ppp = ctx.pixels_per_point();
+    let wanted = corner(center, window, ppp);
+    if (window.min.to_vec2() * ppp - wanted.to_vec2())
+        .abs()
+        .max_elem()
+        <= 1.0
+    {
+        return true;
+    }
+    ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(wanted / ppp));
+    false
+}
+
+/// Top-left corner, physical desktop pixels, of a floating window now at `window` (points of
+/// `ppp` physical pixels) that puts the middle of its panel at `center`.
+fn corner(center: (i32, i32), window: Rect, ppp: f32) -> Pos2 {
+    let offset = (borderless::panel_rect(window).center() - window.min) * ppp;
+    pos2(center.0 as f32 - offset.x, center.1 as f32 - offset.y).round()
 }
 
 /// The panel with the number and the hint, in a window with the shadow margin around it; true
@@ -154,5 +180,30 @@ impl Countdown {
             self.next += SECOND;
         }
         self.left == 0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use eframe::egui::{Rect, pos2};
+
+    use super::{SIDE, corner};
+    use crate::borderless;
+
+    /// The panel's middle lands on the target in physical pixels at any scale of the window.
+    #[test]
+    fn panel_centred_on_target_in_physical_pixels() {
+        for ppp in [1.0, 1.25, 1.5, 2.0] {
+            let window = Rect::from_min_size(
+                pos2(-300.0, 40.0),
+                borderless::outer_size(eframe::egui::vec2(SIDE, SIDE)),
+            );
+            let center = (3200, 700);
+            let at = corner(center, window, ppp);
+            let moved = window.translate(at.to_vec2() / ppp - window.min.to_vec2());
+            let middle = borderless::panel_rect(moved).center() * ppp;
+            assert!((middle.x - 3200.0).abs() <= 1.0, "{ppp}: {middle:?}");
+            assert!((middle.y - 700.0).abs() <= 1.0, "{ppp}: {middle:?}");
+        }
     }
 }

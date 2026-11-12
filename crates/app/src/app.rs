@@ -364,25 +364,26 @@ impl eframe::App for App {
 /// rectangle. Threads (levels, previews) wake only the main window: a repaint asked of a
 /// viewport that is not shown makes egui open an empty default window («egui window»), which
 /// on Vulkan also crashed when it was destroyed. The main window passes the repaint on to the
-/// popover and the settings, which exist for sure while it shows them.
+/// popover, the countdown and the settings, which exist for sure while it shows them.
 pub fn show_windows(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, bar: Option<egui::Rect>) {
     crate::area::open_asked(ctx, shared);
-    let (open, area, settings) = {
+    let (open, area, settings, countdown) = {
         let shared = lock(shared);
         (
             shared.popover,
             shared.area.is_some(),
             shared.settings.is_some(),
+            matches!(shared.session, Session::Countdown(_)),
         )
     };
     if area {
         crate::area::show(ctx, shared);
     }
-    crate::countdown::show(ctx, shared);
-    let flash = crate::window_flash::left(&mut lock(shared), std::time::Instant::now());
-    if let Some(left) = flash {
-        crate::window_flash::show(ctx, shared, left);
+    if countdown {
+        crate::countdown::show(ctx, shared);
+        ctx.request_repaint_of(egui::ViewportId::from_hash_of(crate::countdown::ID));
     }
+    crate::window_flash::tick(ctx, shared);
     crate::editor::show(ctx, shared);
     if let (Some(open), Some(bar)) = (open, bar) {
         popover::show(ctx, shared, open, bar);
