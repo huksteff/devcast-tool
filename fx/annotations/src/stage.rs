@@ -39,6 +39,12 @@ impl OnFrame {
     pub fn draws(&self) -> bool {
         self.kind == Kind::Drawing
     }
+
+    /// A text: a double-click puts the keys into its text on the panel (its field is keyed by
+    /// the annotation's id, `dc_ui_kit::panel::rows::focus_text`).
+    pub fn typed(&self) -> bool {
+        self.kind == Kind::Text
+    }
 }
 
 /// The annotations of `placed` (the rows shown) the `playhead` shows, bottom to top, with their

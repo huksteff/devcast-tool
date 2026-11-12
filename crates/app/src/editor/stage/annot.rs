@@ -5,8 +5,10 @@
 //! and the centre stick to the frame and to the other annotations shown (7.23) while the snapping
 //! (N) is on and Ctrl is up. One `annot set` per gesture; the preview shows the draft meanwhile.
 //! A left drag inside the picked drawing draws instead (`brush.rs`); its box moves with a right
-//! drag (mockup 3c).
+//! drag (mockup 3c). A double-click on a text puts the keys into its text on the panel, all of
+//! it selected, so typing replaces it.
 
+use dc_ui_kit::panel::rows;
 use dc_ui_kit::stage::geom::{GRAB, Grip, KNOB, Mapping, Resize};
 use dc_ui_kit::stage::paint;
 use dc_ui_kit::stage::snap::Lines;
@@ -119,6 +121,14 @@ fn gestures(
         && let Some(at) = response.interact_pointer_pos()
     {
         pick(editor, shown, map.canvas(at));
+    }
+    if response.double_clicked()
+        && let Some(at) = response.interact_pointer_pos()
+        && let Some(on) = topmost(shown, map.canvas(at)).filter(|on| on.typed())
+    {
+        // The panel of the picked text is drawn next pass: its field takes the keys then.
+        rows::focus_text(ui.ctx(), on.edit.id);
+        ui.ctx().request_repaint();
     }
     if response.dragged()
         && let Some(pointer) = response.interact_pointer_pos()

@@ -328,6 +328,8 @@ fn source(ui: &mut Ui, shared: &mut Shared) {
             shared.report(saved);
             if let Source::Window(id) = source {
                 shared.report(dc_capture::win::hud_window::bring_to_front(id));
+                shared.window_flash =
+                    crate::window_flash::WindowFlash::of(id, std::time::Instant::now());
             }
         }
     }
