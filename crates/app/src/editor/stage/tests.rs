@@ -319,3 +319,43 @@ fn auto_keys_put_a_drag_into_a_new_key_at_the_playhead() {
     undo(&mut harness);
     assert_eq!(project_json(&harness), json(&cli(&[])), "one step");
 }
+
+#[test]
+fn a_double_click_on_a_text_puts_the_keys_into_it() {
+    let mut harness = started();
+    at(&mut harness, 24.0);
+    let on = on_screen(&harness, pos2(600.0, 200.0));
+    // The harness clock runs a quarter second per frame and the second click comes a frame later.
+    harness
+        .ctx
+        .options_mut(|o| o.input_options.max_double_click_delay = 1.0);
+    harness.event(Event::PointerMoved(on));
+    for pressed in [true, false].repeat(2) {
+        harness.event(Event::PointerButton {
+            pos: on,
+            button: PointerButton::Primary,
+            pressed,
+            modifiers: Modifiers::NONE,
+        });
+    }
+    harness.run();
+    let hint = dc_ui_kit::strings::annotations::TEXT_HINT;
+    assert!(
+        harness.get_by_label(hint).is_focused(),
+        "the text takes the keys"
+    );
+    harness.get_by_label(hint).type_text("Шаг");
+    harness.run();
+    // A click away (another field takes the keys) applies the words.
+    let size = dc_ui_kit::strings::annotations::SIZE;
+    harness
+        .get_by_role_and_label(eframe::egui::Role::SpinButton, size)
+        .focus();
+    harness.run();
+    let line = "text set a1 --text Шаг";
+    assert_eq!(
+        project_json(&harness),
+        json(&cli(&[line])),
+        "the text replaced"
+    );
+}
