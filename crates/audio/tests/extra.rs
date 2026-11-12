@@ -145,3 +145,68 @@ fn a_normalized_file_measures_minus_16_lufs() {
     let loudness = meter.result().unwrap().integrated;
     assert!((loudness - TARGET).abs() < 0.2, "{loudness} LUFS");
 }
+
+/// A file placed from its first sample after a gap: its fade-in asks for the frames just before
+/// the file, which are silence — not a seek before the start that an mp3 refuses.
+#[test]
+fn a_file_from_its_start_plays_after_a_gap() {
+    for name in [
+        "голос.mp3",
+        "голос.flac",
+        "голос.m4a",
+        "голос.wav",
+        "голос.ogg",
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let project = silent_project(dir.path(), false);
+        let voice = make(
+            dir.path(),
+            name,
+            "sine=frequency=300:sample_rate=44100:d=2",
+            &[],
+        );
+        let levels = Levels {
+            extra: vec![extra(&voice, 1.0, 3.0, 0.0, ChannelLevel::default())],
+            ..Levels::default()
+        };
+        let mixed = render_all(&mut mixer(dir.path(), &project, &levels), 1024);
+        assert!(rms_at(&mixed, 0.0, 0.9) < 1e-4, "{name}: the gap is silent");
+        assert!(rms_at(&mixed, 1.2, 2.8) > 0.05, "{name}: the file sounds");
+    }
+}
+
+/// Playing again from the start of a file (the playhead back at a clip's first moment): the
+/// reader goes back to before its first frame — to the start of the file, not to a time before
+/// it, which a seek refuses.
+#[test]
+fn a_file_plays_again_from_its_start() {
+    for name in [
+        "голос.mp3",
+        "голос.flac",
+        "голос.m4a",
+        "голос.wav",
+        "голос.ogg",
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let project = silent_project(dir.path(), false);
+        let voice = make(
+            dir.path(),
+            name,
+            "sine=frequency=300:sample_rate=44100:d=2",
+            &[],
+        );
+        let levels = Levels {
+            extra: vec![extra(&voice, 1.0, 3.0, 0.0, ChannelLevel::default())],
+            ..Levels::default()
+        };
+        let mut mixer = mixer(dir.path(), &project, &levels);
+        let second = RATE as usize * CHANNELS;
+        let mut first = vec![0.0; second];
+        mixer.render(i64::from(RATE), &mut first).unwrap();
+        let mut again = vec![0.0; second];
+        mixer.render(i64::from(RATE) * 2, &mut again).unwrap();
+        mixer.render(i64::from(RATE), &mut again).unwrap();
+        assert!(rms(&channel(&first, 0)) > 0.05, "{name}: the file sounds");
+        assert!(first == again, "{name}: the same sound the second time");
+    }
+}
