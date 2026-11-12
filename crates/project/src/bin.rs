@@ -40,13 +40,44 @@ fn binned(roots: &[PathBuf]) -> Result<Vec<trash::TrashItem>> {
     Ok(found)
 }
 
-/// Windows paths ignore case.
+/// One folder however it is written: Windows paths ignore case, and the same folder may come
+/// as an 8.3 short name (`C:\Users\4D88~1\…`, as `%TEMP%` of a non-Latin user name) while the
+/// bin keeps its long one. The parent folder still exists, so it is compared as the file system
+/// resolves it.
 fn same_path(a: &Path, b: &Path) -> bool {
-    a.to_string_lossy().to_lowercase() == b.to_string_lossy().to_lowercase()
+    let key = |p: &Path| resolved(p).to_string_lossy().to_lowercase();
+    key(a) == key(b)
+}
+
+/// `path` with its parent folder resolved by the file system; as written when it can not be.
+fn resolved(path: &Path) -> PathBuf {
+    let (Some(parent), Some(name)) = (path.parent(), path.file_name()) else {
+        return path.to_path_buf();
+    };
+    match std::fs::canonicalize(parent) {
+        Ok(parent) => parent.join(name),
+        Err(_) => path.to_path_buf(),
+    }
 }
 
 fn failed(e: trash::Error) -> ProjectError {
     ProjectError::Restore {
         reason: e.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::same_path;
+
+    #[test]
+    fn a_folder_is_the_same_however_its_parent_is_written() {
+        let dir = tempfile::tempdir().unwrap();
+        let sub = dir.path().join("Проект");
+        std::fs::create_dir(&sub).unwrap();
+        let long = dir.path().join("демо.devcast");
+        let roundabout = sub.join("..").join("ДЕМО.devcast");
+        assert!(same_path(&long, &roundabout));
+        assert!(!same_path(&long, &dir.path().join("другое.devcast")));
     }
 }
