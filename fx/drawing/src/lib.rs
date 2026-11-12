@@ -8,6 +8,7 @@ pub mod look;
 mod model;
 mod panel;
 pub mod stage;
+mod strokes;
 
 pub use commands::{DrawingAdd, DrawingClear, DrawingRm, DrawingSet};
 pub use evaluate::evaluate;

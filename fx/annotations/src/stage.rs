@@ -3,31 +3,23 @@
 //! paint order: track, then order within it), and what a drag of the picked box makes of it —
 //! moved, resized (Shift keeps the proportion, Alt keeps the centre) or turned (Shift: steps of
 //! 15°), stuck to the lines it is given ([`Drag::follow`]). One `annot set` per gesture, to the
-//! key the panel would edit ([`Edit`], `--at`). Picking and which gesture runs are the editor's.
+//! key the panel would edit ([`Edit`], `--at`). Picking and the gestures are the editor's
+//! table entry [`Boxes`] (`boxes.rs`).
 
 use dc_core::OpName;
-use dc_core::time::Output;
-use dc_core::{OutputTime, Project, Range, Step};
+use dc_core::{OutputTime, Project, Step};
 use dc_ui_kit::egui::{CursorIcon, Pos2, Vec2};
-use dc_ui_kit::lane::Item;
 use dc_ui_kit::stage::geom::{Boxed, Grip, Mapping, Resize};
 use dc_ui_kit::stage::snap::{Guide, Lines, PULL, axes};
+use dc_ui_kit::stage::{Cx, Shown};
 use serde_json::json;
 
+pub use crate::boxes::Boxes;
 pub use crate::panel::Edit;
 use crate::panel::target;
-use crate::{AnnotKind, Annotations, Kind, SIZE_MIN, key_offset};
+use crate::{AnnotId, AnnotKind, Annotations, Kind, SIZE_MIN, key_offset};
 
 const ANNOT_SET: OpName = OpName::of::<crate::AnnotSet>();
-
-/// An annotation region of the timeline: its track, object, place on the output and keys.
-#[derive(Debug, Clone, Copy)]
-pub struct Placed<'a> {
-    pub track: u32,
-    pub item: Item,
-    pub range: Range<Output>,
-    pub keys: &'a [OutputTime],
-}
 
 /// An annotation the playhead shows: where its edits go and its box now.
 #[derive(Debug, Clone, PartialEq)]
@@ -50,12 +42,12 @@ impl OnFrame {
     }
 }
 
-/// The annotations of `placed` (the rows shown) the `playhead` shows, bottom to top, with their
+/// The annotations of `placed` (the regions shown) the `playhead` shows, bottom to top, with their
 /// boxes on a `canvas` px frame; `auto_keys` — where their edits go.
-pub fn shown<'a>(
+fn shown<'a>(
     project: &Project,
     (playhead, auto_keys): (OutputTime, bool),
-    placed: impl IntoIterator<Item = Placed<'a>>,
+    placed: impl IntoIterator<Item = &'a Shown<'a>>,
     canvas: Vec2,
 ) -> Vec<OnFrame> {
     let Ok(state) = project.state::<Annotations>() else {
@@ -86,6 +78,17 @@ pub fn shown<'a>(
     }
     found.sort_by_key(|(order, _)| *order);
     found.into_iter().map(|(_, on)| on).collect()
+}
+
+/// The annotations of the regions `cx` shows at its playhead, bottom to top, with their boxes on a
+/// `canvas` px frame.
+pub fn on_frame(cx: &Cx<'_>, canvas: Vec2) -> Vec<OnFrame> {
+    shown(cx.project, (cx.playhead, cx.auto_keys), cx.shown, canvas)
+}
+
+/// The annotation picked alone (as a region or by one of its keys).
+pub fn picked(cx: &Cx<'_>) -> Option<AnnotId> {
+    cx.picked?.item().id::<AnnotKind>()
 }
 
 /// A drag of the picked annotation's box: what it holds, the box and the press (canvas px), the

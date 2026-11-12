@@ -5,7 +5,7 @@
 //! (letting go of Alt goes on adding points, as Shift did in v1). The circle under the pointer is
 //! the stroke's thickness as the frame draws it, on screen ([`diameter`]). One `drawing add` per
 //! stroke, to the key the panel would edit (`--at`); the preview shows the draft meanwhile.
-//! Which gesture runs and where the stroke starts are the editor's.
+//! The gesture itself is the editor's table entry [`Strokes`] (`strokes.rs`).
 
 use dc_core::OpName;
 use dc_core::{OutputTime, Project, Step};
@@ -24,6 +24,7 @@ use serde_json::{Value, json};
 use crate::{DrawingBody, WIDTH_MAX, WIDTH_MIN};
 
 const DRAWING_ADD: OpName = OpName::of::<crate::DrawingAdd>();
+pub use crate::strokes::Strokes;
 pub use crate::{ERASER_WIDTH, StrokeTool};
 
 /// Tool, colour and thickness of a stroke about to begin.

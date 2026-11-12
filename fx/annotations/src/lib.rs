@@ -4,6 +4,7 @@
 
 mod animate;
 mod arrange;
+mod boxes;
 mod commands;
 mod keyed;
 mod keys;

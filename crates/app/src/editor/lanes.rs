@@ -8,18 +8,16 @@ use dc_core::project::Media;
 use dc_core::{OpName, Project};
 use dc_fx_annotations::Kind;
 pub use dc_fx_annotations::lane as annotations;
-pub use dc_fx_annotations::stage as boxes;
 pub use dc_fx_audio_tracks::lane as audio;
 pub use dc_fx_callout::lane as callout;
 pub use dc_fx_captions::lane as captions;
 pub use dc_fx_crop::stage as frame;
 pub use dc_fx_cursor::lane as cursor;
 use dc_fx_cursor::panel::PressButton;
-pub use dc_fx_drawing::stage as brush;
 pub use dc_fx_keys::lane as keys;
 pub use dc_fx_zoom::lane as zoom;
-pub use dc_fx_zoom::stage as zoom_frame;
 use dc_ui_kit::lane::{Item, Lane};
+use dc_ui_kit::stage::Stage;
 use serde_json::{Map, Value};
 
 /// The commands of the main track (fx/cut): the blade, Delete, R, a dragged clip.
@@ -38,6 +36,14 @@ const LANES: [&Lane; 5] = [
     &dc_fx_callout::lane::LANE,
     &dc_fx_annotations::lane::LANE,
     &dc_fx_audio_tracks::lane::LANE,
+];
+
+/// The gestures on the preview, in the order the pointer is offered to them: the picked zoom's
+/// frame takes it first, the brush in a picked drawing before the boxes of the annotations.
+pub static STAGES: [&dyn Stage; 3] = [
+    &dc_fx_zoom::stage::ZoomFrame,
+    &dc_fx_drawing::stage::Strokes,
+    &dc_fx_annotations::stage::Boxes,
 ];
 
 /// The dots of the presses `of` gives for each recording of `project`, in time order.
