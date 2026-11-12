@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use dc_ops::export::Spec;
 use dc_ops::export_jobs::{Job, finished};
 use dc_ops::live::{
-    Answer, AppStatus, CaptionsState, EditorState, RecordAnswer, RecordControl, Request,
+    Answer, AppStatus, CaptionsState, EditorState, Once, RecordAnswer, RecordControl, Request,
 };
 
 use crate::app::Shared;
@@ -94,7 +94,7 @@ impl Shared {
     /// Answers a request of the app channel now, or keeps `reply` until the answer is known.
     pub fn call(&mut self, request: Request, reply: Reply) {
         match request {
-            Request::Record => self.record_asked(reply),
+            Request::Record(once) => self.record_asked(once, reply),
             Request::RecordControl(control) => self.control_asked(control, reply),
             Request::Export(spec) => self.export_asked(*spec, reply),
             Request::Exports => reply.send(Answer::Exports {
@@ -114,13 +114,19 @@ impl Shared {
         }
     }
 
-    /// `devcast record --app`: «Запись» of the HUD; the run hears when the first frame is in.
-    fn record_asked(&mut self, reply: Reply) {
+    /// `devcast record --app`: «Запись» of the HUD with `once` for this recording; the run
+    /// hears when the first frame is in — with a duration, when the recording is saved.
+    fn record_asked(&mut self, once: Once, reply: Reply) {
         if !self.session.is_idle() {
             return reply.send(Answer::Record(RecordAnswer::NotNow(self.session.state())));
         }
         self.record();
-        self.waiters.push(Wait::Start, reply);
+        self.once = once;
+        let wait = match once.duration {
+            Some(_) => Wait::Stop,
+            None => Wait::Start,
+        };
+        self.waiters.push(wait, reply);
     }
 
     /// `devcast record stop|pause|resume|cancel`: as the HUD's buttons and hotkeys, but a cancel

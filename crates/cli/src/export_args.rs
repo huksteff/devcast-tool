@@ -32,6 +32,10 @@ pub(crate) struct ExportArgs {
     pub quality: Option<QualityArg>,
     #[arg(long = "loop", value_enum, help = "Зацикливание gif: on или off [on]")]
     pub looped: Option<Switch>,
+    #[arg(long, help = "Экспортировать кусок: с этого момента видео [с начала]")]
+    pub from: Option<String>,
+    #[arg(long, help = "Экспортировать кусок: до этого момента видео [до конца]")]
+    pub to: Option<String>,
 }
 
 impl ExportArgs {
@@ -42,6 +46,8 @@ impl ExportArgs {
             && self.fps.is_none()
             && self.quality.is_none()
             && self.looped.is_none()
+            && self.from.is_none()
+            && self.to.is_none()
     }
 }
 

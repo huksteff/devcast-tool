@@ -58,6 +58,7 @@ mod style;
 mod telemetry;
 mod transcript;
 mod trash;
+mod voice;
 pub mod worker;
 pub mod workspace;
 

@@ -1,21 +1,25 @@
 //! `devcast silences [--min 0.5] [--db -45] [--track mic] [--from --to]`: quiet stretches of the
 //! output, for cutting pauses (`devcast cut <from>-<to>`). Each clip is searched in its own
 //! recording, by default with the threshold of that recording (`silence::threshold`); quiet
-//! parts on both sides of a cut or a clip boundary join into one.
+//! parts on both sides of a cut or a clip boundary join into one. `devcast cut --silences`
+//! cuts them by one command ([`cut_args`]).
 
 use std::collections::HashMap;
 
 use dc_audio::silence::{self, DEFAULT_MIN};
 use dc_audio::{SourceTrack, tracks};
-use dc_core::{OutputTime, Project, TimeDelta, TimeMap};
+use dc_core::{Op, OutputTime, Project, Step, TimeDelta, TimeMap};
+use dc_fx_cut::Cut;
 use dc_project::ProjectDir;
-use serde_json::json;
+use serde_json::{Map, Value, json};
 
 use crate::edit::{Ctx, answer};
 use crate::error::CliError;
 use crate::ls::time;
 use crate::round::thousandths;
 use crate::run::Answer;
+use crate::voice::Mute;
+use crate::workspace::Workspace;
 
 #[derive(Debug, Clone, clap::Args)]
 pub(crate) struct Args {
@@ -57,7 +61,20 @@ pub(crate) fn silences(ctx: &Ctx<'_>, query: &Args) -> Result<Answer, CliError> 
     );
     let mut workspace = ctx.open(false)?;
     let min = TimeDelta::from_secs_f64(query.min);
-    let mut found = search(workspace.dir(), &workspace.project, query, min)?;
+    let looked = Looked {
+        track: query.track.as_ref(),
+        db: query.db,
+        min,
+    };
+    let mut found = search(workspace.dir(), &workspace.project, &looked)?;
+    if query.track.is_none() {
+        for mute in mute(&workspace)? {
+            workspace.warnings.push(format!(
+                "{} — это тишина другого звука, а не паузы речи",
+                mute.line()
+            ));
+        }
+    }
     found.retain(|&(start, end)| {
         end.since(start) >= min && from.is_none_or(|f| end > f) && to.is_none_or(|t| start < t)
     });
@@ -78,13 +95,120 @@ pub(crate) fn silences(ctx: &Ctx<'_>, query: &Args) -> Result<Answer, CliError> 
     Ok(answer(&mut workspace, lines.join("\n"), json))
 }
 
+/// The recordings of `workspace` without a voice.
+fn mute(workspace: &Workspace) -> Result<Vec<Mute>, CliError> {
+    crate::voice::mute(workspace.dir(), &workspace.project)
+        .map_err(|e| CliError::Failed(e.to_string()))
+}
+
+/// How the silence is looked for.
+struct Looked<'a> {
+    /// The track; none — the microphone (of a video: its first track).
+    track: Option<&'a String>,
+    /// The threshold, dBFS; none — the recording's own.
+    db: Option<f64>,
+    /// The shortest silence on the output.
+    min: TimeDelta,
+}
+
+/// The arguments of `cut --silences` besides the flag itself.
+const CUT_ARGS: [&str; 4] = ["pad", "min", "db", "track"];
+/// How much of each pause `cut --silences` leaves at both of its edges by default, seconds.
+const PAD: f64 = 0.15;
+
+/// `cut --silences [--pad 0.15] [--min 0.5] [--db -45] [--track mic]` (one op or a step of
+/// `apply plan.json`): the arguments of `cut` with the pauses of the speech as its ranges, each
+/// without `pad` seconds at both edges; `None` for any other step. A recording without a voice
+/// is refused: every moment of it is a pause.
+pub(crate) fn cut_args(
+    workspace: &Workspace,
+    step: &Step,
+) -> Result<Option<Map<String, Value>>, CliError> {
+    if step.op != Cut::NAME || !step.args.contains_key(SILENCES) {
+        return Ok(None);
+    }
+    let usage = |text: String| CliError::Usage(text);
+    let example = "devcast cut --silences --pad 0.15";
+    if step.args.get(SILENCES) != Some(&Value::Bool(true)) {
+        return Err(usage(format!("--silences — флаг без значения: {example}")));
+    }
+    if let Some(other) = step
+        .args
+        .keys()
+        .find(|k| *k != SILENCES && !CUT_ARGS.contains(&k.as_str()))
+    {
+        return Err(usage(format!(
+            "cut --silences не берёт «{other}»: либо диапазоны (devcast cut 10-12), либо паузы ({example}; ещё --min, --db, --track)"
+        )));
+    }
+    let number = |name: &str, default: Option<f64>| match step.args.get(name) {
+        None => Ok(default),
+        Some(value) => value
+            .as_f64()
+            .map(Some)
+            .ok_or_else(|| usage(format!("--{name} {value}: нужно число, например {example}"))),
+    };
+    let pad = number("pad", Some(PAD))?.unwrap_or(PAD);
+    let min = number("min", Some(DEFAULT_MIN.as_secs_f64()))?.unwrap_or_default();
+    if !(pad >= 0.0 && pad.is_finite()) || !(min > 0.0 && min.is_finite()) {
+        return Err(usage(format!(
+            "--pad — секунды от 0, --min — секунды больше 0: {example}"
+        )));
+    }
+    let track = match step.args.get("track") {
+        None => None,
+        Some(Value::String(name)) => Some(name),
+        Some(other) => return Err(usage(format!("--track {other}: имя дорожки, например mic"))),
+    };
+    if track.is_none() {
+        let mute = mute(workspace)?;
+        if !mute.is_empty() {
+            let lines: Vec<String> = mute.iter().map(Mute::line).collect();
+            return Err(CliError::Failed(format!(
+                "в записи нет голоса ({}): пауз речи нет, вырез убрал бы всё видео. Ничего не вырезано. Тишину другого звука покажет devcast silences --track system, вырезать её — devcast cut <от>-<до>",
+                lines.join("; ")
+            )));
+        }
+    }
+    let looked = Looked {
+        track,
+        db: number("db", None)?,
+        min: TimeDelta::from_secs_f64(min),
+    };
+    let pad = TimeDelta::from_secs_f64(pad);
+    let ranges: Vec<String> = search(workspace.dir(), &workspace.project, &looked)?
+        .into_iter()
+        .filter(|&(start, end)| end.since(start) >= looked.min)
+        .map(|(start, end)| (start + pad, end - pad))
+        .filter(|(start, end)| start < end)
+        .map(|(start, end)| format!("{}-{}", time_arg(start), time_arg(end)))
+        .collect();
+    if ranges.is_empty() {
+        return Err(CliError::Failed(format!(
+            "пауз от {min} с не найдено: вырезать нечего (devcast silences покажет тишину короче — с --min)"
+        )));
+    }
+    let mut args = Map::new();
+    args.insert("ranges".to_owned(), ranges.join(",").into());
+    Ok(Some(args))
+}
+
+/// The flag of `cut` that asks for the pauses.
+const SILENCES: &str = "silences";
+
+/// `t` as a time of a range: seconds with microseconds.
+fn time_arg(t: OutputTime) -> String {
+    let micros = t.micros().max(0);
+    format!("{}.{:06}", micros / 1_000_000, micros % 1_000_000)
+}
+
 /// Quiet stretches of the whole output, joined across segment boundaries.
 fn search(
     dir: &ProjectDir,
     project: &Project,
-    query: &Args,
-    min: TimeDelta,
+    looked: &Looked<'_>,
 ) -> Result<Vec<(OutputTime, OutputTime)>, CliError> {
+    let min = looked.min;
     let failed = |e: dc_audio::AudioError| CliError::Failed(e.to_string());
     let map = TimeMap::build(project);
     let mut chosen: HashMap<String, (SourceTrack, f64)> = HashMap::new();
@@ -96,10 +220,10 @@ fn search(
         if !chosen.contains_key(&segment.media) {
             let track = crate::speech::pick(
                 tracks(dir, &clip.media).map_err(failed)?,
-                query.track.as_ref(),
+                looked.track,
                 &segment.media,
             )?;
-            let db = match query.db {
+            let db = match looked.db {
                 Some(db) => db,
                 None => silence::threshold(&track).map_err(failed)?,
             };

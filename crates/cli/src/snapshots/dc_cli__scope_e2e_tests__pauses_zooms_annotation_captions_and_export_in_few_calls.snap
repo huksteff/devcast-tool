@@ -4,6 +4,7 @@ expression: log
 ---
 $ devcast info
 Урок 5.devcast: длительность 0:12.533, всё сохранено
+голос: есть
 списки: annots 0, audio 0, callouts 0, captions 0, clips 1, zooms 0; подробно: devcast ls <список>
 
 $ devcast silences
@@ -46,4 +47,5 @@ e1 готово: <проект>\урок.mp4 — 1280×720, 30 fps, 11.4 с, <р
 
 $ devcast info
 Урок 5.devcast: длительность 0:11.383, всё сохранено
+голос: есть
 списки: annots 1, audio 0, callouts 0, captions 3, clips 1, zooms 1; подробно: devcast ls <список>

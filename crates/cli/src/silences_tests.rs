@@ -13,10 +13,16 @@ struct Speech {
 
 impl Speech {
     fn new() -> Self {
+        Self::of("speech.devcast")
+    }
+
+    /// A copy of the recording `name` of the fixtures.
+    fn of(name: &str) -> Self {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path().join("Речь с паузами.devcast");
-        let fixture =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/recordings/speech.devcast");
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../fixtures/recordings")
+            .join(name);
         crate::test_util::copy_dir(&fixture, &root);
         Self { _tmp: tmp, root }
     }
@@ -88,4 +94,61 @@ fn wrong_options_explain_what_to_write() {
     // The system track is digital silence but for a sound at 10.5–11.3 s (fading to −73 dB).
     assert!(system.contains("0:00.000–0:10.500"), "{system}");
     assert!(system.contains("0:11.300–0:20.016"), "{system}");
+}
+
+/// `cut --silences`: the pauses go by one command, `--pad` of each stays at both of its edges.
+#[test]
+fn pauses_are_cut_by_one_command() {
+    let speech = Speech::new();
+    let info = speech.ok("info");
+    assert!(
+        info.contains(
+            "
+голос: есть
+"
+        ),
+        "{info}"
+    );
+    let dry = speech.ok("cut --silences --dry-run");
+    assert!(dry.contains("вырез 0:00.150–0:04.300"), "{dry}");
+    speech.ok("cut --silences --pad 0.2 --min 1");
+    // Five pauses of 1 s and more, 15.05 s together, less 0.4 s left of each: 20.016 − 13.05.
+    let json: serde_json::Value = serde_json::from_str(&speech.ok("info --json")).unwrap();
+    let left = json["duration"].as_f64().unwrap();
+    assert!((left - 6.966).abs() < 0.01, "{left}");
+    assert_eq!(json["voice"], true);
+
+    for (line, code, hint) in [
+        ("cut 1-2 --silences", 2, "либо диапазоны"),
+        ("cut --silences --pad many", 2, "--pad"),
+        ("cut --silences --min 30", 1, "вырезать нечего"),
+    ] {
+        let out = speech.run(line);
+        assert_eq!(out.code, code, "{line}: {}", out.stderr);
+        assert!(out.stderr.contains(hint), "{line}: {}", out.stderr);
+    }
+}
+
+/// A recording without a microphone has no pauses of speech: `info` says so, `cut --silences`
+/// cuts nothing, `silences` warns what it lists.
+#[test]
+fn a_recording_without_a_voice_is_not_cut() {
+    let silent = Speech::of("system_sound.devcast");
+    let info = silent.ok("info");
+    assert!(
+        info.contains("голос: нет (media/recording-1/video.mp4: записано без микрофона)"),
+        "{info}"
+    );
+    let json: serde_json::Value = serde_json::from_str(&silent.ok("info --json")).unwrap();
+    assert_eq!(json["voice"], false);
+    let cut = silent.run("cut --silences");
+    assert_eq!(cut.code, 1, "{}", cut.stdout);
+    assert!(cut.stderr.contains("в записи нет голоса"), "{}", cut.stderr);
+    assert_eq!(silent.ok("info"), info, "nothing is cut");
+    let listed = silent.run("silences");
+    assert!(
+        listed.stderr.contains("а не паузы речи"),
+        "{}",
+        listed.stderr
+    );
 }

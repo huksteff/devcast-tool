@@ -98,7 +98,7 @@ pub(crate) fn plan(ctx: &Ctx<'_>, path: &Path) -> Result<Answer, CliError> {
 }
 
 /// Applies `steps` as one undo step; shorthands only the command line resolves (`cut w12-w20`,
-/// `zoom add --at clicks`) work the same in one op and in a plan.
+/// `cut --silences`, `zoom add --at clicks`) work the same in one op and in a plan.
 pub(crate) fn apply_steps(ctx: &Ctx<'_>, steps: &[Step]) -> Result<Answer, CliError> {
     let mut workspace = ctx.open(true)?;
     let mut warnings = Vec::new();
@@ -106,7 +106,11 @@ pub(crate) fn apply_steps(ctx: &Ctx<'_>, steps: &[Step]) -> Result<Answer, CliEr
         if let Some(commands) = crate::autozoom::clicks(&workspace, step, &mut warnings)? {
             return Ok(Some(commands));
         }
-        match crate::transcript::word_args(ctx, &workspace, step)? {
+        let args = match crate::silences::cut_args(&workspace, step)? {
+            Some(args) => Some(args),
+            None => crate::transcript::word_args(ctx, &workspace, step)?,
+        };
+        match args {
             Some(args) => Ok(Some(vec![ctx.registry.command(&step.op, args)?])),
             None => Ok(None),
         }

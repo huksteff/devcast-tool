@@ -7,7 +7,7 @@ use std::sync::mpsc::Receiver;
 use dc_capture::HostTime;
 use dc_ops::export::{Format, Settings, Spec};
 use dc_ops::export_jobs::Finished;
-use dc_ops::live::{Answer, RecordAnswer, RecordControl, RecordingState, Request};
+use dc_ops::live::{Answer, Once, RecordAnswer, RecordControl, RecordingState, Request};
 use eframe::egui;
 
 use crate::app::Shared;
@@ -36,10 +36,12 @@ fn control(shared: &mut Shared, control: RecordControl) -> Receiver<Answer> {
 fn record_starts_the_countdown_and_cancel_ends_it_for_both_runs() {
     let dir = tempfile::tempdir().unwrap();
     let mut shared = shared(dir.path());
-    let started = ask(&mut shared, Request::Record);
+    let started = ask(&mut shared, Request::Record(Once::default()));
     assert!(matches!(shared.session, Session::Countdown(_)));
     assert!(started.try_recv().is_err(), "the run waits for the start");
-    let again = ask(&mut shared, Request::Record).try_recv().unwrap();
+    let again = ask(&mut shared, Request::Record(Once::default()))
+        .try_recv()
+        .unwrap();
     assert!(matches!(
         again,
         Answer::Record(RecordAnswer::NotNow(RecordingState::Countdown { .. }))
@@ -69,7 +71,7 @@ fn control_is_answered_once_the_recorder_has_done_it() {
     let mut shared = shared(dir.path());
     let root = dir.path().join("Запись 1.devcast");
     let (recorder, events, requests) = Recorder::fake(root.clone());
-    let started = ask(&mut shared, Request::Record);
+    let started = ask(&mut shared, Request::Record(Once::default()));
     shared.session = Session::Starting {
         recorder,
         stop: false,
@@ -208,4 +210,29 @@ fn status_without_an_editor() {
     let root = dir.path().join("нет.devcast");
     let stop = ask(&mut shared, Request::StopCaptions { root });
     assert_eq!(stop.recv().unwrap(), Answer::NotOpen);
+}
+
+/// `record --app --duration`: the recording stops by itself and the run hears only the save.
+#[test]
+fn a_recording_with_a_duration_stops_by_itself() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut shared = shared(dir.path());
+    let (recorder, events, requests) = Recorder::fake(dir.path().join("Запись 1.devcast"));
+    let once = Once {
+        source: None,
+        duration: Some(0.5),
+    };
+    let asked = ask(&mut shared, Request::Record(once));
+    shared.session = Session::Starting {
+        recorder,
+        stop: false,
+    };
+    // The first frame came long ago by the host clock: the duration is over.
+    events
+        .send(Event::Started(HostTime::from_micros(5)))
+        .unwrap();
+    shared.tick();
+    assert!(matches!(shared.session, Session::Preparing(_)));
+    assert_eq!(requests.try_iter().collect::<Vec<_>>(), [Recording::Stop]);
+    assert!(asked.try_recv().is_err(), "the run waits for the save");
 }

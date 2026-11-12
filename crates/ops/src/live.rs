@@ -27,6 +27,17 @@ pub const SERVICE: &str = "app";
 /// through the channel.
 pub const LOCK_OWNER: &str = "devcast-app";
 
+/// What `devcast record --app --source … --duration …` asks for one recording; the settings of
+/// the app stay as they are.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Once {
+    /// What to record instead of the source of the settings.
+    pub source: Option<dc_capture::Source>,
+    /// The recording stops by itself once this many seconds are recorded (pauses do not count).
+    pub duration: Option<f64>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Request {
@@ -75,9 +86,10 @@ pub enum Request {
     /// `devcast ls projects`: which project the editor holds ([`Answer::Current`]).
     Current,
     /// `devcast record --app`: as «Запись» of the HUD, with the app's settings (countdown
-    /// included). The answer comes once the first frame is recorded ([`RecordAnswer::Started`]),
-    /// or why not.
-    Record,
+    /// included) and what [`Once`] changes for this recording. The answer comes once the first
+    /// frame is recorded ([`RecordAnswer::Started`]) — with a duration, once the recording has
+    /// stopped by itself and is saved ([`RecordAnswer::Stopped`]) — or why not.
+    Record(Once),
     /// `devcast record stop|pause|resume|cancel` while no `devcast record` runs. The answer
     /// comes once the recording has done it (stop: once the project is saved).
     RecordControl(RecordControl),

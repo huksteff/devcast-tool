@@ -12,6 +12,7 @@ use dc_core::{Range, SourceTime, TimeDelta};
 use crate::error::AudioError;
 use crate::reader::TrackReader;
 use crate::track::SourceTrack;
+use crate::voice::Voice;
 use crate::{CHANNELS, RATE, frame_at};
 
 pub const DEFAULT_MIN: TimeDelta = TimeDelta::from_millis(500);
@@ -151,10 +152,15 @@ pub fn find(
 }
 
 /// The silence threshold of `track`, dBFS: halfway in dB between its noise floor and its speech
-/// level ([`NOISE_PERCENTILE`], [`SPEECH_PERCENTILE`] of the 50 ms block levels of the whole
-/// track, at least [`FLOOR_DB`]). Halfway, not «speech − 15 dB»: on a noisy microphone
-/// (noise −45, speech −35 dBFS) that would be below the noise and find no pause.
+/// level ([`measure`]). Halfway, not «speech − 15 dB»: on a noisy microphone (noise −45, speech
+/// −35 dBFS) that would be below the noise and find no pause.
 pub fn threshold(track: &SourceTrack) -> Result<f64, AudioError> {
+    Ok(measure(track)?.threshold())
+}
+
+/// The noise floor and the speech level of `track`: [`NOISE_PERCENTILE`] and
+/// [`SPEECH_PERCENTILE`] of the 50 ms block levels of the whole track, at least [`FLOOR_DB`].
+pub fn measure(track: &SourceTrack) -> Result<Voice, AudioError> {
     let mut reader = TrackReader::open(track)?;
     let mut buffer = vec![0.0; CHUNK * CHANNELS];
     let mut levels = Vec::new();
@@ -169,18 +175,23 @@ pub fn threshold(track: &SourceTrack) -> Result<f64, AudioError> {
             break;
         }
     }
-    Ok(threshold_of(levels))
+    Ok(voice_of(levels))
 }
 
 /// [`threshold`] of block levels in dBFS; no blocks — [`FLOOR_DB`].
 pub fn threshold_of(levels: Vec<f64>) -> f64 {
+    voice_of(levels).threshold()
+}
+
+/// [`measure`] of block levels in dBFS; no blocks — both at [`FLOOR_DB`].
+pub fn voice_of(levels: Vec<f64>) -> Voice {
     let mut heard: Vec<f64> = levels.into_iter().map(|db| db.max(FLOOR_DB)).collect();
     heard.sort_by(f64::total_cmp);
     let last = heard.len().saturating_sub(1) as f64;
     let at = |share: f64| heard.get((last * share).round() as usize).copied();
-    match (at(NOISE_PERCENTILE), at(SPEECH_PERCENTILE)) {
-        (Some(noise), Some(speech)) => (noise + speech) / 2.0,
-        _ => FLOOR_DB,
+    Voice {
+        noise: at(NOISE_PERCENTILE).unwrap_or(FLOOR_DB),
+        speech: at(SPEECH_PERCENTILE).unwrap_or(FLOOR_DB),
     }
 }
 
