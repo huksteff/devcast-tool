@@ -16,7 +16,6 @@ use egui_kittest::kittest::{NodeT as _, Queryable};
 use crate::editor::editing_tests::json;
 use crate::editor::selection::{Item, Selected};
 use crate::editor::tests::{State, harness, project};
-use crate::editor::view::Panel;
 use crate::editor::{Action, SIZE, Way};
 use crate::settings::InspectorGroups;
 
@@ -81,7 +80,7 @@ pub(super) fn first_zoom(harness: &H) -> Item {
     let row = tracks
         .rows
         .iter()
-        .find(|t| t.row == crate::editor::timeline::Row::Zooms);
+        .find(|t| t.row == crate::editor::timeline::Row::ZOOMS);
     row.and_then(|t| t.regions.first())
         .and_then(|r| r.item)
         .unwrap()
@@ -138,7 +137,7 @@ fn picking_one_object_opens_its_panel_and_a_tab_opens_its_own() {
         None,
         "nothing picked: the tab"
     );
-    assert_eq!(harness.state().editor.view.panel, Panel::Keys);
+    assert_eq!(harness.state().editor.view.tab, super::KEYS.id);
 }
 
 #[test]

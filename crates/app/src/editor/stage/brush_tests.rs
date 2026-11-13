@@ -15,8 +15,8 @@ use super::tests::{at, drafted, drag, frame, hold, on_screen, release, started};
 use crate::editor::Action;
 use crate::editor::editing_tests::json;
 use crate::editor::inspector::tests::{H, cli, pick, project_json, step, undo};
-use crate::editor::lanes::brush::diameter;
 use crate::editor::selection::{Item, Selected};
+use dc_fx_drawing::stage::{Brush, diameter};
 use dc_ui_kit::stage::geom::Mapping;
 
 /// A drawing over the frame's middle half at 0:23.5–0:25.5, on top.
@@ -195,8 +195,13 @@ fn the_bar_picks_the_eraser_and_its_size() {
     let id = drawing(&mut harness);
     harness.get_by_label(text::BRUSH_ERASER).click();
     harness.run();
-    assert_eq!(harness.state().editor.view.brush, StrokeTool::Eraser);
-    harness.state_mut().editor.view.eraser = 30.0;
+    let chosen: Brush = harness.state().editor.view.kept.get();
+    assert_eq!(chosen.tool, StrokeTool::Eraser);
+    let eraser = Brush {
+        eraser: 30.0,
+        ..chosen
+    };
+    harness.state_mut().editor.view.kept.set(eraser);
     harness.run();
     let a = on_screen(&harness, pos2(800.0, 500.0));
     let b = on_screen(&harness, pos2(1500.0, 900.0));

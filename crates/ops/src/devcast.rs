@@ -1,8 +1,41 @@
 //! All ops and effects of DevCast: the one registry of the CLI and the editor, so the same command
-//! gives the same project in both. A new effect crate adds its `ops()` and `effect()` here.
+//! gives the same project in both, and the pictures of the effects in the frame. A new effect
+//! crate adds its `ops()` and `effect()` here, and its `look::Picture` to `LOOKS` when it draws.
+
+use dc_core::{PixelSize, Project, StateError};
+use dc_fx_annotations::Kind;
+use dc_fx_annotations::look::Read;
+use dc_render::look::Prepare;
 
 use crate::error::OpsError;
 use crate::registry::Registry;
+
+/// The pictures of the effects in frame order (`Evaluator`): a later one draws over an earlier
+/// one of the same band; the callout hangs on the pointer the cursor leaves, so it comes after it.
+/// The order is the frames' and must not change without a reason in the commit.
+pub(crate) static LOOKS: [&dyn Prepare; 7] = [
+    &dc_fx_cut::look::Picture,
+    &dc_fx_zoom::look::Picture,
+    &dc_fx_annotations::look::Picture(&KINDS),
+    &dc_fx_cursor::look::Picture,
+    &dc_fx_callout::look::Picture,
+    &dc_fx_captions::look::Picture,
+    &dc_fx_keys::look::Picture,
+];
+
+/// The kinds of annotations and how each reads its fields for the frame.
+static KINDS: [(Kind, Read); 5] = [
+    (Kind::Text, dc_fx_text::look::READ),
+    (Kind::Shape, dc_fx_shape::look::READ),
+    (Kind::Image, dc_fx_image::look::READ),
+    (Kind::Drawing, dc_fx_drawing::look::READ),
+    (Kind::Blur, dc_fx_blur::look::READ),
+];
+
+/// The output frame of `project`, px (the crop); none without clips.
+pub(crate) fn canvas(project: &Project) -> Result<Option<PixelSize>, StateError> {
+    dc_fx_crop::look::canvas(project)
+}
 
 impl Registry {
     pub fn devcast() -> Result<Self, OpsError> {
@@ -46,5 +79,12 @@ mod tests {
     fn every_op_follows_the_rules() {
         let registry = super::Registry::devcast().unwrap();
         assert!(registry.ops().len() >= 10);
+    }
+
+    #[test]
+    fn every_kind_of_annotation_has_a_picture() {
+        for kind in dc_fx_annotations::lane::KINDS {
+            assert!(super::KINDS.iter().any(|(k, _)| *k == kind), "{kind:?}");
+        }
     }
 }

@@ -2,11 +2,12 @@ use dc_core::{OutputTime, PixelSize, Project, TimeMap};
 use dc_render::{Band, Camera, Layer, Paint, PxRect, Scene, Text};
 use serde_json::json;
 
-use super::{Anchor, evaluate};
+use super::evaluate;
 use crate::Callout;
 use crate::tests::{add, project, run, style};
+use dc_render::look::Pointer;
 
-const ANCHOR: Anchor = Anchor {
+const POINTER: Pointer = Pointer {
     tip: [400.0, 300.0],
     arrow: 28.0,
     k: 1.0,
@@ -22,7 +23,7 @@ fn on(look: serde_json::Value) -> Project {
     p
 }
 
-fn bubble(p: &Project, t: f64, anchor: Option<Anchor>, camera: Camera) -> Option<Text> {
+fn bubble(p: &Project, t: f64, anchor: Option<Pointer>, camera: Camera) -> Option<Text> {
     let state = p.state::<Callout>().unwrap();
     let mut scene = Scene::new(PixelSize {
         width: 1920,
@@ -46,7 +47,7 @@ fn bubble(p: &Project, t: f64, anchor: Option<Anchor>, camera: Camera) -> Option
 }
 
 fn at(p: &Project, t: f64) -> Option<Text> {
-    bubble(p, t, Some(ANCHOR), Camera::IDENTITY)
+    bubble(p, t, Some(POINTER), Camera::IDENTITY)
 }
 
 #[test]
@@ -88,10 +89,10 @@ fn size_follows_the_arrow_with_ref_px_floors() {
     );
     assert!((beside.margin - 16.0).abs() < 1e-4);
 
-    let tiny = Anchor {
+    let tiny = Pointer {
         arrow: 4.0,
         k: 2.0,
-        ..ANCHOR
+        ..POINTER
     };
     let small = bubble(&on(json!({})), 2.0, Some(tiny), Camera::IDENTITY).unwrap();
     assert!(
@@ -140,7 +141,7 @@ fn edges_are_where_the_camera_shows() {
         x: -960.0,
         y: -540.0,
     };
-    let text = bubble(&p, 2.0, Some(ANCHOR), camera).unwrap();
+    let text = bubble(&p, 2.0, Some(POINTER), camera).unwrap();
     assert_eq!(
         text.rect,
         PxRect {

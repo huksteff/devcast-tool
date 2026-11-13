@@ -8,6 +8,7 @@ mod error;
 #[cfg(feature = "golden")]
 pub mod golden;
 mod gpu;
+pub mod look;
 mod nv12_readback;
 mod offscreen;
 mod pipeline;

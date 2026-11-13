@@ -3,7 +3,6 @@
 //! makes it act.
 
 use super::lanes::annotations::AnnotId;
-use super::lanes::brush::{ERASER_WIDTH, StrokeTool};
 use dc_core::time::Output;
 use dc_core::{ClipId, OutputTime, Range};
 use eframe::egui::Pos2;
@@ -43,21 +42,6 @@ pub enum Quality {
     Fast,
 }
 
-/// Global settings panel of the inspector: a tab of its rail.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Panel {
-    Zoom,
-    /// Cursor, clicks and the callout.
-    Cursor,
-    /// The only tab with its panel until 7.14: the frame opens on it.
-    #[default]
-    Keys,
-    Captions,
-    Sound,
-    /// «Сделать красиво» by the user's AI agent (8.11).
-    Ai,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct View {
     /// Timeline tool.
@@ -77,7 +61,7 @@ pub struct View {
     /// Snapping on the timeline: the blade sticks with it (7.8), regions from 7.9.
     pub magnet: bool,
     /// The tab of the inspector rail: its panel shows while no object is open.
-    pub panel: Panel,
+    pub tab: &'static str,
     /// The picked object whose panel the inspector shows instead of the tab (7.13).
     pub object: Option<Selected>,
     /// The single picked object the inspector last saw: a new one opens its panel.
@@ -111,16 +95,14 @@ pub struct View {
     pub remove: Option<Row>,
     /// The annotation track whose header is dragged to another place (layer order).
     pub lift: Option<u32>,
-    /// A gesture on the preview: the zoom frame or an annotation box (7.21, 7.22).
-    pub stage: Option<super::stage::Drag>,
+    /// A gesture on the preview going on, of whichever stage (`lanes::STAGES`, 7.21–7.24).
+    pub stage: Option<dc_ui_kit::stage::Held>,
+    /// The preview stages' choices the window keeps, not the project: the brush bar's tool and
+    /// eraser size (7.24).
+    pub kept: dc_ui_kit::stage::Kept,
     /// The draft of a panel control held with the pointer the preview shows (`rows::drafting`):
     /// when the drag ends the preview goes back to the project.
     pub panel_draft: Option<Vec<dc_ops::Step>>,
-    /// Tool of a left drag in the picked drawing, chosen on the brush bar (7.24); Shift erases
-    /// with either.
-    pub brush: StrokeTool,
-    /// Thickness of a new eraser stroke, px at 1080p, `WIDTH_MIN..=WIDTH_MAX`.
-    pub eraser: f64,
 }
 
 impl Default for View {
@@ -133,7 +115,7 @@ impl Default for View {
             markers: true,
             volume: 80.0,
             magnet: true,
-            panel: Panel::default(),
+            tab: super::inspector::KEYS.id,
             object: None,
             followed: None,
             playhead: OutputTime::ZERO,
@@ -152,13 +134,18 @@ impl Default for View {
             lift: None,
             stage: None,
             panel_draft: None,
-            brush: StrokeTool::Pencil,
-            eraser: ERASER_WIDTH,
+            kept: dc_ui_kit::stage::Kept::default(),
         }
     }
 }
 
 impl View {
+    /// Opens tab `tab` of the inspector rail in place of the panel of a picked object.
+    pub fn show_tab(&mut self, tab: &'static str) {
+        self.tab = tab;
+        self.object = None;
+    }
+
     /// Keeps what still fits the project after it changed: picked clips and regions its rows
     /// `tracks` show, a range inside its length `end`; a gesture over the old project ends.
     pub fn keep(&mut self, tracks: &Tracks, end: OutputTime) {

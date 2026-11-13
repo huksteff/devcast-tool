@@ -6,8 +6,9 @@
 
 use std::path::PathBuf;
 
-use dc_audio::{CHANNELS, LoudnessCache, Mixer, RATE};
-use dc_core::Project;
+use dc_audio::{CHANNELS, LoudnessCache, Mixer, RATE, frame_at};
+use dc_core::time::Output;
+use dc_core::{OutputTime, Project, Range};
 use dc_encode::export::{Exported, ProgressFn, Timeline, export_gif, export_mp4};
 use dc_encode::{AudioSettings, EncodeError, Sources};
 use dc_media::cached_probe;
@@ -27,6 +28,10 @@ pub struct Spec {
     /// do not change it.
     pub project: Project,
     pub settings: Settings,
+    /// Only this piece of the video (`devcast export --from --to`): its frames and sound are
+    /// those of the whole video there, effects included; none — the whole video.
+    #[serde(default)]
+    pub piece: Option<Range<Output>>,
     /// Absolute: the queue may run in another process with another folder.
     pub out: PathBuf,
 }
@@ -59,14 +64,19 @@ pub fn run(gpu: &Gpu, spec: &Spec, progress: &mut ProgressFn<'_>) -> Result<Expo
     let mut loudness = LoudnessCache::default();
     let mut mixer = Mixer::new(&dir, project, &levels, &mut loudness)
         .map_err(|e| EncodeError::Sound(Box::new(e)))?;
-    let mut scene = |t| evaluator.evaluate(t);
+    let (from, duration) = match spec.piece {
+        Some(piece) => (piece.start(), piece.duration()),
+        None => (OutputTime::ZERO, evaluator.duration()),
+    };
+    let first = frame_at(from.since(OutputTime::ZERO).micros());
+    let mut scene = |t: OutputTime| evaluator.evaluate(from + t.since(OutputTime::ZERO));
     let mut sound = |start, out: &mut [f32]| {
         mixer
-            .render(start, out)
+            .render(first + start, out)
             .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })
     };
     let mut timeline = Timeline {
-        duration: evaluator.duration(),
+        duration,
         canvas: evaluator.canvas(),
         source_fps,
         scene: &mut scene,

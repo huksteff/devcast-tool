@@ -58,3 +58,7 @@ fn fields((color, width): (Rgba, f64), opacity: f64) -> [(&'static str, Value); 
         ("opacity", json!(opacity)),
     ]
 }
+
+/// The kind as the editor registers it: its panel section and fields.
+pub const KIND: dc_fx_annotations::panel::Entry =
+    dc_fx_annotations::panel::Entry::of::<DrawingBody>(dc_fx_annotations::Kind::Drawing);

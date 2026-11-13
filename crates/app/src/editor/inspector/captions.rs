@@ -24,7 +24,7 @@ fn list(cx: &Cx<'_>) -> List {
         .tracks
         .rows
         .iter()
-        .filter(|t| t.row == Row::Captions)
+        .filter(|t| t.row == Row::CAPTIONS)
         .flat_map(|t| &t.regions)
         .filter_map(|r| {
             let id = r.item.and_then(Item::id)?;

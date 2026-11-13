@@ -1,5 +1,5 @@
 //! «Основное» of a shape (mockup 3c «Фигура»): the figure in tiles, the colours of the line and
-//! the fill, the gradient, thickness, outline and opacity (`shape set`); «Тонкая настройка» —
+//! the fill, the gradient, thickness, outline and opacity (`shape set`); «Дополнительно» —
 //! glow, corner radius, the direction and loop of the gradient, the ends of an arrow or a line
 //! in percent of the box (`--tail`, `--tip`). «Сбросить» brings the look of the figure to the defaults and keeps the
 //! figure and its ends.
@@ -201,3 +201,7 @@ fn picture(painter: &Painter, rect: Rect, figure: Figure) {
         }
     }
 }
+
+/// The kind as the editor registers it: its panel section and fields.
+pub const KIND: dc_fx_annotations::panel::Entry =
+    dc_fx_annotations::panel::Entry::of::<ShapeBody>(dc_fx_annotations::Kind::Shape);

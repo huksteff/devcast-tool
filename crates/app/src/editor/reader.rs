@@ -106,6 +106,12 @@ impl<K: Wanted, V: Send + std::fmt::Debug + 'static> Reader<K, V> {
         }
     }
 
+    /// A wanted source has not come yet and the thread will answer it (it wakes the window).
+    #[cfg(test)]
+    pub fn on_the_way(&self) -> bool {
+        self.worker.is_some() && self.slots.iter().any(|(_, s)| matches!(s, Slot::Waiting))
+    }
+
     /// Takes the answers of the thread; whether any came.
     pub fn receive(&mut self) -> bool {
         let Some(worker) = &self.worker else {

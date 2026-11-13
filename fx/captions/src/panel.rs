@@ -23,6 +23,9 @@ pub use crate::panel_cue::cue;
 use crate::panel_recognition::{empty, recognition};
 use crate::panel_style as style;
 use crate::{CaptionsEffect, CueId};
+/// The recognition the panel asks for (`Request::Recognize`) ends in new cues, applied as one
+/// `captions gen`.
+pub use crate::{CaptionsGen, NewCue};
 
 /// Id of the captions panels in the remembered groups.
 pub const ID: &str = CaptionsEffect::ID;

@@ -39,3 +39,7 @@ impl Section for ImageBody {
         None
     }
 }
+
+/// The kind as the editor registers it: its panel section and fields.
+pub const KIND: dc_fx_annotations::panel::Entry =
+    dc_fx_annotations::panel::Entry::of::<ImageBody>(dc_fx_annotations::Kind::Image);

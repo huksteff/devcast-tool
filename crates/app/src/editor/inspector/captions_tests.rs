@@ -15,12 +15,11 @@ use super::zoom_tests::{click, tall, type_in};
 use crate::editor::editing_tests::{json, undone};
 use crate::editor::selection::{Item, Selected};
 use crate::editor::tests::project;
-use crate::editor::view::Panel;
 
 /// The editor on the captions tab.
 pub(crate) fn captions_tab() -> H {
     let mut harness = tall();
-    harness.state_mut().editor.view.panel = Panel::Captions;
+    harness.state_mut().editor.view.tab = crate::editor::inspector::CAPTIONS.id;
     harness.run();
     harness
 }

@@ -10,18 +10,14 @@
 //! sound its levels and place (`dc_fx_audio_tracks::panel::clip`, `extra`, with the facts of
 //! [`Cx::sources`]) and «Дублировать» (`audio paste` on the first free row).
 
-use dc_core::Range;
 use dc_core::time::Output;
+use dc_core::{Project, Range};
+use dc_fx_annotations::lane::AnnotId;
 use dc_fx_annotations::panel::{self as annot, Region as Shown};
-use dc_fx_annotations::{AnnotId, Kind};
-use dc_fx_audio_tracks::AudioId;
 use dc_fx_audio_tracks::panel as sound;
-use dc_fx_callout::EventId;
 use dc_fx_callout::panel as callout;
-use dc_fx_captions::CueId;
 use dc_fx_captions::panel as cue;
 use dc_fx_cursor::panel as cursor;
-use dc_fx_zoom::ZoomId;
 use dc_fx_zoom::panel as zoom;
 use dc_ui_kit::icons::Icon;
 use dc_ui_kit::panel::{Header, header, header_button};
@@ -30,7 +26,7 @@ use dc_ui_kit::strings::{annotations, editor as text, inspector as names, timeli
 use super::Cx;
 use crate::editor::selection::{Item, Selected, same_moment};
 use crate::editor::timeline::{self, Region, Row, Tracks, timecode};
-use crate::editor::{Action, clipboard, montage, regions};
+use crate::editor::{Action, clipboard, lanes, montage, regions};
 use eframe::egui::Ui;
 
 pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
@@ -49,25 +45,19 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
     let Some((row, region)) = find(tracks, picked) else {
         return;
     };
-    let mut about = describe(picked, row, region);
     let object = match picked {
-        Selected::Region(item) => Object::of(item),
+        Selected::Region(item) => Object::of(item).map(|object| (object, item)),
         _ => None,
     };
-    if let Some(Object::Callout(id)) = object
-        && let Some((title, subtitle)) =
-            callout::about(cx.base.project, id, &timecode(region.range.start()))
-    {
-        about.title = title.to_owned();
-        about.subtitle = subtitle;
-    }
+    let own = object.and_then(|(object, item)| (object.about?)(cx.base.project, item, region));
+    let about = own.unwrap_or_else(|| describe(picked, object.map(|(o, _)| o), row, region));
     let head = Header {
         hue: timeline::hue(row),
         title: &about.title,
         subtitle: &about.subtitle,
     };
-    let copy = match (picked, object) {
-        (Selected::Region(item), Some(Object::Annotation(_) | Object::Sound(_))) => {
+    let copy = match object {
+        Some((object, item)) if object.duplicates => {
             clipboard::duplicate(cx.base.project, item, region.range)
         }
         _ => None,
@@ -88,38 +78,100 @@ pub fn ui(ui: &mut Ui, cx: &mut Cx<'_>, tracks: &Tracks, picked: Selected) {
         let sources = cx.sources(Some(id));
         sound::clip(ui, &mut cx.base, id, &sources);
     }
-    match object {
-        Some(Object::Zoom(id)) => zoom::region(ui, &mut cx.base, id),
-        Some(Object::Callout(id)) => callout::ui(ui, &mut cx.base, id),
-        Some(Object::Cue(id)) => cue::cue(ui, &mut cx.base, id, region.range),
-        Some(Object::Annotation(id)) => annotation(ui, cx, id, region),
-        Some(Object::Sound(id)) => {
-            let sources = cx.sources(None);
-            sound::extra(ui, &mut cx.base, id, &sources);
-        }
-        // A key opens its annotation and a click its own panel, above.
-        None => {}
+    // A key opens its annotation and a click its own panel, above.
+    if let Some((object, item)) = object {
+        (object.ui)(ui, cx, item, region);
     }
 }
 
-/// The effect object of a picked region, by the kind of its id.
-#[derive(Clone, Copy)]
-enum Object {
-    Zoom(ZoomId),
-    Callout(EventId),
-    Cue(CueId),
-    Annotation(AnnotId),
-    Sound(AudioId),
+/// The header an object reads from the project: its title and subtitle.
+type Own = fn(&Project, Item, &Region) -> Option<About>;
+
+/// The panel of the objects of one effect: a picked region finds it by the prefix of its id.
+/// A new kind of object is a line of [`OBJECTS`] and the function that gives its panel the
+/// facts it needs.
+struct Object {
+    /// The prefix of the ids of the objects (`Lane::prefix`).
+    prefix: &'static str,
+    /// The title of the header over the place and the length; none — the label of the region
+    /// over its row and place.
+    title: Option<&'static str>,
+    /// A header of its own from the project; none or nothing — as `title` says.
+    about: Option<Own>,
+    /// «Дублировать» in the header: a copy where the object is (`Lane::duplicated`).
+    duplicates: bool,
+    ui: fn(&mut Ui, &mut Cx<'_>, Item, &Region),
 }
 
+const OBJECTS: [Object; 5] = [
+    Object {
+        prefix: dc_fx_zoom::lane::LANE.prefix,
+        title: Some(text::ZOOM),
+        about: None,
+        duplicates: false,
+        ui: |ui, cx, item, _| {
+            if let Some(id) = item.id() {
+                zoom::region(ui, &mut cx.base, id);
+            }
+        },
+    },
+    Object {
+        prefix: dc_fx_callout::lane::LANE.prefix,
+        title: Some(names::CALLOUT),
+        about: Some(|project, item, region| {
+            let at = timecode(region.range.start());
+            let (title, subtitle) = callout::about(project, item.id()?, &at)?;
+            Some(About {
+                title: title.to_owned(),
+                subtitle,
+            })
+        }),
+        duplicates: false,
+        ui: |ui, cx, item, _| {
+            if let Some(id) = item.id() {
+                callout::ui(ui, &mut cx.base, id);
+            }
+        },
+    },
+    Object {
+        prefix: dc_fx_captions::lane::LANE.prefix,
+        title: Some(names::CUE),
+        about: None,
+        duplicates: false,
+        ui: |ui, cx, item, region| {
+            if let Some(id) = item.id() {
+                cue::cue(ui, &mut cx.base, id, region.range);
+            }
+        },
+    },
+    Object {
+        prefix: dc_fx_annotations::lane::LANE.prefix,
+        title: None,
+        about: None,
+        duplicates: true,
+        ui: |ui, cx, item, region| {
+            if let Some(id) = item.id() {
+                annotation(ui, cx, id, region);
+            }
+        },
+    },
+    Object {
+        prefix: dc_fx_audio_tracks::lane::LANE.prefix,
+        title: None,
+        about: None,
+        duplicates: true,
+        ui: |ui, cx, item, _| {
+            if let Some(id) = item.id() {
+                let sources = cx.sources(None);
+                sound::extra(ui, &mut cx.base, id, &sources);
+            }
+        },
+    },
+];
+
 impl Object {
-    fn of(item: Item) -> Option<Self> {
-        item.id()
-            .map(Self::Zoom)
-            .or_else(|| item.id().map(Self::Callout))
-            .or_else(|| item.id().map(Self::Cue))
-            .or_else(|| item.id().map(Self::Annotation))
-            .or_else(|| item.id().map(Self::Sound))
+    fn of(item: Item) -> Option<&'static Self> {
+        OBJECTS.iter().find(|object| object.prefix == item.prefix())
     }
 }
 
@@ -141,7 +193,7 @@ struct About {
     subtitle: String,
 }
 
-fn describe(picked: Selected, row: Row, region: &Region) -> About {
+fn describe(picked: Selected, object: Option<&Object>, row: Row, region: &Region) -> About {
     let span = span(region.range);
     let length = rows_text::seconds(region.range.duration().as_secs_f64());
     let timed = |title: &str| About {
@@ -157,11 +209,9 @@ fn describe(picked: Selected, row: Row, region: &Region) -> About {
             title: region.label.clone(),
             subtitle: region.detail.clone().unwrap_or(length),
         },
-        Selected::Region(item) => match Object::of(item) {
-            Some(Object::Zoom(_)) => timed(text::ZOOM),
-            Some(Object::Callout(_)) => timed(names::CALLOUT),
-            Some(Object::Cue(_)) => timed(names::CUE),
-            Some(Object::Annotation(_) | Object::Sound(_)) | None => layered(),
+        Selected::Region(_) => match object.and_then(|object| object.title) {
+            Some(title) => timed(title),
+            None => layered(),
         },
         Selected::Key { .. } => layered(),
         Selected::Click(_) => timed(names::CLICK),
@@ -183,24 +233,20 @@ fn delete(picked: Selected) -> Option<Action> {
 }
 
 /// The panel of annotation `id` (`dc_fx_annotations::panel`) with the section of its kind's
-/// crate, at the place and keys of its region and on the output frame after the crop.
+/// crate (`lanes::kind`), at the place and keys of its region and on the output frame after the
+/// crop.
 fn annotation(ui: &mut Ui, cx: &mut Cx<'_>, id: AnnotId, region: &Region) {
     let project = cx.base.project;
-    let Ok(crop) = project.state::<dc_fx_crop::Crop>() else {
+    let (frame, broken) = lanes::frame::frame(project);
+    if broken.is_some() {
         return;
-    };
+    }
     let shown = Shown {
         range: region.range,
         keys: &region.keys,
-        canvas: dc_fx_crop::canvas(project, &crop.settings),
+        canvas: frame.canvas,
     };
-    let cx = &mut cx.base;
-    match annot::kind(project, id) {
-        Some(Kind::Text) => annot::ui::<dc_fx_text::TextBody>(ui, cx, id, &shown),
-        Some(Kind::Shape) => annot::ui::<dc_fx_shape::ShapeBody>(ui, cx, id, &shown),
-        Some(Kind::Image) => annot::ui::<dc_fx_image::ImageBody>(ui, cx, id, &shown),
-        Some(Kind::Drawing) => annot::ui::<dc_fx_drawing::DrawingBody>(ui, cx, id, &shown),
-        Some(Kind::Blur) => annot::ui::<dc_fx_blur::BlurBody>(ui, cx, id, &shown),
-        None => {}
+    if let Some(entry) = annot::kind(project, id).and_then(lanes::kind) {
+        (entry.ui)(ui, &mut cx.base, id, &shown);
     }
 }

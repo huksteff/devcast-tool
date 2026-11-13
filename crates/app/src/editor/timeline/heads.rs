@@ -14,7 +14,8 @@ use eframe::egui::{self, Align, Layout, Rect, Sense, Stroke, Ui, UiBuilder, pos2
 use serde_json::Value;
 
 use super::paint;
-use super::tracks::{Least, Row, Track};
+use super::row::{Button as Shows, Row};
+use super::tracks::{Least, Track};
 use crate::editor::{Action, EditorWindow, rows};
 use crate::keymap::{EditorKey, Label};
 
@@ -34,7 +35,7 @@ pub enum Press {
 pub fn header(ui: &mut Ui, head: Rect, track: &Track, height: f32) -> (Option<Press>, bool) {
     paint::header(ui.painter(), head, track);
     let name = paint::name(track.row);
-    let lifts = matches!(track.row, Row::Annotations(_));
+    let lifts = track.row.kind.lifts;
     let sense = if lifts { Sense::drag() } else { Sense::hover() };
     let mut response = ui
         .interact(head, ui.scope_id().with(("track", &name)), sense)
@@ -61,28 +62,20 @@ fn button(ui: &mut Ui, head: Rect, track: &Track, height: f32) -> Option<Press> 
     let button = IconButton::new(icon, label)
         .size(side, 13.0_f32.min(side - 4.0))
         .dim(dim);
-    let (press, hint) = match track.row {
-        Row::Captions | Row::Keys => {
-            let op = if track.row == Row::Keys {
-                crate::editor::lanes::KEYS
-            } else {
-                crate::editor::lanes::CAPTIONS_STYLE
-            };
+    let (press, hint) = match track.row.kind.button {
+        Shows::Shown(op) => {
             let action = Action::op(op, [("show", Value::Bool(track.off))]);
             let hint = if track.off { text::SHOW } else { text::HIDE };
             (Press::Action(action), hint)
         }
-        Row::Mic | Row::System => {
-            let action = rows::mute(track.row, !track.off)?;
+        Shows::Mute(channel) => {
+            let action = rows::mute(channel, !track.off);
             let hint = if track.off { text::UNMUTE } else { text::MUTE };
             (Press::Action(action), hint)
         }
-        Row::Annotations(_) | Row::Audio(_) => (Press::Remove(track.row), text::REMOVE_TRACK),
-        Row::Clips => (Press::Action(Action::OpenCrop), text::CLIP_CROP),
-        _ => {
-            cell.add_enabled(false, button);
-            return None;
-        }
+        Shows::Remove => (Press::Remove(track.row), text::REMOVE_TRACK),
+        Shows::Crop => (Press::Action(Action::OpenCrop), text::CLIP_CROP),
+        Shows::None => return None,
     };
     let clicked = cell.add(button).on_hover_text(hint).clicked();
     clicked.then_some(press)
@@ -91,14 +84,14 @@ fn button(ui: &mut Ui, head: Rect, track: &Track, height: f32) -> Option<Press> 
 /// The header button of `track`: icon, accessible name, faded.
 fn look(track: &Track) -> Option<(Icon, &'static str, bool)> {
     let off = track.off;
-    Some(match track.row {
-        Row::Captions | Row::Keys if off => (Icon::EyeOff, text::HIDDEN, true),
-        Row::Captions | Row::Keys => (Icon::Eye, text::SHOWN, false),
-        Row::Clips => (Icon::Crop, text::CLIP_CROP, false),
-        Row::Annotations(_) | Row::Audio(_) => (Icon::Close, text::REMOVE_TRACK, false),
-        Row::Mic | Row::System if off => (Icon::Mute, text::MUTED, true),
-        Row::Mic | Row::System => (Icon::Speaker, text::SOUND, false),
-        Row::Zooms | Row::Cursor => return None,
+    Some(match track.row.kind.button {
+        Shows::Shown(_) if off => (Icon::EyeOff, text::HIDDEN, true),
+        Shows::Shown(_) => (Icon::Eye, text::SHOWN, false),
+        Shows::Crop => (Icon::Crop, text::CLIP_CROP, false),
+        Shows::Remove => (Icon::Close, text::REMOVE_TRACK, false),
+        Shows::Mute(_) if off => (Icon::Mute, text::MUTED, true),
+        Shows::Mute(_) => (Icon::Speaker, text::SOUND, false),
+        Shows::None => return None,
     })
 }
 
@@ -123,29 +116,25 @@ pub fn press(editor: &mut EditorWindow, press: Press) {
 
 /// How many annotation rows and extra sound rows the timeline shows now.
 pub fn shown(editor: &EditorWindow) -> Least {
-    let rows = &editor.tracks.rows;
-    let count = |f: fn(Row) -> bool| rows.iter().filter(|t| f(t.row)).count() as u32;
-    Least {
-        annotations: count(|r| matches!(r, Row::Annotations(_))),
-        audio: count(|r| matches!(r, Row::Audio(_))),
+    let mut least = Least::default();
+    for track in &editor.tracks.rows {
+        if let Some(many) = &track.row.kind.many {
+            *(many.least)(&mut least) += 1;
+        }
     }
+    least
 }
 
 /// Removes `row` with its regions as one undo step; the rows above move one down.
 fn remove(editor: &mut EditorWindow, row: Row) {
     let mut least = shown(editor);
     let project = editor.doc.project();
-    let steps = match row {
-        Row::Annotations(track) => {
-            least.annotations = least.annotations.saturating_sub(1);
-            rows::remove_annotations(project, track)
-        }
-        Row::Audio(track) => {
-            least.audio = least.audio.saturating_sub(1);
-            rows::remove_sound(project, track)
-        }
-        _ => return,
+    let Some(many) = &row.kind.many else {
+        return;
     };
+    let shown = (many.least)(&mut least);
+    *shown = shown.saturating_sub(1);
+    let steps = (many.remove)(project, row.track);
     editor.view.selection.clear();
     editor.ask(Action::Rows(least));
     if !steps.is_empty() {
@@ -172,9 +161,9 @@ pub fn question(ui: &Ui, editor: &mut EditorWindow, heads: &[(Row, Rect)]) {
     let undo = editor.keys.label(EditorKey::Undo).unwrap_or_default();
     let (title, body) = (
         text::remove_title(&paint::name(row)),
-        match row {
-            Row::Audio(_) => text::remove_sound(count, &undo),
-            _ => text::remove_annotations(count, &undo),
+        match &row.kind.many {
+            Some(many) => (many.question)(count, &undo),
+            None => String::new(),
         },
     );
     let mut answer = None;
@@ -218,10 +207,7 @@ pub fn lift(ui: &Ui, editor: &mut EditorWindow, heads: &[(Row, Rect)]) {
     let (down, pointer) = ui.input(|i| (i.pointer.primary_down(), i.pointer.interact_pos()));
     let annotation_rows: Vec<(u32, Rect)> = heads
         .iter()
-        .filter_map(|&(row, rect)| match row {
-            Row::Annotations(track) => Some((track, rect)),
-            _ => None,
-        })
+        .filter_map(|&(row, rect)| Some((row.annotation_track()?, rect)))
         .collect();
     let (Some(first), Some(last), Some(at)) =
         (annotation_rows.first(), annotation_rows.last(), pointer)

@@ -160,6 +160,7 @@ pub struct AnnotationsState {
 }
 
 impl AnnotationsState {
+    #[cfg(test)]
     pub fn annot_ids(&self) -> impl Iterator<Item = AnnotId> + '_ {
         self.annotations.iter().map(|a| a.id)
     }

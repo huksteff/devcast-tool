@@ -3,8 +3,9 @@
 
 mod commands;
 mod evaluate;
+pub mod look;
 mod model;
-mod panel;
+pub mod panel;
 
 pub use commands::ShapeSet;
 pub use evaluate::evaluate;

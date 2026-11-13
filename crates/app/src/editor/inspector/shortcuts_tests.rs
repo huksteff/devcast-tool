@@ -39,7 +39,7 @@ fn shortcuts() -> [Vec<KeyPress>; 2] {
 }
 
 fn chips(tracks: &Tracks) -> Vec<Region> {
-    let row = tracks.rows.iter().find(|t| t.row == Row::Keys);
+    let row = tracks.rows.iter().find(|t| t.row == Row::KEYS);
     row.map(|t| t.regions.clone()).unwrap_or_default()
 }
 

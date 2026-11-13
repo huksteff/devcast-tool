@@ -50,7 +50,8 @@ fn opened(temp: &tempfile::TempDir) -> (H, Receiver<egui::RequestRepaintInfo>) {
     (harness, requests)
 }
 
-/// The preview shows a frame, the sound rows have their waves and the recordings their presses.
+/// The preview shows a frame, the sound rows have their waves, the recordings their presses and
+/// the pictures of the recent projects came: no thread of the editor wakes the window later.
 fn loaded(harness: &H) -> bool {
     let editor = editor(harness);
     let project = editor.doc.project();
@@ -62,18 +63,21 @@ fn loaded(harness: &H) -> bool {
         && recordings(project)
             .iter()
             .all(|m| editor.presses.get(m).is_some())
+        && !editor.library.thumbs.on_the_way()
 }
 
-/// Runs frames until everything came, each time a thread wakes the window.
+/// Runs frames until everything came: one more while the window asks for one at once, else
+/// after a thread wakes it. Frame by frame, because a thread may answer in the middle of a run
+/// and add frames to it while things are on their way; once everything came, the frames must
+/// settle at once (`Harness::run`).
 fn settle(harness: &mut H, requests: &Receiver<egui::RequestRepaintInfo>) {
-    loop {
-        // Background readers can wake several frames during loading; only assert idle
-        // settling after all of them have delivered their data.
-        harness.step();
-        if loaded(harness) {
-            break;
+    harness.step();
+    while !loaded(harness) {
+        let delay = harness.output().viewport_output[&egui::ViewportId::ROOT].repaint_delay;
+        if delay != Duration::ZERO {
+            requests.recv_timeout(ANSWER).unwrap();
         }
-        requests.recv_timeout(ANSWER).unwrap();
+        harness.step();
     }
     harness.run();
     while requests.try_recv().is_ok() {}

@@ -170,6 +170,7 @@ fn exports_join_the_app_queue() {
         root: dir.path().to_path_buf(),
         project: dc_core::Project::default(),
         settings: Settings::default_for(Format::Mp4),
+        piece: None,
         out: dir.path().join("урок.mp4"),
     };
     let none = ask(&mut shared, Request::Export(Box::new(spec.clone())));

@@ -4,15 +4,15 @@
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range};
 use dc_ui_kit::fonts::{self, Weight};
-use dc_ui_kit::strings::timeline as text;
 use dc_ui_kit::tokens::{
     self, ACCENT_HI, BG, BORDER, FS_S, Hue, REC, REC_STRONG, ROW_LINE, S2, SURFACE, TEXT_2, TEXT_3,
     WHITE,
 };
 use eframe::egui::{Align2, Color32, Painter, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
 
+use super::row::Row;
 use super::scale::{TimeScale, tick_label, timecode};
-use super::tracks::{Region, Row, Track, Tracks};
+use super::tracks::{Region, Track, Tracks};
 use crate::editor::waves::Waves;
 
 /// Side of a header button, points.
@@ -31,39 +31,17 @@ const FADED: f32 = 0.4;
 /// Opacity of the fill of the picked range (mockup: .18).
 const RANGE_FILL: f32 = 0.18;
 
-/// Row heights (mockup: clips 50, sound 36, the rest 28).
+/// The height of `row`, points.
 pub fn height(row: Row) -> f32 {
-    match row {
-        Row::Clips => 50.0,
-        Row::Mic | Row::System | Row::Audio(_) => 36.0,
-        _ => 28.0,
-    }
+    row.kind.height
 }
 
 pub fn hue(row: Row) -> Hue {
-    match row {
-        Row::Captions => tokens::HUE_CAPTIONS,
-        Row::Clips => tokens::HUE_CLIP,
-        Row::Zooms => tokens::HUE_ZOOM,
-        Row::Cursor => tokens::HUE_CURSOR,
-        Row::Keys => tokens::HUE_KEYS,
-        Row::Annotations(_) => tokens::HUE_ANNOTATIONS,
-        Row::Mic | Row::System | Row::Audio(_) => tokens::HUE_AUDIO,
-    }
+    row.kind.hue
 }
 
 pub fn name(row: Row) -> String {
-    match row {
-        Row::Captions => text::CAPTIONS.to_owned(),
-        Row::Clips => text::CLIPS.to_owned(),
-        Row::Zooms => text::ZOOMS.to_owned(),
-        Row::Cursor => text::CURSOR.to_owned(),
-        Row::Keys => text::KEYS.to_owned(),
-        Row::Annotations(track) => text::annotations(track + 1),
-        Row::Mic => text::MIC.to_owned(),
-        Row::System => text::SYSTEM.to_owned(),
-        Row::Audio(track) => text::audio(track + 1),
-    }
+    row.name()
 }
 
 /// Ticks with labels every `tick_step`, a minor tick halfway, over the visible time.

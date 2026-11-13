@@ -4,16 +4,28 @@
 //! drops out, a faster part squeezes. The chips are pale while the plate is off; they are not
 //! objects of the project, so they cannot be picked.
 
-use dc_core::{KeyTracks, Project, Range, StateError, TimeMap};
-use dc_ui_kit::lane::Region;
+use dc_core::{KeyTracks, OpName, Project, Range, StateError, TimeMap};
+use dc_ui_kit::lane::{Region, Row};
 use dc_ui_kit::strings::timeline as text;
 
 pub use crate::panel::Shortcuts;
-use crate::{Keys, Prepared};
+use crate::{Keys, KeysState, Prepared};
 
-/// The plates show (the row is not off).
-pub fn shown(project: &Project) -> Result<bool, StateError> {
-    Ok(project.state::<Keys>()?.settings.show)
+/// The command of the eye of the row (`--show`).
+pub const SHOW: OpName = OpName::of::<crate::KeysSet>();
+
+/// The row «Клавиши»: off while the plates do not show; its chips come from the recordings
+/// ([`chips`]). A broken keys state is the problem and reads as the defaults (as the chips do).
+pub fn row(project: &Project, _: &TimeMap) -> (Row, Option<StateError>) {
+    let (state, broken) = match project.state::<Keys>() {
+        Ok(state) => (state, None),
+        Err(error) => (KeysState::default(), Some(error)),
+    };
+    let row = Row {
+        regions: Vec::new(),
+        off: !state.settings.show,
+    };
+    (row, broken)
 }
 
 /// The chips of the row and the panel's facts from the shortcuts `keys` of the recordings of

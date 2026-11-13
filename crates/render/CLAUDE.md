@@ -6,6 +6,7 @@ wgpu-компоновщик: видео, SDF-фигуры, blur/glow, текст
 
 - Один рендер для превью, экспорта и CLI. Одно устройство `Gpu`: окно берёт его клоны, своего не создаёт. dc-app делает его через `Gpu::on` на instance из `instance_descriptor()` (решение 020).
 - `Compositor::draw` получает готовую `Scene` и ничего не решает сам. Один render pass на кадр (`Recorder`), прерывают его только blur, glow, тень текста, кисть и слой повёрнутого текста. Пайплайны создаются один раз.
+- Шов картинки эффекта (`look.rs`, ARCHITECTURE «Картинка эффекта»): `Prepare` (один раз из `Inputs`) → `Look::draw` в `Frame` (сцена момента и `pointer` курсора для облачка), ошибки — `LookError`. Сам рендер эффектов не знает.
 - `Scene` — данные без wgpu (serde, JSON-снимки evaluate), px кадра выхода. Кадр начинается чёрным, слои по `Band` снизу вверх, внутри полосы — в порядке `push`. Камера двигает все полосы, кроме `Overlay`.
 - Видео: `Video::fitted` вписывает кроп клипа без растяжения, по центру. Кадр NV12 (`Nv12::new` проверяет плоскости) отдаётся через `Compositor::upload` до `draw`; кадр не того времени — `RenderError::NoFrame`. Текстуры кэшируются по `Media::path`. NV12 → RGB в шейдере по `VideoColor` кадра (из `dc_media::Probe::color`); совпадает с `ffmpeg scale` до ±2.
 - `Rgba` (`#rrggbbaa`) имеет JSON Schema. `GradientColors` читается из `#..,#..` (`FromStr`). Общее для эффектов: `REFERENCE` (1080 — ref-px при короткой стороне кадра), `BLUE`, `DEFAULT_FAMILY`.

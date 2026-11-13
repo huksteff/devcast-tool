@@ -1,7 +1,7 @@
 //! «Показ клавиш» (mockup 3b): the inspector panel of the plate settings for the whole project.
 //! The subtitle counts the shortcuts of the recordings; «Основное» — show, place, size and a
 //! sample plate in the project's colours from its most repeated shortcut ([`Shortcuts`]);
-//! «Тонкая настройка» — colours and how long a shortcut stays.
+//! «Дополнительно» — colours and how long a shortcut stays.
 //! Every edit and «Сбросить» is the `keys` command (`devcast keys …`, the settings key `keys`).
 
 use dc_core::OpName;
@@ -192,7 +192,7 @@ fn basic_args(s: &KeysSettings) -> Map<String, Value> {
     ])
 }
 
-/// The fields of «Тонкая настройка» as arguments of `keys`.
+/// The fields of «Дополнительно» as arguments of `keys`.
 fn fine_args(s: &KeysSettings) -> Map<String, Value> {
     args([
         ("color", json!(s.color)),

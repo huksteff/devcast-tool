@@ -93,7 +93,7 @@ fn the_keys_eye_gives_the_project_of_the_cli() {
         .tracks
         .rows
         .iter()
-        .find(|t| t.row == timeline::Row::Keys);
+        .find(|t| t.row == timeline::Row::KEYS);
     assert!(!row.unwrap().off, "the row shows the new state");
     assert!(
         !harness

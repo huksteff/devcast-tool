@@ -6,7 +6,7 @@
 use dc_core::OpName;
 use dc_core::time::Output;
 use dc_core::{IdKind, Project, Range, StateError, Step, TimeDelta, TimeMap};
-use dc_ui_kit::lane::{self, Item, Lane, Moved, Region, Resize, id_args, seconds, time};
+use dc_ui_kit::lane::{self, Item, Lane, Moved, Region, Resize, Row, id_args, seconds, time};
 use dc_ui_kit::strings::timeline as text;
 
 use crate::{DEFAULT_SCALE, Mode, ZoomEffect, ZoomKind};
@@ -55,8 +55,12 @@ fn duplicated(project: &Project, item: Item, range: Range<Output>) -> Option<Ste
     lane::in_place(copied(project, item, range.duration()), range)
 }
 
-/// The regions of the zooms that show on the output.
-pub fn regions(project: &Project, map: &TimeMap) -> Result<Vec<Region>, StateError> {
+/// The row «Зумы»: the regions of the zooms that show on the output.
+pub fn row(project: &Project, map: &TimeMap) -> (Row, Option<StateError>) {
+    Row::or_empty(read(project, map))
+}
+
+fn read(project: &Project, map: &TimeMap) -> Result<Row, StateError> {
     let state = project.state::<ZoomEffect>()?;
     let regions = state.zooms.iter().filter_map(|zoom| {
         let range = map.output_span(&zoom.media, zoom.range)?;
@@ -69,7 +73,10 @@ pub fn regions(project: &Project, map: &TimeMap) -> Result<Vec<Region>, StateErr
             ..Region::new(range, label)
         })
     });
-    Ok(regions.collect())
+    Ok(Row {
+        regions: regions.collect(),
+        off: false,
+    })
 }
 
 /// `zoom add` of a new zoom at `range`.

@@ -67,7 +67,7 @@ pub fn speed_edge(from: Range<Output>, end: bool, to: OutputTime, factor: f64) -
         Value::String(super::montage::range_arg(span)),
     );
     args.insert("factor".to_owned(), factor.into());
-    Some(Step::of(lanes::SPEED, args))
+    Some(Step::of(lanes::clips::SPEED, args))
 }
 
 /// `annot key rm <id> --at <at>`: the key of annotation `id` at output `at`.

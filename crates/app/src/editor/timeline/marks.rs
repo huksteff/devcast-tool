@@ -13,8 +13,8 @@ use eframe::egui::{
     pos2, vec2,
 };
 
+use super::row::Row;
 use super::scale::{TimeScale, timecode};
-use super::tracks::Row;
 use super::{key_tip, paint};
 use crate::editor::lanes::annotations::AnnotId;
 use crate::editor::selection::{Item, Selected};
@@ -42,7 +42,7 @@ pub fn ui(ui: &Ui, rows: &[(Row, Rect)], editor: &mut EditorWindow, scale: &Time
         _ => None,
     };
     for (index, &(row, lane)) in rows.iter().enumerate() {
-        if !matches!(row, Row::Annotations(_)) {
+        if row.annotation_track().is_none() {
             continue;
         }
         let painter = ui.painter_at(lane);

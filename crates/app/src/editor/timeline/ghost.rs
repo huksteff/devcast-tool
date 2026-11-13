@@ -12,10 +12,9 @@ use dc_ui_kit::tokens::FS_S;
 use eframe::egui::{Align2, Pos2, Rect, Response, Shape, Stroke, Ui, pos2};
 
 use super::paint;
+use super::row::{Adds, Row};
 use super::scale::TimeScale;
-use super::tracks::Row;
 use crate::editor::adding::{self, SoundFile};
-use crate::editor::lanes;
 use crate::editor::view::KindMenu;
 use crate::editor::{Action, EditorWindow};
 
@@ -39,7 +38,7 @@ pub fn ui(
         return false;
     };
     // A click near a click dot picks the dot, never adds a callout event.
-    if row == Row::Cursor && super::dots::grabbed(editor, lane, scale, pointer) {
+    if row == Row::CURSOR && super::dots::grabbed(editor, lane, scale, pointer) {
         return false;
     }
     let at = scale.time(pointer.x);
@@ -58,7 +57,8 @@ pub fn ui(
 /// Adds the region of `row` at `range`; a sound row asks for the file first, an annotation row
 /// for the kind (its menu opens at `pointer`).
 fn add(editor: &mut EditorWindow, row: Row, range: Range<Output>, pointer: Pos2) {
-    if let Row::Annotations(track) = row {
+    let track = row.track;
+    if matches!(row.kind.adds, Adds::Annotation) {
         editor.view.kinds = Some(KindMenu {
             track,
             range,
@@ -66,7 +66,7 @@ fn add(editor: &mut EditorWindow, row: Row, range: Range<Output>, pointer: Pos2)
         });
         return;
     }
-    if let Row::Audio(track) = row {
+    if matches!(row.kind.adds, Adds::Sound) {
         let picked = crate::dialog::file()
             .set_title(text::PICK_SOUND)
             .add_filter(text::SOUND_FILES, &dc_audio::AUDIO_EXTENSIONS)
@@ -114,9 +114,9 @@ fn paint(painter: &eframe::egui::Painter, body: Rect, row: Row) {
     ];
     let stroke = Stroke::new(1.0, hue.line);
     painter.extend(Shape::dashed_line(&corners, stroke, 3.0, 3.0));
-    let label = match row {
-        Row::Zooms => lanes::zoom::ghost(),
-        _ => text::GHOST.to_owned(),
+    let label = match row.kind.ghost {
+        Some(says) => says(),
+        None => text::GHOST.to_owned(),
     };
     painter.text(
         pos2(body.center().x, body.center().y),

@@ -19,12 +19,21 @@ pub type Spawn = Box<dyn Fn() -> std::io::Result<Child> + Send>;
 /// `devcast --captions-worker`: the CLI exe beside this one is the worker of the app.
 pub fn cli_worker() -> Spawn {
     Box::new(|| {
-        Command::new(beside(&std::env::current_exe()?)?)
+        let mut worker = Command::new(beside(&std::env::current_exe()?)?);
+        worker
             .arg(WORKER_ARG)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
+            .stderr(Stdio::null());
+        // The worker is a console program: without the flag Windows opens a console window
+        // over the editor.
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            worker.creation_flags(CREATE_NO_WINDOW);
+        }
+        worker.spawn()
     })
 }
 

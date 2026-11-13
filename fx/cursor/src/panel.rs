@@ -2,7 +2,7 @@
 //! tab «Курсор» ([`ui`]). «Курсор» — show, the set, size, motion (`cursor`); the set is
 //! «Системный» only: own cursor pictures are frozen by the owner (QUESTIONS.md, 2026-10-29), so
 //! «Своя картинка» is off with that reason. «Эффект клика» — style, colour, size (`clicks`);
-//! «Тонкая настройка» — opacity and duration of clicks (`clicks`), bounce, its length, sway,
+//! «Дополнительно» — opacity and duration of clicks (`clicks`), bounce, its length, sway,
 //! motion blur, loop (`cursor`). A single click is edited from its dot on the «Курсор» row
 //! ([`click`], `panel_click.rs`, with the facts [`Press`]). Edits go to `cx.edits`.
 
@@ -112,7 +112,7 @@ fn cursor_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &CursorSettings) {
     }
 }
 
-/// «Тонкая настройка»: the timing of clicks, then the motion of the cursor.
+/// «Дополнительно»: the timing of clicks, then the motion of the cursor.
 fn fine(ui: &mut Ui, cx: &mut Cx<'_>, now: &CursorSettings, default: &CursorSettings) {
     let timing = style::timing_args(&now.click);
     let mut reset = steps(CLICKS, &timing, style::timing_args(&default.click));
@@ -175,7 +175,7 @@ fn cursor_args(s: &CursorSettings) -> Map<String, Value> {
     ])
 }
 
-/// The cursor fields of «Тонкая настройка» as arguments of `cursor`.
+/// The cursor fields of «Дополнительно» as arguments of `cursor`.
 fn motion_args(s: &CursorSettings) -> Map<String, Value> {
     args([
         ("bounce", json!(s.bounce)),

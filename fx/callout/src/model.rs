@@ -151,6 +151,7 @@ pub struct CalloutState {
     pub settings: CalloutSettings,
 }
 
+#[cfg(test)]
 impl CalloutState {
     pub fn event_ids(&self) -> impl Iterator<Item = EventId> + '_ {
         self.events.iter().map(|e| e.id)

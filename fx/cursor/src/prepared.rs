@@ -41,7 +41,7 @@ pub struct Prepared {
 impl Prepared {
     /// Paths of every recording on the track that has mouse events; imported videos have none
     /// and show no cursor.
-    pub fn new(project: &Project, state: CursorState, tracks: CursorTracks) -> Self {
+    pub fn new(project: &Project, state: CursorState, tracks: &CursorTracks) -> Self {
         let CursorState { settings, clicks } = state;
         let spring = settings.smoothing.spring();
         let sway = (settings.sway > 0.0).then(|| Sway {
@@ -50,7 +50,7 @@ impl Prepared {
         });
         let mut recordings = BTreeMap::new();
         for (media, track) in tracks {
-            let Some(clip) = project.clips.iter().find(|c| c.media.path == media) else {
+            let Some(clip) = project.clips.iter().find(|c| &c.media.path == media) else {
                 continue;
             };
             if track.moves.is_empty() {
@@ -59,7 +59,7 @@ impl Prepared {
             let size = clip.media.size;
             let aspect = f64::from(size.height) / f64::from(size.width);
             let path = Path::new(
-                track.moves,
+                track.moves.clone(),
                 spring.as_ref(),
                 sway.as_ref(),
                 clip.media.duration,
@@ -67,10 +67,10 @@ impl Prepared {
             );
             let recording = Recording {
                 path,
-                shapes: track.shapes,
-                clicks: track.clicks,
+                shapes: track.shapes.clone(),
+                clicks: track.clicks.clone(),
             };
-            recordings.insert(media, recording);
+            recordings.insert(media.clone(), recording);
         }
         let longest_click = clicks
             .iter()

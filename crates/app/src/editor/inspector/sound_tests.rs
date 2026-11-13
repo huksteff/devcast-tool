@@ -15,11 +15,10 @@ use crate::editor::editing_tests::json;
 use crate::editor::selection::{Item, Selected};
 use crate::editor::streams::Imported;
 use crate::editor::timeline::Row;
-use crate::editor::view::Panel;
 
 fn sound_tab() -> H {
     let mut harness = tall();
-    harness.state_mut().editor.view.panel = Panel::Sound;
+    harness.state_mut().editor.view.tab = super::SOUND.id;
     harness.run();
     harness
 }
@@ -108,7 +107,7 @@ fn tall_timeline() -> H {
 
 fn mic_faded(harness: &H, clip: ClipId) -> bool {
     let rows = &harness.state().editor.tracks.rows;
-    let mic = rows.iter().find(|t| t.row == Row::Mic).unwrap();
+    let mic = rows.iter().find(|t| t.row == Row::MIC).unwrap();
     mic.regions
         .iter()
         .find(|r| r.clip == Some(clip))

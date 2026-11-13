@@ -4,8 +4,9 @@
 use dc_core::{ClipId, OutputTime, TimeDelta, TimeMap};
 
 use super::clips_tests::{H, lanes};
+use super::row::Row;
 use super::scale::TimeScale;
-use super::tracks::{Row, Tracks};
+use super::tracks::Tracks;
 use super::wave::{self, COLUMN, Column, Source};
 use crate::editor::test_project::project;
 use crate::editor::waves_tests::tone_peaks;
@@ -107,14 +108,14 @@ fn sound_rows_carry_their_waves_and_mutes() {
     let sound = ["system".to_owned(), "mic".to_owned()];
     let tracks = Tracks::of(&project(), &sound, Default::default());
     let row = |row| tracks.rows.iter().find(|t| t.row == row).unwrap();
-    let mic = row(Row::Mic);
+    let mic = row(Row::MIC);
     assert_eq!(
         mic.regions.len(),
         2,
         "the recordings, not the imported video"
     );
     assert!(mic.regions.iter().all(|r| !r.faded));
-    let system = row(Row::System);
+    let system = row(Row::SYSTEM);
     assert!(system.regions.iter().all(|r| r.faded), "muted: pale");
     let waves: Vec<_> = tracks.sources().collect();
     assert_eq!(

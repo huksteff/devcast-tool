@@ -201,44 +201,44 @@ fn tracks_stand_at_output_times() {
     assert_eq!(
         rows,
         [
-            Row::Captions,
-            Row::Clips,
-            Row::Zooms,
-            Row::Cursor,
-            Row::Keys,
-            Row::Annotations(0),
-            Row::Annotations(1),
-            Row::Mic,
-            Row::System,
-            Row::Audio(0),
+            Row::CAPTIONS,
+            Row::CLIPS,
+            Row::ZOOMS,
+            Row::CURSOR,
+            Row::KEYS,
+            Row::annotations(0),
+            Row::annotations(1),
+            Row::MIC,
+            Row::SYSTEM,
+            Row::audio(0),
         ]
     );
     let row = |row: Row| tracks.rows.iter().find(|t| t.row == row).unwrap();
     // 20–25 s of the first clip is cut, 30–38 s plays 4× (2 s of output).
     assert_eq!(
-        ranges(row(Row::Clips)),
+        ranges(row(Row::CLIPS)),
         [(0.0, 49.0), (49.0, 87.0), (87.0, 105.0)]
     );
     assert_eq!(
-        ranges(row(Row::Zooms)),
+        ranges(row(Row::ZOOMS)),
         [(5.0, 12.0), (13.0, 17.0), (51.0, 58.0)]
     );
-    assert_eq!(row(Row::Zooms).regions[2].label, "1,8× · точка");
+    assert_eq!(row(Row::ZOOMS).regions[2].label, "1,8× · точка");
     assert_eq!(
-        ranges(row(Row::Annotations(0))),
+        ranges(row(Row::annotations(0))),
         [(23.0, 29.0), (49.0, 64.0)]
     );
     assert_eq!(
-        ranges(row(Row::Cursor)),
+        ranges(row(Row::CURSOR)),
         [(34.0, 35.5), (35.5, 40.5), (41.0, 42.5)]
     );
     assert_eq!(
-        ranges(row(Row::Mic)),
+        ranges(row(Row::MIC)),
         [(0.0, 49.0), (49.0, 87.0)],
         "recordings only"
     );
-    assert!(row(Row::System).off && row(Row::System).regions.iter().all(|r| r.faded));
-    assert!(row(Row::Keys).off, "keys are not shown by default");
+    assert!(row(Row::SYSTEM).off && row(Row::SYSTEM).regions.iter().all(|r| r.faded));
+    assert!(row(Row::KEYS).off, "keys are not shown by default");
     let speeds: Vec<_> = tracks
         .speeds
         .iter()

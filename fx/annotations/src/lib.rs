@@ -4,11 +4,14 @@
 
 mod animate;
 mod arrange;
+mod boxes;
 mod commands;
 mod keyed;
 mod keys;
+mod kinds;
 pub mod lane;
 mod lane_tip;
+pub mod look;
 mod model;
 mod motion;
 pub mod panel;

@@ -10,9 +10,9 @@ use dc_core::OpName;
 use dc_core::{Point, Project, Step};
 use dc_ui_kit::egui::{Color32, CursorIcon, FontId, Pos2, Rect, Response, Stroke, StrokeKind, Ui};
 use dc_ui_kit::egui::{pos2, vec2};
-use dc_ui_kit::stage::Answer;
 use dc_ui_kit::stage::geom::{GRAB, Mapping};
 use dc_ui_kit::stage::paint::{HANDLE, canvas, handle};
+use dc_ui_kit::stage::{Answer, Cx, Gesture, Held, Picked, Stage};
 use dc_ui_kit::strings::editor as text;
 use dc_ui_kit::tokens::{FS_S, HUE_ZOOM, WHITE};
 use serde_json::{Map, json};
@@ -52,70 +52,94 @@ const CORNERS: [(Corner, (f32, f32)); 4] = [
     (Corner::BottomRight, (1.0, 1.0)),
 ];
 
-/// The zoom frame of `id` of `project` over the frame mapped by `map`; `drag` — the gesture
-/// going on, the editor keeps it. `ours` when the pointer works on it (a press inside it or on a
-/// corner, or its drag).
-pub fn ui(
-    ui: &Ui,
-    project: &Project,
-    (response, map): (&Response, Mapping),
-    id: ZoomId,
-    drag: &mut Option<Drag>,
-) -> Answer {
-    let mut answer = Answer::default();
-    let Some(zoom) = find(project, id) else {
-        return answer;
-    };
-    let dragging = drag.clone().filter(|d| d.id == id);
-    let (scale, focus) = dragging
-        .as_ref()
-        .map_or((zoom.scale, zoom.focus), |d| d.now);
-    let on_screen = screen(map, scale, focus);
-    let hovered = response.hover_pos().and_then(|p| grip(on_screen, p));
-    if let Some(grip) = dragging.as_ref().map(|d| d.grip).or(hovered) {
-        ui.ctx().set_cursor_icon(cursor(grip));
+/// The entry of the editor's table of preview gestures: the frame of the zoom picked alone, over
+/// the picture without the camera.
+pub struct ZoomFrame;
+
+impl Gesture for Drag {
+    fn drafted(&self) -> bool {
+        self.drafted
     }
-    answer.ours = dragging.is_some();
-    if response.drag_started()
-        && let Some(press) = ui.input(|i| i.pointer.press_origin())
-        && let Some(grip) = grip(on_screen, press)
-    {
-        *drag = Some(Drag {
-            id,
-            grip,
-            from: (zoom.scale, zoom.focus),
-            follows: zoom.mode == Mode::Follow,
-            at: map.canvas(press),
-            now: (zoom.scale, zoom.focus),
-            drafted: false,
-        });
-        answer.ours = true;
+}
+
+impl Stage for ZoomFrame {
+    fn bare(&self, picked: Option<Picked>) -> bool {
+        picked_zoom(picked).is_some()
     }
-    if let Some(drag) = drag.as_mut()
-        && let Some(pointer) = response.interact_pointer_pos()
-        && response.dragged()
-    {
-        let now = dragged(drag, map, map.canvas(pointer));
-        if now != drag.now {
-            drag.now = now;
-            drag.drafted = true;
-            answer.draft = Some(vec![step(drag)]);
+
+    /// `ours` when the pointer works on the frame (a press inside it or on a corner, or its
+    /// drag).
+    fn ui(&self, ui: &Ui, cx: &mut Cx<'_>, response: &Response, map: Mapping) -> Answer {
+        let mut answer = Answer::default();
+        let Some(id) = picked_zoom(cx.picked) else {
+            return answer;
+        };
+        let Some(zoom) = find(cx.project, id) else {
+            return answer;
+        };
+        let dragging = mine(cx).filter(|d| d.id == id).cloned();
+        let (scale, focus) = dragging
+            .as_ref()
+            .map_or((zoom.scale, zoom.focus), |d| d.now);
+        let on_screen = screen(map, scale, focus);
+        let hovered = response.hover_pos().and_then(|p| grip(on_screen, p));
+        if let Some(grip) = dragging.as_ref().map(|d| d.grip).or(hovered) {
+            ui.ctx().set_cursor_icon(cursor(grip));
         }
+        answer.ours = dragging.is_some();
+        if response.drag_started()
+            && let Some(press) = ui.input(|i| i.pointer.press_origin())
+            && let Some(grip) = grip(on_screen, press)
+        {
+            *cx.held = Some(Held::new(Drag {
+                id,
+                grip,
+                from: (zoom.scale, zoom.focus),
+                follows: zoom.mode == Mode::Follow,
+                at: map.canvas(press),
+                now: (zoom.scale, zoom.focus),
+                drafted: false,
+            }));
+            answer.ours = true;
+        }
+        if let Some(drag) = cx.held.as_mut().and_then(Held::get_mut::<Drag>)
+            && let Some(pointer) = response.interact_pointer_pos()
+            && response.dragged()
+        {
+            let now = dragged(drag, map, map.canvas(pointer));
+            if now != drag.now {
+                drag.now = now;
+                drag.drafted = true;
+                answer.draft = Some(vec![step(drag)]);
+            }
+        }
+        if response.drag_stopped()
+            && let Some(ended) = mine(cx)
+        {
+            let changed = ended.now != ended.from;
+            answer.done = Some(changed.then(|| vec![step(ended)]));
+        }
+        let (scale, focus) = match (&answer.done, mine(cx)) {
+            (None, Some(drag)) => drag.now,
+            _ => (zoom.scale, zoom.focus),
+        };
+        paint(ui, map, screen(map, scale, focus), scale);
+        answer.ours |= response.clicked() && hovered.is_some();
+        answer
     }
-    if response.drag_stopped()
-        && let Some(ended) = drag.take()
-    {
-        let changed = ended.now != ended.from;
-        answer.done = Some(changed.then(|| vec![step(&ended)]));
-        *drag = Some(ended);
+}
+
+/// The zoom picked alone (as a region).
+fn picked_zoom(picked: Option<Picked>) -> Option<ZoomId> {
+    match picked? {
+        Picked::Region(item) => item.id(),
+        Picked::Key(_) => None,
     }
-    let (scale, focus) = match (&answer.done, drag.as_ref()) {
-        (None, Some(drag)) => drag.now,
-        _ => (zoom.scale, zoom.focus),
-    };
-    paint(ui, map, screen(map, scale, focus), scale);
-    answer.ours |= response.clicked() && hovered.is_some();
-    answer
+}
+
+/// The frame drag going on.
+fn mine<'c>(cx: &'c Cx<'_>) -> Option<&'c Drag> {
+    cx.held.as_ref().and_then(Held::get::<Drag>)
 }
 
 fn find(project: &Project, id: ZoomId) -> Option<Zoom> {

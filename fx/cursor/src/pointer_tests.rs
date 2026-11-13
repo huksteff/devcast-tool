@@ -5,8 +5,8 @@ use crate::prepared::Prepared;
 use crate::state::{CursorSettings, Smoothing};
 use crate::test_util::{HD, o, project, state, tracks};
 
-fn at(p: &Project, settings: CursorSettings, secs: f64) -> Option<super::Pointer> {
-    let prepared = Prepared::new(p, state(settings), tracks());
+fn at(p: &Project, settings: CursorSettings, secs: f64) -> Option<dc_render::look::Pointer> {
+    let prepared = Prepared::new(p, state(settings), &tracks());
     pointer(&prepared, p, &TimeMap::build(p), o(secs), HD)
 }
 

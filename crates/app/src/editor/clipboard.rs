@@ -129,7 +129,7 @@ pub fn paste(editor: &mut EditorWindow) {
 pub fn select_all(editor: &mut EditorWindow) {
     let picked: Vec<Item> = editor.view.selection.regions().collect();
     let wanted = |row: Row, item: Item| match picked.is_empty() {
-        true => row == Row::Zooms,
+        true => row == Row::ZOOMS,
         false => picked.iter().any(|p| p.same_kind(item)),
     };
     let all: Vec<Item> = editor

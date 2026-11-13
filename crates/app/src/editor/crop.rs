@@ -25,7 +25,7 @@ impl CropDialog {
             .tracks
             .rows
             .iter()
-            .find(|t| t.row == Row::Clips)
+            .find(|t| t.row == Row::CLIPS)
             .map(|t| t.regions.as_slice())
             .unwrap_or_default();
         let picked: Vec<_> = editor.view.selection.clips().collect();

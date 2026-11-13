@@ -1,36 +1,17 @@
 //! What the timeline shows, read from the project: the rows in the order of the mockup and their
 //! regions at output times (through the time map). Rebuilt when the project changes.
 
-use dc_capture::audio::MIC_TRACK;
 use dc_core::project::MediaKind;
 use dc_core::time::Output;
-use dc_core::{ClipId, KeyTracks, OutputTime, Project, Range, StateError, TimeDelta, TimeMap};
+use dc_core::{ClipId, KeyTracks, OutputTime, Project, Range, TimeDelta, TimeMap};
 use dc_ui_kit::lane;
 use dc_ui_kit::strings::timeline as text;
 
+use super::row::Row;
 use super::scale::length;
 use super::wave::{self, Source, Wave};
 use crate::editor::lanes::{self, audio::Plays, audio::Sounding};
 use crate::editor::selection::Item;
-
-/// A row of the timeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Row {
-    Captions,
-    Clips,
-    Zooms,
-    /// Clicks and the callout.
-    Cursor,
-    Keys,
-    /// Annotation track `0..TRACKS`; a higher one is painted above.
-    Annotations(u32),
-    /// Microphone of the recordings.
-    Mic,
-    /// System sound of the recordings.
-    System,
-    /// Extra sound track `0..TRACKS`.
-    Audio(u32),
-}
 
 /// An object on a row: from `range.start` to `range.end` of the output.
 #[derive(Debug, Clone, PartialEq)]
@@ -125,24 +106,16 @@ impl Tracks {
             duration: map.duration(),
             ..Self::default()
         };
-        let captions = tracks.problem(lanes::captions::row(project, &map));
         let (sounds, broken) = lanes::audio::rows(project, &map, sound, least.audio);
         tracks.problems.extend(broken.map(|e| e.to_string()));
-        let keys = tracks.problem(lanes::keys::shown(project));
-        let zooms = tracks.lane(lanes::zoom::regions(project, &map));
-        let cursor = tracks.lane(lanes::callout::regions(project, &map));
-        tracks.add_lane(Row::Captions, captions);
+        tracks.fill(Row::CAPTIONS, project, &map);
         tracks.clips(project, &map);
-        tracks.add(Row::Zooms, zooms, false);
-        tracks.add(Row::Cursor, cursor, false);
-        tracks.add(Row::Keys, Vec::new(), !keys);
+        for row in [Row::ZOOMS, Row::CURSOR, Row::KEYS] {
+            tracks.fill(row, project, &map);
+        }
         tracks.annotations(project, &map, least.annotations);
         for channel in sounds.channels {
-            let row = if channel.name == MIC_TRACK {
-                Row::Mic
-            } else {
-                Row::System
-            };
+            let row = Row::channel(channel.name);
             let regions = channel.regions.into_iter();
             let regions = regions.filter_map(|s| sounding(project, &map, channel.name, s));
             tracks.add(row, regions.collect(), channel.off);
@@ -150,7 +123,7 @@ impl Tracks {
         for (track, regions) in (0..).zip(sounds.extra) {
             let regions = regions.into_iter();
             let regions = regions.filter_map(|s| sounding(project, &map, "", s));
-            tracks.add(Row::Audio(track), regions.collect(), false);
+            tracks.add(Row::audio(track), regions.collect(), false);
         }
         tracks
     }
@@ -160,26 +133,18 @@ impl Tracks {
     pub fn place_keys(&mut self, project: &Project, keys: &KeyTracks) {
         let (chips, shortcuts) = lanes::keys::chips(project, keys);
         self.shortcuts = shortcuts;
-        if let Some(track) = self.rows.iter_mut().find(|t| t.row == Row::Keys) {
+        if let Some(track) = self.rows.iter_mut().find(|t| t.row == Row::KEYS) {
             track.regions = chips.into_iter().map(Region::from).collect();
         }
     }
 
-    /// What an effect's lane read; a broken state is a problem and reads as the default.
-    fn problem<T: Default>(&mut self, read: Result<T, StateError>) -> T {
-        read.unwrap_or_else(|error| {
-            self.problems.push(error.to_string());
-            T::default()
-        })
-    }
-
-    /// The regions of an effect's lane; a broken state is a problem and shows nothing.
-    fn lane(&mut self, regions: Result<Vec<lane::Region>, StateError>) -> Vec<Region> {
-        let regions = self.problem(regions);
-        regions.into_iter().map(Region::from).collect()
-    }
-
-    fn add_lane(&mut self, row: Row, lane: lane::Row) {
+    /// The row as its effect reads it (`Kind::fill`); a broken state is a problem.
+    fn fill(&mut self, row: Row, project: &Project, map: &TimeMap) {
+        let (lane, broken) = row
+            .kind
+            .fill
+            .map_or_else(Default::default, |f| f(project, map));
+        self.problems.extend(broken.map(|e| e.to_string()));
         let regions = lane.regions.into_iter().map(Region::from).collect();
         self.add(row, regions, lane.off);
     }
@@ -223,7 +188,7 @@ impl Tracks {
                 ..region(range, label)
             });
         }
-        self.add(Row::Clips, regions, false);
+        self.add(Row::CLIPS, regions, false);
     }
 
     /// Annotation rows up to the highest used track, at least `least` and one.
@@ -234,7 +199,7 @@ impl Tracks {
         });
         for (track, regions) in (0..).zip(rows.rows) {
             let regions = regions.into_iter().map(Region::from).collect();
-            self.add(Row::Annotations(track), regions, false);
+            self.add(Row::annotations(track), regions, false);
         }
         self.keys = rows.keys;
     }

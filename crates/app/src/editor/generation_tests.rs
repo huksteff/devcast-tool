@@ -129,3 +129,15 @@ fn without_the_model_folder_nothing_starts() {
         "the empty card says what it costs"
     );
 }
+
+#[test]
+fn starting_opens_the_captions_tab() {
+    let (_models, mut harness) = with_worker(endless());
+    let editor = &mut harness.state_mut().editor;
+    editor.view.tab = super::inspector::KEYS.id;
+    editor.actions.push(super::actions::Action::Generate);
+    harness.run();
+    let view = &harness.state().editor.view;
+    assert_eq!(view.tab, super::inspector::CAPTIONS.id);
+    assert_eq!(view.object, None);
+}

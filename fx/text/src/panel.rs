@@ -1,5 +1,5 @@
 //! «Основное» of a text annotation (main window «Текст»): the words, font and size, B I U and
-//! alignment, the colours of the letters and of the plate (`text set`); «Тонкая настройка» —
+//! alignment, the colours of the letters and of the plate (`text set`); «Дополнительно» —
 //! the corner radius of the plate. «Сбросить» brings the look to the defaults and keeps the
 //! words.
 
@@ -107,3 +107,7 @@ fn look(b: &TextBody) -> [(&'static str, Value); 8] {
         ("background", json!(b.background)),
     ]
 }
+
+/// The kind as the editor registers it: its panel section and fields.
+pub const KIND: dc_fx_annotations::panel::Entry =
+    dc_fx_annotations::panel::Entry::of::<TextBody>(dc_fx_annotations::Kind::Text);

@@ -87,7 +87,7 @@ pub(crate) fn motion_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &ZoomSettings) {
     }
 }
 
-/// «Тонкая настройка»: smoothness, zoom-in, zoom-out, motion blur.
+/// «Дополнительно»: smoothness, zoom-in, zoom-out, motion blur.
 pub(crate) fn fine(ui: &mut Ui, cx: &mut Cx<'_>, now: &ZoomSettings, default: &ZoomSettings) {
     let group = Group {
         id: "fine",
@@ -152,7 +152,7 @@ pub(crate) fn basic_args(s: &ZoomSettings, auto: bool) -> Map<String, Value> {
     fields
 }
 
-/// The fields of «Тонкая настройка» as arguments of `zoom motion`.
+/// The fields of «Дополнительно» as arguments of `zoom motion`.
 fn fine_args(s: &ZoomSettings) -> Map<String, Value> {
     args([
         ("smoothness", json!(s.smoothness)),

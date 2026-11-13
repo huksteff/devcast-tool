@@ -246,6 +246,7 @@ pub(super) fn exported(harness: &mut H, taken: &Arc<Mutex<Vec<Spec>>>, out: Path
         root: dir.root().to_path_buf(),
         project: Working::load(&dir, false).unwrap().project,
         settings: Settings::default_for(Format::Mp4),
+        piece: None,
         out,
     };
     let app = taken.lock().unwrap().pop().unwrap();

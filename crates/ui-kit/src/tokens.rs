@@ -34,7 +34,6 @@ pub const S2: f32 = 8.0;
 pub const S3: f32 = 12.0;
 pub const S4: f32 = 16.0;
 pub const S5: f32 = 24.0;
-pub const S6: f32 = 32.0;
 
 /// Controls.
 pub const R1: u8 = 6;

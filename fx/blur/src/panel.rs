@@ -1,6 +1,6 @@
 //! «Основное» of a blur (mockup 3c «Размытие»): strength, the tint — its colour and how much it
 //! covers (the alpha of `tint`, 100 % a solid fill) — and the corner radius (`blur set`).
-//! The box turns with «Поворот» of «Тонкая настройка», like every annotation.
+//! The box turns with «Поворот» of «Дополнительно», like every annotation.
 
 use crate::{BlurBody, RADIUS_MAX, STRENGTH_MAX, STRENGTH_MIN};
 use dc_core::OpName;
@@ -56,3 +56,7 @@ fn fields(b: &BlurBody) -> [(&'static str, Value); 3] {
         ("radius", json!(b.radius)),
     ]
 }
+
+/// The kind as the editor registers it: its panel section and fields.
+pub const KIND: dc_fx_annotations::panel::Entry =
+    dc_fx_annotations::panel::Entry::of::<BlurBody>(dc_fx_annotations::Kind::Blur);

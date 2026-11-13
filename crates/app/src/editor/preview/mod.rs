@@ -228,7 +228,7 @@ fn frame(ui: &mut Ui, editor: &mut EditorWindow) {
     let moment = Moment {
         time: view.playhead,
         scrub: view.timeline.scrub.is_some(),
-        camera: stage::picked_zoom(editor).is_none(),
+        camera: stage::camera(editor),
     };
     let quality = view.quality;
     let shown = match canvas {
@@ -245,7 +245,7 @@ fn frame(ui: &mut Ui, editor: &mut EditorWindow) {
             paint(ui, rect, &shown);
             stage::ui(ui, editor, &response, rect, shown.camera);
         });
-    stage::brush_bar(ui, editor, area);
+    stage::bars(ui, editor, area);
 }
 
 fn paint(ui: &Ui, rect: Rect, shown: &Shown) {
