@@ -126,6 +126,9 @@ pub const MAX_HEIGHT: f32 = 620.0;
 /// The popover's window; one at a time.
 pub const ID: &str = "hud-popover";
 
+/// «Запись не подготовлена»: its three buttons fit in one row.
+const FAILED_WIDTH: f32 = 440.0;
+
 /// Shows the open popover window by the HUD whose window rectangle is `bar`.
 pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: Rect) {
     let width = match open.kind {
@@ -134,7 +137,8 @@ pub fn show(ctx: &egui::Context, shared: &Arc<Mutex<Shared>>, open: Open, bar: R
         Kind::Timing => super::menus::TIMING_WIDTH,
         Kind::More => 260.0,
         Kind::Cancel | Kind::Quit => 280.0,
-        Kind::Failed | Kind::Crashed => 360.0,
+        Kind::Failed => FAILED_WIDTH,
+        Kind::Crashed => 360.0,
         Kind::WhatsNew => 380.0,
         Kind::Update => 340.0,
     };
@@ -382,3 +386,7 @@ fn more(ui: &mut Ui, shared: &mut Shared) {
         None => {}
     }
 }
+
+#[cfg(test)]
+#[path = "popover_tests.rs"]
+mod tests;
