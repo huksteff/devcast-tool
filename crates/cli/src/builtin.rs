@@ -267,12 +267,14 @@ enum Builtin {
         args: ExportArgs,
     },
     #[command(
-        about = "skill install — skill для Claude Code в ~/.claude/skills/devcast; skill files — папка со скиллом для любой нейронки и просьба установить его",
+        about = "skill install [--agent claude|codex] — установить скилл; skill files — папка со скиллом для любой нейронки и просьба установить его",
         after_help = "skill files"
     )]
     Skill {
         #[arg(help = "Что сделать: install или files")]
         action: SkillAction,
+        #[arg(long, value_parser = ["claude", "codex"], help = "Для кого установить скилл (по умолчанию claude)")]
+        agent: Option<String>,
     },
     /// An op from the registry, e.g. `zoom add --at 12.5`.
     #[command(external_subcommand)]
@@ -344,10 +346,15 @@ impl Cli {
             }
             Builtin::Skill {
                 action: SkillAction::Install,
-            } => skill::install(&skill::target()?, ctx.globals.dry_run),
+                agent,
+            } => skill::install(&skill::target(agent.as_deref())?, ctx.globals.dry_run),
             Builtin::Skill {
                 action: SkillAction::Files,
+                agent: None,
             } => skill::files(ctx),
+            Builtin::Skill { .. } => Err(CliError::Usage(
+                "--agent выбирает нейронку для skill install; skill files подходит всем".to_owned(),
+            )),
             Builtin::Op(words) => edit::op(ctx, &words),
         }
     }

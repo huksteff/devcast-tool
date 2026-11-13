@@ -19,6 +19,10 @@ pub(crate) struct StreamDecoder {
     path: PathBuf,
     stream: usize,
     time_base: ffmpeg::Rational,
+    /// The earliest time of the file, seconds: the earliest start of its streams.
+    first: f64,
+    /// What was opened: a seek to the start of the file opens it again.
+    track: SourceTrack,
     decoder: ffmpeg::decoder::Audio,
     /// Sample format and layout to stereo `f32`; made for the first frame's format.
     converter: Option<resampling::Context>,
@@ -39,6 +43,11 @@ impl StreamDecoder {
                 stream: track.stream,
             })?;
         let time_base = stream.time_base();
+        let starts = input.streams().filter_map(|s| {
+            let start = s.start_time();
+            (start != ffmpeg::ffi::AV_NOPTS_VALUE).then(|| start as f64 * f64::from(s.time_base()))
+        });
+        let first = starts.reduce(f64::min).unwrap_or(0.0);
         let context = ffmpeg::codec::context::Context::from_parameters(stream.parameters())
             .map_err(AudioError::file("прочитать параметры", path))?;
         let mut decoder = context.decoder();
@@ -53,6 +62,8 @@ impl StreamDecoder {
             path: path.clone(),
             stream: track.stream,
             time_base,
+            first,
+            track: track.clone(),
             decoder,
             converter: None,
             frame: ffmpeg::frame::Audio::empty(),
@@ -64,8 +75,15 @@ impl StreamDecoder {
         self.decoder.rate()
     }
 
-    /// Moves to the packet at or before `seconds` of stream time.
+    /// Moves to the packet at or before `seconds` of stream time. At the start of the file or
+    /// before it the file is opened again: FFmpeg refuses a seek to a time before the first
+    /// packet, and a decoder moved to the first packet gives its first frame without the
+    /// coder's priming before it — not the samples a new decoder gives.
     pub fn seek(&mut self, seconds: f64) -> Result<(), AudioError> {
+        if seconds <= self.first {
+            *self = Self::open(&self.track)?;
+            return Ok(());
+        }
         let ts = (seconds * f64::from(ffmpeg::ffi::AV_TIME_BASE)).floor() as i64;
         self.input
             .seek(ts, ..ts)

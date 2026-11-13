@@ -51,7 +51,7 @@ impl Places {
     }
 }
 
-/// The agents found in `places`, Claude Code first: the newest Claude Code, the first Codex.
+/// The agents found in `places`, Claude Code first: the newest version of each agent.
 pub fn find(places: &Places) -> Vec<Found> {
     let folders = places.folders();
     let installed = |name: &str| -> Vec<PathBuf> {
@@ -70,7 +70,16 @@ pub fn find(places: &Places) -> Vec<Found> {
         agent: Agent::Claude,
         path,
     });
-    let codex = installed("codex").into_iter().next().map(|path| Found {
+    let codices = installed("codex")
+        .into_iter()
+        .chain(
+            places
+                .local
+                .iter()
+                .flat_map(|local| crate::desktop::codex(local)),
+        )
+        .map(|path| (asked_version(&path), path));
+    let codex = newest(codices).map(|path| Found {
         agent: Agent::Codex,
         path,
     });
@@ -99,16 +108,19 @@ fn asked_version(program: &Path) -> Vec<u32> {
         .ok()
         .and_then(|said| {
             let said = String::from_utf8_lossy(&said.stdout);
-            said.split_whitespace().next().and_then(version_of)
+            // Codex prefixes its version with `codex-cli`, Claude prints the number first.
+            said.split_whitespace()
+                .find_map(|part| version_of(part.split('-').next().unwrap_or(part)))
         })
         .unwrap_or_default()
 }
 
-/// The agent `wanted` among `found`, else the first one.
+/// The agent explicitly wanted; only automatic selection falls back to the first one.
 pub fn pick(found: &[Found], wanted: Option<Agent>) -> Option<&Found> {
-    wanted
-        .and_then(|agent| found.iter().find(|f| f.agent == agent))
-        .or_else(|| found.first())
+    match wanted {
+        Some(agent) => found.iter().find(|f| f.agent == agent),
+        None => found.first(),
+    }
 }
 
 /// The Claude Code of Claude Desktop under `local`, of its newest version, with that version.

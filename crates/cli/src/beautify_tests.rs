@@ -43,6 +43,39 @@ fn the_edits_of_one_agent_run_are_one_undo_step() {
 }
 
 #[test]
+fn agent_cli_edits_reach_the_editor_and_each_run_has_its_own_undo_step() {
+    let f = Fixture::new();
+    let editor = crate::fake_editor::FakeEditor::start(&f, "agent-cli");
+    let defaults = defaults_file(f._tmp.path());
+    for (group, secs) in [("ai-1", "2"), ("ai-1", "3"), ("ai-2", "4")] {
+        let local = Local {
+            settings: defaults.parent(),
+            app_channel: Some(&editor.channel),
+            record_channel: Some(NO_RECORDING),
+            export_channel: Some(EXPORTS),
+            group: Some(group),
+            ..Local::default()
+        };
+        let args = ["test", "add", "--secs", secs].map(str::to_owned).to_vec();
+        ok(run_with(args, &f.cwd, &f.registry, local));
+    }
+    let (project, mut history) = editor.stop();
+    assert_eq!(project.clips.len(), 3);
+    let mut restored = project.clone();
+    assert!(history.undo(&mut restored).is_some());
+    assert_eq!(restored.clips.len(), 2, "resume has a separate group");
+    assert!(history.undo(&mut restored).is_some());
+    assert!(
+        restored.clips.is_empty(),
+        "first run's two commands undo together"
+    );
+    assert!(!history.can_undo());
+    assert!(history.redo(&mut restored).is_some());
+    assert!(history.redo(&mut restored).is_some());
+    assert_eq!(restored, project);
+}
+
+#[test]
 fn the_agent_may_not_undo_nor_touch_the_project_as_a_whole() {
     let f = Fixture::new();
     ok(run(&f, &["test", "add", "--secs", "2"], None, None));
@@ -205,4 +238,44 @@ fn a_run_answers_with_the_agents_last_words_and_its_session() {
         "{}",
         failed.stderr
     );
+}
+
+#[cfg(windows)]
+#[test]
+fn codex_beautify_returns_its_session_and_supports_a_followup() {
+    let f = Fixture::new();
+    let script = f._tmp.path().join("mock.ps1");
+    std::fs::write(&script, include_str!("../../../fixtures/agents/codex.ps1")).unwrap();
+    let shim = f._tmp.path().join("codex.cmd");
+    std::fs::write(&shim, include_str!("../../../fixtures/agents/codex.cmd")).unwrap();
+    let agent = Found {
+        agent: Agent::Codex,
+        path: shim,
+    };
+    for args in [
+        vec![
+            "beautify",
+            "--agent",
+            "codex",
+            "--ask",
+            "добавь зумы",
+            "--json",
+        ],
+        vec![
+            "beautify",
+            "--agent",
+            "codex",
+            "--resume",
+            "codex-9",
+            "--ask",
+            "доделай",
+            "--json",
+        ],
+    ] {
+        let out = ok(run(&f, &args, Some(&agent), None));
+        let json: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(json["session"], "codex-9");
+        assert_eq!(json["said"], "Добавил зумы.");
+        assert_eq!(json["commands"], 1);
+    }
 }

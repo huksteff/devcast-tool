@@ -28,7 +28,7 @@ fn readme(devcast: &Path) -> String {
          Инструкция, как монтировать видео DevCast командами `devcast`. Установи её себе так, \
          как принято у тебя, и дальше монтируй по ней:\n\n\
          - Claude Code: скопируй `SKILL.md` в `~/.claude/skills/devcast/SKILL.md`.\n\
-         - Codex: скопируй `SKILL.md` в `~/.codex/skills/devcast/SKILL.md`; если твоя версия не \
+         - Codex: `devcast skill install --agent codex` или скопируй `SKILL.md` в `~/.agents/skills/devcast/SKILL.md`; если твоя версия не \
          знает skills — допиши `AGENTS.md` в `~/.codex/AGENTS.md`.\n\
          - Gemini CLI: допиши `AGENTS.md` в `~/.gemini/GEMINI.md`.\n\
          - Cursor: создай правило пользователя (User Rules) или `.cursor/rules/devcast.mdc` в \

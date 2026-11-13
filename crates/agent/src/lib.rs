@@ -3,8 +3,11 @@
 //! skill `skill/SKILL.md` goes with the request, recipes are ready requests. Shared by the
 //! editor's «Нейронка» tab and `devcast beautify`.
 
+mod codex;
+mod desktop;
 pub mod find;
 pub mod login;
+pub mod models;
 pub mod prompt;
 pub mod run;
 pub mod sign_in;
@@ -14,7 +17,7 @@ pub mod usage;
 
 pub use find::{Found, Places, find, pick};
 pub use run::{Ask, GROUP_ENV, Job, Launch, launch};
-pub use stream::{Event, Reader};
+pub use stream::Event;
 pub use usage::{Limits, Usage, model_name};
 
 /// Writes [`prompt::system`] where the agent reads it (`--append-system-prompt-file`): the

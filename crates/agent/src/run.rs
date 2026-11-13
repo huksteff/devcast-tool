@@ -7,11 +7,15 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
+};
 
 use dc_settings::Agent;
 
 use crate::find::Found;
-use crate::stream::{Event, Reader};
+use crate::stream::Event;
 
 /// The variable that names the run a `devcast` command belongs to.
 pub const GROUP_ENV: &str = "DEVCAST_GROUP";
@@ -25,14 +29,23 @@ const ALLOWED: [&str; 2] = ["Bash(devcast *)", "PowerShell(devcast *)"];
 /// What to start.
 #[derive(Debug, Clone)]
 pub struct Launch {
-    pub agent: Agent,
     pub program: PathBuf,
     pub args: Vec<OsString>,
     /// The project folder: `devcast` finds the project there.
     pub cwd: PathBuf,
     pub env: Vec<(OsString, OsString)>,
-    /// The request, written to the agent's stdin.
-    pub input: String,
+    run: Run,
+}
+
+#[derive(Debug, Clone)]
+enum Run {
+    Claude {
+        input: String,
+    },
+    Codex {
+        session: crate::codex::Session,
+        input: String,
+    },
 }
 
 /// One request to the agent.
@@ -54,11 +67,15 @@ pub struct Ask<'a> {
 }
 
 /// The command line of `ask`: Claude Code with only `Bash(devcast …)` allowed and nobody to
-/// ask (`-p`); Codex in its sandbox writing only the project folder.
+/// ask (`-p`); Codex with a client-owned tool that can execute only our installed CLI.
 pub fn launch(ask: &Ask<'_>) -> Launch {
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let mut folders = vec![ask.devcast.to_path_buf()];
+    folders.extend(std::env::split_paths(&path));
+    let path = std::env::join_paths(folders).unwrap_or(path);
     let mut args: Vec<OsString> = Vec::new();
-    let mut input = ask.request.to_owned();
-    match ask.found.agent {
+    let input = ask.request.to_owned();
+    let run = match ask.found.agent {
         Agent::Claude => {
             add(
                 &mut args,
@@ -81,42 +98,19 @@ pub fn launch(ask: &Ask<'_>) -> Launch {
             if let Some(session) = ask.resume {
                 add(&mut args, &["--resume", session]);
             }
+            Run::Claude { input }
         }
-        Agent::Codex => {
-            add(&mut args, &["exec"]);
-            if let Some(session) = ask.resume {
-                add(&mut args, &["resume", session]);
-            }
-            add(
-                &mut args,
-                &[
-                    "--json",
-                    "--skip-git-repo-check",
-                    "--sandbox",
-                    "workspace-write",
-                ],
-            );
-            if let Some(model) = ask.model {
-                add(&mut args, &["--model", model]);
-            }
-            add(&mut args, &["-"]);
-            // Codex has no flag for more system text: the first request carries it.
-            if ask.resume.is_none() {
-                input = format!("{}\n\n{input}", crate::prompt::system());
-            }
-        }
-    }
-    let path = std::env::var_os("PATH").unwrap_or_default();
-    let mut folders = vec![ask.devcast.to_path_buf()];
-    folders.extend(std::env::split_paths(&path));
-    let path = std::env::join_paths(folders).unwrap_or(path);
+        Agent::Codex => Run::Codex {
+            session: crate::codex::configure(&mut args, ask),
+            input,
+        },
+    };
     Launch {
-        agent: ask.found.agent,
         program: ask.found.path.clone(),
         args,
         cwd: ask.project.to_path_buf(),
         env: vec![("PATH".into(), path), (GROUP_ENV.into(), ask.group.into())],
-        input,
+        run,
     }
 }
 
@@ -125,6 +119,7 @@ pub fn launch(ask: &Ask<'_>) -> Launch {
 pub struct Job {
     child: Child,
     events: Receiver<Event>,
+    stopped: Arc<AtomicBool>,
 }
 
 impl Job {
@@ -140,26 +135,21 @@ impl Job {
             .stderr(Stdio::piped());
         no_window(&mut command);
         let mut child = command.spawn()?;
-        let (Some(mut input), Some(output), Some(errors)) =
+        let (Some(input), Some(output), Some(errors)) =
             (child.stdin.take(), child.stdout.take(), child.stderr.take())
         else {
             return Err(std::io::Error::other("нет каналов процесса нейронки"));
         };
         let (sender, events) = channel();
-        let job = Self { child, events };
-        let agent = launch.agent;
-        let text = launch.input;
+        let stopped = Arc::new(AtomicBool::new(false));
+        let job = Self {
+            child,
+            events,
+            stopped: Arc::clone(&stopped),
+        };
         std::thread::Builder::new()
             .name("devcast-agent".to_owned())
-            .spawn(move || {
-                // Read on its own thread: a full pipe would stall the agent.
-                let complaint = std::thread::spawn(move || last_line(BufReader::new(errors)));
-                // A failed write shows as the agent's own answer or as no answer.
-                let _ = input.write_all(text.as_bytes());
-                drop(input);
-                let complaint = || complaint.join().unwrap_or_default();
-                listen(agent, BufReader::new(output), &sender, &wake, complaint);
-            })?;
+            .spawn(move || read_launch(launch, input, output, errors, sender, stopped, wake))?;
         Ok(job)
     }
 
@@ -175,12 +165,108 @@ impl Job {
 
     /// Stops the agent and the commands it runs.
     pub fn stop(&mut self) {
+        self.stopped.store(true, Ordering::Release);
         if let Ok(Some(_)) = self.child.try_wait() {
             return;
         }
         kill_tree(&mut self.child);
         let _ = self.child.wait();
     }
+}
+
+fn read_launch(
+    launch: Launch,
+    mut input: std::process::ChildStdin,
+    output: std::process::ChildStdout,
+    errors: std::process::ChildStderr,
+    sender: Sender<Event>,
+    stopped: Arc<AtomicBool>,
+    wake: impl Fn(),
+) {
+    let request = match launch.run {
+        Run::Claude { input } => input,
+        Run::Codex {
+            session,
+            input: request,
+        } => {
+            let errors = watch_errors(errors);
+            let emit = |event| {
+                let sent = !stopped.load(Ordering::Acquire) && sender.send(event).is_ok();
+                if sent {
+                    wake();
+                }
+                sent
+            };
+            let result = crate::codex::listen(
+                session,
+                request,
+                input,
+                BufReader::new(output),
+                emit,
+                || !stopped.load(Ordering::Acquire),
+            );
+            let error = match result {
+                Ok(crate::codex::End::Finished) => return,
+                Ok(crate::codex::End::Stopped) => "монтаж остановлен".to_owned(),
+                Err(_) if stopped.load(Ordering::Acquire) => "монтаж остановлен".to_owned(),
+                Err(error) => {
+                    let detail = errors
+                        .lock()
+                        .map(|text| text.clone())
+                        .unwrap_or_else(|_| "не удалось прочитать stderr Codex".into());
+                    if detail.is_empty() {
+                        error.to_string()
+                    } else {
+                        format!("{error} ({detail})")
+                    }
+                }
+            };
+            if sender.send(Event::Finished(Err(error))).is_ok() {
+                wake();
+            }
+            return;
+        }
+    };
+    // Read on its own thread: a full pipe would stall the agent.
+    let complaint = std::thread::spawn(move || last_line(BufReader::new(errors)));
+    // A failed write shows as the agent's own answer or as no answer.
+    let _ = input.write_all(request.as_bytes());
+    drop(input);
+    let complaint = || complaint.join().unwrap_or_default();
+    listen(BufReader::new(output), &sender, &wake, complaint);
+}
+
+fn watch_errors(errors: impl std::io::Read + Send + 'static) -> Arc<Mutex<String>> {
+    let last = Arc::new(Mutex::new(String::new()));
+    let heard = Arc::clone(&last);
+    std::thread::spawn(move || {
+        let mut reader = BufReader::new(errors);
+        loop {
+            let mut bytes = Vec::new();
+            let (line, stop) = match reader.read_until(b'\n', &mut bytes) {
+                Ok(0) => break,
+                Ok(_) => (
+                    String::from_utf8_lossy(&bytes)
+                        .trim()
+                        .chars()
+                        .take(200)
+                        .collect(),
+                    false,
+                ),
+                Err(error) => (format!("не удалось прочитать stderr Codex: {error}"), true),
+            };
+            if line.is_empty() {
+                continue;
+            }
+            if let Ok(mut last) = heard.lock() {
+                *last = line;
+            }
+            if stop {
+                break;
+            }
+        }
+    });
+    last
 }
 
 impl Drop for Job {
@@ -193,16 +279,14 @@ impl Drop for Job {
 /// failure that tells the agent's `complaint` (the last line of its stderr). Stops when nobody
 /// listens any more.
 fn listen(
-    agent: Agent,
     output: impl BufRead,
     sender: &Sender<Event>,
     wake: &dyn Fn(),
     complaint: impl FnOnce() -> String,
 ) {
-    let mut reader = Reader::new(agent);
     for line in output.lines() {
         let Ok(line) = line else { break };
-        for event in reader.line(&line) {
+        for event in crate::stream::line(&line) {
             let last = matches!(event, Event::Finished(_));
             if sender.send(event).is_err() {
                 return;
@@ -248,7 +332,7 @@ fn no_answer(complaint: &str) -> String {
 
 /// An npm `.cmd` shim runs node under cmd.exe: killing only it leaves the agent running, so
 /// Windows stops the whole tree.
-fn kill_tree(child: &mut Child) {
+pub(crate) fn kill_tree(child: &mut Child) {
     #[cfg(windows)]
     {
         let mut taskkill = Command::new("taskkill");

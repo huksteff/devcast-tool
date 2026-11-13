@@ -1,4 +1,4 @@
-//! `devcast skill install`: puts the Claude Code skill (`skill/SKILL.md`, built into the binary)
+//! `devcast skill install`: puts the agent's skill (`skill/SKILL.md`, built into the binary)
 //! into the user's skills folder, replacing an older copy.
 
 use std::path::{Path, PathBuf};
@@ -10,18 +10,26 @@ use crate::run::Answer;
 
 pub(crate) const SKILL: &str = dc_agent::prompt::SKILL;
 
-/// `~/.claude/skills/devcast/SKILL.md`, where Claude Code looks for personal skills.
-pub(crate) fn target() -> Result<PathBuf, CliError> {
+/// The selected agent's personal skills folder; Claude Code when omitted.
+pub(crate) fn target(agent: Option<&str>) -> Result<PathBuf, CliError> {
     let home = std::env::home_dir().ok_or_else(|| {
         CliError::Failed(
             "домашняя папка не найдена: задай переменную USERPROFILE (Windows) или HOME".to_owned(),
         )
     })?;
-    Ok(home
-        .join(".claude")
-        .join("skills")
-        .join("devcast")
-        .join("SKILL.md"))
+    Ok(in_home(&home, agent))
+}
+
+/// Codex uses the shared user skills directory; Claude keeps its existing location.
+pub(crate) fn in_home(home: &Path, agent: Option<&str>) -> PathBuf {
+    home.join(if agent == Some("codex") {
+        ".agents"
+    } else {
+        ".claude"
+    })
+    .join("skills")
+    .join("devcast")
+    .join("SKILL.md")
 }
 
 pub(crate) fn install(target: &Path, dry_run: bool) -> Result<Answer, CliError> {
