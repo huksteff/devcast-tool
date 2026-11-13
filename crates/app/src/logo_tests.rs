@@ -11,8 +11,9 @@ fn at(rgba: &[u8], x: u32, y: u32) -> &[u8] {
 }
 
 #[test]
-fn the_icon_is_the_32_px_picture_of_the_exe_icon() {
+fn the_icon_is_the_48_px_picture_of_the_exe_icon() {
     assert_eq!(ICON.len(), (SIDE * SIDE * 4) as usize);
+    assert_eq!(at(ICON, 0, 0)[3], 0, "transparent background");
     assert!(
         ICON.as_chunks::<4>().0.iter().any(|pixel| pixel[3] == 255),
         "opaque icon"
@@ -29,21 +30,26 @@ fn the_icon_is_the_32_px_picture_of_the_exe_icon() {
 fn recording_puts_a_red_dot_in_the_lower_right_corner() {
     let (rest, recording) = (pixels(false), pixels(true));
     assert_eq!(rest, ICON);
-    assert_eq!(at(&recording, 24, 24), &tokens::REC.to_array());
+    let centre = DOT_CENTRE as u32;
+    assert_eq!(at(&recording, centre, centre), &tokens::REC.to_array());
     assert_eq!(
         at(&recording, 8, 8),
         at(&rest, 8, 8),
         "the rest of the icon stays"
     );
     let gap = (DOT_CENTRE + DOT_RADIUS + DOT_GAP / 2.0) as u32;
-    assert_eq!(at(&recording, gap, 24)[3], 0, "a clear ring around the dot");
+    assert_eq!(
+        at(&recording, gap, centre)[3],
+        0,
+        "a clear ring around the dot"
+    );
 }
 
 /// Both states 2× on the dark theme and on white, as the tray shows them on either taskbar.
 /// Each pixel is a rectangle: textures sampled by WARP differ from run to run.
 #[test]
 fn icon_states() {
-    const CELL: f32 = 80.0;
+    const CELL: f32 = 112.0;
     const SCALE: f32 = 2.0;
     let mut harness = dc_ui_kit::testing::harness()
         .with_size(vec2(2.0 * CELL, 2.0 * CELL))

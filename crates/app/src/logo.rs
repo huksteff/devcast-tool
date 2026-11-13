@@ -1,6 +1,6 @@
 //! The DevCast icon of `branding/devcast.ico` (the exe's icon too), with a red dot while
 //! recording (owner's decision 2026-11-03). The tray icon and the title bar icon of every window
-//! use it; `build.rs` decodes its 32 × 32 picture.
+//! use it; `build.rs` decodes its 48 × 48 picture.
 
 use std::sync::{Arc, OnceLock};
 
@@ -8,16 +8,16 @@ use dc_ui_kit::tokens;
 use eframe::egui;
 
 /// Side of the icon, pixels.
-pub const SIDE: u32 = 32;
+pub const SIDE: u32 = 48;
 
-/// RGBA pixels of the 32 × 32 picture of `branding/devcast.ico`, rows from the top.
+/// RGBA pixels of the 48 × 48 picture of `branding/devcast.ico`, rows from the top.
 const ICON: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/icon.rgba"));
 
 /// The recording dot in the lower right corner: centre and radius, px of the icon.
-const DOT_CENTRE: f32 = 24.0;
-const DOT_RADIUS: f32 = 7.0;
+const DOT_CENTRE: f32 = SIDE as f32 * 0.75;
+const DOT_RADIUS: f32 = SIDE as f32 * 7.0 / 32.0;
 /// The transparent ring around the dot that separates it from the icon, px.
-const DOT_GAP: f32 = 1.5;
+const DOT_GAP: f32 = SIDE as f32 * 1.5 / 32.0;
 
 /// RGBA pixels of the icon, `SIDE` × `SIDE`, rows from the top.
 pub fn pixels(recording: bool) -> Vec<u8> {
