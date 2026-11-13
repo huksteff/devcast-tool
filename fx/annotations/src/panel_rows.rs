@@ -1,5 +1,5 @@
 //! The common rows of an annotation panel: the key strip (mockup `.kfbar`), «Вход и выход» and
-//! the box, time, row and layer of «Тонкая настройка».
+//! the box, time, row and layer of «Дополнительно».
 
 use crate::panel::{Edit, Shown};
 use crate::{Animation, Annotation, ROTATION_LIMIT, STAGE_DEFAULT, Stage, same_moment};

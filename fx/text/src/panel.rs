@@ -1,5 +1,5 @@
 //! «Основное» of a text annotation (main window «Текст»): the words, font and size, B I U and
-//! alignment, the colours of the letters and of the plate (`text set`); «Тонкая настройка» —
+//! alignment, the colours of the letters and of the plate (`text set`); «Дополнительно» —
 //! the corner radius of the plate. «Сбросить» brings the look to the defaults and keeps the
 //! words.
 

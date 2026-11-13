@@ -22,7 +22,7 @@ pub struct BlurBody {
     /// «censor» fill (decision 000).
     pub tint: Rgba,
     /// Corner radius, px when the short side of the frame is 1080 px, 0..540 (decision 000:
-    /// «Тонкая настройка», 8 by default).
+    /// «Дополнительно», 8 by default).
     pub radius: f64,
 }
 

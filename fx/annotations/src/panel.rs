@@ -1,6 +1,6 @@
 //! The panel of a picked annotation (mockup 3c and the main window «Текст»): the key strip under
 //! the header, «Основное» of its kind (a [`Section`] in the kind's crate: `fx/text`, `shape`,
-//! `image`, `drawing`, `blur`), «Вход и выход» (`annot anim`) and «Тонкая настройка»: the kind's
+//! `image`, `drawing`, `blur`), «Вход и выход» (`annot anim`) and «Дополнительно»: the kind's
 //! finer fields, the box and rotation (`annot set`), the time (`annot set --from --to`), the
 //! row (`annot move --track`) and the layer (`annot layer`) — `panel_rows.rs`.
 //!
@@ -100,10 +100,10 @@ pub trait Section: DeserializeOwned {
     /// The steps of «Сбросить» of «Основное»; `None` for a kind without one.
     fn basic_reset(&self, edit: Edit) -> Option<Vec<Step>>;
 
-    /// The kind's rows at the top of «Тонкая настройка».
+    /// The kind's rows at the top of «Дополнительно».
     fn fine(&self, _ui: &mut Ui, _cx: &mut Cx<'_>, _edit: Edit) {}
 
-    /// The kind's steps of «Сбросить» of «Тонкая настройка».
+    /// The kind's steps of «Сбросить» of «Дополнительно».
     fn fine_reset(&self, _edit: Edit) -> Vec<Step> {
         Vec::new()
     }
