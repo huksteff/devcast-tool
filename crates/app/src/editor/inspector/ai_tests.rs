@@ -20,6 +20,11 @@ use crate::editor::ai::{Ai, Line, Phase};
 use crate::editor::editing_tests::json;
 use crate::editor::view::Panel;
 
+#[path = "ai_login_tests.rs"]
+mod login;
+#[path = "ai_model_tests.rs"]
+mod models;
+
 /// A pretend Claude Code: a batch file that ignores its arguments and writes `answer`.
 fn pretend(dir: &Path, answer: &str) -> Found {
     // cmd reads a batch file in the OEM code page: the path it types stays ASCII.
@@ -55,7 +60,11 @@ fn ai_tab(found: Vec<Found>) -> H {
 
 fn click(harness: &mut H, role: egui::Role, label: &str) {
     harness.get_by_role_and_label(role, label).click();
-    harness.run();
+    harness.step();
+    // The running agent deliberately repaints; only idle UI is expected to settle.
+    if !harness.state().editor.ai.running() {
+        harness.run();
+    }
 }
 
 /// Focuses the field and types `typed` into it.
@@ -258,4 +267,99 @@ fn a_signed_out_agent_offers_its_sign_in_and_the_skill_for_own_agents() {
             .query_by_role_and_label(egui::Role::Button, text::SIGN_IN)
             .is_some()
     );
+}
+
+#[test]
+fn a_signed_out_claude_does_not_hide_the_codex_selector() {
+    let mut harness = ai_tab(vec![
+        Found {
+            agent: Agent::Claude,
+            path: "missing-claude.exe".into(),
+        },
+        Found {
+            agent: Agent::Codex,
+            path: "missing-codex.exe".into(),
+        },
+    ]);
+    harness.state_mut().editor.ai.signed_in = Some(false);
+    harness.run();
+    assert!(
+        harness
+            .query_by_role_and_label(egui::Role::ComboBox, text::AGENT)
+            .is_some()
+    );
+}
+
+#[test]
+fn a_missing_codex_can_be_replaced_with_the_only_installed_agent() {
+    let mut harness = ai_tab(vec![Found {
+        agent: Agent::Claude,
+        path: "missing-claude.exe".into(),
+    }]);
+    harness.state_mut().editor.ai.choices.agent = Some(Agent::Codex);
+    harness.run();
+    click(&mut harness, egui::Role::ComboBox, text::AGENT);
+    harness.get_by_label(text::CLAUDE).click();
+    harness.run();
+    assert!(
+        harness
+            .state()
+            .editor
+            .ai
+            .edits
+            .contains(&AiEdit::Agent(Some(Agent::Claude)))
+    );
+}
+
+#[cfg(windows)]
+#[test]
+fn changing_to_codex_starts_a_fresh_conversation_and_clears_claude_auth() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut harness = ai_tab(vec![
+        pretend(tmp.path(), ANSWER),
+        Found {
+            agent: Agent::Codex,
+            path: "missing-codex.exe".into(),
+        },
+    ]);
+    click(&mut harness, egui::Role::Button, text::RUN);
+    harness.state_mut().editor.ai.settle();
+    let ai = &mut harness.state_mut().editor.ai;
+    ai.more = "Добавь зумы".into();
+    assert!(
+        ai.request().unwrap().1,
+        "Claude has a conversation to resume"
+    );
+    ai.signed_in = Some(false);
+    let mut choices = ai.choices.clone();
+    choices.edit(AiEdit::Agent(Some(Agent::Codex))).unwrap();
+    ai.recall(choices, &egui::Context::default());
+    assert_eq!(ai.phase, Phase::Idle);
+    assert_eq!(ai.signed_in, None);
+    assert!(
+        !ai.request().unwrap().1,
+        "Codex must not resume a Claude session"
+    );
+    harness.run();
+}
+
+#[cfg(windows)]
+#[test]
+fn automatic_selection_does_not_resume_a_disappeared_providers_session() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut harness = ai_tab(vec![pretend(tmp.path(), ANSWER)]);
+    click(&mut harness, egui::Role::Button, text::RUN);
+    let ai = &mut harness.state_mut().editor.ai;
+    ai.settle();
+    ai.more = "Добавь зумы".into();
+    assert!(ai.request().unwrap().1);
+    ai.discovered(
+        vec![Found {
+            agent: Agent::Codex,
+            path: "missing-codex.exe".into(),
+        }],
+        &egui::Context::default(),
+    );
+    assert_eq!(ai.phase, Phase::Idle);
+    assert!(!ai.request().unwrap().1);
 }

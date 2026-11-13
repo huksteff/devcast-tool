@@ -8,6 +8,7 @@
 mod actions;
 mod adding;
 pub mod ai;
+mod ai_models;
 mod ai_sign_in;
 mod clipboard;
 mod closing;

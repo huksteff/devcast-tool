@@ -59,7 +59,13 @@ pub(crate) fn beautify(ctx: &Ctx<'_>, args: &BeautifyArgs) -> Result<Answer, Cli
             pick(&found, wanted).ok_or_else(no_agent)?
         }
     };
-    let model = args.model.as_deref().or(ai.model.as_deref());
+    // A one-off provider override must not inherit the other provider's model alias.
+    let saved_model = ai.model.as_deref().filter(|_| {
+        args.agent
+            .as_deref()
+            .is_none_or(|name| ai.agent == Some(agent_of(name)))
+    });
+    let model = args.model.as_deref().or(saved_model);
     if ctx.globals.dry_run {
         let text = format!(
             "dry-run, нейронка не запущена: {}\n{request}",

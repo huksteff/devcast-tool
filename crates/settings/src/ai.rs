@@ -158,7 +158,12 @@ impl AiChoices {
                     self.checked.push(id);
                 }
             }
-            AiEdit::Agent(agent) => self.agent = agent,
+            AiEdit::Agent(agent) => {
+                if self.agent != agent {
+                    self.model = None;
+                }
+                self.agent = agent;
+            }
             AiEdit::Model(model) => {
                 self.model = model.map(|m| m.trim().to_owned()).filter(|m| !m.is_empty());
             }

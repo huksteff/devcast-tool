@@ -332,6 +332,7 @@ fn ask_ai(
         ai::AiAsk::Stop => editor.ai.stop(now),
         ai::AiAsk::Restart => editor.ai.restart(),
         ai::AiAsk::LookAgain => errors.extend(editor.ai.look_again(ui.ctx()).err()),
+        ai::AiAsk::RefreshModels => editor.ai.refresh_models(ui.ctx()),
         ai::AiAsk::Login => errors.extend(editor.ai.login(ui.ctx()).err()),
         ai::AiAsk::SendCode => errors.extend(editor.ai.send_code().err()),
         ai::AiAsk::CancelLogin => editor.ai.cancel_login(),

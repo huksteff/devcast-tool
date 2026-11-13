@@ -1,7 +1,6 @@
-//! The agent's output lines as [`Event`]s: Claude Code `--output-format stream-json`, Codex
-//! `exec --json`. A line that is not one of theirs is skipped.
+//! Claude Code's `--output-format stream-json` lines as [`Event`]s.
+//! A line that is not part of the protocol is skipped.
 
-use dc_settings::Agent;
 use serde_json::Value;
 
 use crate::usage::{Limits, Usage};
@@ -11,7 +10,7 @@ use crate::usage::{Limits, Usage};
 pub enum Event {
     /// The conversation's id, to go on with it (`--resume`).
     Session(String),
-    /// It runs a shell command line.
+    /// It runs a DevCast command.
     Command(String),
     /// The command ended; `ok` — without an error.
     Done { ok: bool },
@@ -25,59 +24,12 @@ pub enum Event {
     Finished(Result<String, String>),
 }
 
-/// Reads one agent's lines; Codex tells its last words before the end of the turn, so the
-/// reader keeps them.
-#[derive(Debug)]
-pub struct Reader {
-    agent: Agent,
-    last_said: String,
-}
-
-impl Reader {
-    pub fn new(agent: Agent) -> Self {
-        Self {
-            agent,
-            last_said: String::new(),
-        }
-    }
-
-    /// The events of one output line.
-    pub fn line(&mut self, line: &str) -> Vec<Event> {
-        let Ok(value) = serde_json::from_str::<Value>(line.trim()) else {
-            return Vec::new();
-        };
-        let events = match self.agent {
-            Agent::Claude => claude(&value),
-            Agent::Codex => self.codex(&value),
-        };
-        for event in &events {
-            if let Event::Said(text) = event {
-                self.last_said.clone_from(text);
-            }
-        }
-        events
-    }
-
-    fn codex(&self, value: &Value) -> Vec<Event> {
-        let item = &value["item"];
-        match (text(&value["type"]), text(&item["type"])) {
-            ("thread.started", _) => opt(text(&value["thread_id"]), Event::Session),
-            ("item.started", "command_execution") => opt(text(&item["command"]), Event::Command),
-            ("item.completed", "command_execution") => {
-                let ok = item["exit_code"].as_i64() == Some(0);
-                vec![Event::Done { ok }]
-            }
-            ("item.completed", "agent_message") => opt(text(&item["text"]), Event::Said),
-            ("turn.completed", _) => {
-                let usage = Usage::codex(value).map(Event::Usage);
-                let end = Event::Finished(Ok(self.last_said.clone()));
-                usage.into_iter().chain([end]).collect()
-            }
-            ("turn.failed", _) => vec![failed(text(&value["error"]["message"]))],
-            ("error", _) => vec![failed(text(&value["message"]))],
-            _ => Vec::new(),
-        }
-    }
+/// The events of one Claude Code output line.
+pub fn line(line: &str) -> Vec<Event> {
+    let Ok(value) = serde_json::from_str::<Value>(line.trim()) else {
+        return Vec::new();
+    };
+    claude(&value)
 }
 
 fn claude(value: &Value) -> Vec<Event> {

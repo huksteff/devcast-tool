@@ -14,10 +14,15 @@ use crate::editor::Action;
 use crate::editor::ai::{Ai, AiAsk};
 
 /// «Нейронка не найдена»: what is needed, «Как поставить», «Проверить снова».
-pub(super) fn not_found(ui: &mut Ui, actions: &mut Vec<Action>) {
+pub(super) fn not_found(ui: &mut Ui, codex: bool, actions: &mut Vec<Action>) {
     card(ui, text::NOT_FOUND, text::NOT_FOUND_TEXT, |ui| {
         if ui.add(Button::new(text::HOW_TO_INSTALL).small()).clicked() {
-            ui.ctx().open_url(egui::OpenUrl::new_tab(text::INSTALL_URL));
+            let url = if codex {
+                text::CODEX_INSTALL_URL
+            } else {
+                text::INSTALL_URL
+            };
+            ui.ctx().open_url(egui::OpenUrl::new_tab(url));
         }
         check_again(ui, actions);
     });
@@ -26,19 +31,29 @@ pub(super) fn not_found(ui: &mut Ui, actions: &mut Vec<Action>) {
 /// The agent is not signed in: «Войти» opens its sign-in page, then «Проверить снова». While
 /// the sign-in runs — the field for the code the page shows.
 pub(super) fn signed_out(ui: &mut Ui, ai: &mut Ai, actions: &mut Vec<Action>) {
+    let codex = ai
+        .agent()
+        .is_some_and(|found| found.agent == dc_settings::Agent::Codex);
     if let Some(page) = ai.take_page() {
         ui.ctx().open_url(egui::OpenUrl::new_tab(page));
     }
     if ai.signing_in() {
-        return card(ui, text::SIGNING_IN, text::SIGNING_IN_TEXT, |ui| {
-            let field = egui::TextEdit::singleline(&mut ai.code)
-                .hint_text(text::CODE_HINT)
-                .desired_width(120.0);
-            let entered =
-                ui.add(field).lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-            let send = Button::new(text::SEND_CODE).kind(Kind::Primary).small();
-            if (ui.add(send).clicked() || entered) && !ai.code.trim().is_empty() {
-                actions.push(Action::Ai(AiAsk::SendCode));
+        let description = if codex {
+            text::CODEX_SIGNING_IN_TEXT
+        } else {
+            text::SIGNING_IN_TEXT
+        };
+        return card(ui, text::SIGNING_IN, description, |ui| {
+            if !codex {
+                let field = egui::TextEdit::singleline(&mut ai.code)
+                    .hint_text(text::CODE_HINT)
+                    .desired_width(120.0);
+                let entered =
+                    ui.add(field).lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                let send = Button::new(text::SEND_CODE).kind(Kind::Primary).small();
+                if (ui.add(send).clicked() || entered) && !ai.code.trim().is_empty() {
+                    actions.push(Action::Ai(AiAsk::SendCode));
+                }
             }
             let cancel = Button::new(text::CANCEL_SIGN_IN).kind(Kind::Ghost).small();
             if ui.add(cancel).clicked() {
@@ -46,7 +61,12 @@ pub(super) fn signed_out(ui: &mut Ui, ai: &mut Ai, actions: &mut Vec<Action>) {
             }
         });
     }
-    card(ui, text::SIGNED_OUT, text::SIGNED_OUT_TEXT, |ui| {
+    let description = if codex {
+        text::CODEX_SIGNED_OUT_TEXT
+    } else {
+        text::SIGNED_OUT_TEXT
+    };
+    card(ui, text::SIGNED_OUT, description, |ui| {
         let sign_in = Button::new(text::SIGN_IN).kind(Kind::Primary).small();
         if ui.add(sign_in).clicked() {
             actions.push(Action::Ai(AiAsk::Login));

@@ -172,7 +172,7 @@ fn help_lists_every_command_on_one_line() {
             "sheet                  Раскадровка: n кадров отрезка готового видео в одном PNG, время кадров — в ответе",
             "record                 Записать экран в новый проект; --app — в запущенной программе; record stop|pause|resume|cancel — управлять идущей записью",
             "export                 Экспорт в MP4 или GIF через очередь в фоне; export status — очереди devcast (e2) и программы (p2), export cancel [e2|p2] — отмена",
-            "skill                  skill install — skill для Claude Code в ~/.claude/skills/devcast; skill files — папка со скиллом для любой нейронки и просьба установить его",
+            "skill                  skill install [--agent claude|codex] — установить скилл; skill files — папка со скиллом для любой нейронки и просьба установить его",
             "test add               Добавить клип",
             "test rm                Удалить клип",
             "Подробнее: devcast help <команда>; всё со схемами: devcast help --json",
