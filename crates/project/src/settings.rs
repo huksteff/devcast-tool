@@ -25,10 +25,6 @@ pub fn logs_dir() -> Result<PathBuf> {
     Ok(dir()?.join(LOGS_DIR))
 }
 
-pub fn crashes_dir() -> Result<PathBuf> {
-    Ok(logs_dir()?.join(CRASHES_DIR))
-}
-
 pub fn defaults_file() -> Result<PathBuf> {
     Ok(dir()?.join(DEFAULTS_FILE))
 }

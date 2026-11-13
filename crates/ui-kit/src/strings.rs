@@ -11,7 +11,6 @@ pub mod kit {
     pub const REMOVE_COLOR: &str = "Убрать цвет";
     pub const COLOR: &str = "Цвет";
     pub const HEX_HINT: &str = "#RRGGBB";
-    pub const COPIED: &str = "Скопировано";
 }
 
 /// Notices of the HUD at the start: the last run crashed, what is new in this version.
@@ -48,7 +47,6 @@ pub mod hud {
     pub const RECENT: &str = "Последние проекты";
     pub const OPEN_PROJECT: &str = "Открыть проект…";
     pub const SETTINGS: &str = "Настройки";
-    pub const TO_TRAY: &str = "Свернуть в трей";
     pub const QUIT: &str = "Выход";
     pub const STOP: &str = "Остановить запись";
     pub const REC: &str = "REC";
@@ -104,8 +102,6 @@ pub mod picker {
     pub const AREA: &str = "Область…";
     pub const NO_AREA: &str = "выделить на экране";
     pub const EMPTY: &str = "Источники изображения не найдены";
-    pub const REFRESH: &str = "Обновить";
-    pub const REFRESHING: &str = "Обновляю…";
     pub const PRIMARY: &str = "основной";
 
     /// «Экран 1».

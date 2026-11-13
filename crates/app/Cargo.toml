@@ -48,13 +48,11 @@ dc-render = { path = "../render" }
 dc-settings = { path = "../settings" }
 dc-ui-kit = { path = "../ui-kit" }
 dc-update = { path = "../update" }
-dirs = "6"
 global-hotkey = "0.9"
 minidumper = "0.8"
 eframe = { version = "0.37", default-features = false, features = ["wgpu", "accesskit", "clipboard", "links"] }
 raw-window-handle = "0.6"
 rfd = "0.15"
-serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tray-icon = "0.26"

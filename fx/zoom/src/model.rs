@@ -161,9 +161,3 @@ pub struct ZoomState {
     /// Camera motion of every zoom.
     pub settings: ZoomSettings,
 }
-
-impl ZoomState {
-    pub fn zoom_ids(&self) -> impl Iterator<Item = ZoomId> + '_ {
-        self.zooms.iter().map(|z| z.id)
-    }
-}
