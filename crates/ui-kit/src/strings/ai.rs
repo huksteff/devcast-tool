@@ -12,6 +12,13 @@ pub const ASK_HINT: &str = "например: «не режь паузу на 0:
 pub const AGENT: &str = "Нейронка";
 pub const MODEL: &str = "Модель";
 pub const MODEL_DEFAULT: &str = "По умолчанию";
+pub const MODELS_LOADING: &str = "Загружаем модели…";
+pub const MODELS_EMPTY: &str =
+    "Codex не вернул модели. Можно оставить выбор по умолчанию или повторить проверку.";
+
+pub fn models_failed(error: &str) -> String {
+    format!("Не удалось получить модели: {error}. Нажми «Проверить снова».")
+}
 pub const OPUS: &str = "Opus — сильнее, тратит больше";
 pub const SONNET: &str = "Sonnet — быстрее и экономнее";
 pub const HAIKU: &str = "Haiku — самый быстрый";
@@ -31,12 +38,17 @@ pub const NOT_FOUND_TEXT: &str =
 pub const HOW_TO_INSTALL: &str = "Как поставить";
 /// Where «Как поставить» leads: how to set up Claude Code.
 pub const INSTALL_URL: &str = "https://docs.anthropic.com/en/docs/claude-code/setup";
+pub const CODEX_INSTALL_URL: &str = "https://developers.openai.com/codex/cli";
 pub const CHECK_AGAIN: &str = "Проверить снова";
 pub const SIGNED_OUT: &str = "нейронка не вошла в аккаунт";
 pub const SIGNED_OUT_TEXT: &str =
     "Claude Code не вошёл в вашу подписку. «Войти» откроет страницу входа в браузере.";
+pub const CODEX_SIGNED_OUT_TEXT: &str =
+    "Codex не вошёл в ваш аккаунт. «Войти» откроет страницу входа через ChatGPT в браузере.";
 pub const SIGNING_IN: &str = "вход в аккаунт";
 pub const SIGNING_IN_TEXT: &str = "Страница входа открыта в браузере: разрешите доступ. Если страница покажет код — вставьте его сюда.";
+pub const CODEX_SIGNING_IN_TEXT: &str =
+    "Завершите вход через ChatGPT в браузере. Codex сообщит DevCast о завершении автоматически.";
 pub const CODE_HINT: &str = "код";
 pub const SEND_CODE: &str = "Отправить код";
 pub const CANCEL_SIGN_IN: &str = "Отмена";

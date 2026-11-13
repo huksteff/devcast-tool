@@ -1,6 +1,7 @@
 //! Whether the agent is signed in to the user's account, and signing in: Claude Code answers
 //! `claude auth status` as JSON (`loggedIn`) and signs in with `claude auth login`, Codex with
-//! `codex login`. Signing in needs a person (a browser page), so it opens its own console window.
+//! `codex login status` / `codex login`. The app's piped flow lives in `login`; the CLI uses
+//! the agent's interactive login command.
 
 use std::process::{Command, Stdio};
 
@@ -8,7 +9,7 @@ use dc_settings::Agent;
 
 use crate::find::Found;
 
-/// Signed in; none when the agent cannot tell (Codex has no status to read).
+/// Signed in; none when the agent cannot tell.
 pub fn signed_in(found: &Found) -> Option<bool> {
     match found.agent {
         Agent::Claude => {
@@ -21,7 +22,14 @@ pub fn signed_in(found: &Found) -> Option<bool> {
             let output = status.output().ok()?;
             logged_in(&String::from_utf8_lossy(&output.stdout))
         }
-        Agent::Codex => None,
+        Agent::Codex => {
+            let mut status = Command::new(&found.path);
+            status.args(["login", "status"]).stdin(Stdio::null());
+            crate::run::no_window(&mut status);
+            let output = status.output().ok()?;
+            let all = [output.stdout, output.stderr].concat();
+            codex_status(output.status.success(), &String::from_utf8_lossy(&all))
+        }
     }
 }
 
@@ -39,7 +47,7 @@ pub fn answers(found: &Found) -> Option<bool> {
             let all = [said.stdout, said.stderr].concat();
             Some(said.status.success() && !refused(&String::from_utf8_lossy(&all)))
         }
-        Agent::Codex => None,
+        Agent::Codex => signed_in(found),
     }
 }
 
@@ -53,9 +61,25 @@ pub fn refused(why: &str) -> bool {
         "session has expired",
         "not logged in",
         "/login",
+        "codex login",
+        "refresh token has already been used",
+        "refresh_token_reused",
     ]
     .iter()
     .any(|sign| why.contains(sign))
+}
+
+// Codex writes status to stderr; an unsupported command or broken config is unknown,
+// rather than a reason to ask the user to sign in again.
+fn codex_status(success: bool, status: &str) -> Option<bool> {
+    let status = status.to_lowercase();
+    if status.contains("not logged in") {
+        Some(false)
+    } else if success && status.contains("logged in") {
+        Some(true)
+    } else {
+        None
+    }
 }
 
 /// `loggedIn` of the status JSON.
@@ -88,6 +112,37 @@ pub fn open_login(found: &Found) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn codex_reports_login_without_reading_credentials() {
+        assert_eq!(codex_status(true, "Logged in using ChatGPT"), Some(true));
+        assert_eq!(codex_status(true, "Logged in using an API key"), Some(true));
+        assert_eq!(codex_status(false, "Not logged in"), Some(false));
+        assert_eq!(codex_status(false, "error: invalid configuration"), None);
+        assert_eq!(codex_status(false, "error: unknown command 'status'"), None);
+        assert!(refused("Please run codex login"));
+        assert!(refused("refresh_token_reused"));
+        assert_eq!(login_args(Agent::Codex), ["login"]);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn codex_status_is_read_from_its_stderr_and_exit_code() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("codex.cmd");
+        let found = Found {
+            agent: Agent::Codex,
+            path: path.clone(),
+        };
+        for (message, code, expected) in [
+            ("Logged in using ChatGPT", 0, Some(true)),
+            ("Not logged in", 1, Some(false)),
+            ("error: invalid configuration", 1, None),
+        ] {
+            std::fs::write(&path, format!("@echo off\r\nif not \"%1 %2\"==\"login status\" exit /b 2\r\necho {message} 1>&2\r\nexit /b {code}\r\n")).unwrap();
+            assert_eq!(signed_in(&found), expected, "{message}");
+        }
+    }
 
     #[test]
     fn the_status_says_whether_claude_code_is_signed_in() {

@@ -36,6 +36,15 @@ fn has(args: &[String], pair: [&str; 2]) -> bool {
 }
 
 #[test]
+fn codex_cannot_use_a_general_shell_or_automatic_approvals() {
+    let codex = found(Agent::Codex);
+    let args = strings(&launch(&ask(&codex, None)));
+    assert_eq!(args[0], "app-server");
+    assert!(has(&args, ["--config", "features.shell_tool=false"]));
+    assert!(!args.iter().any(|arg| arg == "--approve-for-me"));
+}
+
+#[test]
 fn claude_code_may_only_run_devcast_and_gets_the_skill_as_a_file() {
     let claude = found(Agent::Claude);
     let launch = launch(&ask(&claude, Some("5a1e")));
@@ -54,7 +63,7 @@ fn claude_code_may_only_run_devcast_and_gets_the_skill_as_a_file() {
         ["--append-system-prompt-file", r"C:\Temp\system.md"]
     ));
     assert!(has(&args, ["--model", "sonnet"]) && has(&args, ["--resume", "5a1e"]));
-    assert_eq!(launch.input, "Убери паузы.", "the request goes to stdin");
+    assert!(matches!(&launch.run, Run::Claude { input } if input == "Убери паузы."));
     assert_eq!(launch.cwd, Path::new(r"C:\Видео\Урок 1.devcast"));
     let env = |name: &str| {
         launch
@@ -74,35 +83,39 @@ fn claude_code_may_only_run_devcast_and_gets_the_skill_as_a_file() {
 }
 
 #[test]
-fn codex_writes_only_the_project_and_carries_the_skill_in_its_first_request() {
+fn codex_uses_a_private_tool_session_and_keeps_the_project_and_group() {
     let codex = found(Agent::Codex);
-    let first = launch(&ask(&codex, None));
-    let args = strings(&first);
-    assert_eq!(args[0], "exec");
-    assert!(has(&args, ["--sandbox", "workspace-write"]));
-    assert_eq!(
-        args.last().map(String::as_str),
-        Some("-"),
-        "the request from stdin"
-    );
-    assert!(first.input.starts_with(crate::prompt::BRIEF) && first.input.ends_with("Убери паузы."));
-    let more = launch(&ask(&codex, Some("th-1")));
-    assert!(has(&strings(&more), ["resume", "th-1"]));
-    assert_eq!(more.input, "Убери паузы.");
+    for resume in [None, Some("codex-9")] {
+        let launch = launch(&ask(&codex, resume));
+        assert!(matches!(&launch.run, Run::Codex { input, .. } if input == "Убери паузы."));
+        assert_eq!(launch.cwd, ask(&codex, resume).project);
+        assert!(
+            launch
+                .env
+                .iter()
+                .any(|(key, value)| key == GROUP_ENV && value == "ai-7")
+        );
+        let path = launch.env.iter().find(|(key, _)| key == "PATH").unwrap();
+        assert_eq!(
+            std::env::split_paths(&path.1).next().unwrap(),
+            ask(&codex, resume).devcast
+        );
+        assert!(strings(&launch).iter().map(String::len).sum::<usize>() < 2048);
+    }
 }
-
 /// A pretend agent: `cmd /C type <file>` writes the lines of `answer`.
 #[cfg(windows)]
 fn pretend(dir: &Path, answer: &str) -> Launch {
     let file = dir.join("ответ.jsonl");
     std::fs::write(&file, answer).unwrap();
     Launch {
-        agent: Agent::Claude,
         program: PathBuf::from("cmd"),
         args: vec!["/C".into(), "type".into(), file.into()],
         cwd: dir.to_path_buf(),
         env: Vec::new(),
-        input: String::new(),
+        run: Run::Claude {
+            input: String::new(),
+        },
     }
 }
 

@@ -147,7 +147,7 @@ pub(super) fn frame(ui: &mut Ui, shared: &mut Shared) {
         return;
     };
     editor.captions.model = model;
-    editor.ai.choices = ai;
+    editor.ai.recall(ai, ui.ctx());
     (editor.captions.language, editor.captions.listen) = speech;
     let open = editor.doc.dir().root().to_path_buf();
     editor.library.folder(&recordings, &open);

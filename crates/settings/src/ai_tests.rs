@@ -78,3 +78,19 @@ fn the_agent_and_its_model_are_remembered() {
     let json = serde_json::to_string(&choices).unwrap();
     assert_eq!(serde_json::from_str::<AiChoices>(&json).unwrap(), choices);
 }
+
+#[test]
+fn switching_agents_resets_a_model_the_other_provider_cannot_run() {
+    let mut choices = AiChoices::default();
+    choices.edit(AiEdit::Agent(Some(Agent::Claude))).unwrap();
+    choices.edit(AiEdit::Model(Some("sonnet".into()))).unwrap();
+    choices.edit(AiEdit::Agent(Some(Agent::Claude))).unwrap();
+    assert_eq!(choices.model.as_deref(), Some("sonnet"));
+    choices.edit(AiEdit::Agent(Some(Agent::Codex))).unwrap();
+    assert_eq!(choices.model, None);
+    choices
+        .edit(AiEdit::Model(Some("custom-model".into())))
+        .unwrap();
+    choices.edit(AiEdit::Agent(None)).unwrap();
+    assert_eq!(choices.model, None);
+}

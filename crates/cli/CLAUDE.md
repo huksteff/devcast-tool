@@ -1,13 +1,13 @@
 # dc-cli (`crates/cli`)
 
-Бинарник `devcast`: монтаж, анализ, рендер кадров и экспорт из командной строки. Логика — в библиотеке (`run`), `main.rs` печатает `Outcome`.
+Бинарник `devcast`: монтаж, анализ, кадры и экспорт. Логика — `run`, `main.rs` печатает `Outcome`.
 
 ## Инварианты
 
 - `run(args, cwd, registry) -> Outcome` — чистый вход для тестов: код выхода, stdout, stderr. stdout — только результат, stderr — ошибки и предупреждения. Коды: 0 готово, 1 не получилось (`CliError::Failed`), 2 неверная строка (`CliError::Usage`).
 - Глобальные флаги `--project`, `--json`, `--dry-run` снимаются со всей строки (`globals::split`); поля команд с такими именами запрещает реестр `ops`.
 - Встроенные команды — подкоманды clap (`builtin.rs`, группы вроде `clip add`, `zoom suggest`, `captions gen` — `builtin_groups.rs`), остальное — команда реестра `dc_ops::Registry::devcast()` (общий с редактором), её аргументы разбирает `dc_ops::parse_args`.
-- Справка (`help.rs`) собирается из тех же определений: у встроенной команды `about`, `after_help` (пример), `help` аргументов; у команды `ops` — `ABOUT`, `EXAMPLE` и JSON Schema из doc-комментариев. `help --json` отдаёт ещё схему `Project` и состояний эффектов.
+- Справка (`help.rs`) — из clap (`about`, `after_help`, `help`) и ops (`ABOUT`, `EXAMPLE`, JSON Schema); `help --json` включает схемы Project и эффектов.
 - Проект: `--project`, иначе папка `*.devcast`, внутри которой стоим, иначе единственная `*.devcast` в текущей папке. Без редактора CLI — единственный писатель (lock); правит `session.json`, если есть несохранённое редактора, иначе `project.json`. Событие истории пишется до файла проекта. Проект держит редактор (`lock-owner.json` — `dc_ops::live::LOCK_OWNER`) — `live.rs` (7.32): `Open` по каналу программы (`Local::app_channel`), редактор пишет рабочее состояние на диск, команда идёт тем же кодом, события истории — `Write` в редактор (берёт, только если его ревизия не сменилась); программы нет — файлы.
 - Открытие проекта (`Workspace::open`) дописывает прерванные записи (`dc_ops::recovery`), если lock свободен (решение 007); под `--dry-run` только предупреждение.
 - Короткий вывод по умолчанию (`Applied` одной строкой), `--json` по запросу; ошибка под `--json` — `{"error", "code"}` в stderr. Дроби в тексте — до 3 знаков (`round.rs`), числа целиком — только в JSON.
@@ -23,18 +23,17 @@
 - Автозумы (`autozoom.rs`): предложения — `dc_ops::click_zooms` (общие с редактором). Запись, добавленная в проект (стоп `record`, восстановление), идёт через `dc_ops::autozoom::after_recording` (тот же путь у записи из программы): автозумы одной записью, если `zoom.auto`; ошибка — предупреждение.
 - `record` (`record.rs`, решение 011): процесс записи сам пишет проект и до старта занимает канал `devcast-record-<пользователь>` (`record_control::Server`); `record stop|pause|resume|cancel` шлёт туда `Control` и ждёт ответа; процесса нет — записи программы (`record_app.rs`, `Request::RecordControl`); `record --app` — `Request::Record(Once)` (разовые `--source`, `--duration`), ответ после первого кадра, с `--duration` — после сохранения. Ctrl+C, закрытие консоли — тот же стоп.
 - `export` (`export.rs`, решение 011): вызов отдаёт снимок проекта в очередь `dc_encode::ExportQueue` процесса с каналом `devcast-export-<пользователь>`; канала нет — вызов сам становится очередью; проект держит редактор — очередь программы (`export_app.rs`, id `p2`), `status`/`cancel` — обе. `--from/--to` — `Spec::piece`: кадры и звук целого проекта там. Сцена `export`, `frame`, `sheet` готовится одной `scene.rs`; звук — `dc_ops::sound::levels`.
-- `skill install` (`skill.rs`) кладёт вшитый `skill/SKILL.md` в `~/.claude/skills/devcast/`; `skill_tests` прогоняет его примеры и ищет каждую команду.
+- `skill install` кладёт `skill/SKILL.md` в `~/.claude/skills/devcast/`, с `--agent codex` — в `~/.agents/skills/devcast/`; примеры и команды проверяет skill_tests.
 
 ## Как тестировать
 
-- `cargo nextest run -p dc-cli`. Тестовые проекты — `src/test_util.rs`: `Fixture` (пустой проект, команды `test add/rm`, путь с кириллицей и пробелами) и `Recordings` (две записи, настоящий реестр).
-- Сценарии по файлам `src/*_tests.rs`; e2e одним insta-снимком — `e2e_tests.rs`, `scope_e2e_tests.rs`, `pauses_e2e_tests.rs` (намеренная смена вывода — `INSTA_UPDATE=always` и просмотр diff; решение 014).
-- `tests/binary.rs` — настоящий exe; `tests/worker.rs` — `--captions-worker`; `#[ignore]` — живая запись (`tests/record_live.rs`) и Whisper.
+- `cargo nextest run -p dc-cli`. Тестовые проекты — `src/test_util.rs`: `Fixture` (пустой проект, команды `test add/rm`, путь с кириллицей и пробелами) и `Recordings` (две записи, настоящий реестр, синтетическая телеметрия).
+- Сценарии — `src/*_tests.rs`; e2e — insta-снимки (после смены вывода `INSTA_UPDATE=always` и просмотр diff; решение 014).
+- `tests/binary.rs` — настоящий exe; `tests/worker.rs` — `--captions-worker`; `#[ignore]` — живая запись (`tests/record_live.rs`) и настоящий Whisper.
 
 ## Куда не лезть
 
 - Разбор аргументов, планы, dry-run, вывод diff — `dc-ops`. Файлы проекта, lock, история на диске — `dc-project`. Сами команды — `fx/*`.
 
 ## Ссылки
-
 - docs/roadmap/02-core.md (2.16–2.24), 03-capture.md (3.15), раздел «CLI» в docs/ARCHITECTURE.md.

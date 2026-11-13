@@ -26,6 +26,9 @@ pub struct TrackReader {
     position: i64,
     /// The next decoded frame starts a new run (after opening or a seek): it sets `position`.
     fresh: bool,
+    /// Nothing was read since opening: the decoder stands at the first packet of the file, so
+    /// frames before the stream (silence) need no seek.
+    unread: bool,
     ended: bool,
 }
 
@@ -44,6 +47,7 @@ impl TrackReader {
             buffer: Vec::new(),
             position: 0,
             fresh: true,
+            unread: true,
             ended: false,
         })
     }
@@ -73,9 +77,11 @@ impl TrackReader {
     /// [`Self::fill`] from stream frame `start`.
     fn fill_stream(&mut self, start: i64, out: &mut [f32]) -> Result<(), AudioError> {
         let end = start + (out.len() / CHANNELS) as i64;
-        if start < self.position || start > self.buffered_end() + SEEK_AHEAD {
+        let back = start < self.position && !self.unread;
+        if back || start > self.buffered_end() + SEEK_AHEAD {
             self.seek(start)?;
         }
+        self.unread = false;
         while !self.ended && (self.fresh || self.buffered_end() < end) {
             self.decode_more()?;
             self.discard_before(start);

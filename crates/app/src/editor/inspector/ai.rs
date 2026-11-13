@@ -33,8 +33,13 @@ pub fn tab(ui: &mut Ui, cx: &mut Cx<'_>) {
         return;
     }
     if ai.agent().is_none() || ai.signed_in == Some(false) {
+        if ai.found.len() > 1 || (!ai.found.is_empty() && ai.agent().is_none()) {
+            base.group(ui, group("agent", text::AGENT, true), |ui, _| {
+                agent(ui, ai, actions)
+            });
+        }
         match ai.agent() {
-            None => ai_cards::not_found(ui, actions),
+            None => ai_cards::not_found(ui, ai.choices.agent == Some(Agent::Codex), actions),
             Some(_) => ai_cards::signed_out(ui, ai, actions),
         }
         own(ui, base, ai, actions);
@@ -56,7 +61,7 @@ pub fn tab(ui: &mut Ui, cx: &mut Cx<'_>) {
                 );
             });
             base.group(ui, group("agent", text::AGENT, false), |ui, _| {
-                agent(ui, ai)
+                agent(ui, ai, actions)
             });
             padded(ui, |ui| run_button(ui, ai, actions, text::RUN));
             own(ui, base, ai, actions);
@@ -202,14 +207,16 @@ fn spent(ai: &Ai) -> Option<String> {
 }
 
 /// The agent when both are found, and the model.
-fn agent(ui: &mut Ui, ai: &mut Ai) {
+fn agent(ui: &mut Ui, ai: &mut Ai, actions: &mut Vec<Action>) {
     let found: Vec<(Agent, &str)> = ai
         .found
         .iter()
         .map(|f| (f.agent, agent_name(f.agent)))
         .collect();
-    if found.len() > 1 {
-        let mut chosen = ai.agent().map_or(Agent::Claude, |f| f.agent);
+    if found.len() > 1 || ai.agent().is_none() {
+        let mut chosen = ai
+            .agent()
+            .map_or(ai.choices.agent.unwrap_or(Agent::Claude), |f| f.agent);
         let picked = rows::row(ui, text::AGENT, |ui| {
             let width = ui.available_width();
             dropdown(ui, text::AGENT, &mut chosen, &found, width).changed()
@@ -218,10 +225,40 @@ fn agent(ui: &mut Ui, ai: &mut Ai) {
             ai.edits.push(AiEdit::Agent(Some(chosen)));
         }
     }
+    let codex = ai.agent().is_some_and(|f| f.agent == Agent::Codex);
+    if codex && found.len() == 1 {
+        rows::row(ui, text::AGENT, |ui| ui.label(text::CODEX));
+    }
+    model(ui, ai, codex);
+    if codex && ai.models.loading() {
+        rows::note(ui, text::MODELS_LOADING);
+    }
+    if codex && (ai.models.error.is_some() || (!ai.models.loading() && ai.models.items.is_empty()))
+    {
+        if let Some(error) = &ai.models.error {
+            rows::note(ui, &text::models_failed(error));
+        } else {
+            rows::note(ui, text::MODELS_EMPTY);
+        }
+        if ui.add(Button::new(text::CHECK_AGAIN).small()).clicked() {
+            actions.push(Action::Ai(AiAsk::RefreshModels));
+        }
+    }
+}
+
+fn model(ui: &mut Ui, ai: &mut Ai, codex: bool) {
     let chosen = ai.choices.model.clone();
     let mut models: Vec<(Option<String>, &str)> = vec![(None, text::MODEL_DEFAULT)];
     if ai.agent().is_some_and(|f| f.agent == Agent::Claude) {
         models.extend(CLAUDE_MODELS.map(|(id, title)| (Some(id.to_owned()), title)));
+    }
+    if codex {
+        models.extend(
+            ai.models
+                .items
+                .iter()
+                .map(|m| (Some(m.model.clone()), m.display_name.as_str())),
+        );
     }
     // A model set by `devcast recipes model` stays on the list.
     if let Some(own) = chosen
