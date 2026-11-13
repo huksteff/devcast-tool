@@ -99,19 +99,23 @@ fn the_picture_before_the_last_goes_back_to_capture() {
 }
 
 #[test]
-fn a_frame_at_the_slot_of_a_repeat_is_dropped() {
+fn a_new_picture_on_the_slot_of_a_repeat_takes_the_next_one() {
     let dir = tempfile::tempdir().unwrap();
-    let (mut encoding, back) = started(dir.path(), &PauseClock::default());
+    let (mut encoding, _back) = started(dir.path(), &PauseClock::default());
     encoding.idle(at(1.0)).unwrap();
     assert_eq!(encoding.last, Some(i64::from(FPS)));
     encoding.frame(picture(), at(1.01), 0).unwrap();
-    assert_eq!(encoding.count, 2, "slot 30 is the repeat's");
-    assert!(
-        back.try_recv().is_ok(),
-        "the dropped picture goes back to capture"
+    assert_eq!(
+        encoding.last,
+        Some(i64::from(FPS) + 1),
+        "slot 30 is the repeat's"
     );
     encoding.frame(picture(), at(1.04), 0).unwrap();
-    assert_eq!(encoding.last, Some(i64::from(FPS) + 1));
+    assert_eq!(encoding.last, Some(i64::from(FPS) + 2));
+    assert_eq!(
+        encoding.count, 4,
+        "the first picture, the repeat and both new ones"
+    );
     encoding.finish(at(1.5)).unwrap();
 }
 

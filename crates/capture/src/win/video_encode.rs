@@ -138,7 +138,7 @@ impl Encoding {
         if placed.paused {
             return Ok(());
         }
-        let Some(slot) = self.grid.place(self.last, placed.time) else {
+        let Some(slot) = self.grid.repeat(self.last, placed.time) else {
             return Ok(());
         };
         let Some(mut frame) = self.kept.take() else {
