@@ -4,8 +4,8 @@
 //! module, re-exported here.
 
 use dc_capture::input::{Button, Click};
-use dc_core::Project;
 use dc_core::project::Media;
+use dc_core::{OpName, Project};
 use dc_fx_annotations::Kind;
 pub use dc_fx_annotations::lane as annotations;
 pub use dc_fx_annotations::stage as boxes;
@@ -21,6 +21,16 @@ pub use dc_fx_zoom::lane as zoom;
 pub use dc_fx_zoom::stage as zoom_frame;
 use dc_ui_kit::lane::{Item, Lane};
 use serde_json::{Map, Value};
+
+/// The commands of the main track (fx/cut): the blade, Delete, R, a dragged clip.
+pub const CLIP_SPLIT: OpName = OpName::of::<dc_fx_cut::ClipSplit>();
+pub const CLIP_MOVE: OpName = OpName::of::<dc_fx_cut::ClipMove>();
+pub const CLIP_RM: OpName = OpName::of::<dc_fx_cut::ClipRm>();
+pub const CUT: OpName = OpName::of::<dc_fx_cut::Cut>();
+pub const SPEED: OpName = OpName::of::<dc_fx_cut::Speed>();
+/// The commands of the eye of the rows «Субтитры» and «Клавиши» (`--show`).
+pub const CAPTIONS_STYLE: OpName = OpName::of::<dc_fx_captions::CaptionsStyle>();
+pub const KEYS: OpName = OpName::of::<dc_fx_keys::KeysSet>();
 
 const LANES: [&Lane; 5] = [
     &dc_fx_zoom::lane::LANE,

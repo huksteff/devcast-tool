@@ -64,9 +64,9 @@ fn button(ui: &mut Ui, head: Rect, track: &Track, height: f32) -> Option<Press> 
     let (press, hint) = match track.row {
         Row::Captions | Row::Keys => {
             let op = if track.row == Row::Keys {
-                "keys"
+                crate::editor::lanes::KEYS
             } else {
-                "captions style"
+                crate::editor::lanes::CAPTIONS_STYLE
             };
             let action = Action::op(op, [("show", Value::Bool(track.off))]);
             let hint = if track.off { text::SHOW } else { text::HIDE };

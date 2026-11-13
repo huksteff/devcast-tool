@@ -4,6 +4,7 @@
 //! «Сбросить» brings the pencil to blue 4 px and the opacity to 100 %.
 
 use crate::{DrawingBody, PENCIL_WIDTH, WIDTH_MAX, WIDTH_MIN};
+use dc_core::OpName;
 use dc_core::Step;
 use dc_render::{BLUE, Rgba};
 use dc_ui_kit::egui::Ui;
@@ -14,7 +15,9 @@ use serde_json::{Value, json};
 use dc_fx_annotations::panel::{Edit, Section};
 use dc_ui_kit::panel::{Cx, rows};
 
-const SET: &str = "drawing set";
+const DRAWING_CLEAR: OpName = OpName::of::<crate::DrawingClear>();
+
+const SET: OpName = OpName::of::<crate::DrawingSet>();
 
 impl Section for DrawingBody {
     const ID: &'static str = "drawing";
@@ -36,7 +39,7 @@ impl Section for DrawingBody {
         rows::note(ui, &text::strokes(self.strokes.len()));
         let clear = Button::new(text::CLEAR).kind(Kind::Ghost).small();
         if ui.add_enabled(!self.strokes.is_empty(), clear).clicked() {
-            edit.apply(cx, "drawing clear", []);
+            edit.apply(cx, DRAWING_CLEAR, []);
         }
         rows::note(ui, text::DRAWING_NOTE);
     }

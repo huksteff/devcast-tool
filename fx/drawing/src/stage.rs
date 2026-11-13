@@ -7,6 +7,7 @@
 //! stroke, to the key the panel would edit (`--at`); the preview shows the draft meanwhile.
 //! Which gesture runs and where the stroke starts are the editor's.
 
+use dc_core::OpName;
 use dc_core::{OutputTime, Project, Step};
 use dc_fx_annotations::stage::{Edit, OnFrame};
 use dc_fx_annotations::{AnnotId, Annotations, Kind, key_offset};
@@ -21,6 +22,8 @@ use dc_ui_kit::widgets::{Slider, segmented};
 use serde_json::{Value, json};
 
 use crate::{DrawingBody, WIDTH_MAX, WIDTH_MIN};
+
+const DRAWING_ADD: OpName = OpName::of::<crate::DrawingAdd>();
 pub use crate::{ERASER_WIDTH, StrokeTool};
 
 /// Tool, colour and thickness of a stroke about to begin.
@@ -138,7 +141,7 @@ impl Brushing {
             StrokeTool::Eraser => ("tool", json!(self.tool.name())),
         };
         self.edit.step(
-            "drawing add",
+            DRAWING_ADD,
             [
                 ("points", json!(points.join(","))),
                 ("width", json!(self.width)),

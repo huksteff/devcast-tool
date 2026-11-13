@@ -6,6 +6,7 @@
 //! The press comes from the editor's dots of the row as [`Press`]: the effect does not read the
 //! telemetry.
 
+use dc_core::OpName;
 use dc_core::{OutputTime, SourceTime, Step};
 use dc_ui_kit::egui::Ui;
 use dc_ui_kit::panel::{Cx, Group, Header, header, padded, rows, time_arg};
@@ -16,6 +17,9 @@ use serde_json::{Map, Value, json};
 use crate::Cursor;
 use crate::panel::ID;
 use crate::panel_style as style;
+
+const CLICK_RESET: OpName = OpName::of::<crate::ClickReset>();
+const CLICK_SET: OpName = OpName::of::<crate::ClickSet>();
 
 /// A press of a recording as the «Курсор» row shows it: the facts of [`click`].
 #[derive(Debug, Clone, PartialEq)]
@@ -64,7 +68,7 @@ pub fn click(ui: &mut Ui, cx: &mut Cx<'_>, press: &Press, timecode: &str) {
     let look = change.map_or_else(|| all.clone(), |c| c.applied_to(all));
     let at = json!(time_arg(press.at));
     let reset = match change {
-        Some(_) => vec![Step::new("click reset", at_only(&at))],
+        Some(_) => vec![Step::of(CLICK_RESET, at_only(&at))],
         None => Vec::new(),
     };
     cx.groups.panel(ID);
@@ -78,7 +82,7 @@ pub fn click(ui: &mut Ui, cx: &mut Cx<'_>, press: &Press, timecode: &str) {
         let mut edit = |field: &str, value: Value| {
             let mut fields = at_only(&at);
             fields.insert(field.to_owned(), value);
-            cx.edits.push(vec![Step::new("click set", fields)]);
+            cx.edits.push(vec![Step::of(CLICK_SET, fields)]);
         };
         style::look(ui, &look, &mut edit);
         style::timing(ui, &look, &mut edit);

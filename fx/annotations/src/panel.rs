@@ -14,6 +14,7 @@
 //! playhead ([`target`], the preview's edits go there too). The rows show what the playhead
 //! shows; the strip names the key and steps the playhead to the previous or the next one.
 
+use dc_core::OpName;
 use dc_core::time::Output;
 use dc_core::{OutputTime, PixelSize, Project, Range, Step, TimeDelta};
 use dc_ui_kit::egui::Ui;
@@ -24,6 +25,8 @@ use serde_json::{Map, Value, json};
 
 use crate::panel_rows::{fine_rows, keys_strip, motion_group};
 use crate::{AnnotId, Annotation, Annotations, Kind, key_offset, same_moment};
+
+const ANNOT_SET: OpName = OpName::of::<crate::AnnotSet>();
 
 /// Where the timeline shows the picked annotation; the editor fills it.
 #[derive(Debug, Clone, Copy)]
@@ -46,7 +49,7 @@ pub struct Edit {
 
 impl Edit {
     /// `<op> <id> --<field> <value> … [--at <key>]`.
-    pub fn step(self, op: &str, fields: impl IntoIterator<Item = (&'static str, Value)>) -> Step {
+    pub fn step(self, op: OpName, fields: impl IntoIterator<Item = (&'static str, Value)>) -> Step {
         let mut args = Map::new();
         args.insert("id".to_owned(), json!(self.id));
         for (name, value) in fields {
@@ -55,14 +58,14 @@ impl Edit {
         if let Some(at) = self.at {
             args.insert("at".to_owned(), json!(time_arg(at)));
         }
-        Step::new(op, args)
+        Step::of(op, args)
     }
 
     /// [`Edit::step`] as one undo step of the panel.
     pub fn apply(
         self,
         cx: &mut Cx<'_>,
-        op: &str,
+        op: OpName,
         fields: impl IntoIterator<Item = (&'static str, Value)>,
     ) {
         cx.edits.push(vec![self.step(op, fields)]);
@@ -71,7 +74,7 @@ impl Edit {
     /// The step that brings the fields `now` to `default`; nothing when they are the same.
     pub fn reset(
         self,
-        op: &str,
+        op: OpName,
         now: &[(&'static str, Value)],
         default: &[(&'static str, Value)],
     ) -> Option<Step> {
@@ -204,7 +207,7 @@ fn section<B: Section>(ui: &mut Ui, cx: &mut Cx<'_>, shown: &Shown, edit: Edit) 
     motion_group(ui, cx, &shown.annotation, edit.unkeyed());
     let mut reset = body.fine_reset(edit);
     let turned = [("rotation", json!(shown.rotation))];
-    reset.extend(edit.reset("annot set", &turned, &[("rotation", json!(0.0))]));
+    reset.extend(edit.reset(ANNOT_SET, &turned, &[("rotation", json!(0.0))]));
     let fine = Group {
         id: "fine",
         title: editor::FINE,

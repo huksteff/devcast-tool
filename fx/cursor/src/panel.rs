@@ -6,6 +6,7 @@
 //! motion blur, loop (`cursor`). A single click is edited from its dot on the «Курсор» row
 //! ([`click`], `panel_click.rs`, with the facts [`Press`]). Edits go to `cx.edits`.
 
+use dc_core::OpName;
 use dc_core::{Effect, Step};
 use dc_ui_kit::egui::Ui;
 use dc_ui_kit::icons::Icon;
@@ -25,8 +26,8 @@ use crate::{
 /// Id of the cursor panels in the remembered groups.
 pub const ID: &str = Cursor::ID;
 /// The registry commands of the cursor and of every click.
-const CURSOR: &str = "cursor";
-const CLICKS: &str = "clicks";
+const CURSOR: OpName = OpName::of::<crate::CursorSet>();
+const CLICKS: OpName = OpName::of::<crate::ClicksSet>();
 
 const MOTIONS: [(Smoothing, &str); 3] = [
     (Smoothing::Exact, names::CURSOR_EXACT),
@@ -154,14 +155,14 @@ fn fine(ui: &mut Ui, cx: &mut Cx<'_>, now: &CursorSettings, default: &CursorSett
 }
 
 /// `<op> --<field> <value>`.
-fn set(op: &str, field: &str, value: Value) -> Vec<Step> {
+fn set(op: OpName, field: &str, value: Value) -> Vec<Step> {
     let mut fields = Map::new();
     fields.insert(field.to_owned(), value);
-    vec![Step::new(op, fields)]
+    vec![Step::of(op, fields)]
 }
 
 /// `op` with the default fields of a group, as the steps of «Сбросить».
-fn steps(op: &str, now: &Map<String, Value>, default: Map<String, Value>) -> Vec<Step> {
+fn steps(op: OpName, now: &Map<String, Value>, default: Map<String, Value>) -> Vec<Step> {
     reset(op, now, default).into_iter().collect()
 }
 

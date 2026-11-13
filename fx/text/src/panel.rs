@@ -4,6 +4,7 @@
 //! words.
 
 use crate::{RADIUS_MAX, SIZE_MAX, SIZE_MIN, TextAlign, TextBody};
+use dc_core::OpName;
 use dc_core::Step;
 use dc_ui_kit::egui::Ui;
 use dc_ui_kit::strings::annotations as text;
@@ -13,7 +14,7 @@ use serde_json::{Value, json};
 use dc_fx_annotations::panel::{Edit, Section};
 use dc_ui_kit::panel::{BUTTON, CHEVRON, Cx, rows};
 
-const SET: &str = "text set";
+const SET: OpName = OpName::of::<crate::TextSet>();
 
 const ALIGNS: [(TextAlign, &str); 3] = [
     (TextAlign::Left, text::LEFT),

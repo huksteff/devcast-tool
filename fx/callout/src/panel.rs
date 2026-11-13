@@ -5,6 +5,7 @@
 //! «Сбросить» brings the look (not the text of «Вкл») to the defaults with one undo step.
 //! The panel needs no facts of the editor: the event and the look are in the project.
 
+use dc_core::OpName;
 use dc_core::{Effect, Project, Step};
 use dc_render::Rgba;
 use dc_ui_kit::egui::Ui;
@@ -17,8 +18,8 @@ use crate::{SIZE_MAX, SIZE_MIN, TEXT_MAX};
 
 /// Id of the callout panel in the remembered groups.
 pub const ID: &str = Callout::ID;
-const SET: &str = "callout set";
-const STYLE: &str = "callout style";
+const SET: OpName = OpName::of::<crate::CalloutSet>();
+const STYLE: OpName = OpName::of::<crate::CalloutStyle>();
 /// Bounds of the typing or erasing time on its slider, seconds; the command takes any length.
 const TIME_MIN: f64 = 0.1;
 const TIME_MAX: f64 = 10.0;
@@ -175,15 +176,15 @@ fn style_rows(ui: &mut Ui, cx: &mut Cx<'_>, now: &CalloutSettings) {
 }
 
 /// `<op> --<field> <value> …`.
-fn step<const N: usize>(op: &str, fields: [(&'static str, Value); N]) -> Step {
-    Step::new(op, args(fields))
+fn step<const N: usize>(op: OpName, fields: [(&'static str, Value); N]) -> Step {
+    Step::of(op, args(fields))
 }
 
 /// `callout set <id> --<field> <value> …`.
 fn set<const N: usize>(id: EventId, fields: [(&'static str, Value); N]) -> Step {
     let id = std::iter::once(("id".to_owned(), json!(id)));
     let rest = fields.into_iter().map(|(k, v)| (k.to_owned(), v));
-    Step::new(SET, id.chain(rest).collect())
+    Step::of(SET, id.chain(rest).collect())
 }
 
 /// `#14b8c4ff,#a855f7ff`: the colours as `callout style --colors` takes them.

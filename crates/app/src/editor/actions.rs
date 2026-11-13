@@ -5,6 +5,7 @@
 use std::time::Instant;
 
 use super::lanes::annotations::AnnotId;
+use dc_core::OpName;
 use dc_ops::Step;
 use eframe::egui::Ui;
 use serde_json::{Map, Value};
@@ -75,12 +76,12 @@ pub enum Transport {
 
 impl Action {
     /// The command `op` with `args` (`{"show": true}` is `--show true`).
-    pub fn op(op: &str, args: impl IntoIterator<Item = (&'static str, Value)>) -> Self {
+    pub fn op(op: OpName, args: impl IntoIterator<Item = (&'static str, Value)>) -> Self {
         let args: Map<String, Value> = args
             .into_iter()
             .map(|(name, value)| (name.to_owned(), value))
             .collect();
-        Self::Apply(vec![Step::new(op, args)])
+        Self::Apply(vec![Step::of(op, args)])
     }
 }
 

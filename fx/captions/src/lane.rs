@@ -3,15 +3,20 @@
 //! --to` (a cue stays in its recording, the command says why), a copy is `captions paste` with
 //! its JSON.
 
+use dc_core::OpName;
 use dc_core::time::Output;
 use dc_core::{IdKind, Project, Range, StateError, Step, TimeDelta, TimeMap};
 use dc_ui_kit::lane::{self, Item, Lane, Moved, Region, Resize, Row, id_args, seconds, time};
 
 use crate::{CaptionsEffect, CueKind};
 
+const CAPTIONS_PASTE: OpName = OpName::of::<crate::CaptionsPaste>();
+const CAPTIONS_SET: OpName = OpName::of::<crate::CaptionsSet>();
+
 pub const LANE: Lane = Lane {
     prefix: CueKind::PREFIX,
-    op: "captions",
+    rm: OpName::of::<crate::CaptionsRm>(),
+    keys: None,
     moved,
     resized,
     copied,
@@ -22,14 +27,14 @@ fn moved(moved: &Moved) -> Step {
     let mut args = id_args(moved.item);
     args.insert("from".to_owned(), time(moved.range.start()));
     args.insert("to".to_owned(), time(moved.range.end()));
-    Step::new("captions set", args)
+    Step::of(CAPTIONS_SET, args)
 }
 
 fn resized(_: &Project, resize: &Resize) -> Step {
     let mut args = id_args(resize.item);
     let edge = if resize.end { "to" } else { "from" };
     args.insert(edge.to_owned(), time(resize.at));
-    Step::new("captions set", args)
+    Step::of(CAPTIONS_SET, args)
 }
 
 fn copied(project: &Project, item: Item, length: TimeDelta) -> Option<Step> {
@@ -39,7 +44,7 @@ fn copied(project: &Project, item: Item, length: TimeDelta) -> Option<Step> {
     let mut args = serde_json::Map::new();
     args.insert("item".to_owned(), serde_json::to_value(&cue).ok()?);
     args.insert("duration".to_owned(), seconds(length));
-    Some(Step::new("captions paste", args))
+    Some(Step::of(CAPTIONS_PASTE, args))
 }
 
 fn duplicated(project: &Project, item: Item, range: Range<Output>) -> Option<Step> {

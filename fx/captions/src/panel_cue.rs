@@ -6,6 +6,7 @@
 //! cue (`Request::Pick`, the list stays open) and to move the playhead to its start
 //! (`Request::Seek`).
 
+use dc_core::OpName;
 use dc_core::time::Output;
 use dc_core::{OutputTime, Range, Step};
 use dc_ui_kit::egui::{self, Align, Layout, Rect, Sense, Ui, WidgetInfo, pos2, vec2};
@@ -20,7 +21,11 @@ use serde_json::{Value, json};
 use crate::panel::{List, Shown};
 use crate::{CaptionsEffect, CaptionsState, Cue, CueId};
 
-const SET: &str = "captions set";
+const CAPTIONS_MERGE: OpName = OpName::of::<crate::CaptionsMerge>();
+const CAPTIONS_RM: OpName = OpName::of::<crate::CaptionsRm>();
+const CAPTIONS_SPLIT: OpName = OpName::of::<crate::CaptionsSplit>();
+
+const SET: OpName = OpName::of::<crate::CaptionsSet>();
 /// Width of the time column of the list, its font size, the padding of a line, points.
 const TIME: f32 = 58.0;
 const TIME_SIZE: f32 = 11.0;
@@ -146,19 +151,19 @@ fn buttons(ui: &mut Ui, cx: &mut Cx<'_>, (state, cue): (&CaptionsState, &Cue), l
         let response = ui.add_enabled(cue.words.len() > 1, split);
         if response.on_hover_text(text::SPLIT_HINT).clicked() {
             let at = seconds(cx.playhead);
-            cx.apply("captions split", [("id", json!(id)), ("at", json!(at))]);
+            cx.apply(CAPTIONS_SPLIT, [("id", json!(id)), ("at", json!(at))]);
         }
         let merge = Button::new(text::MERGE).kind(Kind::Ghost).small();
         let response = ui.add_enabled(next, merge);
         if response.on_hover_text(text::MERGE_HINT).clicked() {
-            cx.apply("captions merge", [("id", json!(id))]);
+            cx.apply(CAPTIONS_MERGE, [("id", json!(id))]);
         }
         if !listed {
             return;
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if header_button(ui, Icon::Trash, names::DELETE, true) {
-                cx.apply("captions rm", [("id", json!(id))]);
+                cx.apply(CAPTIONS_RM, [("id", json!(id))]);
             }
         });
     });
@@ -171,5 +176,5 @@ fn seconds(t: OutputTime) -> f64 {
 
 /// `captions set <id> --<field> <value>`.
 fn set(id: CueId, field: &'static str, value: Value) -> Step {
-    Step::new(SET, args([("id", json!(id)), (field, value)]))
+    Step::of(SET, args([("id", json!(id)), (field, value)]))
 }

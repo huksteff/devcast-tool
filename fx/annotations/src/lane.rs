@@ -7,18 +7,30 @@
 //! row on top (as Ctrl+V). Rows removed or moved (the row order is the layer order) are
 //! `annot rm` and `annot move --track`.
 
+use dc_core::OpName;
 use dc_core::time::Output;
 use dc_core::{IdKind, OutputTime, Project, Range, StateError, Step, TimeDelta, TimeMap};
-use dc_ui_kit::lane::{Item, Lane, Moved, Region, Resize, id_args, seconds, time};
+use dc_ui_kit::lane::{Item, Keys, Lane, Moved, Region, Resize, id_args, seconds, time};
 use dc_ui_kit::strings::timeline as text;
 
 pub use crate::lane_tip::{Fields, Tip, fields, tip};
 pub use crate::{AnnotId, Kind, TRACKS, same_moment};
 use crate::{AnnotKind, Annotation, Annotations};
 
+const ANNOT_ADD: OpName = OpName::of::<crate::AnnotAdd>();
+const ANNOT_KEY_COPY: OpName = OpName::of::<crate::AnnotKeyCopy>();
+const ANNOT_MOVE: OpName = OpName::of::<crate::AnnotMove>();
+const ANNOT_PASTE: OpName = OpName::of::<crate::AnnotPaste>();
+const ANNOT_SET: OpName = OpName::of::<crate::AnnotSet>();
+
 pub const LANE: Lane = Lane {
     prefix: AnnotKind::PREFIX,
-    op: "annot",
+    rm: OpName::of::<crate::AnnotRm>(),
+    keys: Some(Keys {
+        add: OpName::of::<crate::AnnotKeyAdd>(),
+        moved: OpName::of::<crate::AnnotKeyMove>(),
+        rm: OpName::of::<crate::AnnotKeyRm>(),
+    }),
     moved,
     resized,
     copied,
@@ -31,14 +43,14 @@ fn moved(moved: &Moved) -> Step {
     if let Some(track) = moved.track {
         args.insert("track".to_owned(), track.into());
     }
-    Step::new("annot move", args)
+    Step::of(ANNOT_MOVE, args)
 }
 
 fn resized(_: &Project, resize: &Resize) -> Step {
     let mut args = id_args(resize.item);
     let edge = if resize.end { "to" } else { "from" };
     args.insert(edge.to_owned(), time(resize.at));
-    Step::new("annot set", args)
+    Step::of(ANNOT_SET, args)
 }
 
 fn copied(project: &Project, item: Item, length: TimeDelta) -> Option<Step> {
@@ -48,7 +60,7 @@ fn copied(project: &Project, item: Item, length: TimeDelta) -> Option<Step> {
     let mut args = serde_json::Map::new();
     args.insert("item".to_owned(), serde_json::to_value(&annotation).ok()?);
     args.insert("duration".to_owned(), seconds(length));
-    Some(Step::new("annot paste", args))
+    Some(Step::of(ANNOT_PASTE, args))
 }
 
 /// Past a joint of recordings or the end the command refuses.
@@ -176,7 +188,7 @@ pub fn added(range: Range<Output>, track: u32, kind: Kind) -> Step {
     args.insert("kind".to_owned(), serde_json::Value::from(kind.name()));
     args.insert("track".to_owned(), track.into());
     args.insert("duration".to_owned(), seconds(range.duration()));
-    Step::new("annot add", args)
+    Step::of(ANNOT_ADD, args)
 }
 
 /// The id `annot add` gives the next annotation of `project`.
@@ -200,7 +212,7 @@ pub fn retrack(project: &Project, to: impl Fn(u32) -> Option<u32>) -> Vec<Step> 
             Some(track) if track != a.track => {
                 let mut args = id_args(Item::of(a.id));
                 args.insert("track".to_owned(), track.into());
-                Some(Step::new("annot move", args))
+                Some(Step::of(ANNOT_MOVE, args))
             }
             Some(_) => None,
         })
@@ -215,5 +227,5 @@ pub fn key_copied(id: AnnotId, at: OutputTime, to: OutputTime, into: AnnotId) ->
     if into != id {
         args.insert("into".to_owned(), Item::of(into).to_string().into());
     }
-    Step::new("annot key copy", args)
+    Step::of(ANNOT_KEY_COPY, args)
 }

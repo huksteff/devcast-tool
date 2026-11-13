@@ -7,6 +7,7 @@
 //! own. «Сбросить» — `audio reset` (every level back to the defaults) and sound on, one undo
 //! step.
 
+use dc_core::OpName;
 use dc_core::{ChannelLevels, Clip, ClipId, Step, project::MediaKind};
 use dc_ui_kit::egui::Ui;
 use dc_ui_kit::panel::{Cx, Group, rows};
@@ -15,6 +16,9 @@ use serde_json::{Map, json};
 
 use crate::panel::{self, Levels, Sources};
 use crate::{Audio, DENOISED};
+
+const AUDIO_MUTE: OpName = OpName::of::<crate::AudioMute>();
+const AUDIO_RESET: OpName = OpName::of::<crate::AudioReset>();
 
 /// The panel of clip `id` under the header the editor draws; edits go to `cx.edits`.
 pub fn clip(ui: &mut Ui, cx: &mut Cx<'_>, id: ClipId, sources: &Sources<'_>) {
@@ -134,7 +138,7 @@ fn mute(clip: ClipId, silent: bool) -> Step {
     if !silent {
         args.insert("off".to_owned(), json!(true));
     }
-    Step::new("audio mute", args)
+    Step::of(AUDIO_MUTE, args)
 }
 
 /// `audio reset <clip>` when it has levels of its own, `audio mute <clip> --off` when silent.
@@ -143,7 +147,7 @@ fn reset(clip: &Clip) -> Vec<Step> {
     if !clip.audio.channels.is_empty() {
         let mut args = Map::new();
         args.insert("clip".to_owned(), json!(clip.id));
-        steps.push(Step::new("audio reset", args));
+        steps.push(Step::of(AUDIO_RESET, args));
     }
     if clip.audio.muted {
         steps.push(mute(clip.id, false));

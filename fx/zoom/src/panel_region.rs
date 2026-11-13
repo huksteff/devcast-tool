@@ -5,6 +5,7 @@
 //! fields to the defaults, one undo step. The frame on the editor's preview edits the same scale
 //! and focus.
 
+use dc_core::OpName;
 use dc_core::Step;
 use dc_ui_kit::egui::Ui;
 use dc_ui_kit::panel::{Cx, Group, args, padded, reset, rows};
@@ -14,7 +15,7 @@ use serde_json::{Map, Value, json};
 use crate::panel::{self, ID};
 use crate::{DEFAULT_SCALE, Mode, SCALE_MAX, SCALE_MIN, Zoom, ZoomEffect, ZoomId, ZoomSettings};
 
-const SET: &str = "zoom set";
+const SET: OpName = OpName::of::<crate::ZoomSet>();
 
 const MODES: [(Mode, &str); 2] = [
     (Mode::Follow, names::ZOOM_FOLLOW),
@@ -78,7 +79,7 @@ fn region_rows(ui: &mut Ui, cx: &mut Cx<'_>, region: &Zoom) {
 
 /// `zoom set <id> --<field> <value>`.
 fn set(id: ZoomId, field: &'static str, value: Value) -> Vec<Step> {
-    vec![Step::new(SET, args([("id", json!(id)), (field, value)]))]
+    vec![Step::of(SET, args([("id", json!(id)), (field, value)]))]
 }
 
 /// The fields of the zoom in «Основное» as arguments of `zoom set`.

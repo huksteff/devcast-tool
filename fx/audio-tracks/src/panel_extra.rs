@@ -4,6 +4,7 @@
 //! «Основное» brings the levels `audio add` gives (100 %, 1×, sound, no normalization).
 //! Delete and «Дублировать» are in the head the editor draws.
 
+use dc_core::OpName;
 use dc_core::{Step, TimeDelta};
 use dc_ui_kit::egui::{Label, RichText, Ui};
 use dc_ui_kit::panel::{Cx, Group, args, padded, reset, rows};
@@ -13,7 +14,7 @@ use serde_json::{Map, Value, json};
 use crate::panel::{self, Sources};
 use crate::{Audio, AudioClip, AudioId, MIN_LENGTH};
 
-const SET: &str = "audio set";
+const SET: OpName = OpName::of::<crate::AudioSet>();
 
 /// The panel of extra sound `id` under the header the editor draws; edits go to `cx.edits`.
 pub fn extra(ui: &mut Ui, cx: &mut Cx<'_>, id: AudioId, sources: &Sources<'_>) {
@@ -86,7 +87,7 @@ fn place_rows(ui: &mut Ui, cx: &mut Cx<'_>, clip: &AudioClip, end: TimeDelta) {
 
 /// `audio set <id> --<field> <value>`.
 fn set(id: AudioId, field: &'static str, value: Value) -> Step {
-    Step::new(SET, args([("id", json!(id)), (field, value)]))
+    Step::of(SET, args([("id", json!(id)), (field, value)]))
 }
 
 fn now_args(clip: &AudioClip) -> Map<String, Value> {

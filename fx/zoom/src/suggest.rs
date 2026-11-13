@@ -4,11 +4,12 @@
 //! [`Suggestion::command`] makes the `zoom add` that places one. [`by_clicks`] asks for all of
 //! them as a step (`zoom add --at clicks`), which `dc_ops::autozoom` resolves.
 
+use dc_core::OpName;
 use dc_core::TimeMap;
 use dc_core::time::{Output, Source};
 use dc_core::timemap::Segment;
 use dc_core::{
-    CommandError, Op, OutputTime, Point, Project, Range, SourceTime, Step, TimeArg, TimeDelta,
+    CommandError, OutputTime, Point, Project, Range, SourceTime, Step, TimeArg, TimeDelta,
 };
 use serde_json::Value;
 
@@ -34,7 +35,7 @@ pub fn by_clicks() -> Step {
     let args = [("at".to_owned(), Value::from(AT_CLICKS))]
         .into_iter()
         .collect();
-    Step::new(ZoomAdd::NAME, args)
+    Step::of(OpName::of::<ZoomAdd>(), args)
 }
 
 /// The pointer of one recording (`Media.path`), in source time order.

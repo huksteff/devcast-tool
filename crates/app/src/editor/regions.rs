@@ -67,17 +67,17 @@ pub fn speed_edge(from: Range<Output>, end: bool, to: OutputTime, factor: f64) -
         Value::String(super::montage::range_arg(span)),
     );
     args.insert("factor".to_owned(), factor.into());
-    Some(Step::new("speed", args))
+    Some(Step::of(lanes::SPEED, args))
 }
 
 /// `annot key rm <id> --at <at>`: the key of annotation `id` at output `at`.
 pub fn key_remove(id: AnnotId, at: OutputTime) -> Option<Step> {
     let item = Item::of(id);
-    Some(lanes::of(item)?.key_removed(item, at))
+    lanes::of(item)?.key_removed(item, at)
 }
 
 /// `annot key move <id> --at <from> --to <to>`.
 pub fn key_move(id: AnnotId, from: OutputTime, to: OutputTime) -> Option<Step> {
     let item = Item::of(id);
-    Some(lanes::of(item)?.key_moved(item, from, to))
+    lanes::of(item)?.key_moved(item, from, to)
 }

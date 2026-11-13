@@ -2,18 +2,17 @@
 //! mode), picked; a key already there only gets picked. Outside the annotation the command
 //! refuses and its toast says why.
 
-use dc_ops::Step;
-use serde_json::{Map, Value, json};
+use dc_ui_kit::lane::Item;
 
-use super::montage::arg;
-use super::{Action, EditorWindow, stage};
+use super::{Action, EditorWindow, lanes, stage};
 
 pub fn add(editor: &mut EditorWindow) {
     let Some(id) = stage::picked(editor) else {
         return;
     };
-    let mut args = Map::new();
-    args.insert("id".to_owned(), json!(id));
-    args.insert("at".to_owned(), Value::String(arg(editor.view.playhead)));
-    editor.ask(Action::Keyed(vec![Step::new("annot key add", args)], id));
+    let item = Item::of(id);
+    let step = lanes::of(item).and_then(|lane| lane.key_added(item, editor.view.playhead));
+    if let Some(step) = step {
+        editor.ask(Action::Keyed(vec![step], id));
+    }
 }

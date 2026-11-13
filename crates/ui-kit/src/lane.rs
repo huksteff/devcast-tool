@@ -11,7 +11,7 @@
 use std::fmt;
 
 use dc_core::time::Output;
-use dc_core::{Id, IdKind, OutputTime, Project, Range, Step, TimeDelta};
+use dc_core::{Id, IdKind, OpName, OutputTime, Project, Range, Step, TimeDelta};
 use serde_json::{Map, Value};
 
 use crate::panel::time_arg;
@@ -131,8 +131,10 @@ pub struct Resize {
 pub struct Lane {
     /// The prefix of the ids of its items (`IdKind::PREFIX`).
     pub prefix: &'static str,
-    /// The first word of its commands (`zoom`): `<op> rm`, `<op> key move`.
-    pub op: &'static str,
+    /// The command that removes an item: `<op> rm <id>`.
+    pub rm: OpName,
+    /// The commands of the keys of its items; `None` when the items hold no keys.
+    pub keys: Option<Keys>,
     /// The command that puts a region in its new place.
     pub moved: fn(&Moved) -> Step,
     /// The command of a dragged edge.
@@ -147,23 +149,38 @@ pub struct Lane {
 impl Lane {
     /// `<op> rm <id>`.
     pub fn removed(&self, item: Item) -> Step {
-        Step::new(format!("{} rm", self.op), id_args(item))
+        Step::of(self.rm, id_args(item))
+    }
+
+    /// `<op> key add <id> --at <at>`; `None` when the items hold no keys.
+    pub fn key_added(&self, item: Item, at: OutputTime) -> Option<Step> {
+        let mut args = id_args(item);
+        args.insert("at".to_owned(), time(at));
+        Some(Step::of(self.keys?.add, args))
     }
 
     /// `<op> key move <id> --at <from> --to <to>`: the key of `item` at output `from`.
-    pub fn key_moved(&self, item: Item, from: OutputTime, to: OutputTime) -> Step {
+    pub fn key_moved(&self, item: Item, from: OutputTime, to: OutputTime) -> Option<Step> {
         let mut args = id_args(item);
         args.insert("at".to_owned(), time(from));
         args.insert("to".to_owned(), time(to));
-        Step::new(format!("{} key move", self.op), args)
+        Some(Step::of(self.keys?.moved, args))
     }
 
     /// `<op> key rm <id> --at <at>`.
-    pub fn key_removed(&self, item: Item, at: OutputTime) -> Step {
+    pub fn key_removed(&self, item: Item, at: OutputTime) -> Option<Step> {
         let mut args = id_args(item);
         args.insert("at".to_owned(), time(at));
-        Step::new(format!("{} key rm", self.op), args)
+        Some(Step::of(self.keys?.rm, args))
     }
+}
+
+/// The commands of the keys of a lane: `<op> key add`, `<op> key move`, `<op> key rm`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Keys {
+    pub add: OpName,
+    pub moved: OpName,
+    pub rm: OpName,
 }
 
 /// The arguments `--id <item>`.

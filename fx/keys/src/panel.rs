@@ -4,6 +4,7 @@
 //! «Тонкая настройка» — colours and how long a shortcut stays.
 //! Every edit and «Сбросить» is the `keys` command (`devcast keys …`, the settings key `keys`).
 
+use dc_core::OpName;
 use std::collections::BTreeSet;
 
 use dc_core::{Effect, KeyTracks};
@@ -26,7 +27,7 @@ const PLATE_RADIUS: u8 = 6;
 /// Id of the panel in the remembered groups.
 pub const ID: &str = Keys::ID;
 /// The registry command of the plate settings.
-const OP: &str = "keys";
+const OP: OpName = OpName::of::<crate::KeysSet>();
 
 /// The places of the anchor grid, in its order (three in a row).
 const PLACES: [(Position, &str); 6] = [

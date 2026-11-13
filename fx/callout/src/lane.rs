@@ -3,6 +3,7 @@
 //! `--duration` (the start keeps the end), a copy is `callout add` with all of the event, a new
 //! one (the ghost) `callout add --action on`.
 
+use dc_core::OpName;
 use dc_core::time::Output;
 use dc_core::{IdKind, Project, Range, StateError, Step, TimeDelta, TimeMap};
 use dc_ui_kit::lane::{self, Item, Lane, Moved, Region, Resize, id_args, seconds, time};
@@ -10,9 +11,13 @@ use dc_ui_kit::strings::timeline as text;
 
 use crate::{Action, Callout, EventKind};
 
+const CALLOUT_ADD: OpName = OpName::of::<crate::CalloutAdd>();
+const CALLOUT_SET: OpName = OpName::of::<crate::CalloutSet>();
+
 pub const LANE: Lane = Lane {
     prefix: EventKind::PREFIX,
-    op: "callout",
+    rm: OpName::of::<crate::CalloutRm>(),
+    keys: None,
     moved,
     resized,
     copied,
@@ -22,7 +27,7 @@ pub const LANE: Lane = Lane {
 fn moved(moved: &Moved) -> Step {
     let mut args = id_args(moved.item);
     args.insert("at".to_owned(), time(moved.range.start()));
-    Step::new("callout set", args)
+    Step::of(CALLOUT_SET, args)
 }
 
 fn resized(_: &Project, resize: &Resize) -> Step {
@@ -34,7 +39,7 @@ fn resized(_: &Project, resize: &Resize) -> Step {
         args.insert("at".to_owned(), time(at));
         args.insert("duration".to_owned(), seconds(range.end().since(at)));
     }
-    Step::new("callout set", args)
+    Step::of(CALLOUT_SET, args)
 }
 
 fn copied(project: &Project, item: Item, _: TimeDelta) -> Option<Step> {
@@ -47,7 +52,7 @@ fn copied(project: &Project, item: Item, _: TimeDelta) -> Option<Step> {
         args.insert("text".to_owned(), text.clone().into());
     }
     args.insert("duration".to_owned(), seconds(event.duration));
-    Some(Step::new("callout add", args))
+    Some(Step::of(CALLOUT_ADD, args))
 }
 
 fn duplicated(project: &Project, item: Item, range: Range<Output>) -> Option<Step> {
@@ -77,5 +82,5 @@ pub fn added(range: Range<Output>) -> Step {
     let mut args = serde_json::Map::new();
     args.insert("at".to_owned(), time(range.start()));
     args.insert("action".to_owned(), serde_json::Value::from("on"));
-    Step::new("callout add", args)
+    Step::of(CALLOUT_ADD, args)
 }

@@ -6,6 +6,7 @@
 //! 000). Extra sound has no track levels: each clip has its own ([`extra`]); the sound of a clip
 //! is [`clip`].
 
+use dc_core::OpName;
 use std::collections::BTreeMap;
 
 use dc_core::{ChannelLevels, ClipId, TimeDelta};
@@ -24,7 +25,7 @@ pub use crate::panel_extra::extra;
 
 /// Id of the sound panels in the remembered groups (`sound.mic`; older than [`Audio`]'s id).
 pub const ID: &str = "sound";
-const OP: &str = "audio channel";
+const OP: OpName = OpName::of::<crate::AudioChannel>();
 
 /// The recordings' tracks the panels show, in the order of the timeline rows.
 const RECORDED: [(&str, &str); 2] = [(MIC_TRACK, text::MIC), (SYSTEM_TRACK, text::SYSTEM)];
@@ -198,7 +199,7 @@ pub(crate) fn set(name: &str, clip: Option<ClipId>, field: &str, value: Value) -
         args.insert("clip".to_owned(), json!(clip));
     }
     args.insert(field.to_owned(), value);
-    dc_core::Step::new(OP, args)
+    dc_core::Step::of(OP, args)
 }
 
 /// Every level of the default of `name` as arguments of `audio channel` (noise suppression

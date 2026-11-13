@@ -50,7 +50,7 @@ pub fn check(root: &Path) -> Outcome {
     }
 }
 
-fn is_test(shown: &str) -> bool {
+pub fn is_test(shown: &str) -> bool {
     let name = shown.rsplit('/').next().unwrap_or(shown);
     name.ends_with("_tests.rs") || name == "tests.rs" || name == "test_project.rs"
 }
