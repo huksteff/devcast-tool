@@ -9,11 +9,14 @@ const ICO_SIZES = PNG_SIZES.filter(side => side <= 256);
 async function main() {
     sharp.concurrency(2);
     const source = await fs.readFile(path.join(__dirname, 'devcast.svg'));
+    const small = await fs.readFile(path.join(__dirname, 'devcast-small.svg'));
     const folder = path.join(__dirname, 'png');
     await fs.mkdir(folder, { recursive: true });
     const images = new Map();
     for (const side of PNG_SIZES) {
-        const image = await sharp(source, { density: 144 })
+        const base = side <= 24 ? 16 : 256;
+        const artwork = side <= 24 ? small : source;
+        const image = await sharp(artwork, { density: 72 * side / base })
             .resize(side, side).ensureAlpha().png({ compressionLevel: 9 }).toBuffer();
         await fs.writeFile(path.join(folder, `devcast-${side}.png`), image);
         images.set(side, image);

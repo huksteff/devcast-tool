@@ -67,7 +67,9 @@ fn loaded(harness: &H) -> bool {
 /// Runs frames until everything came, each time a thread wakes the window.
 fn settle(harness: &mut H, requests: &Receiver<egui::RequestRepaintInfo>) {
     loop {
-        harness.run();
+        // Background readers can wake several frames during loading; only assert idle
+        // settling after all of them have delivered their data.
+        harness.step();
         if loaded(harness) {
             break;
         }
