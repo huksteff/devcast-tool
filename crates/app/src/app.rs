@@ -65,6 +65,9 @@ pub struct Shared {
     pub exports: Option<crate::exports::Exports>,
     /// `devcast` runs waiting for the recording (`remote.rs`).
     pub waiters: crate::remote::Waiters,
+    /// What `devcast record --app` asked for the recording that goes on; «Запись» of the HUD
+    /// asks for nothing.
+    pub once: dc_ops::live::Once,
     /// Releases «Что нового» shows at the start, newest first (`hud/notices.rs`).
     pub news: Vec<dc_update::Release>,
     pub updates: crate::updates::Updates,
@@ -119,6 +122,7 @@ impl Shared {
             downloads: crate::downloads::Downloads::default(),
             exports: None,
             waiters: crate::remote::Waiters::default(),
+            once: dc_ops::live::Once::default(),
             news: Vec::new(),
             updates: crate::updates::Updates::default(),
         }

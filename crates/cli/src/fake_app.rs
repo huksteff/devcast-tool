@@ -6,8 +6,8 @@ use std::path::PathBuf;
 
 use dc_ops::export_jobs::{Finished, Job};
 use dc_ops::live::{
-    Answer, AppStatus, CaptionsState, EditorState, RecordAnswer, RecordControl, RecordingState,
-    Request,
+    Answer, AppStatus, CaptionsState, EditorState, Once, RecordAnswer, RecordControl,
+    RecordingState, Request,
 };
 use dc_project::ProjectDir;
 
@@ -40,7 +40,7 @@ fn job(id: u32, label: &str, state: &str) -> Job {
 impl FakeApp {
     pub(crate) fn answer(&mut self, request: Request, dir: &ProjectDir, unsaved: bool) -> Answer {
         match request {
-            Request::Record => Answer::Record(self.record(dir)),
+            Request::Record(once) => Answer::Record(self.record(dir, once)),
             Request::RecordControl(control) => Answer::Record(self.control(control)),
             Request::Export(spec) => {
                 let id = self.exports.len() as u32 + 1;
@@ -87,11 +87,14 @@ impl FakeApp {
         }
     }
 
-    fn record(&mut self, dir: &ProjectDir) -> RecordAnswer {
+    fn record(&mut self, dir: &ProjectDir, once: Once) -> RecordAnswer {
         if self.recording != RecordingState::Idle {
             return RecordAnswer::NotNow(self.recording.clone());
         }
         let root = recording_root(dir);
+        if once.duration.is_some() {
+            return RecordAnswer::Stopped { root };
+        }
         self.recording = RecordingState::Recording {
             root: root.clone(),
             recorded: 0.0,

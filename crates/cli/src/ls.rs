@@ -224,8 +224,24 @@ pub(crate) fn info(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
     let name = workspace.name();
     let unsaved = workspace.unsaved();
     let counted: Vec<String> = counts.iter().map(|(k, v)| format!("{k} {v}")).collect();
+    // No clips, or the sound cannot be read (a media file is gone): nothing to say about it.
+    let mute = match project.clips.is_empty() {
+        true => None,
+        false => crate::voice::mute(workspace.dir(), project).ok(),
+    };
+    let voice = match &mute {
+        None => String::new(),
+        Some(mute) if mute.is_empty() => "\nголос: есть".to_owned(),
+        Some(mute) => {
+            let lines: Vec<String> = mute.iter().map(crate::voice::Mute::line).collect();
+            format!(
+                "\nголос: нет ({}) — пауз речи здесь нет, cut --silences откажет",
+                lines.join("; ")
+            )
+        }
+    };
     let text = format!(
-        "{name}: длительность {duration}, {}\nсписки: {}; подробно: devcast ls <список>",
+        "{name}: длительность {duration}, {}{voice}\nсписки: {}; подробно: devcast ls <список>",
         match unsaved {
             true => "есть несохранённые изменения (devcast save)",
             false => "всё сохранено",
@@ -236,6 +252,8 @@ pub(crate) fn info(ctx: &Ctx<'_>) -> Result<Answer, CliError> {
         "name": name,
         "duration": duration.as_secs_f64(),
         "unsaved": unsaved,
+        "voice": mute.as_ref().map(Vec::is_empty),
+        "no_voice": mute.unwrap_or_default().iter().map(crate::voice::Mute::json).collect::<Vec<_>>(),
         "lists": counts,
     });
     Ok(answer(&mut workspace, text, json))

@@ -52,6 +52,8 @@ fn wrong_arguments_exit_with_2_and_a_hint() {
         ("export status e1", "всю очередь"),
         ("export cancel x7", "e1, e2"),
         ("export status -o a.mp4", "не берут настроек"),
+        ("export -o a.mp4 --from later", "--from"),
+        ("export -o a.mp4 --from 1 --to 0.5", "внутри видео"),
     ] {
         let out = f.run(line);
         assert_eq!(out.code, 2, "{line}: {out:?}");
@@ -149,6 +151,8 @@ fn two_calls_share_the_queue_and_both_files_come_out() {
     let gif = ExportArgs {
         out: Some("готовое видео.gif".into()),
         res: Some(crate::export_args::Res::Source),
+        from: Some("0.5".to_owned()),
+        to: Some("1".to_owned()),
         ..ExportArgs::default()
     };
     let answers = std::thread::scope(|scope| {
@@ -167,6 +171,8 @@ fn two_calls_share_the_queue_and_both_files_come_out() {
         assert!(answer.text.contains("320×180"), "{}", answer.text);
         assert!(project.join(file).is_file(), "{file}");
     }
+    // `--from 0.5 --to 1`: the piece only, and the project stays whole.
+    assert!(answers[1].text.contains(" 0.5 с, "), "{}", answers[1].text);
     let probe = dc_media::probe(&project.join("готовое видео.mp4")).unwrap();
     assert_eq!(probe.frames, 45);
     assert!(

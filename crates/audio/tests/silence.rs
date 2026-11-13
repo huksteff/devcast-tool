@@ -193,3 +193,31 @@ fn pauses_do_not_depend_on_the_microphone_level() {
         assert!(covered, "hand-marked pause {want:?} not found: {same:?}");
     }
 }
+
+/// A voice lies over its noise; a track that only hisses or is silent has no voice. The two
+/// levels are measured once and then read from the cache of the project.
+#[test]
+fn a_voice_is_heard_when_speech_lies_over_the_noise() {
+    let mut speech = vec![-45.0; 70];
+    speech.extend([-35.0; 30]);
+    assert!(silence::voice_of(speech).is_heard());
+    let hiss: Vec<f64> = (0..100).map(|i| -50.0 + f64::from(i % 3)).collect();
+    assert!(!silence::voice_of(hiss).is_heard());
+    assert!(!silence::voice_of(vec![f64::NEG_INFINITY; 40]).is_heard());
+    assert!(!silence::voice_of(Vec::new()).is_heard());
+
+    let dir = tempfile::tempdir().unwrap();
+    let project = project_dir(dir.path());
+    let mic = speech_at(dir.path(), 0);
+    let measured = dc_audio::voice::cached(&project, &mic).unwrap();
+    assert!(measured.is_heard(), "{measured:?}");
+    assert_eq!(measured, silence::measure(&mic).unwrap());
+    assert_eq!(dc_audio::voice::cached(&project, &mic).unwrap(), measured);
+    let noise = make(
+        dir.path(),
+        "noise.flac",
+        "anoisesrc=color=white:amplitude=0.01:sample_rate=48000:duration=5",
+        &["-ac", "2"],
+    );
+    assert!(!silence::measure(&track(&noise)).unwrap().is_heard());
+}

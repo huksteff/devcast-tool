@@ -48,6 +48,8 @@ fn recording_of_the_app() {
         stopped.stdout
     );
     assert!(stopped.stdout.contains("в редакторе"), "{}", stopped.stdout);
+    let timed = run(&f, "record --app --source screen:2 --duration 3", &ch);
+    assert!(timed.stdout.starts_with("записано: "), "{}", timed.stdout);
     let idle = run(&f, "record cancel", &ch);
     assert_eq!(idle.code, 1);
     assert!(idle.stderr.contains("запись не идёт"), "{}", idle.stderr);
@@ -68,6 +70,16 @@ fn record_app_takes_the_settings_of_the_app() {
         "{}",
         dry.stdout
     );
+    let once = f.run("record --app --source window:42 --duration 5 --dry-run");
+    assert!(
+        once.stdout
+            .starts_with("dry-run, запись не начата: программа запишет window:42 60 fps"),
+        "{}",
+        once.stdout
+    );
+    assert!(once.stdout.contains("5 с записи"), "{}", once.stdout);
+    let wrong = f.run("record --app --source nowhere");
+    assert_eq!(wrong.code, 2, "{}", wrong.stderr);
     let none = f.run("record --app");
     assert!(
         none.stderr.contains("DevCast не запущен"),

@@ -16,6 +16,7 @@ pub mod play;
 pub mod reader;
 pub mod silence;
 pub mod track;
+pub mod voice;
 
 mod limiter;
 mod part;

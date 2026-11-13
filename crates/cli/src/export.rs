@@ -2,7 +2,9 @@
 //! for its file; `export status` shows the queue, `export cancel [e2]` cancels.
 
 use dc_capture::win::on_console_stop;
+use dc_core::{Command, OutputTime, Project, TimeMap};
 use dc_encode::export::{GIF_FPS, MP4_FPS};
+use dc_fx_cut::Cut;
 use dc_ops::export::{Format, Spec};
 use dc_render::{AdapterChoice, Gpu};
 use serde_json::json;
@@ -77,7 +79,7 @@ fn start(ctx: &Ctx<'_>, args: &ExportArgs, channel: &str) -> Result<Answer, CliE
     let workspace = Workspace::open(dir, false, ctx.globals.dry_run, app)?;
     let spec = Spec {
         root: workspace.dir().root().to_path_buf(),
-        project: workspace.project.clone(),
+        project: piece(&workspace.project, args)?,
         settings,
         out,
     };
@@ -97,6 +99,38 @@ fn start(ctx: &Ctx<'_>, args: &ExportArgs, channel: &str) -> Result<Answer, CliE
     };
     answer.warnings.extend(workspace.warnings);
     Ok(answer)
+}
+
+/// `--from`, `--to`: `project` as it is exported — the rest of the video cut away (`cut`, in
+/// memory only: the project on disk stays whole).
+fn piece(project: &Project, args: &ExportArgs) -> Result<Project, CliError> {
+    let (from, to) = (
+        crate::ls::time(args.from.as_ref(), "--from")?,
+        crate::ls::time(args.to.as_ref(), "--to")?,
+    );
+    if from.is_none() && to.is_none() {
+        return Ok(project.clone());
+    }
+    let end = OutputTime::ZERO + TimeMap::build(project).duration();
+    let (start, stop) = (from.unwrap_or(OutputTime::ZERO), to.unwrap_or(end));
+    if start >= stop || stop > end {
+        return Err(CliError::Usage(format!(
+            "--from {start} --to {stop}: кусок — внутри видео (0:00–{end}), начало раньше конца"
+        )));
+    }
+    let outside: Vec<String> = [(OutputTime::ZERO, start), (stop, end)]
+        .into_iter()
+        .filter(|(a, b)| a < b)
+        .map(|(a, b)| format!("{}-{}", a.as_secs_f64(), b.as_secs_f64()))
+        .collect();
+    let mut piece = project.clone();
+    if !outside.is_empty() {
+        let failed = |e: &dyn std::fmt::Display| CliError::Failed(e.to_string());
+        let cut: Cut =
+            serde_json::from_value(json!({"ranges": outside.join(",")})).map_err(|e| failed(&e))?;
+        cut.apply(&mut piece).map_err(|e| failed(&e))?;
+    }
+    Ok(piece)
 }
 
 /// Sends `spec` to the running queue or runs the queue here.

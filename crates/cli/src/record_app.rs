@@ -7,7 +7,7 @@
 use std::path::Path;
 use std::time::Duration;
 
-use dc_ops::live::{Answer as Live, RecordAnswer, RecordControl, RecordingState, Request};
+use dc_ops::live::{Answer as Live, Once, RecordAnswer, RecordControl, RecordingState, Request};
 use serde_json::json;
 
 use crate::app_settings::switch;
@@ -15,23 +15,34 @@ use crate::edit::Ctx;
 use crate::error::CliError;
 use crate::live::{app_channel, ask_app, refused};
 use crate::record::at;
-use crate::record_args::RecordArgs;
+use crate::record_args::{RecordArgs, duration, source};
 use crate::record_control::Control;
 use crate::run::Answer;
 
 /// `devcast record --app`.
 pub(crate) fn start(ctx: &Ctx<'_>, args: &RecordArgs) -> Result<Answer, CliError> {
-    if !args.is_empty() {
+    if !args.fits_app() {
         return Err(CliError::Usage(
-            "record --app пишет с настройками программы, которые показывает её HUD, без --source, --fps, --audio, --mic, --duration и -o: поменяй их — devcast config set recording.source=screen:2 (надолго), или пиши без программы — devcast record --source screen:2"
+            "record --app пишет с настройками программы, которые показывает её HUD; на одну запись меняются только --source и --duration, а --fps, --audio, --mic и -o — нет: поменяй их — devcast config set recording.fps=30 (надолго), или пиши без программы — devcast record --source screen:2"
                 .to_owned(),
         ));
     }
+    let once = Once {
+        source: source(args)?,
+        duration: duration(args)?.map(|d| d.as_secs_f64()),
+    };
     if ctx.globals.dry_run {
         let settings = ctx.app_settings()?;
-        let recording = &settings.recording;
+        let mut recording = settings.recording.clone();
+        if let Some(source) = once.source {
+            recording.source = source;
+        }
+        let limit = match once.duration {
+            Some(seconds) => format!(", {seconds} с записи"),
+            None => String::new(),
+        };
         let text = format!(
-            "dry-run, запись не начата: программа запишет {} {} fps, системный звук {}, микрофон {}, отсчёт {} с → {}",
+            "dry-run, запись не начата: программа запишет {} {} fps, системный звук {}, микрофон {}, отсчёт {} с{limit} → {}",
             recording.source,
             recording.fps.get(),
             switch(recording.system_audio),
@@ -39,10 +50,11 @@ pub(crate) fn start(ctx: &Ctx<'_>, args: &RecordArgs) -> Result<Answer, CliError
             settings.countdown.seconds(),
             settings.recordings_dir.display()
         );
-        let json = json!({"dry_run": true, "config": recording, "countdown": settings.countdown.seconds(), "folder": settings.recordings_dir});
+        let json = json!({"dry_run": true, "config": recording, "countdown": settings.countdown.seconds(), "duration": once.duration, "folder": settings.recordings_dir});
         return Ok(Answer::new(text, json));
     }
-    match ask(ctx, &Request::Record)? {
+    match ask(ctx, &Request::Record(once))? {
+        RecordAnswer::Stopped { root } => Ok(stopped(&root)),
         RecordAnswer::Started { root } => Ok(Answer::new(
             format!(
                 "запись идёт в программе: {}; остановить — devcast record stop",
@@ -72,13 +84,7 @@ pub(crate) fn control(ctx: &Ctx<'_>, control: Control) -> Result<Answer, CliErro
     match ask(ctx, &Request::RecordControl(asked))? {
         RecordAnswer::Paused { recorded } => Ok(at("пауза", seconds(recorded))),
         RecordAnswer::Resumed { recorded } => Ok(at("продолжено", seconds(recorded))),
-        RecordAnswer::Stopped { root } => Ok(Answer::new(
-            format!(
-                "записано: {}; программа открыла проект в редакторе",
-                root.display()
-            ),
-            json!({"project": root, "app": true}),
-        )),
+        RecordAnswer::Stopped { root } => Ok(stopped(&root)),
         RecordAnswer::Cancelled { root } => Ok(cancelled(&root)),
         RecordAnswer::CountdownCancelled => Ok(Answer::new(
             "отсчёт отменён, запись не начата".to_owned(),
@@ -86,6 +92,16 @@ pub(crate) fn control(ctx: &Ctx<'_>, control: Control) -> Result<Answer, CliErro
         )),
         answer => Err(unexpected(answer, Some(control))),
     }
+}
+
+fn stopped(root: &Path) -> Answer {
+    Answer::new(
+        format!(
+            "записано: {}; программа открыла проект в редакторе",
+            root.display()
+        ),
+        json!({"project": root, "app": true}),
+    )
 }
 
 fn cancelled(root: &Path) -> Answer {
@@ -105,7 +121,7 @@ fn ask(ctx: &Ctx<'_>, request: &Request) -> Result<RecordAnswer, CliError> {
         Some(Live::Record(answer)) => Ok(answer),
         Some(answer) => Err(refused(answer)),
         None => Err(CliError::Failed(match request {
-            Request::Record => {
+            Request::Record(_) => {
                 "DevCast не запущен: запусти программу или пиши без неё — devcast record --source screen:1"
             }
             _ => {

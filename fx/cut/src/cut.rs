@@ -27,7 +27,7 @@ impl Command for Cut {
 
 impl Op for Cut {
     const NAME: &'static str = "cut";
-    const ABOUT: &'static str = "Вырезать участки видео (время выхода, до выреза)";
+    const ABOUT: &'static str = "Вырезать участки видео (время выхода, до выреза); в devcast ещё слова w12-w20 и паузы речи --silences [--pad 0.15]";
     const EXAMPLE: &'static str = "cut 10.2-12.5,20-21";
     const POSITIONAL: &'static [&'static str] = &["ranges"];
 }

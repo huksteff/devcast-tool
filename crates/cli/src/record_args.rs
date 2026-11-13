@@ -68,21 +68,30 @@ impl RecordArgs {
             && mic.is_none()
             && out.is_none()
     }
+
+    /// Only what `record --app` takes for one recording is given: `--source`, `--duration`.
+    pub(crate) fn fits_app(&self) -> bool {
+        self.fps.is_none() && self.audio.is_none() && self.mic.is_none() && self.out.is_none()
+    }
+}
+
+/// `--source` as typed; none — not given.
+pub(crate) fn source(args: &RecordArgs) -> Result<Option<Source>, CliError> {
+    args.source
+        .as_deref()
+        .map(str::parse)
+        .transpose()
+        .map_err(|e: dc_capture::SourceError| CliError::Usage(e.to_string()))
 }
 
 /// What to record, from the arguments.
 pub(crate) fn config(args: &RecordArgs) -> Result<RecordingConfig, CliError> {
-    let source: Source = args
-        .source
-        .as_deref()
-        .ok_or_else(|| {
-            CliError::Usage(
-                "укажи, что писать: --source screen:1 (window:<id>, area:x,y,w,h; список — devcast ls sources)"
-                    .to_owned(),
-            )
-        })?
-        .parse()
-        .map_err(|e: dc_capture::SourceError| CliError::Usage(e.to_string()))?;
+    let source = source(args)?.ok_or_else(|| {
+        CliError::Usage(
+            "укажи, что писать: --source screen:1 (window:<id>, area:x,y,w,h; список — devcast ls sources)"
+                .to_owned(),
+        )
+    })?;
     let fps = Fps::try_from(args.fps.unwrap_or(60))
         .map_err(|e| CliError::Usage(format!("--fps: {e}")))?;
     let config = RecordingConfig {

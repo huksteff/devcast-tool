@@ -3,7 +3,7 @@
 //! here are the states, their timing and what each action of the HUD, the tray and the hotkeys
 //! does to them. The timer runs on the recorder's clock: host time minus the pauses.
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use dc_capture::{HostTime, Pauses};
 use eframe::egui;
@@ -100,6 +100,7 @@ impl Shared {
         self.settings = None;
         self.area = None;
         self.area_asked = None;
+        self.once = dc_ops::live::Once::default();
         let seconds = self.store.get().countdown.seconds();
         self.session = if seconds == 0 {
             Session::Launch
@@ -154,6 +155,24 @@ impl Shared {
                 }
             }
         }
+        self.stop_at_limit();
+    }
+
+    /// `devcast record --app --duration`: stops once that much is recorded.
+    fn stop_at_limit(&mut self) {
+        let (Session::Live(live), Some(limit)) = (&self.session, self.once.duration) else {
+            return;
+        };
+        let recorded = match dc_capture::win::now() {
+            Ok(now) => live.recorded(now) as f64 / 1e6,
+            Err(error) => return tracing::error!("длительность записи: {error}"),
+        };
+        match Duration::try_from_secs_f64(limit - recorded) {
+            Ok(left) if !left.is_zero() => self
+                .ctx
+                .request_repaint_after_for(left, egui::ViewportId::ROOT),
+            _ => self.stop(),
+        }
     }
 
     fn start_recorder(&self) -> Result<Recorder, AppError> {
@@ -162,7 +181,11 @@ impl Shared {
         std::fs::create_dir_all(dir).map_err(|e| AppError::settings_file(dir, e))?;
         let root = dc_capture::project::free_project_root(dir);
         let defaults = dc_project::Defaults::load(&dc_project::settings::defaults_file()?)?;
-        Recorder::start(&self.ctx, settings.recording.clone(), root, defaults)
+        let mut config = settings.recording.clone();
+        if let Some(source) = self.once.source {
+            config.source = source;
+        }
+        Recorder::start(&self.ctx, config, root, defaults)
     }
 
     /// Pause or resume.
