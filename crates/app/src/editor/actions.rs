@@ -133,7 +133,11 @@ pub fn run(ui: &Ui, editor: &mut EditorWindow, now: Instant) -> Vec<String> {
                 Ok(applied) => changed |= applied,
                 Err(error) => errors.push(error),
             },
-            Action::Generate => errors.extend(generation::start(ui.ctx(), editor).err()),
+            Action::Generate => {
+                // The captions panel shows the progress and «Отменить».
+                editor.view.show_tab(super::inspector::CAPTIONS.id);
+                errors.extend(generation::start(ui.ctx(), editor).err());
+            }
             Action::StopGenerating => editor.captions.cancel(),
             Action::Ai(ask) => changed |= ask_ai(ui, editor, ask, now, &mut errors),
             Action::Detach(open) => editor.detach(open),

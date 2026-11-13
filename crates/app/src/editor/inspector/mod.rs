@@ -330,7 +330,6 @@ fn tab_button(ui: &mut Ui, view: &mut View, tab: &Tab) {
         .on(on);
     let response = ui.add(button).on_hover_text(tab.title);
     if response.clicked() {
-        view.tab = tab.id;
-        view.object = None;
+        view.show_tab(tab.id);
     }
 }

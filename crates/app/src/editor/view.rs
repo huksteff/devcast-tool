@@ -140,6 +140,12 @@ impl Default for View {
 }
 
 impl View {
+    /// Opens tab `tab` of the inspector rail in place of the panel of a picked object.
+    pub fn show_tab(&mut self, tab: &'static str) {
+        self.tab = tab;
+        self.object = None;
+    }
+
     /// Keeps what still fits the project after it changed: picked clips and regions its rows
     /// `tracks` show, a range inside its length `end`; a gesture over the old project ends.
     pub fn keep(&mut self, tracks: &Tracks, end: OutputTime) {
