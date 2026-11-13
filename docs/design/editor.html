@@ -438,7 +438,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
 <tr><th>Решение</th><th>Откуда</th><th>Почему (принцип)</th></tr>
 <tr><td>Превью по центру, инспектор справа (340 px), таймлайн внизу во всю ширину</td><td>Cap, DaVinci Edit; v1 — панель слева (отклонено)</td><td>Закон Якоба: так устроены все монтажки; таймлайн во всю ширину = больше времени на экране; взгляд идёт превью → настройки справа</td></tr>
 <tr><td>Инспектор сам открывает панель выделенного (зум, аннотация, реплика, клип); вкладки слева от панели — для общих настроек</td><td>v1 (автопереключение), DaVinci Inspector</td><td>Nielsen #6 узнавание вместо припоминания; Hick: на экране только настройки того, с чем работаешь</td></tr>
-<tr><td>У панели группы «Основное» (открыта) и «Тонкая настройка» (свёрнута), «Сбросить» ↺ в заголовке группы</td><td>SCOPE, DaVinci (сворачиваемые группы с reset)</td><td>Прогрессивное раскрытие; Nielsen #3 — выход в умолчание одним кликом</td></tr>
+<tr><td>У панели группы «Основное» (открыта) и «Дополнительно» (свёрнута), «Сбросить» ↺ в заголовке группы</td><td>SCOPE, DaVinci (сворачиваемые группы с reset)</td><td>Прогрессивное раскрытие; Nielsen #3 — выход в умолчание одним кликом</td></tr>
 <tr><td>Резать двумя способами: C — у указателя, «Лезвие» (B) — кликом в любом месте клипа</td><td>DaVinci (Blade B, Ctrl+B), Cap (режим разреза); C — v1</td><td>Fitts: режут там, куда смотрят; режим виден курсором ✂ и подсвеченной кнопкой (Nielsen #1)</td></tr>
 <tr><td>Главная дорожка всегда «рябит»: удалённый кусок не оставляет дыр, эффекты не съезжают</td><td>SCOPE (магнитная дорожка), DaVinci Cut page; ARCHITECTURE — source time</td><td>Меньше шагов, чем Blade + Delete + сдвиг; Nielsen #5 — нельзя случайно оставить чёрную дыру</td></tr>
 <tr><td>Цвет = вид эффекта и совпадает на дорожке, в полоске заголовка инспектора и на превью</td><td>Cap (цветные дорожки), DaVinci (цвет клипа)</td><td>Gestalt: сходство; цвет всегда с подписью — не единственный признак (WCAG 1.4.1)</td></tr>
@@ -566,7 +566,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
             <div class="prow"><span>Выход</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Растворение</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span><span class="num">0,3 с</span></span></div>
           </div>
         </div>
-        <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div></div>
+        <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Дополнительно<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div></div>
       </div>
     </div>
   </div>
@@ -801,7 +801,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
 
 <!-- ============ 3 PANELS ============ -->
 <h2>3. Панели эффектов (инспектор)</h2>
-<p class="lead" style="margin-top:0">Каждая панель 320 px: шапка с цветной полоской вида, группы «Основное» и «Тонкая настройка» (свёрнута, запоминается), ↺ «Сбросить» — к настройкам по умолчанию. Ниже открыта «Тонкая настройка», чтобы показать её состав.</p>
+<p class="lead" style="margin-top:0">Каждая панель 320 px: шапка с цветной полоской вида, группы «Основное» и «Дополнительно» (свёрнута, запоминается), ↺ «Сбросить» — к настройкам по умолчанию. Ниже открыта «Дополнительно», чтобы показать её состав.</p>
 
 <h3>3a. Зум · Курсор и клики · Облачко</h3>
 <div class="stage"><div class="row">
@@ -814,7 +814,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
       <div class="prow"><span>Движение</span><span class="c"><span class="seg"><b class="sel">Focused</b><b>Smooth</b></span></span></div>
       <div class="prow"><span>Склеить с соседним</span><span class="c"><span class="toggle on"></span></span></div>
     </div></div>
-    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Дополнительно<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
       <div class="prow"><span>Плавность камеры</span><span class="c"><span class="hint">резко</span><span class="sl"><i style="width:55%"></i></span><span class="hint">мягко</span></span></div>
       <div class="prow"><span>Вход</span><span class="c"><span class="sl"><i style="width:10%"></i></span><span class="v">0,20 с</span></span></div>
       <div class="prow"><span>Выход</span><span class="c"><span class="sl"><i style="width:10%"></i></span><span class="v">0,20 с</span></span></div>
@@ -842,7 +842,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
       <div class="prow"><span>Цвет</span><span class="c"><span class="cs" style="background:#2563eb;outline:2px solid #fff"></span><span class="cs" style="background:#ef4444"></span><span class="cs" style="background:#f59e0b"></span><span class="cs" style="background:#22c55e"></span><span class="cs" style="background:#a855f7"></span><span class="cs" style="background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)"></span></span></div>
       <div class="prow"><span>Размер</span><span class="c"><span class="sl"><i style="width:33%"></i></span><span class="v">1,00×</span></span></div>
     </div></div>
-    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Дополнительно<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
       <div class="prow"><span>Прозрачность клика</span><span class="c"><span class="sl"><i style="width:100%"></i></span><span class="v">100%</span></span></div>
       <div class="prow"><span>Длительность клика</span><span class="c"><span class="sl"><i style="width:44%"></i></span><span class="v">0,60 с</span></span></div>
       <div class="prow"><span>Отскок</span><span class="c"><span class="sl"><i style="width:40%"></i></span><span class="v">2,0</span></span></div>
@@ -875,7 +875,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
 </div></div>
 <p class="src"><b>Взято:</b> из v1 — плитки эффекта клика, палитра 8 цветов, «Режим» зума с пояснением, облачко событиями «вкл / текст / выкл»; из Cap — масштаб зума ползунком в панели и сегмент «Auto / Manual»; из решения 000 — «Плавность камеры» одним ползунком, пресеты не трогают размер курсора.</p>
 <ul class="notes">
-  <li><b>Зум:</b> масштаб 1–5× — и ползунком, и рамкой на превью (они связаны); motion blur, длительности и плавность — в «Тонкой настройке» <span class="tag v2">v2</span> (в v1 их не было в UI).</li>
+  <li><b>Зум:</b> масштаб 1–5× — и ползунком, и рамкой на превью (они связаны); motion blur, длительности и плавность — в «Дополнительно» <span class="tag v2">v2</span> (в v1 их не было в UI).</li>
   <li><b>Курсор:</b> вкладка «Курсор» инспектора; наборы «Системный» (по умолчанию), свой нарисованный (имя <span class="tag q">?</span>), «Свой…» — PNG/SVG/WebP/GIF до 1 МБ, точка клика задаётся кликом в диалоге. Пять стилей клика, включая «Вспышку с частицами» <span class="tag v2">v2</span>.</li>
   <li><b>Отдельный клик</b> выбирается точкой на дорожке «Курсор»: скрыть или задать свой стиль <span class="tag v2">v2</span> по SCOPE. Скрытый клик — пустой кружок на дорожке.</li>
 </ul>
@@ -890,7 +890,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
       <div class="prow"><span>Размер</span><span class="c"><span class="sl"><i style="width:20%"></i></span><span class="v">1,00×</span></span></div>
       <div style="display:flex;justify-content:center;padding:6px 0"><span style="background:rgba(15,17,21,.9);border:1px solid #444;border-radius:8px;padding:6px 12px;font:600 15px Inter">Ctrl + Shift + P <span style="color:var(--text-3)">×2</span></span></div>
     </div></div>
-    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Дополнительно<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
       <div class="prow"><span>Буквы · плашка</span><span class="c"><span class="cs" style="background:#fff"></span><span class="cs" style="background:rgba(15,17,21,.9)"></span></span></div>
       <div class="prow"><span>Держать</span><span class="c"><span class="sl"><i style="width:30%"></i></span><span class="v">1,5 с</span></span></div>
     </div></div>
@@ -912,7 +912,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
       <div class="hint" style="padding:0 8px">Enter — применить, Esc — отмена. Исправленные слова получают время, остальные свои.</div>
     </div></div>
     <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Стиль<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div></div>
-    <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Тонкая настройка</div></div>
+    <div class="grp"><div class="gh closed"><svg class="ico"><use href="#i-right"/></svg>Дополнительно</div></div>
   </div>
 
   <div class="panel">
@@ -923,7 +923,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
       <div class="prow"><span>Активное слово</span><span class="c"><span class="toggle on"></span><span class="cs" style="background:#fde047"></span><span class="cs" style="background:#9ca3af" title="ещё не сказано"></span></span></div>
       <div class="prow"><span>Анимация</span><span class="c"><span class="seg"><b>Нет</b><b class="sel">Fade</b><b>Rise</b><b>Pop</b></span></span></div>
     </div></div>
-    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Дополнительно<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
       <div class="prow"><span>Строк</span><span class="c"><span class="seg"><b>1</b><b class="sel">2</b><b>3</b><b>4</b></span></span></div>
       <div class="prow"><span>Отступ снизу</span><span class="c"><span class="sl"><i style="width:30%"></i></span><span class="v">6%</span></span></div>
       <div class="prow"><span>Ширина</span><span class="c"><span class="sl"><i style="width:70%"></i></span><span class="v">70%</span></span></div>
@@ -957,7 +957,7 @@ p.lead{color:var(--text-2);margin:0 0 var(--s4)}
       <div class="prow"><span>Вход</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Прорисовка</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span><span class="num">0,4 с</span></span></div>
       <div class="prow"><span>Выход</span><span class="c"><span class="select" style="flex:1;height:28px"><span>Нет</span><svg class="ico" style="width:12px"><use href="#i-down"/></svg></span></span></div>
     </div></div>
-    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Тонкая настройка<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
+    <div class="grp"><div class="gh"><svg class="ico"><use href="#i-down"/></svg>Дополнительно<span class="r"><span class="ib"><svg class="ico"><use href="#i-reset"/></svg></span></span></div><div class="gb">
       <div class="prow"><span>Свечение</span><span class="c"><span class="sl"><i style="width:0%"></i></span><span class="v">0</span></span></div>
       <div class="prow"><span>Поворот</span><span class="c"><span class="num">0°</span><span class="hint">или ручка на превью</span></span></div>
       <div class="prow"><span>Позиция · размер</span><span class="c"><span class="num">820, 600</span><span class="num">240 × 180</span></span></div>

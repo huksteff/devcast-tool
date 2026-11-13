@@ -192,7 +192,7 @@ pub mod editor {
     pub const CAPTIONS: &str = "Субтитры";
     pub const SOUND: &str = "Звук";
     pub const BASIC: &str = "Основное";
-    pub const FINE: &str = "Тонкая настройка";
+    pub const FINE: &str = "Дополнительно";
     pub const RESET: &str = "Сбросить";
 
     /// Undo with its step: «Отменить: зум 1,50×»; `step` — summary of the step.
